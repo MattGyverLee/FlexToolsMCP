@@ -252,26 +252,17 @@ def test_call_tool_actually_emits_tool_call_records(isolated_logger, monkeypatch
     entire log trail.
     """
     import asyncio
-    import sys
 
     import flextoolsmcp.server as server_pkg
 
     logger, log_dir = isolated_logger
 
-    # server.py binds `flextoolsmcp.server.kernel`, while the fixture (and
-    # most of the suite) reaches the kernel as top-level `server.kernel`.
-    # Those are two distinct module objects with independent globals, so
-    # patching one leaves the other's operations_logger at None. The logger
-    # itself is a singleton (logging.getLogger by name), so the fixture's
-    # handlers -> tmp_path apply either way; only the module global differs.
-    # Stamp every loaded copy so the test asserts on the dispatcher, not on
-    # which import spelling happened to win.
+    # Issue #172: both import spellings alias the same kernel module, so one
+    # patch is enough for the dispatcher path exercised by call_tool().
+    import flextoolsmcp.server.kernel as kernel_mod
+
     _ = server_pkg.call_tool  # force the package's lazy load of server.py
-    kernels = [m for n, m in sys.modules.items()
-               if n.endswith("server.kernel") or n == "kernel"]
-    assert kernels, "no kernel module loaded"
-    for k in kernels:
-        monkeypatch.setattr(k, "operations_logger", logger, raising=False)
+    monkeypatch.setattr(kernel_mod, "operations_logger", logger, raising=False)
 
     # An unknown tool is the cheapest complete path through the dispatcher:
     # it logs [TOOL CALL] + [TOOL ARGS], then returns at the routing check

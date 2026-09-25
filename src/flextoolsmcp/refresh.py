@@ -53,17 +53,17 @@ def load_env():
     - Leave paths commented out (default) → use installed packages
     - Uncomment paths in .env → use repository clones instead
     """
-    env_file = get_project_root() / ".env"
-    if env_file.exists():
+    if __package__:
+        from .env_config import emit_obsolete_env_warnings, load_project_env
+    else:
+        from env_config import emit_obsolete_env_warnings, load_project_env
+
+    env_file = load_project_env(get_project_root())
+    if env_file is not None:
         print(f"[INFO] Loading configuration from {env_file}")
-        with open(env_file, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    os.environ.setdefault(key.strip(), value.strip())
     else:
         print("[WARN] No .env file found. Using defaults. Copy .env.example to .env to configure paths.")
+    emit_obsolete_env_warnings()
 
 
 # Load .env on import
@@ -124,11 +124,17 @@ def run_command(cmd: list, description: str) -> bool:
     print(f"       Running: {' '.join(cmd)}")
 
     try:
+        # Explicit codec on both ends (CP5 pattern audit, sweep 4): the
+        # children are Python scripts, told to write UTF-8, and decoded as
+        # UTF-8 -- never the locale code page, which can raise on a path.
         result = subprocess.run(
             cmd,
             cwd=get_project_root(),
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=dict(os.environ, PYTHONIOENCODING="utf-8"),
         )
 
         if result.returncode == 0:
@@ -495,6 +501,15 @@ def run_postprocess_element_types() -> bool:
     return run_command(cmd, "Annotating element types (collection casting hints)")
 
 
+def run_postprocess_getall_contract() -> bool:
+    """Annotate flexicon GetAll methods with collection_contract (issue #124)."""
+    cmd = [
+        sys.executable,
+        _pkg_script("build_getall_contract.py"),
+    ]
+    return run_command(cmd, "Annotating GetAll collection contracts")
+
+
 def run_archive_old_versions() -> bool:
     """Archive old versions of API files."""
     cmd = [
@@ -606,8 +621,12 @@ def main():
             success = False
 
         # Annotate element types (issue #121) -- needs the casting index
-        # just built above, so it runs last in this chain.
+        # just built above.
         if not run_postprocess_element_types():
+            success = False
+
+        # GetAll collection contracts (issue #124) -- flexicon index only.
+        if not run_postprocess_getall_contract():
             success = False
 
     # Archive old versions - runs after ANY successful refresh (full or

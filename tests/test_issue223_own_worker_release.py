@@ -83,6 +83,17 @@ class _FakeOwnWorkerRunner:
         self._busy_roles.discard(role)
         self.pool._workers.pop(role, None)
 
+    async def release_worker_if_idle(self, project_name, *, role):
+        """The atomic check-and-release (#223 QC P1). This double has no
+        real concurrency to race, so it is just `worker_busy` gating
+        `release_worker` -- enough for the call sites' tests, which cover
+        the atomicity itself against the real `WorkerPool` in
+        `tests/test_issue223_release_if_idle.py`."""
+        if role in self._busy_roles:
+            return False
+        await self.release_worker(project_name, role=role)
+        return True
+
 
 @pytest.fixture(autouse=True)
 def _reset_runner():

@@ -20,6 +20,12 @@ This is the frozen artifact contract CP4 and CP5 read
 CP3 added; nothing else is created, and in particular no sandbox-spine file is
 written or created empty (FR-015) -- that spine is CP5's.
 
+CP5 (additive, contracts/artifact.md section 9): a sandbox run adds a
+`sandbox/` subdirectory holding the files named in `SANDBOX_FILES`
+(CP5 data-model.md section 6.3), and two `RunMeta` fields, `spine` and
+`sandbox`. An in-process run creates neither the directory nor the
+section, so a CP4 reader sees the record it always did.
+
 WHY THE HOST COUNTERS LIVE HERE. `HostCounters` is computed from nothing but
 the result lines this module already holds, so a run's counters are a pure
 function of its own record: a reader that recomputes them from
@@ -65,17 +71,21 @@ This module is pure server-side: no pythonnet, no project, no FieldWorks.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import secrets
+import time
 import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
-from typing import Any, Callable, Iterable, Iterator, Optional
+from typing import Any, Callable, Iterable, Iterator, Literal, Optional
 
 from .stages import RunStage
+
+_log = logging.getLogger(__name__)
 
 __all__ = [
     "RunRecord",
@@ -85,10 +95,17 @@ __all__ = [
     "COUNTER_DIVERGENCES",
     "RecordSizeExceeded",
     "InvalidRunId",
+    "MetaUnreadable",
+    "META_READ_ATTEMPTS",
+    "META_RETRY_DELAY_SECONDS",
     "get_record_dir",
     "new_run_id",
     "is_valid_run_id",
     "list_run_ids",
+    "SPINE_IN_PROCESS",
+    "SPINE_SANDBOX",
+    "SANDBOX_DIRNAME",
+    "SANDBOX_FILES",
 ]
 
 _ENV_VAR = "FLEXTOOLSMCP_PARSE_RECORD_DIR"
@@ -99,6 +116,25 @@ _META_FILENAME = "meta.json"
 _RESULTS_FILENAME = "results.jsonl"
 _WORDS_FILENAME = "words.txt"
 _TRACES_DIRNAME = "traces"
+
+#: CP5: the two spines a run can take (data-model.md section 6.1).
+SPINE_IN_PROCESS = "in_process"
+SPINE_SANDBOX = "sandbox"
+Spine = Literal["in_process", "sandbox"]
+
+#: CP5: the sandbox run's own files, all under `sandbox/` in the run
+#: directory (data-model.md section 6.3). A closed set: a name outside it is
+#: refused, so a typo cannot quietly invent an artifact no reader knows.
+SANDBOX_DIRNAME = "sandbox"
+SANDBOX_FILES: tuple[str, ...] = (
+    "generate-config.log",
+    "hc-script.txt",
+    "dispatch.json",
+    "hc-stdout.txt",
+    "hc-stderr.txt",
+    "hc-output.txt",
+    "run.json",
+)
 
 #: Default cap on a single run's on-disk footprint. Generous enough that a
 #: real batch does not trip it, small enough that a runaway run cannot fill
@@ -112,6 +148,16 @@ _ENV_MAX_BYTES = "FLEXTOOLSMCP_PARSE_RECORD_MAX_BYTES"
 _RUN_ID_RE = re.compile(r"\A[0-9a-f]{32}\Z")
 
 _WRITE_LOCK = Lock()
+
+
+#: `read_meta`'s bounded retry for a meta.json that exists but cannot be
+#: read (a transient sharing violation under load): 4 x 50 ms.
+META_READ_ATTEMPTS = 4
+META_RETRY_DELAY_SECONDS = 0.05
+
+
+class MetaUnreadable(OSError):
+    """meta.json exists but could not be read or parsed, even after retrying."""
 
 
 class RecordSizeExceeded(RuntimeError):
@@ -385,6 +431,25 @@ class RunMeta:
     #: beside actual deletions, and the filing `state`.
     filing: Optional[dict[str, Any]] = None
 
+    # -- CP5 additions (CP5 data-model.md section 6.1). Additive only. They
+    # MUST be declared fields: `read_meta` drops any undeclared key, and every
+    # stage change rewrites the meta, so a bare dict key would vanish at the
+    # first `set_stage` (research F-12) -- the same reason CP4 declared
+    # `filing`.
+
+    #: Which spine produced the run. None on every pre-CP5 record and read as
+    #: "in_process" -- use `effective_spine`, never this raw value, to branch.
+    spine: Optional[Spine] = None
+    #: The sandbox section (data-model.md section 6.2): mode, config source,
+    #: versions, generation, copy, hc outcome, advisories. Present only on a
+    #: sandbox run.
+    sandbox: Optional[dict[str, Any]] = None
+
+    @property
+    def effective_spine(self) -> str:
+        """The run's spine, with a pre-CP5 None read as in-process (FR-037)."""
+        return self.spine or SPINE_IN_PROCESS
+
 
 class RunRecord:
     """One run's durable record.
@@ -444,6 +509,8 @@ class RunRecord:
         project_state: Optional[dict[str, Any]] = None,
         filing: Optional[dict[str, Any]] = None,
         guard: Optional[Callable[[Path], Any]] = None,
+        spine: Optional[Spine] = None,
+        sandbox: Optional[dict[str, Any]] = None,
     ) -> "RunRecord":
         """Mint a run id and open its record at stage `starting`.
 
@@ -455,6 +522,9 @@ class RunRecord:
         CP4: `filing` is a filing run's initial section; `guard` (see
         `append_jsonl`) vets the record's own directory before anything is
         created in it.
+
+        CP5: `spine` and `sandbox` are a sandbox run's spine marker and
+        initial section; an in-process run passes neither.
         """
         record = cls(new_run_id(), max_bytes=max_bytes, record_dir=record_dir)
         if guard is not None:
@@ -478,6 +548,8 @@ class RunRecord:
                 words_path=words_path,
                 project_state=project_state,
                 filing=filing,
+                spine=spine,
+                sandbox=sandbox,
             )
         )
         return record
@@ -504,21 +576,65 @@ class RunRecord:
             os.replace(tmp, self.meta_path)
 
     def read_meta(self) -> Optional[RunMeta]:
-        if not self.meta_path.is_file():
-            return None
+        """The run's meta, or None.
+
+        None means meta.json is missing, or it exists but still could not be
+        read after a short bounded retry (`META_READ_ATTEMPTS` x
+        `META_RETRY_DELAY_SECONDS`). The retry absorbs the transient sharing
+        violation a virus scanner or indexer causes on Windows under load, so
+        a caller that reads None as "no such run" or "pre-CP5" no longer
+        misreads a briefly-locked file. A caller that must tell the two apart
+        uses `read_meta_strict`.
+        """
         try:
-            data = json.loads(self.meta_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+            return self.read_meta_strict()
+        except MetaUnreadable:
             return None
-        known = {f for f in RunMeta.__dataclass_fields__}
-        return RunMeta(**{k: v for k, v in data.items() if k in known})
+
+    def read_meta_strict(self) -> Optional[RunMeta]:
+        """The run's meta; None ONLY when meta.json does not exist.
+
+        A meta.json that exists but cannot be read or parsed is retried
+        briefly, then raises `MetaUnreadable`. The writers (`set_stage`,
+        `set_section`) use this so an unreadable moment can never make them
+        rewrite the record from a blank `RunMeta`, which would erase its
+        fingerprint, sandbox and filing sections.
+        """
+        last_error: Optional[BaseException] = None
+        for attempt in range(META_READ_ATTEMPTS):
+            if not self.meta_path.is_file():
+                return None
+            try:
+                data = json.loads(self.meta_path.read_text(encoding="utf-8"))
+                if not isinstance(data, dict):
+                    raise ValueError("meta.json does not hold a JSON object")
+            except (OSError, ValueError) as exc:  # JSONDecodeError, UnicodeDecodeError
+                last_error = exc
+                if attempt + 1 < META_READ_ATTEMPTS:
+                    time.sleep(META_RETRY_DELAY_SECONDS)
+                continue
+            known = {f for f in RunMeta.__dataclass_fields__}
+            return RunMeta(**{k: v for k, v in data.items() if k in known})
+        raise MetaUnreadable(
+            f"Run {self.run_id}: meta.json exists but could not be read "
+            f"after {META_READ_ATTEMPTS} attempts: {last_error}"
+        ) from last_error
 
     def set_stage(self, stage: RunStage, **updates: Any) -> RunMeta:
         """Move the run to a stage and persist immediately."""
-        meta = self.read_meta() or RunMeta(
+        meta = self.read_meta_strict() or RunMeta(
             run_id=self.run_id, stage=RunStage.STARTING.value
         )
         meta.stage = stage.value
+        # `write_meta` serialises declared fields only, so an undeclared key
+        # would vanish without a trace (research F-12's shape, CP5 pattern
+        # audit sweep 5). Name it instead of dropping it silently.
+        unknown = sorted(k for k in updates if k not in RunMeta.__dataclass_fields__)
+        if unknown:
+            _log.warning(
+                "Run %s: meta update key(s) %s are not RunMeta fields and are "
+                "not persisted; declare them on RunMeta.", self.run_id, unknown,
+            )
         for key, value in updates.items():
             setattr(meta, key, value)
         self.write_meta(meta)
@@ -577,7 +693,7 @@ class RunRecord:
 
     def set_section(self, **sections: Any) -> RunMeta:
         """Rewrite named meta.json sections in place (CP4: the filing section)."""
-        meta = self.read_meta() or RunMeta(run_id=self.run_id, stage=RunStage.STARTING.value)
+        meta = self.read_meta_strict() or RunMeta(run_id=self.run_id, stage=RunStage.STARTING.value)
         for key, value in sections.items():
             setattr(meta, key, value)
         self.write_meta(meta)
@@ -586,7 +702,9 @@ class RunRecord:
     def _child(self, relpath: str) -> Path:
         """A path inside this run's directory, from a caller-fixed relative path."""
         rel = Path(relpath)
-        if rel.is_absolute() or ".." in rel.parts:
+        # `anchor`, not only `is_absolute()`: on Windows "/etc/x" is rooted
+        # but not absolute, and `root / "/etc/x"` would land on the drive root.
+        if rel.is_absolute() or rel.anchor or ".." in rel.parts:
             raise ValueError(f"{relpath!r} is not a path inside the run record")
         return self._root / rel
 
@@ -627,6 +745,66 @@ class RunRecord:
                     yield json.loads(raw)
                 except json.JSONDecodeError:
                     continue
+
+    # -- CP5: the sandbox files ---------------------------------------------
+    #
+    # Every sandbox file goes through `_child` (no absolute path, no `..`)
+    # and must be one of `SANDBOX_FILES`. The directory is created on first
+    # write, never up front: an in-process run has no `sandbox/` at all.
+
+    def sandbox_path(self, name: str) -> Path:
+        """The path of one of `SANDBOX_FILES` inside this run's `sandbox/`."""
+        if name not in SANDBOX_FILES:
+            raise ValueError(
+                f"{name!r} is not a sandbox run file; expected one of "
+                f"{', '.join(SANDBOX_FILES)}"
+            )
+        return self._child(f"{SANDBOX_DIRNAME}/{name}")
+
+    def write_sandbox_file(
+        self, name: str, text: str, *,
+        guard: Optional[Callable[[Path], Any]] = None,
+    ) -> Path:
+        """Write a sandbox file whole (UTF-8, no BOM, LF kept) and fsync it."""
+        path = self.sandbox_path(name)
+        if guard is not None:
+            guard(path)
+        self._enforce_size_cap()
+        with _WRITE_LOCK:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "w", encoding="utf-8", newline="") as handle:
+                handle.write(text)
+                handle.flush()
+                os.fsync(handle.fileno())
+        return path
+
+    def append_sandbox_line(
+        self, name: str, line: str, *,
+        guard: Optional[Callable[[Path], Any]] = None,
+    ) -> None:
+        """Append one line to a sandbox file and flush it (hc's streams).
+
+        Flushed per line for the same reason results are: a killed hc run
+        must leave everything it printed readable.
+        """
+        path = self.sandbox_path(name)
+        if guard is not None:
+            guard(path)
+        self._enforce_size_cap()
+        text = line if line.endswith("\n") else line + "\n"
+        with _WRITE_LOCK:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "a", encoding="utf-8", newline="") as handle:
+                handle.write(text)
+                handle.flush()
+
+    def read_sandbox_file(self, name: str) -> Optional[str]:
+        """A sandbox file's text, or None when the run never wrote it."""
+        path = self.sandbox_path(name)
+        if not path.is_file():
+            return None
+        with open(path, "r", encoding="utf-8", newline="") as handle:
+            return handle.read()
 
     # -- the word list ----------------------------------------------------
 

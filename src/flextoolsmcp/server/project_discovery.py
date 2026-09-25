@@ -140,10 +140,14 @@ def _list_via_subprocess(timeout_seconds: int = 30) -> Optional[list]:
             f.write(snippet)
             script_path = f.name
 
+        # Explicit codec on both ends (CP5 pattern audit, sweep 4).
         result = subprocess.run(
             [sys.executable, script_path],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=dict(os.environ, PYTHONIOENCODING="utf-8"),
             timeout=timeout_seconds,
         )
         if result.returncode != 0:

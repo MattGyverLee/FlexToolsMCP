@@ -105,9 +105,11 @@ where = ["src"]
 # The indexed API documentation and the FlexTools module templates are bundled
 # as package data so they are available after `pip install` / `uvx` with no
 # separate download. (Templates back flextools_get_module_template; without this
-# they are absent from the wheel and the tool 500s -- see issue #77.)
+# they are absent from the wheel and the tool 500s -- see issue #77.) The
+# packaged hcparse.ps1 (parser-check CP5, FR-022) is launched from the installed
+# package by the sandbox spine, so it must ship in the wheel too.
 [tool.setuptools.package-data]
-flextoolsmcp = ["index/**/*", "templates/**/*", "VERSION", "py.typed"]
+flextoolsmcp = ["index/**/*", "templates/**/*", "scripts/*.ps1", "VERSION", "py.typed"]
 
 # Archived old index versions are kept in the repo for local diffing but must
 # not bloat the installed wheel. The `index/**/*` glob above would otherwise

@@ -95,6 +95,18 @@ def __getattr__(name: str):
     from pathlib import Path
     import importlib.util
 
+    # Dual-path alias (#172): when kernel/session were first imported as
+    # ``server.kernel`` / ``server.session``, sys.modules already holds the
+    # packaged spelling but the attribute was never bound on this package
+    # (the module's __name__ is still the legacy one). Resolve those before
+    # falling through to the lazy server.py loader -- otherwise
+    # ``flextoolsmcp.server.kernel`` and ``unittest.mock.patch`` paths raise
+    # AttributeError on Python 3.10.
+    aliased = sys.modules.get(f"{__name__}.{name}")
+    if aliased is not None:
+        setattr(sys.modules[__name__], name, aliased)
+        return aliased
+
     # List of all handler functions and classes that should be lazy-loaded from server.py
     # NOTE: Handler functions have been refactored into modularized handlers/
     # Only keep items that actually exist in server.py for backward compatibility

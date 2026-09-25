@@ -62,6 +62,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import FrozenSet, Iterable, List, Literal, Optional, Tuple, Union
@@ -439,13 +440,37 @@ HC_EXPECTED_PATH_DESCRIPTION = "hc (dotnet global tool, PATH / `dotnet tool list
 #: `hc` discovery signals. Deliberately **not** merged into `CLOSED_SIGNALS`
 #: above -- that vocabulary is `parser_core_missing`'s (ParserCore member
 #: probe); `parser_tool_missing` (contracts/error-codes.md) has no `signal`
-#: field at all, so these two values are this module's own bookkeeping, kept
+#: field at all, so these values are this module's own bookkeeping, kept
 #: separate so a `hc` probe result can never be mistaken for a ParserCore one.
 SANDBOX_SIGNAL_NOT_FOUND = "not_found"
 SANDBOX_SIGNAL_TIMEOUT = "timeout"
 """Distinct from SANDBOX_SIGNAL_NOT_FOUND on purpose (tasks.md T010 / SPEC
 open question 8): a hung `dotnet tool list -g` call must be recorded as a
-*timeout*, not silently folded into an indistinguishable "not found"."""
+*timeout*, not silently folded into an indistinguishable "not found". The
+`hc -h` probe (CP5 R-03) reuses it for a probe that outlives its bound --
+there it means "found, but could not be seen to start"."""
+SANDBOX_SIGNAL_RUNTIME_MISSING = "runtime_missing"
+"""CP5 FR-004: `hc` is present and is HermitCrab, but the .NET host cannot
+start it (the runtime it targets is not installed, or -- for the ``.dll``
+form -- there is no ``dotnet`` host at all). "Found but cannot start"."""
+SANDBOX_SIGNAL_NOT_HERMITCRAB = "not_hermitcrab"
+"""CP5 FR-003: something named `hc` ran, but its `-h` output is not
+HermitCrab's usage text. Counts as not found."""
+
+#: Where a hit came from (CP5 FR-001) -- `HcToolDiscovery.source`, and the
+#: health block's `detected.hc_source`. Closed, in discovery order.
+HC_SOURCE_OVERRIDE = "override"
+HC_SOURCE_PATH = "path"
+HC_SOURCE_DOTNET_TOOLS_DIR = "dotnet_tools_dir"
+HC_SOURCE_DOTNET_TOOL_LIST = "dotnet_tool_list"
+
+HC_SOURCES: FrozenSet[str] = frozenset(
+    {HC_SOURCE_OVERRIDE, HC_SOURCE_PATH, HC_SOURCE_DOTNET_TOOLS_DIR, HC_SOURCE_DOTNET_TOOL_LIST}
+)
+
+#: The NuGet package id of the `hc` global tool, as `dotnet tool list -g`
+#: prints it and as the tool store's folder is named (lower-case).
+HC_TOOL_PACKAGE_ID = "sil.machine.morphology.hermitcrab.tool"
 
 #: Env var carrying the T010 "config override" (SPEC 13 H1): an explicit
 #: path to the `hc` executable that bypasses PATH and `dotnet` entirely.
@@ -459,6 +484,23 @@ HC_PATH_ENV_VAR = "HC_TOOL_PATH"
 #: specified here). A slow or hanging call must never block the health
 #: response -- this is the module-level constant that enforces that bound.
 HC_DISCOVERY_TIMEOUT_SECONDS = 5.0
+
+#: Bound on the `hc -h` identity/startability probe (CP5 R-03).
+HC_PROBE_TIMEOUT_SECONDS = 5.0
+
+#: The two usage lines that identify HermitCrab's `hc` (research F-3,
+#: Program.cs:164-167). `hc` has no version option; identity is these lines.
+_HC_USAGE_LINES: Tuple[str, str] = (
+    "Usage: hc [OPTIONS]",
+    "HermitCrab.NET is a phonological and morphological parser.",
+)
+
+#: .NET host exit codes meaning "cannot start" (research R-03 [LIVE L-5]):
+#: FrameworkMissingFailure and the related host-resolution failure. Compared
+#: as unsigned DWORDs, since the process may report them signed.
+_HOST_FAILURE_EXIT_CODES: FrozenSet[int] = frozenset({0x80008096, 0x8000809A})
+
+_FRAMEWORK_LINE_RE = re.compile(r"Framework:\s*'([^']+)',\s*version\s*'([^']+)'")
 
 
 def _hc_override_from_env() -> Optional[str]:
@@ -477,25 +519,47 @@ def _find_hc_via_path() -> Optional[Path]:
     return Path(found) if found else None
 
 
+def _dotnet_tools_dir() -> Path:
+    """The default dotnet global-tools folder: ``<USERPROFILE>\\.dotnet\\tools``.
+
+    ``USERPROFILE`` first (it is what the dotnet CLI itself uses on Windows),
+    falling back to ``Path.home()``.
+    """
+    profile = os.environ.get("USERPROFILE")
+    base = Path(profile) if profile else Path.home()
+    return base / ".dotnet" / "tools"
+
+
+def _find_hc_in_dotnet_tools_dir() -> Optional[Path]:
+    """CP5 FR-001 source 3: ``<USERPROFILE>\\.dotnet\\tools\\hc.exe``, checked
+    directly -- US1 scenario 2, a server whose PATH predates the install."""
+    candidate = _dotnet_tools_dir() / "hc.exe"
+    return candidate if candidate.is_file() else None
+
+
 def _find_hc_via_dotnet_tool_list(*, timeout: float) -> Tuple[Optional[str], Optional[str], bool]:
     """Run ``dotnet tool list -g`` under a bounded ``timeout``, looking for
     the ``hc`` global tool (``SIL.Machine.Morphology.HermitCrab.Tool``).
 
     Confirms the tool is installed even when its shim isn't (yet) on PATH
-    -- e.g. a shell opened before the install ran.
+    -- e.g. a shell opened before the install ran. Needs a .NET **SDK**; on
+    an SDK-less machine it fails, which is why it is the LAST source and
+    runs only when the direct checks missed (CP5 R-03).
+
+    A row matches when its package id is ``HC_TOOL_PACKAGE_ID`` or its
+    ``Commands`` column names ``hc`` (real output puts the package id first:
+    ``sil.machine.morphology.hermitcrab.tool  3.8.2  hc``).
+
+    Output is decoded with an explicit UTF-8 encoding (pattern-audit sweep
+    4) -- never the locale's ANSI code page.
 
     Returns ``(version, error_detail, timed_out)``:
 
     - ``version``: the version string from the tool-list row, when ``hc``
       is found; ``None`` otherwise.
     - ``error_detail``: diagnostic text for the ``version is None`` case
-      (``dotnet`` itself missing, a non-zero/erroring run, ``hc`` simply
-      not in the list) -- always present when ``version`` is ``None``, so
-      the caller never has to guess why.
-    - ``timed_out``: ``True`` only when the call was cut off by ``timeout``
-      (``subprocess.TimeoutExpired``) -- the one case that must be recorded
-      as a distinct reason rather than an indistinguishable "not found"
-      (tasks.md T010 / SPEC open question 8).
+      -- always present when ``version`` is ``None``.
+    - ``timed_out``: ``True`` only when the call was cut off by ``timeout``.
 
     Never raises: a hanging or failing ``dotnet`` must report "not found",
     not crash the health response.
@@ -509,6 +573,9 @@ def _find_hc_via_dotnet_tool_list(*, timeout: float) -> Tuple[Optional[str], Opt
             [dotnet, "tool", "list", "-g"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdin=subprocess.DEVNULL,
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:
@@ -516,21 +583,282 @@ def _find_hc_via_dotnet_tool_list(*, timeout: float) -> Tuple[Optional[str], Opt
     except Exception as exc:
         return None, f"dotnet tool list -g failed: {exc}", False
 
-    for line in result.stdout.splitlines():
+    for line in (result.stdout or "").splitlines():
         parts = line.split()
-        if parts and parts[0].lower() == COMPONENT_HC:
+        if not parts:
+            continue
+        package = parts[0].lower()
+        commands = [p.lower() for p in parts[2:]]
+        if package in (HC_TOOL_PACKAGE_ID, COMPONENT_HC) or COMPONENT_HC in commands:
             version = parts[1] if len(parts) > 1 else None
             return version, None, False
 
+    if result.returncode != 0:
+        tail = (result.stderr or "").strip().splitlines()[-1:]
+        detail = f"dotnet tool list -g exited {result.returncode}"
+        if tail:
+            detail += f": {tail[0]}"
+        return None, detail, False
     return None, "hc not listed by dotnet tool list -g", False
+
+
+# ---------------------------------------------------------------------------
+# The `hc -h` identity + startability probe (CP5 T030, R-03, FR-003/FR-004)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class HcProbe:
+    """The outcome of ONE bounded ``hc -h`` run (``probe_hc``).
+
+    ``found``: the output identifies HermitCrab's ``hc`` (or, for a host
+    failure, the file is taken to be it -- nothing else fails that way).
+    ``starts``: ``True`` when the usage text printed, ``False`` when the
+    host could not start it or the run timed out, ``None`` when it was not
+    HermitCrab. ``signal``: ``None`` or a ``SANDBOX_SIGNAL_*`` value.
+    ``exit_code``: the process's exit code as reported (``None`` if it
+    never exited).
+    """
+
+    found: bool
+    starts: Optional[bool]
+    signal: Optional[str] = None
+    reason: Optional[str] = None
+    exit_code: Optional[int] = None
+
+
+#: ``probe_hc`` memo: ``(path, size, mtime_ns) -> HcProbe``, process life.
+_HC_PROBE_CACHE: dict = {}
+
+
+def clear_hc_probe_cache() -> None:
+    """Forget every memoised ``hc -h`` probe (tests; a reinstall is also
+    noticed on its own, since size/mtime change the key)."""
+    _HC_PROBE_CACHE.clear()
+
+
+def hc_invoke_argv(path: Union[str, Path]) -> Optional[List[str]]:
+    """How to run the ``hc`` at ``path``, without arguments.
+
+    ``[str(path)]`` for an ``hc.exe`` shim (or any other executable); for
+    an ``hc.dll``, ``[<dotnet>, str(path)]`` -- the form the maintainer's
+    original script used and the one R-15's no-SDK route produces. Returns
+    ``None`` for a ``.dll`` when there is no ``dotnet`` host on PATH.
+    """
+    path = Path(path)
+    if path.suffix.lower() == ".dll":
+        dotnet = shutil.which("dotnet")
+        if dotnet is None:
+            return None
+        return [str(dotnet), str(path)]
+    return [str(path)]
+
+
+def _decode_hc_stdout(data) -> str:
+    """hc writes UTF-16LE (Console.Out with Encoding.Unicode), BOM optional."""
+    if isinstance(data, str):
+        return data
+    data = data or b""
+    if data.startswith(b"\xff\xfe"):
+        data = data[2:]
+    return data.decode("utf-16-le", errors="replace")
+
+
+def _decode_hc_stderr(data) -> str:
+    """The .NET host writes its failures to stderr as UTF-8."""
+    if isinstance(data, str):
+        return data
+    return (data or b"").decode("utf-8", errors="replace")
+
+
+def _is_host_failure(exit_code: Optional[int], stderr: str) -> bool:
+    if exit_code is not None and (exit_code & 0xFFFFFFFF) in _HOST_FAILURE_EXIT_CODES:
+        return True
+    lowered = stderr.lower()
+    return bool(
+        _FRAMEWORK_LINE_RE.search(stderr)
+        or "you must install or update .net" in lowered
+        or ("framework" in lowered and ("not found" in lowered or "missing" in lowered))
+    )
+
+
+def classify_hc_help(exit_code: Optional[int], stdout, stderr) -> HcProbe:
+    """R-03's classification table over one ``hc -h`` run's raw output.
+
+    Pure: ``stdout`` is decoded UTF-16LE (BOM tolerated) and ``stderr``
+    UTF-8 when given as bytes.
+    """
+    out = _decode_hc_stdout(stdout)
+    err = _decode_hc_stderr(stderr)
+
+    lines = {line.strip() for line in out.splitlines()}
+    if all(usage in lines for usage in _HC_USAGE_LINES):
+        return HcProbe(found=True, starts=True, exit_code=exit_code)
+
+    if _is_host_failure(exit_code, err):
+        match = _FRAMEWORK_LINE_RE.search(err)
+        if match:
+            reason = (
+                f"hc needs the .NET runtime {match.group(1)} {match.group(2)}, "
+                "which is not installed"
+            )
+        elif exit_code is not None:
+            reason = (
+                "hc could not start: the .NET host reported a missing runtime "
+                f"(exit 0x{exit_code & 0xFFFFFFFF:08X})"
+            )
+        else:
+            reason = "hc could not start: the .NET host reported a missing runtime"
+        return HcProbe(
+            found=True,
+            starts=False,
+            signal=SANDBOX_SIGNAL_RUNTIME_MISSING,
+            reason=reason,
+            exit_code=exit_code,
+        )
+
+    first = next((line.strip() for line in out.splitlines() if line.strip()), "")
+    detail = f"; it printed {first!r}" if first else ""
+    return HcProbe(
+        found=False,
+        starts=None,
+        signal=SANDBOX_SIGNAL_NOT_HERMITCRAB,
+        reason=f"`hc -h` did not print HermitCrab's usage text{detail}",
+        exit_code=exit_code,
+    )
+
+
+def probe_hc(path: Union[str, Path], *, timeout: float = HC_PROBE_TIMEOUT_SECONDS) -> HcProbe:
+    """Run ``hc -h`` once -- identity (FR-003) and startability (FR-004).
+
+    ``hc -h`` prints usage and exits before any ``-i`` is read (research
+    F-2), so this loads no grammar and parses nothing (the CP1 invariant,
+    narrowed by R-04 to exactly this argv). Stdin is closed, the run is
+    bounded by ``timeout``, and output is captured as bytes: stdout is
+    UTF-16LE, stderr UTF-8, so no single ``encoding=`` could serve both.
+
+    Memoised for the process on ``(path, size, mtime_ns)``, so a reinstall
+    is re-probed. A timeout or a missing ``dotnet`` host is not memoised
+    (both are about the machine, not the file).
+    """
+    path = Path(path)
+    try:
+        st = path.stat()
+        key: Optional[tuple] = (str(path), st.st_size, st.st_mtime_ns)
+    except OSError:
+        key = None
+    if key is not None and key in _HC_PROBE_CACHE:
+        return _HC_PROBE_CACHE[key]
+
+    argv = hc_invoke_argv(path)
+    if argv is None:
+        return HcProbe(
+            found=True,
+            starts=False,
+            signal=SANDBOX_SIGNAL_RUNTIME_MISSING,
+            reason=f"cannot run {path.name}: dotnet host not found on PATH",
+        )
+
+    try:
+        completed = subprocess.run(
+            argv + ["-h"],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return HcProbe(
+            found=True,
+            starts=False,
+            signal=SANDBOX_SIGNAL_TIMEOUT,
+            reason=f"`hc -h` did not finish within {timeout}s",
+        )
+    except OSError as exc:
+        result = HcProbe(
+            found=False,
+            starts=None,
+            signal=SANDBOX_SIGNAL_NOT_HERMITCRAB,
+            reason=f"`hc -h` could not be run: {exc}",
+        )
+    else:
+        result = classify_hc_help(completed.returncode, completed.stdout, completed.stderr)
+
+    if key is not None:
+        _HC_PROBE_CACHE[key] = result
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Discovery (T010, extended by CP5 T030/T031)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class HcToolDiscovery(ProbeResult):
+    """``discover_hc_tool``'s result: a ``ProbeResult`` (so every existing
+    reader keeps working) plus CP5's discovery facts.
+
+    - ``ok`` -- ``found and starts is True``.
+    - ``signal`` -- ``None`` or one of ``not_found`` / ``timeout`` /
+      ``runtime_missing`` / ``not_hermitcrab``.
+    - ``expected_path`` -- the path found, or the one looked at, or
+      ``HC_EXPECTED_PATH_DESCRIPTION`` when there is no single file.
+    - ``detected_version`` -- the hc tool version (T031); reported, never
+      compared.
+    - ``load_error`` -- the same text as ``reason`` (kept for back-compat).
+    - ``found`` -- a HermitCrab ``hc`` was located and identified.
+    - ``starts`` -- from the ``hc -h`` probe; ``None`` when not observed
+      (a ``dotnet tool list`` hit has no file to run).
+    - ``source`` -- one of ``HC_SOURCES``; ``None`` only when nothing hit.
+    - ``path`` -- the concrete file (``None`` for a listing hit or a miss).
+    - ``reason`` -- human text for any not-ready outcome.
+    - ``invoke_argv`` -- how to run it: ``[path]`` or ``[dotnet, path]``.
+    """
+
+    found: bool = False
+    starts: Optional[bool] = None
+    source: Optional[str] = None
+    path: Optional[str] = None
+    reason: Optional[str] = None
+    invoke_argv: Optional[List[str]] = None
+
+
+def _discovery_from_file(path: Path, source: str) -> HcToolDiscovery:
+    """Probe one file hit and shape it into an ``HcToolDiscovery``."""
+    probe = probe_hc(path)
+    if not probe.found:
+        return HcToolDiscovery(
+            ok=False,
+            signal=probe.signal,
+            expected_path=str(path),
+            load_error=probe.reason,
+            found=False,
+            starts=None,
+            source=source,
+            path=None,
+            reason=probe.reason,
+        )
+    return HcToolDiscovery(
+        ok=probe.starts is True,
+        signal=probe.signal,
+        expected_path=str(path),
+        detected_version=_hc_tool_version(path),
+        load_error=probe.reason,
+        found=True,
+        starts=probe.starts,
+        source=source,
+        path=str(path),
+        reason=probe.reason,
+        invoke_argv=hc_invoke_argv(path),
+    )
 
 
 def discover_hc_tool(
     *,
     override_path: Optional[Path] = None,
     timeout: float = HC_DISCOVERY_TIMEOUT_SECONDS,
-) -> ProbeResult:
-    """Locate the ``hc`` dotnet global tool (SPEC 13 H1 / tasks.md T010).
+) -> HcToolDiscovery:
+    """Locate, identify and start-check the ``hc`` tool (SPEC 13 H1, CP5 FR-001..FR-005).
 
     ``hc`` is a **dotnet global tool** (``PackAsTool=true``,
     ``ToolCommandName=hc``, on nuget.org), installed by
@@ -539,60 +867,232 @@ def discover_hc_tool(
     ``%LOCALAPPDATA%\\HermitCrabTool\\hc.dll`` -- an earlier, wrong draft of
     the spec assumed that path; do not reintroduce it.
 
-    Three lookups, tried in order, first hit wins:
+    Four sources, in order (FR-001); the one that succeeded is ``source``:
 
-    1. ``override_path``, or the ``HC_TOOL_PATH`` env var if unset -- the
-       "config override" SPEC 13 H1 calls for alongside PATH / ``dotnet
-       tool list -g``: an explicit path that bypasses both, for machines
-       where PATH doesn't reach the shim directory, and for tests that must
-       not depend on a real ``dotnet`` install.
-    2. ``shutil.which("hc")`` -- PATH, the common case.
-    3. ``dotnet tool list -g`` -- confirms an install PATH doesn't yet see.
-       Bounded by ``timeout`` (``HC_DISCOVERY_TIMEOUT_SECONDS`` by default).
-       This is SPEC open question 8, specified here: a slow or hanging
-       ``dotnet`` call must never block the health response, so the
-       subprocess call is wrapped in ``timeout=`` and ``TimeoutExpired`` is
-       mapped to ``signal=SANDBOX_SIGNAL_TIMEOUT`` -- never folded into the
-       ordinary ``SANDBOX_SIGNAL_NOT_FOUND`` case.
+    1. ``"override"`` -- ``override_path``, else the ``HC_TOOL_PATH`` env
+       var. Final: a missing file, or one that is not HermitCrab, never
+       falls through to the other sources.
+    2. ``"path"`` -- ``shutil.which("hc")``.
+    3. ``"dotnet_tools_dir"`` -- ``<USERPROFILE>\\.dotnet\\tools\\hc.exe``,
+       checked directly (a server whose PATH predates the install).
+    4. ``"dotnet_tool_list"`` -- ``dotnet tool list -g``, bounded by
+       ``timeout``; it runs only when 1-3 found nothing HermitCrab. Its
+       timeout is ``signal="timeout"``, never folded into "not found".
 
-    Returns a ``ProbeResult``. On success, ``expected_path`` is the
-    concrete location found (the override, or the PATH hit); a
-    ``dotnet tool list -g`` hit has no single file to point at, so it uses
-    ``HC_EXPECTED_PATH_DESCRIPTION`` instead and carries the parsed version
-    in ``detected_version``. On failure, ``signal`` is one of
-    ``SANDBOX_SIGNAL_NOT_FOUND`` / ``SANDBOX_SIGNAL_TIMEOUT`` and
-    ``load_error`` carries the diagnostic text.
+    A file hit (1-3) is accepted as ``hc.exe`` or as ``hc.dll`` (run as
+    ``dotnet hc.dll``) and is checked by one bounded ``hc -h`` run
+    (``probe_hc``). A ``not_hermitcrab`` hit at 2 or 3 falls through; if
+    nothing later finds hc, the first such rejection is returned. A
+    listing hit (4) names the HermitCrab package, which is its identity
+    check, but has no file to run: ``found=True``, ``starts=None``, so it
+    never reads as ready.
     """
     override = override_path if override_path is not None else _hc_override_from_env()
     if override is not None:
         override = Path(override)
-        if override.exists():
-            return ProbeResult(ok=True, expected_path=str(override))
-        return ProbeResult(
-            ok=False,
-            signal=SANDBOX_SIGNAL_NOT_FOUND,
-            expected_path=str(override),
-            load_error=f"{HC_PATH_ENV_VAR} override does not exist: {override}",
-        )
+        if not override.is_file():
+            reason = f"{HC_PATH_ENV_VAR} override does not exist: {override}"
+            return HcToolDiscovery(
+                ok=False,
+                signal=SANDBOX_SIGNAL_NOT_FOUND,
+                expected_path=str(override),
+                load_error=reason,
+                found=False,
+                source=HC_SOURCE_OVERRIDE,
+                reason=reason,
+            )
+        return _discovery_from_file(override, HC_SOURCE_OVERRIDE)
 
-    path_hit = _find_hc_via_path()
-    if path_hit is not None:
-        return ProbeResult(ok=True, expected_path=str(path_hit))
+    first_rejected: Optional[HcToolDiscovery] = None
+    for source, find in (
+        (HC_SOURCE_PATH, _find_hc_via_path),
+        (HC_SOURCE_DOTNET_TOOLS_DIR, _find_hc_in_dotnet_tools_dir),
+    ):
+        candidate = find()
+        if candidate is None:
+            continue
+        result = _discovery_from_file(candidate, source)
+        if result.found:
+            return result
+        if first_rejected is None:
+            first_rejected = result
 
     version, error_detail, timed_out = _find_hc_via_dotnet_tool_list(timeout=timeout)
     if version is not None:
-        return ProbeResult(
-            ok=True,
+        reason = (
+            "hc is listed by `dotnet tool list -g`, but no hc executable was found "
+            f"to run (not on PATH, not at {_dotnet_tools_dir() / 'hc.exe'})"
+        )
+        return HcToolDiscovery(
+            ok=False,
+            signal=None,
             expected_path=HC_EXPECTED_PATH_DESCRIPTION,
             detected_version=version,
+            load_error=reason,
+            found=True,
+            starts=None,
+            source=HC_SOURCE_DOTNET_TOOL_LIST,
+            reason=reason,
         )
 
-    return ProbeResult(
+    if first_rejected is not None:
+        return first_rejected
+
+    return HcToolDiscovery(
         ok=False,
         signal=SANDBOX_SIGNAL_TIMEOUT if timed_out else SANDBOX_SIGNAL_NOT_FOUND,
         expected_path=HC_EXPECTED_PATH_DESCRIPTION,
         load_error=error_detail,
+        found=False,
+        reason=error_detail,
     )
+
+
+# ---------------------------------------------------------------------------
+# Versions (CP5 T031, FR-005, R-03) -- reported, never compared to a floor
+# ---------------------------------------------------------------------------
+
+#: FieldWorks' bundled HermitCrab library (and the one beside an unpacked
+#: ``hc.dll``). Its ``FileVersion`` is the HermitCrab engine version.
+FIELDWORKS_HERMITCRAB_DLL = "SIL.Machine.Morphology.HermitCrab.dll"
+
+#: Advisory code (contracts/tools.md section 5.1): the sandbox's HermitCrab
+#: differs from FieldWorks' own. A warning, never a refusal (Q3).
+ADVISORY_HC_ENGINE_VERSION_SKEW = "hc_engine_version_skew"
+
+_VS_FIXEDFILEINFO_SIGNATURE = 0xFEEF04BD
+
+
+def read_file_version(path: Union[str, Path, None]) -> Optional[str]:
+    """A file's Win32 ``FileVersion`` as ``"a.b.c.d"``, or ``None``.
+
+    Read through ``GetFileVersionInfoW`` / ``VerQueryValueW`` via ``ctypes``
+    (the fixed ``VS_FIXEDFILEINFO`` block) -- no pythonnet and no assembly
+    load, so health stays cheap. ``None`` for a missing file, a file with no
+    version resource, or a non-Windows host. Never raises.
+
+    Every version read in this module goes through this one name, so tests
+    monkeypatch it.
+    """
+    if path is None or sys.platform != "win32":
+        return None
+    try:
+        target = str(path)
+        if not os.path.isfile(target):
+            return None
+
+        import ctypes
+        from ctypes import wintypes
+
+        version_dll = ctypes.WinDLL("version")
+        get_size = version_dll.GetFileVersionInfoSizeW
+        get_size.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(wintypes.DWORD)]
+        get_size.restype = wintypes.DWORD
+        get_info = version_dll.GetFileVersionInfoW
+        get_info.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p]
+        get_info.restype = wintypes.BOOL
+        query = version_dll.VerQueryValueW
+        query.argtypes = [
+            ctypes.c_void_p,
+            wintypes.LPCWSTR,
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(wintypes.UINT),
+        ]
+        query.restype = wintypes.BOOL
+
+        size = get_size(target, None)
+        if not size:
+            return None
+        buffer = ctypes.create_string_buffer(size)
+        if not get_info(target, 0, size, buffer):
+            return None
+        pointer = ctypes.c_void_p()
+        length = wintypes.UINT()
+        if not query(buffer, "\\", ctypes.byref(pointer), ctypes.byref(length)):
+            return None
+        if not pointer.value or length.value < 16:
+            return None
+        # VS_FIXEDFILEINFO: dwSignature, dwStrucVersion, dwFileVersionMS, dwFileVersionLS, ...
+        fixed = ctypes.cast(pointer, ctypes.POINTER(ctypes.c_uint32 * 4)).contents
+        if fixed[0] != _VS_FIXEDFILEINFO_SIGNATURE:
+            return None
+        ms, ls = fixed[2], fixed[3]
+        return f"{ms >> 16}.{ms & 0xFFFF}.{ls >> 16}.{ls & 0xFFFF}"
+    except Exception:  # noqa: BLE001 -- a version is informational; never fail health on it
+        return None
+
+
+def _safe_file_version(path: Union[str, Path, None]) -> Optional[str]:
+    """``read_file_version`` with a backstop, for a patched or failing reader."""
+    try:
+        return read_file_version(path)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _numeric_version(value: str) -> Optional[Tuple[int, ...]]:
+    parts = value.strip().split(".")
+    try:
+        numbers = [int(part) for part in parts]
+    except ValueError:
+        return None
+    while len(numbers) < 4:
+        numbers.append(0)
+    return tuple(numbers)
+
+
+def hermitcrab_versions_differ(a: Optional[str], b: Optional[str]) -> bool:
+    """The skew flag: do two HermitCrab versions differ?
+
+    ``False`` when either is unknown. Dotted numeric versions compare as
+    4-part tuples padded with zeros (``"3.8.2"`` equals ``"3.8.2.0"``);
+    anything else compares as the raw strings. Only ever a warning
+    (``ADVISORY_HC_ENGINE_VERSION_SKEW``) -- never a floor, never a refusal.
+    """
+    if a is None or b is None:
+        return False
+    left, right = _numeric_version(a), _numeric_version(b)
+    if left is not None and right is not None:
+        return left != right
+    return a.strip() != b.strip()
+
+
+def _version_sort_key(name: str) -> Tuple[int, Tuple[int, ...], str]:
+    numeric = _numeric_version(name)
+    return (1, numeric, name) if numeric is not None else (0, (), name)
+
+
+def _hc_tool_version(path: Union[str, Path]) -> Optional[str]:
+    """The hc tool's version, for a file hit (R-03). Reported, never compared.
+
+    1. The ``<ver>`` segment right after ``.store\\<HC_TOOL_PACKAGE_ID>\\``
+       when ``path`` lies inside the tool store (a ``.dll`` hit there).
+    2. A shim's sibling store: ``<shim dir>\\.store\\<package>\\<ver>\\``
+       (the highest version, if several are left behind).
+    3. For a ``.dll`` outside the store, the ``FileVersion`` of
+       ``SIL.Machine.Morphology.HermitCrab.dll`` beside it.
+
+    (A ``dotnet tool list -g`` hit carries the row's version instead; see
+    ``discover_hc_tool``.)
+    """
+    path = Path(path)
+    parts = path.parts
+    lowered = [part.lower() for part in parts]
+    for index in range(len(lowered) - 2):
+        if lowered[index] == ".store" and lowered[index + 1] == HC_TOOL_PACKAGE_ID:
+            return parts[index + 2]
+
+    store = path.parent / ".store" / HC_TOOL_PACKAGE_ID
+    try:
+        versions = [child.name for child in store.iterdir() if child.is_dir()]
+    except OSError:
+        versions = []
+    if versions:
+        return max(versions, key=_version_sort_key)
+
+    if path.suffix.lower() == ".dll":
+        return _safe_file_version(path.parent / FIELDWORKS_HERMITCRAB_DLL)
+    return None
 
 
 def discover_generate_hc_config(*, search_paths: Optional[List[Path]] = None) -> ProbeResult:
@@ -753,6 +1253,13 @@ class ParserVersions:
     parser_core_version: Optional[str] = None
     lcmodel_install_path: Optional[str] = None
     hc_tool_version: Optional[str] = None
+    #: CP5 FR-005: FieldWorks' bundled HermitCrab (``FIELDWORKS_HERMITCRAB_DLL``).
+    fieldworks_hermitcrab_version: Optional[str] = None
+    #: CP5 FR-005: ``GenerateHCConfig.exe``'s own ``FileVersion``.
+    generate_hc_config_version: Optional[str] = None
+    #: ``hermitcrab_versions_differ(hc_tool_version, fieldworks_hermitcrab_version)``
+    #: -- a warning (``ADVISORY_HC_ENGINE_VERSION_SKEW``), never a refusal.
+    hc_engine_version_skew: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -1044,9 +1551,28 @@ class ParserDetector:
         self.active_engine: Optional[str] = None
 
         fieldworks_dir = get_resolved_fieldworks_dir(search_paths=search_paths)
+        # CP5 FR-005: three versions, reported and never compared to a floor.
+        # Only the two HermitCrab versions are compared -- with each other,
+        # for the skew advisory -- and that never touches any status.
+        hc_tool_version = hc_probe.detected_version
+        fieldworks_hermitcrab_version = (
+            _safe_file_version(Path(fieldworks_dir) / FIELDWORKS_HERMITCRAB_DLL)
+            if fieldworks_dir
+            else None
+        )
+        generate_hc_config_version = (
+            _safe_file_version(generate_config_probe.expected_path)
+            if generate_config_probe.ok and generate_config_probe.expected_path
+            else None
+        )
         self.versions: ParserVersions = ParserVersions(
             parser_core_version=self.read_probe.detected_version
             or self.write_probe.detected_version,
             lcmodel_install_path=str(fieldworks_dir) if fieldworks_dir else None,
-            hc_tool_version=hc_probe.detected_version,
+            hc_tool_version=hc_tool_version,
+            fieldworks_hermitcrab_version=fieldworks_hermitcrab_version,
+            generate_hc_config_version=generate_hc_config_version,
+            hc_engine_version_skew=hermitcrab_versions_differ(
+                hc_tool_version, fieldworks_hermitcrab_version
+            ),
         )

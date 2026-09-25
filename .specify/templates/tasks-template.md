@@ -168,8 +168,11 @@ default:
 - [ ] TXXX Live-LCM verification for any write-path change: pre/post field
       values from a real database, scratch project with prefixed test objects.
       A mock-only pass is not verification.
-- [ ] TXXX CHANGELOG entry; regenerated index diff if an extractor changed;
-      regenerated golden files if a payload shape changed.
+- [ ] TXXX CHANGELOG entry under `[Unreleased]` (issue-linked Fixed bullets
+      sorted ascending by issue number; no-issue changes under Other;
+      Governance / Tool contract append at section end); regenerated index
+      diff if an extractor changed; regenerated golden files if a payload
+      shape changed.
 
 ---
 

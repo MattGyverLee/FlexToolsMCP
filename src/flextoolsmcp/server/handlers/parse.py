@@ -47,6 +47,7 @@ left going, untouched, and the caller gets a handle to poll. Nothing on this
 path cancels a run, shortens one, or passes a deadline downstream.
 """
 
+import json
 import time
 import uuid
 from typing import Any, Dict, List, Optional
@@ -54,7 +55,7 @@ from typing import Any, Dict, List, Optional
 from mcp.types import TextContent
 
 from ._import_helper import safe_import_kernel_deps
-from ..models import MorphSpec, ParseTextInput, ResolvedScope
+from ..models import MorphSpec, ParseSandboxInput, ParseTextInput, ResolvedScope
 from ..parse.fingerprint import build_fingerprint
 from ..parse.measure import (
     DEFAULT_BOUND_SECONDS,
@@ -62,6 +63,7 @@ from ..parse.measure import (
     measure_word,
 )
 from ..parse.priority import Priority
+from ..parse.record import MetaUnreadable
 from ..parse.runner import ParseRunner
 from ..parse.stages import RunStage
 from ..parse.worker_client import SHARED_ROLE, WorkerError
@@ -1394,7 +1396,12 @@ def _filing_needs_write_session() -> List[TextContent]:
 #: `run_module` share so the two write gates cannot answer "is this ours?"
 #: differently (#223). Kept as a module attribute here too since existing
 #: imports and tests read it from `handlers.parse`.
-from ..parse.own_worker import HELD_BY_OWN_READ_WORKER, own_worker_role  # noqa: E402
+from ..parse.own_worker import (  # noqa: E402
+    HELD_BY_OWN_READ_WORKER,
+    own_worker_role,
+    busy_own_worker_guidance,
+    busy_own_worker_run_note,
+)
 
 
 def _held_by_own_read_worker(runner, project_name: str, decision) -> bool:
@@ -1406,6 +1413,31 @@ def _held_by_own_read_worker(runner, project_name: str, decision) -> bool:
     its project's lock too (#223).
     """
     return own_worker_role(runner, project_name, decision) == SHARED_ROLE
+
+
+def _holder_is_own_read_worker(runner, project_name: str, access) -> bool:
+    """Is `access`'s lock holder one of THIS server's own parse workers?
+
+    The probe answers `held_by_other` for any live non-FieldWorks holder,
+    and our own workers are such holders. This is the sandbox staleness
+    check's form of `own_worker_role`: it starts from a bare access probe
+    rather than a refusal decision, but answers "is this ours?" through the
+    same `runner.own_worker_role_for_pid` (any role, #223).
+    """
+    if runner is None:
+        return False
+    holder = getattr(access, "holder", None)
+    pid = getattr(holder, "pid", None)
+    if pid is None:
+        return False
+    lookup = getattr(runner, "own_worker_role_for_pid", None)
+    if lookup is not None:
+        return lookup(project_name, pid) is not None
+    read_worker_pid = getattr(runner, "read_worker_pid", None)
+    if read_worker_pid is None:
+        return False
+    own = read_worker_pid(project_name)
+    return own is not None and pid == own
 
 
 def _access_block(decision) -> Dict[str, Any]:
@@ -1973,6 +2005,62 @@ def _not_applicable(section: str, run_id: str) -> Dict[str, Any]:
     }
 
 
+#: CP5 (FR-038): each sandbox section's file under `<run>/sandbox/`, and what
+#: its empty note calls the missing lines.
+_SANDBOX_SECTION_FILES: Dict[str, str] = {
+    "config_generation": "generate-config.log",
+    "hc_stdout": "hc-stdout.txt",
+    "hc_output": "hc-output.txt",
+}
+_SANDBOX_SECTION_WHAT: Dict[str, str] = {
+    "config_generation": "configuration-generation log lines",
+    "hc_stdout": "hc console lines",
+    "hc_output": "hc result blocks",
+}
+
+#: The most characters of one sandbox file served inline, like a trace's
+#: `max_trace_chars` default. A longer file is served from its start, marked
+#: truncated, with the file's path for the rest.
+SANDBOX_LOG_MAX_CHARS = 200_000
+
+
+def _sandbox_log_section(record, meta, section: str) -> Dict[str, Any]:
+    """One sandbox section, served verbatim from the run's `sandbox/` file.
+
+    An empty or never-written file is an explained absence (`_empty_note`),
+    never an empty section. `config_generation` also carries the generation
+    facts from `meta.sandbox.generation`.
+    """
+    name = _SANDBOX_SECTION_FILES[section]
+    result: Dict[str, Any] = {
+        "status": "ok",
+        "run_id": record.run_id,
+        "section": section,
+        "applicable": True,
+        "run_spine": SANDBOX_SPINE,
+        "source": f"sandbox/{name}",
+    }
+    text = record.read_sandbox_file(name)
+    if text:
+        if len(text) > SANDBOX_LOG_MAX_CHARS:
+            result["content"] = text[:SANDBOX_LOG_MAX_CHARS]
+            result["content_truncated"] = True
+            result["content_chars"] = len(text)
+            result["source_path"] = str(record.sandbox_path(name))
+        else:
+            result["content"] = text
+    else:
+        result["note"] = _empty_note(meta, _SANDBOX_SECTION_WHAT[section])
+    if section == "config_generation":
+        sandbox = meta.sandbox if isinstance(meta.sandbox, dict) else {}
+        generation = sandbox.get("generation") if isinstance(sandbox.get("generation"), dict) else {}
+        load_errors = list(generation.get("load_errors") or [])
+        result["reused_cache"] = generation.get("reused_cache")
+        result["load_error_count"] = int(generation.get("load_error_count") or len(load_errors))
+        result["load_errors"] = load_errors
+    return result
+
+
 def _log_record(run_id: str):
     """The run's on-disk record, or None if no such run exists."""
     from ..parse.record import RunRecord, is_valid_run_id
@@ -2005,6 +2093,44 @@ def _run_not_found(run_id: str) -> List[TextContent]:
             + (f"Runs with records: {', '.join(available)}." if available
                else "No run records exist yet.")
         ),
+    )
+
+
+#: `server_state` for a run record whose meta.json exists but stays
+#: unreadable (pattern audit sweep 6): transient, never "not found".
+RUN_RECORD_UNREADABLE = "run_record_unreadable"
+
+
+def _run_record_unreadable(
+    run_id: str, exc: BaseException, *, tool: str, args: Dict[str, Any]
+) -> List[TextContent]:
+    """A run record that exists but could not be read: retry, not absence.
+
+    `RunRecord.read_meta_strict` already retried briefly before raising
+    `MetaUnreadable`; on Windows this is usually a virus scanner or indexer
+    holding meta.json. The record is intact, so the answer is the same call
+    again in a moment -- never `parse_run_not_found` or "not applicable".
+    """
+    return error_response(
+        "server_state_error",
+        f"Run {run_id}'s record exists but could not be read just now. "
+        "Nothing was changed.",
+        server_state=RUN_RECORD_UNREADABLE,
+        component="parse_record",
+        state_description=str(exc),
+        hint=(
+            "Another process (often a virus scanner or search indexer) is holding "
+            "the run's meta.json. The record is intact; retry in a moment."
+        ),
+        next_step=[
+            _rung(
+                action="Retry the same call in a moment.",
+                tool=tool,
+                args=args,
+                rationale="The record exists; the read failure is transient.",
+                est_cost="instant",
+            )
+        ],
     )
 
 
@@ -2071,16 +2197,28 @@ async def handle_flextools_parse_log(args: dict) -> List[TextContent]:
 
     if section in _SANDBOX_SECTIONS:
         # Answered for any existing run: whether the section applies is a
-        # fact about the spine, not about how far the run got.
+        # fact about the RECORDED spine (never the section name, never the
+        # presence of a file), not about how far the run got.
         record = _log_record(run_id)
         if record is None:
             return _run_not_found(run_id)
+        try:
+            meta = record.read_meta_strict()
+        except MetaUnreadable as exc:
+            return _run_record_unreadable(run_id, exc, tool="flextools_parse_log", args=dict(args))
+        if meta is not None and meta.effective_spine == SANDBOX_SPINE:
+            return json_response(build_response_with_context(
+                _sandbox_log_section(record, meta, section)
+            ))
         return json_response(build_response_with_context(_not_applicable(section, run_id)))
 
     record = _log_record(run_id)
     if record is None:
         return _run_not_found(run_id)
-    meta = record.read_meta()
+    try:
+        meta = record.read_meta_strict()
+    except MetaUnreadable as exc:
+        return _run_record_unreadable(run_id, exc, tool="flextools_parse_log", args=dict(args))
 
     result: Dict[str, Any] = {"status": "ok", "run_id": run_id, "section": section,
                               "applicable": True}
@@ -2091,7 +2229,7 @@ async def handle_flextools_parse_log(args: dict) -> List[TextContent]:
         summary = asdict(meta) if meta is not None else {}
         summary["results_recorded"] = record.result_count()
         summary["traces_recorded"] = sorted(_trace_indices(record))
-        summary["run_spine"] = IN_PROCESS_SPINE
+        summary["run_spine"] = meta.effective_spine if meta is not None else IN_PROCESS_SPINE
         if meta is not None and meta.words_path is not None:
             # A batch run: the US5 report, computed from the artifact alone.
             from ..signals.report import build_report
@@ -2444,6 +2582,22 @@ async def handle_flextools_parse_status(args: dict) -> List[TextContent]:
     elif handle.stage is RunStage.FAILED and handle.failure is not None:
         # Reported, not raised. The run failed; the question did not.
         result["failure"] = handle.failure.to_dict()
+
+    sandbox = _sandbox_meta_of(handle)
+    if sandbox is not None:
+        # CP5 (SC-008, data-model 6.6): where a sandbox run stopped, and its
+        # summary on every terminal stage -- a failed run's words are real.
+        result["spine"] = SANDBOX_SPINE
+        failure = handle.failure
+        if (handle.stage is RunStage.FAILED and failure is not None
+                and failure.error_code == "parser_timeout"):
+            hc = sandbox.get("hc") if isinstance(sandbox.get("hc"), dict) else {}
+            result["in_flight"] = hc.get("in_flight_word")
+            result["in_flight_index"] = hc.get("in_flight_index")
+        if handle.is_terminal:
+            summary = result.get("result_summary") or _result_summary(handle)
+            summary.update(_sandbox_summary_block(handle, sandbox))
+            result["result_summary"] = summary
     elif handle.stage is RunStage.CANCELLED:
         # `words_completed` above is the count that survived, and the stage
         # at cancel says where it stopped (FR-036). The partial results are
@@ -2523,6 +2677,1382 @@ async def handle_flextools_parse_cancel(args: dict) -> List[TextContent]:
 
 
 # ---------------------------------------------------------------------------
+# flextools_parse_sandbox (CP5, FR-034) -- check order (contracts/tools.md s.3)
+# ---------------------------------------------------------------------------
+#
+# ONE HELPER PER CHECK-ORDER STEP. Each takes the request's `_SandboxPlan`,
+# returns `None` to continue or a finished refusal envelope, and may record
+# what it learnt on the plan for the steps after it. The handler runs them in
+# order and returns the first refusal.
+#
+#   1  project            `_sandbox_resolve_project`
+#   2  config source      `_sandbox_resolve_source` (name, existence)
+#   2b word list          `_sandbox_read_words`     (parse; FR-014, FR-015)
+#   3  tool discovery     `_sandbox_check_tools`    (FR-007)
+#   4  engine check       `_sandbox_engine_check`   (generation only; FR-036)
+#   5  access probe       `_sandbox_access`         (never refuses; R-13)
+#   6  corpus load        (run_corpus -- US4)
+#   7  free space         `_sandbox_space_check`    (cache miss only; FR-012)
+#   8  the run            `_sandbox_start_parse`    (run id exists from here)
+#
+# NOTHING BEFORE STEP 8 CREATES A FILE: no copy, no mkdir under the sandbox
+# root, no `sandbox.paths.work_dir`, no subprocess beyond the two discovery
+# functions (T029's `untouched_root`).
+#
+# Discovery, the engine check and the access probe are looked up AT CALL
+# TIME (module attributes, never names imported into this module), so the
+# tests' patches -- and any later override -- are honoured.
+# ---------------------------------------------------------------------------
+
+import re  # noqa: E402
+import unicodedata  # noqa: E402
+from collections import Counter  # noqa: E402
+from dataclasses import dataclass, field as dc_field  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from .. import parser_probe  # noqa: E402 -- grouped with the CP5 section it serves
+from ..response_models import (  # noqa: E402
+    ParserToolMissingDetail,
+    ParseSandboxRefusedDetail,
+)
+from ..sandbox import paths as sandbox_paths  # noqa: E402
+
+#: contracts/tools.md section 4, verbatim: the command, one space, one sentence.
+HC_INSTALL_HINT = (
+    "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool Installing it "
+    "needs a .NET SDK, and hc 3.8 and later need the .NET 10 runtime to run."
+)
+GENERATE_HC_CONFIG_INSTALL_HINT = (
+    "GenerateHCConfig.exe ships with FieldWorks 9; repair or reinstall FieldWorks."
+)
+#: Fallback `expected_path` when discovery reports none (the field is a str).
+_GENERATE_HC_CONFIG_DEFAULT_PATH = (
+    r"C:\Program Files\SIL\FieldWorks 9\GenerateHCConfig.exe"
+)
+
+#: contracts/tools.md section 5.1: fixed text, on every parse response (US2).
+SANDBOX_RESULTS_LABEL = (
+    "These are the sandbox's results from an exported copy of the grammar, not "
+    "the project's own parser results."
+)
+
+#: R-13: the access verdicts that make a sandbox run's staleness unverifiable.
+#: Wider than `diff.shared_mode_active` on purpose (held_by_other too); the
+#: in-process rule is left unchanged. Exception: a `held_by_other` whose holder
+#: is this server's own read worker is not stale (`_sandbox_access`).
+SANDBOX_STALENESS_VERDICTS = frozenset({"open_shared", "open_exclusive", "held_by_other"})
+
+#: The one engine the sandbox spine runs (R-14: recorded in the fingerprint).
+SANDBOX_ENGINE = "HC"
+
+#: FR-014: a word list that arrives as one string is split on this, verbatim.
+_WORD_SPLIT_RE = re.compile(r"[,\s]+")
+
+#: contracts/tools.md section 5.1, advisory codes and their fixed notes.
+_ADVISORY_NOTES = {
+    "hc_engine_version_skew": (
+        "hc uses HermitCrab {a}; FieldWorks bundles {b}. Results may differ from "
+        "FLEx's own parser."
+    ),
+    "sandbox_predates_project_grammar": (
+        "This sandbox was made from an earlier state of the project's grammar; it "
+        "was used exactly as it is."
+    ),
+    "grammar_load_errors": (
+        "{n} grammar objects failed to load during export and are missing from "
+        "this configuration."
+    ),
+    "leading_dash_unverified": (
+        "These words begin with '-'. Whether hc receives such a word intact has "
+        "not been verified; treat their results with care."
+    ),
+}
+
+#: Terminal failure codes re-emitted as their own envelopes (section 3, step 8).
+_SANDBOX_FAILURE_CODES = ("parser_timeout", "parser_job_failed", "parser_config_failed")
+
+
+
+@dataclass
+class _SandboxPlan:
+    """What the check-order steps learn, handed forward to the run."""
+
+    request: ParseSandboxInput
+    project_name: Optional[str] = None
+    #: FR-015-ordered words (parse), and what the ordering recorded.
+    words: List[str] = dc_field(default_factory=list)
+    word_count: int = 0
+    scope_value: List[str] = dc_field(default_factory=list)
+    truncated: bool = False
+    hc: Any = None
+    generator: Any = None
+    project_state: Dict[str, Any] = dc_field(default_factory=dict)
+    staleness: Optional[str] = None
+    #: The named sandbox's store status (US3): edited / predates, or None.
+    sandbox_status: Optional[Dict[str, Any]] = None
+    #: run_corpus (US4): the loaded `store.Corpus`, after step 6.
+    corpus: Any = None
+
+
+def _sandbox_role() -> str:
+    """`sandbox.client.SANDBOX_ROLE`, or its value while the client is unbuilt."""
+    try:
+        from ..sandbox import client as sandbox_client
+    except ImportError:
+        return "sandbox"
+    return getattr(sandbox_client, "SANDBOX_ROLE", "sandbox")
+
+
+def _sandbox_detail_kwargs(model) -> Dict[str, Any]:
+    """A detail model as `error_response` kwargs, in the model's field order."""
+    detail = model.model_dump()
+    detail.pop("error_code", None)
+    return detail
+
+
+def _sandbox_list_rung(project_name: Optional[str]) -> Dict[str, Any]:
+    return _rung(
+        action="See the sandboxes and corpora that exist for this project.",
+        tool="flextools_parse_sandbox",
+        args={"action": "list", "project_name": project_name},
+        rationale="Lists existing sandbox and corpus names; nothing is created.",
+        est_cost="instant",
+    )
+
+
+def _sandbox_refused(
+    reason: str,
+    message: str,
+    *,
+    hint: str,
+    next_step: List[Dict[str, Any]],
+    name: Optional[str] = None,
+    path: Optional[str] = None,
+    needed_bytes: Optional[int] = None,
+    free_bytes: Optional[int] = None,
+) -> List[TextContent]:
+    """`parse_sandbox_refused`, fields in contract order, with a next_step."""
+    detail = ParseSandboxRefusedDetail(
+        reason=reason,
+        name=name,
+        path=path,
+        hint=hint,
+        needed_bytes=needed_bytes,
+        free_bytes=free_bytes,
+    )
+    return error_response(
+        "parse_sandbox_refused",
+        message,
+        **_sandbox_detail_kwargs(detail),
+        next_step=next_step,
+    )
+
+
+def _ensure_next_step(
+    envelope: List[TextContent], rungs: List[Dict[str, Any]]
+) -> List[TextContent]:
+    """Re-emit `envelope` with `next_step` added when it has none.
+
+    `_resolve_project` is shared with tools whose refusals predate the
+    "every refusal carries a next_step" rule; this tool's contract requires
+    one, so it is added here rather than changing the shared helper.
+    """
+    try:
+        data = json.loads(envelope[0].text)
+    except (AttributeError, IndexError, KeyError, TypeError, ValueError):
+        return envelope
+    if data.get("next_step"):
+        return envelope
+    code = data.get("error_code") or "runtime_error"
+    message = data.get("message") or ""
+    extra = {
+        k: v
+        for k, v in data.items()
+        if k not in ("_contract", "status", "error_code", "message", "error")
+    }
+    extra["next_step"] = rungs
+    return error_response(code, message, **extra)
+
+
+# -- step 1 ----------------------------------------------------------------
+
+
+def _sandbox_resolve_project(plan: _SandboxPlan) -> Optional[List[TextContent]]:
+    """Step 1: resolve the project (every action)."""
+    name, refusal = _resolve_project(plan.request.project_name)
+    if refusal is None:
+        plan.project_name = name
+        return None
+    return _ensure_next_step(
+        refusal,
+        [
+            _rung(
+                action="List the projects this machine has, then retry with an exact name.",
+                tool="flextools_list_projects",
+                args=None,
+                rationale="The project named could not be resolved to one project.",
+                est_cost="instant",
+            )
+        ],
+    )
+
+
+# -- step 1b: the sandbox root is outside every project (FR-042) -------------
+
+
+def _sandbox_check_root(plan: _SandboxPlan) -> Optional[List[TextContent]]:
+    """Refuse early when the sandbox root resolves inside a project folder.
+
+    Every action reads or writes under the root, and `paths.sandbox_root()`
+    raises `ArtifactInsideProject` there. Surfaced the way CP4's filing path
+    surfaces a record directory inside a project: `server_state_error`, with
+    a `server_state` naming what is misplaced -- before anything is created.
+    """
+    try:
+        sandbox_paths.sandbox_root()
+    except filing_paths.ArtifactInsideProject as refused:
+        return error_response(
+            "server_state_error",
+            "The parse sandbox root is inside the FieldWorks projects directory, "
+            "so the sandbox spine refuses to run. Nothing was created.",
+            server_state="sandbox_root_inside_project",
+            component="sandbox",
+            state_description=str(refused),
+            hint=(
+                f"Point {sandbox_paths.ENV_VAR} at a folder outside the FieldWorks "
+                "projects directory (or unset it to use the default), then retry."
+            ),
+            next_step=[
+                _rung(
+                    action=f"Move {sandbox_paths.ENV_VAR} outside the projects directory.",
+                    tool=None,
+                    args=None,
+                    rationale=(
+                        "Sandbox files inside a project folder would be committed by "
+                        "Send/Receive (FR-042)."
+                    ),
+                    est_cost="minutes",
+                )
+            ],
+        )
+    return None
+
+
+# -- step 2 ----------------------------------------------------------------
+
+
+def _sandbox_name_refusal(name: object, detail: str, project_name) -> List[TextContent]:
+    return _sandbox_refused(
+        "name_invalid",
+        f"Invalid sandbox name {name!r}: {detail}.",
+        name=name if isinstance(name, str) else None,
+        hint=(
+            f"Sandbox names {detail}. Pick a name of letters, digits, '.', '_' "
+            "or '-' and retry."
+        ),
+        next_step=[_sandbox_list_rung(project_name)],
+    )
+
+
+def _sandbox_config_path(project_name: str, name: str) -> Path:
+    """`sandboxes/<project>/<name>/hc-config.xml`. Computes; creates nothing."""
+    return sandbox_paths.sandbox_dir(project_name, name) / "hc-config.xml"
+
+
+def _sandbox_resolve_source(plan: _SandboxPlan) -> Optional[List[TextContent]]:
+    """Step 2: resolve the config source.
+
+    A named sandbox (parse / run_corpus) must have a valid name and exist; the
+    NEW sandbox's name (create_sandbox) must be valid and not exist. No
+    sandbox means the project's cached config, which needs no check here.
+    Existence is a `stat` of the sandbox's `hc-config.xml` -- nothing is
+    created. For a named run the store's status (`edited`,
+    `predates_project_grammar`, both derived by `stat` alone) is recorded on
+    the plan; a status that cannot be read never refuses the run.
+    """
+    request, project_name = plan.request, plan.project_name
+    if request.sandbox is None:
+        if request.action == "create_sandbox":
+            return _sandbox_name_refusal(
+                None, sandbox_paths.validate_name(None) or "a name is required",
+                project_name,
+            )
+        return None
+    detail = sandbox_paths.validate_name(request.sandbox)
+    if detail is not None:
+        return _sandbox_name_refusal(request.sandbox, detail, project_name)
+    config = _sandbox_config_path(project_name, request.sandbox)
+    exists = config.is_file()
+    if request.action == "create_sandbox":
+        if exists:
+            return _sandbox_refused(
+                "sandbox_exists",
+                f"A sandbox named {request.sandbox!r} already exists for this project.",
+                name=request.sandbox,
+                path=str(config),
+                hint="Pick a new name, or parse against the existing sandbox.",
+                next_step=[_sandbox_list_rung(project_name)],
+            )
+        return None
+    if not exists:
+        return _sandbox_refused(
+            "sandbox_not_found",
+            f"No sandbox named {request.sandbox!r} exists for this project.",
+            name=request.sandbox,
+            path=str(config),
+            hint=(
+                "Create it with action='create_sandbox', pick an existing name, or "
+                "omit sandbox to parse against the project's cached config."
+            ),
+            next_step=[_sandbox_list_rung(project_name)],
+        )
+    plan.sandbox_status = _sandbox_store_status(project_name, request.sandbox)
+    return None
+
+
+def _sandbox_store():
+    """`sandbox.store`, imported at call time (tests stand a fake in)."""
+    from ..sandbox import store as sandbox_store
+
+    return sandbox_store
+
+
+def _sandbox_store_status(project_name: str, name: str) -> Optional[Dict[str, Any]]:
+    try:
+        status = _sandbox_store().sandbox_status(project_name, name)
+    except Exception:  # noqa: BLE001 -- a status read never refuses a run
+        return None
+    return status if isinstance(status, dict) else None
+
+
+# -- step 2b: the word list (parse) -----------------------------------------
+
+
+def _word_file_refusal(message: str, path: str, hint: str, project_name) -> List[TextContent]:
+    return _sandbox_refused(
+        "word_file_invalid",
+        message,
+        path=path,
+        hint=hint,
+        next_step=[
+            _rung(
+                action="Pass the words inline with `words` instead of a file.",
+                tool="flextools_parse_sandbox",
+                args={"action": "parse", "project_name": project_name},
+                rationale=(
+                    "An inline list needs no file; a file must be UTF-8, one word "
+                    "per line, outside every project folder."
+                ),
+                est_cost="seconds",
+            )
+        ],
+    )
+
+
+def _sandbox_raw_words(plan: _SandboxPlan):
+    """The words as supplied (FR-014), or a refusal envelope."""
+    request = plan.request
+    if request.word_file is not None:
+        path = request.word_file
+        try:
+            filing_paths.assert_outside_project(path)
+        except filing_paths.ArtifactInsideProject:
+            return None, _word_file_refusal(
+                "The word file is inside a FieldWorks project folder.",
+                path,
+                "Move the word file outside the FieldWorks projects directory "
+                "and retry; the sandbox never reads from a project folder.",
+                plan.project_name,
+            )
+        try:
+            text = Path(path).read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            return None, _word_file_refusal(
+                "The word file is not valid UTF-8.",
+                path,
+                "Save the word file as UTF-8, one word per line, and retry.",
+                plan.project_name,
+            )
+        except OSError:
+            return None, _word_file_refusal(
+                "The word file could not be read.",
+                path,
+                "Check the path exists and is a readable file, then retry.",
+                plan.project_name,
+            )
+        return [line.strip() for line in text.splitlines()], None
+    words = request.words
+    if isinstance(words, str):
+        return _WORD_SPLIT_RE.split(words), None
+    return list(words or []), None
+
+
+def _sandbox_read_words(plan: _SandboxPlan) -> Optional[List[TextContent]]:
+    """FR-015: NFC, count within the list, order `(-count, word)`, then limit.
+
+    An EMPTY list -- from `words` or `word_file` -- is refused here as
+    `word_file_invalid` (the closed enum's only word-list reason): the input
+    model cannot see a file's contents, and one rule for both sources is the
+    simpler one to state.
+    """
+    if plan.request.action != "parse":
+        return None
+    raw, refusal = _sandbox_raw_words(plan)
+    if refusal is not None:
+        return refusal
+    counts: Counter = Counter()
+    for word in raw:
+        form = unicodedata.normalize("NFC", str(word or ""))
+        if form.strip():
+            counts[form] += 1
+    if not counts:
+        source = plan.request.word_file
+        return _word_file_refusal(
+            "The word list is empty.",
+            source,
+            "Give at least one word: a list, a comma- or space-separated string, "
+            "or a UTF-8 file with one word per line.",
+            plan.project_name,
+        )
+    ordered = sorted(counts, key=lambda w: (-counts[w], w))
+    plan.word_count = len(ordered)
+    plan.scope_value = sorted(counts)
+    limit = plan.request.limit
+    plan.truncated = limit is not None and len(ordered) > limit
+    plan.words = ordered[:limit] if plan.truncated else ordered
+    return None
+
+
+# -- step 3 ----------------------------------------------------------------
+
+
+def _sandbox_generation_may_run(request: ParseSandboxInput) -> bool:
+    """GenerateHCConfig.exe is needed only when generation may run (FR-007)."""
+    return request.action == "create_sandbox" or request.sandbox is None
+
+
+def _tool_missing_rungs(component: str) -> List[Dict[str, Any]]:
+    install = (
+        "Install hc with the dotnet tool command in install_hint, then retry."
+        if component == "hc"
+        else "Repair or reinstall FieldWorks 9, then retry."
+    )
+    return [
+        _rung(
+            action=install,
+            tool=None,
+            args=None,
+            rationale=(
+                f"{component} is required for this action and was not found or "
+                "could not start. Nothing was copied or created."
+            ),
+            est_cost="minutes",
+        ),
+        _rung(
+            action="Check the sandbox components' status.",
+            tool="flextools_health",
+            args={"verbose": True},
+            rationale=(
+                "flextools_health reports each sandbox component (hc, "
+                "GenerateHCConfig.exe) with where it was looked for."
+            ),
+            est_cost="seconds",
+        ),
+    ]
+
+
+def _tool_missing(component: str, expected_path: str, message: str) -> List[TextContent]:
+    detail = ParserToolMissingDetail(
+        component=component,
+        expected_path=expected_path,
+        install_hint=(
+            HC_INSTALL_HINT if component == "hc" else GENERATE_HC_CONFIG_INSTALL_HINT
+        ),
+    )
+    return error_response(
+        "parser_tool_missing",
+        message,
+        **_sandbox_detail_kwargs(detail),
+        next_step=_tool_missing_rungs(component),
+    )
+
+
+def _sandbox_check_tools(plan: _SandboxPlan) -> Optional[List[TextContent]]:
+    """Step 3: tool discovery (FR-007). `hc` first, then GenerateHCConfig.exe.
+
+    `hc` must be found AND start (`starts is True`). GenerateHCConfig.exe is
+    looked up only when generation may run, so a named sandbox's parse never
+    blames it.
+    """
+    hc = parser_probe.discover_hc_tool()
+    if not (getattr(hc, "found", False) and getattr(hc, "starts", None) is True):
+        expected = (
+            getattr(hc, "path", None)
+            or getattr(hc, "expected_path", None)
+            or parser_probe.HC_EXPECTED_PATH_DESCRIPTION
+        )
+        reason = getattr(hc, "reason", None)
+        what = "was found but could not start" if getattr(hc, "found", False) else "was not found"
+        message = f"The hc tool {what}" + (f": {reason}." if reason else ".")
+        return _tool_missing("hc", str(expected), message)
+    plan.hc = hc
+
+    if _sandbox_generation_may_run(plan.request):
+        ghc = parser_probe.discover_generate_hc_config()
+        if not getattr(ghc, "ok", False):
+            expected = getattr(ghc, "expected_path", None) or _GENERATE_HC_CONFIG_DEFAULT_PATH
+            return _tool_missing(
+                "GenerateHCConfig.exe",
+                str(expected),
+                "GenerateHCConfig.exe was not found; it is needed to export the "
+                "project's grammar for hc.",
+            )
+        plan.generator = ghc
+    return None
+
+
+# -- step 4 ----------------------------------------------------------------
+
+
+def _sandbox_fwdata_path(project_name: str) -> Optional[Path]:
+    """`<projects>/<P>/<P>.fwdata`, by the server's own discovery. No LCM open."""
+    project_dir = filing_paths.project_dir_for(project_name)
+    if project_dir is None:
+        return None
+    return project_dir / f"{project_name}.fwdata"
+
+
+def _sandbox_engine_check(project_name: str) -> Optional[Dict[str, Any]]:
+    """Step 4 (FR-036): the `.fwdata` stream read (R-02), never LCM.
+
+    None when the project's active parser is HC; otherwise the
+    `parser_engine_mismatch` detail (configured_engine, supported_engines,
+    hint). An unreadable or unlocatable `.fwdata` fails safe to a mismatch
+    with the engine module's "could not be read" hint. Creates no file.
+    """
+    from ..sandbox import engine as sandbox_engine
+
+    fwdata = _sandbox_fwdata_path(project_name)
+    if fwdata is None:
+        fwdata = Path(f"{project_name}.fwdata")  # unreadable: fails safe
+    try:
+        sandbox_engine.check_engine(fwdata, supported_engines=(SANDBOX_ENGINE,))
+    except parser_probe.ParserEngineMismatchError as exc:
+        detail = dict(exc.detail)
+        detail.pop("error_code", None)
+        return detail
+    return None
+
+
+def _sandbox_run_engine_check(plan: _SandboxPlan) -> Optional[List[TextContent]]:
+    if not _sandbox_generation_may_run(plan.request):
+        return None  # a named sandbox is used exactly as it is
+    detail = _sandbox_engine_check(plan.project_name)
+    if detail is None:
+        return None
+    ordered = {
+        "configured_engine": detail.get("configured_engine"),
+        "supported_engines": detail.get("supported_engines") or [SANDBOX_ENGINE],
+        "hint": detail.get("hint") or "",
+    }
+    return error_response(
+        "parser_engine_mismatch",
+        f"The project's active parser is {ordered['configured_engine']!r}; the "
+        "sandbox spine exports and runs HermitCrab (HC) grammars only.",
+        **ordered,
+        next_step=[
+            _rung(
+                action="Switch the project's parser to HermitCrab in FLEx, then retry.",
+                tool=None,
+                args=None,
+                rationale=(
+                    "The engine check reads the project's saved parser setting; "
+                    "a grammar for another engine cannot be exported for hc."
+                ),
+                est_cost="minutes",
+            ),
+            _sandbox_list_rung(plan.project_name),
+        ],
+    )
+
+
+# -- step 5 ----------------------------------------------------------------
+
+
+def _sandbox_access(plan: _SandboxPlan) -> None:
+    """Step 5 (FR-040, R-13): lock metadata only. NEVER refuses."""
+    access = _probe_access(plan.project_name)
+    verdict = getattr(access, "verdict", None)
+    plan.project_state = {"access": verdict}
+    if verdict == "held_by_other" and _sandbox_holder_is_own_worker(plan.project_name, access):
+        # Pattern audit sweep 3: the holder is this server's own read-only
+        # worker, which has no unsaved edits -- the .fwdata on disk is what
+        # it read, so the run's grammar is not unverifiable.
+        return None
+    if verdict in SANDBOX_STALENESS_VERDICTS:
+        from ..parse.diff import SHARED_MODE_STALENESS
+
+        plan.staleness = SHARED_MODE_STALENESS
+        plan.project_state["staleness"] = SHARED_MODE_STALENESS
+    return None
+
+
+def _sandbox_holder_is_own_worker(project_name: str, access) -> bool:
+    """Step 5 helper: never raises (step 5 never refuses)."""
+    try:
+        return _holder_is_own_read_worker(get_runner(), project_name, access)
+    except Exception:  # noqa: BLE001 -- unknown means "not ours": keep the staleness
+        return False
+
+
+# -- step 7 ----------------------------------------------------------------
+
+
+def _sandbox_space_check(request: ParseSandboxInput, project_name: str) -> Optional[List[TextContent]]:
+    """Step 7 (FR-012): free space for the copy, only on a cache miss.
+
+    Only when generation may run AND the cache has no usable entry for the
+    project's current inputs (looked up with `touch=False`: a precheck never
+    refreshes an entry). Then `workdir.check_free_space(fwdata)` -- 2x the
+    allowlist size on the `work/` volume, through the shared
+    `disk_space_ok` rule. Nothing is created to measure it, and anything
+    unmeasurable is fail-open: the copy step reports its own failure.
+
+    The orphan sweep (the runner, once) and the LRU prune (the client, per
+    job) are not this step's (T050/T051).
+    """
+    if not _sandbox_generation_may_run(request):
+        return None
+    from ..sandbox import cache as sandbox_cache
+    from ..sandbox import workdir as sandbox_workdir
+
+    fwdata = _sandbox_fwdata_path(project_name)
+    ghc = parser_probe.discover_generate_hc_config()
+    if fwdata is None or not getattr(ghc, "ok", False):
+        return None
+    try:
+        inputs = sandbox_cache.key_inputs(fwdata, ghc.expected_path)
+        key = sandbox_cache.compute_key(inputs)
+        if sandbox_cache.lookup(project_name, key, touch=False) is not None:
+            return None
+        shortfall = sandbox_workdir.check_free_space(fwdata)
+    except Exception:  # noqa: BLE001 -- unmeasurable is fail-open
+        return None
+    if shortfall is None:
+        return None
+    try:
+        work_root = str(sandbox_paths.work_root())
+    except Exception:  # noqa: BLE001
+        work_root = None
+    required, free = shortfall.needed_bytes, shortfall.free_bytes
+    return _sandbox_refused(
+        "insufficient_disk_space",
+        "Not enough free disk space to copy the project for export.",
+        path=work_root,
+        needed_bytes=required,
+        free_bytes=free,
+        hint=(
+            "Free space on the volume holding the sandbox root, or point "
+            "FLEXTOOLSMCP_PARSE_SANDBOX_DIR at a volume with room, then retry."
+        ),
+        next_step=[
+            _rung(
+                action="Free disk space, then retry.",
+                tool=None,
+                args=None,
+                rationale=(
+                    "The copy needs twice the project file's size free; nothing "
+                    "was copied."
+                ),
+                est_cost="minutes",
+            )
+        ],
+    )
+
+
+# -- step 8 and the section 5.1 envelope ------------------------------------
+
+
+def _sandbox_fingerprint(plan: _SandboxPlan) -> Dict[str, Any]:
+    """R-14: `scope_kind="words"`, `engine="HC"`, comparable with in-process.
+
+    `vernacular_ws` is not known without opening the project; it is left
+    empty rather than guessed (a diff reconciles it -- US6).
+    """
+    from ..parse.fingerprint import ScopeFingerprint
+
+    return ScopeFingerprint(
+        scope_kind="words",
+        scope_value=list(plan.scope_value),
+        text_ids=(),
+        word_count=plan.word_count,
+        limit=plan.request.limit,
+        truncated=plan.truncated,
+        engine=SANDBOX_ENGINE,
+        vernacular_ws="",
+    ).to_dict()
+
+
+def _sandbox_config_source(plan: _SandboxPlan) -> Dict[str, Any]:
+    if plan.request.sandbox is None:
+        return {"kind": "project_cache"}
+    status = plan.sandbox_status or {}
+    return {
+        "kind": "named_sandbox",
+        "name": plan.request.sandbox,
+        "edited": status.get("edited"),
+        "predates_project_grammar": bool(status.get("predates_project_grammar")),
+    }
+
+
+def _sandbox_submitted_advisories(plan: _SandboxPlan) -> List[str]:
+    """Advisories the handler already knows at submission (FR-029)."""
+    codes: List[str] = []
+    if (plan.sandbox_status or {}).get("predates_project_grammar"):
+        codes.append("sandbox_predates_project_grammar")
+    return codes
+
+
+def _sandbox_versions(plan: _SandboxPlan) -> Dict[str, Any]:
+    from ..sandbox import script as sandbox_script
+
+    try:
+        hcparse = sandbox_script.read_hcparse_version()
+    except Exception:  # noqa: BLE001
+        hcparse = None
+    return {
+        "hc_tool": getattr(plan.hc, "detected_version", None),
+        "fieldworks_hermitcrab": None,
+        "generate_hc_config": None,
+        "hcparse": hcparse,
+    }
+
+
+def _sandbox_launch(plan: _SandboxPlan) -> Dict[str, Any]:
+    """What the client needs to launch the script (T050/T051 reconcile)."""
+    request, project_name = plan.request, plan.project_name
+    fwdata = _sandbox_fwdata_path(project_name)
+    config_path = (
+        str(_sandbox_config_path(project_name, request.sandbox))
+        if request.sandbox is not None else None
+    )
+    return {
+        "fwdata_path": str(fwdata) if fwdata is not None else None,
+        "generate_hc_config_path": (
+            getattr(plan.generator, "expected_path", None) if plan.generator else None
+        ),
+        "hc_path": getattr(plan.hc, "path", None),
+        "hc_invoke_argv": getattr(plan.hc, "invoke_argv", None),
+        "config_path": config_path,
+        "timeout_seconds": request.timeout_seconds,
+        # run_corpus (Test mode, T072): the corpus JSON the script reads.
+        "assertion_file": str(plan.corpus.path) if plan.corpus is not None else None,
+    }
+
+
+def _sandbox_recorded(handle, fallback: Dict[str, Any]) -> Dict[str, Any]:
+    """`meta.sandbox` as the run recorded it, over what was submitted."""
+    merged = dict(fallback)
+    try:
+        meta = handle.record.read_meta()
+        recorded = getattr(meta, "sandbox", None) if meta is not None else None
+    except Exception:  # noqa: BLE001 -- a record not yet readable is not a failure
+        recorded = None
+    if isinstance(recorded, dict):
+        for key, value in recorded.items():
+            if value is None:
+                continue
+            if key == "advisories":
+                # A union, in order: what the run found never erases what
+                # the handler knew at submission.
+                seen = list(merged.get("advisories") or [])
+                for item in value or []:
+                    if item not in seen:
+                        seen.append(item)
+                merged[key] = seen
+            else:
+                merged[key] = value
+    return merged
+
+
+def _leading_dash_words(handle) -> List[str]:
+    words = []
+    for entry in getattr(handle, "results", None) or []:
+        flags = (entry.get("parse") or {}).get("flags") or []
+        if "leading_dash_unverified" in flags:
+            words.append(entry.get("wordform"))
+    return words
+
+
+def _sandbox_advisories(sandbox: Dict[str, Any], handle) -> List[Dict[str, Any]]:
+    """Advisory codes (a list in meta) as `{code, note}` with the fixed notes."""
+    versions = sandbox.get("versions") or {}
+    generation = sandbox.get("generation") or {}
+    out: List[Dict[str, Any]] = []
+    for item in sandbox.get("advisories") or []:
+        if isinstance(item, dict):
+            out.append(item)
+            continue
+        code = str(item)
+        template = _ADVISORY_NOTES.get(code)
+        note = None
+        if template is not None:
+            note = template.format(
+                a=versions.get("hc_tool"),
+                b=versions.get("fieldworks_hermitcrab"),
+                n=generation.get("load_error_count") or 0,
+            )
+        advisory: Dict[str, Any] = {"code": code, "note": note}
+        if code == "leading_dash_unverified":
+            advisory["words"] = _leading_dash_words(handle)  # data, not prose
+        out.append(advisory)
+    return out
+
+
+def _has_load_errors(sandbox: Dict[str, Any], advisories: List[Dict[str, Any]]) -> bool:
+    generation = sandbox.get("generation") or {}
+    if (generation.get("load_error_count") or 0) > 0:
+        return True
+    return any(a.get("code") == "grammar_load_errors" for a in advisories)
+
+
+def _with_grammar_scan(rungs: List[Dict[str, Any]], project_name) -> List[Dict[str, Any]]:
+    """FR-041: load errors point at the static scan; first, and once."""
+    if any(r.get("tool") == "flextools_grammar_health" for r in rungs):
+        return rungs
+    return [_grammar_scan_rung(project_name)] + rungs
+
+
+def _sandbox_staleness_fields(plan: _SandboxPlan) -> Dict[str, Any]:
+    if plan.staleness is None:
+        return {}
+    from ..parse.diff import SHARED_MODE_NOTE
+
+    return {"staleness": plan.staleness, "staleness_note": SHARED_MODE_NOTE}
+
+
+async def _sandbox_start_parse(plan: _SandboxPlan) -> List[TextContent]:
+    """Step 8: the run id exists from here on; later failures are run states.
+
+    Serves `parse` (mode "parse") and `run_corpus` (mode "test"); a test run
+    records its corpus in `meta.sandbox.corpus` and hands the corpus file to
+    the client as `sandbox_launch.assertion_file`.
+    """
+    fingerprint = _sandbox_fingerprint(plan)
+    config_source = _sandbox_config_source(plan)
+    mode = "test" if plan.corpus is not None else "parse"
+    submitted = {
+        "mode": mode,
+        "config_source": config_source,
+        "versions": _sandbox_versions(plan),
+        "hc_source": getattr(plan.hc, "source", None),
+        "generation": None,
+        "truncated_by_limit": plan.truncated,
+        "advisories": _sandbox_submitted_advisories(plan),
+    }
+    if plan.corpus is not None:
+        submitted["corpus"] = {"name": plan.corpus.name,
+                               "assertion_count": len(plan.corpus.assertions)}
+    runner = get_runner()
+    try:
+        handle = await runner.start_run(
+            project_name=plan.project_name,
+            wordforms=list(plan.words),
+            level="batch",
+            scope_fingerprint=fingerprint,
+            engine_at_submission=SANDBOX_ENGINE,
+            project_state=plan.project_state,
+            worker_role=_sandbox_role(),
+            spine="sandbox",
+            sandbox=submitted,
+            sandbox_launch=_sandbox_launch(plan),
+        )
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+
+    sandbox = _sandbox_recorded(handle, submitted)
+    advisories = _sandbox_advisories(sandbox, handle)
+    common: Dict[str, Any] = {
+        "spine": "sandbox",
+        "config_source": sandbox.get("config_source") or config_source,
+        "versions": sandbox.get("versions"),
+        "advisories": advisories,
+        "generation": sandbox.get("generation"),
+        **_sandbox_staleness_fields(plan),
+        "results_label": SANDBOX_RESULTS_LABEL,
+    }
+
+    failure = getattr(handle, "failure", None)
+    if (
+        handle.is_terminal
+        and handle.stage is RunStage.FAILED
+        and failure is not None
+        and failure.error_code in _SANDBOX_FAILURE_CODES
+    ):
+        detail = dict(failure.detail or {})
+        detail.pop("error_code", None)
+        message = detail.pop("message", None) or failure.message
+        detail.setdefault("run_id", handle.run_id)
+        for key in list(common):
+            detail.pop(key, None)
+        return error_response(
+            failure.error_code,
+            message,
+            **detail,
+            **common,
+            project_state=plan.project_state,
+            next_step=_with_grammar_scan(_failure_rungs(handle), plan.project_name),
+        )
+
+    result: Dict[str, Any] = {
+        "status": "ok",
+        "action": plan.request.action,
+        "project": plan.project_name,
+        "run_id": handle.run_id,
+        "run_started": True,
+        "stage": handle.stage.value,
+        "words_completed": handle.words_completed,
+        "words_total": handle.words_total,
+        "truncated_by_limit": plan.truncated,
+        "scope_fingerprint": fingerprint,
+        "engine_at_submission": SANDBOX_ENGINE,
+        "record_dir": str(handle.record.root),
+        "project_state": plan.project_state,
+        **common,
+    }
+    if handle.is_terminal:
+        if handle.stage is RunStage.FAILED and failure is not None:
+            result["failure"] = failure.to_dict()
+        else:
+            result["result_summary"] = _result_summary(handle)
+            result["result_summary"].update(_sandbox_summary_block(handle, sandbox))
+        result.update({k: v for k, v in _batch_block(handle).items() if k not in result})
+    else:
+        result["note"] = (
+            "The run is going in the background and was not slowed or limited "
+            "by this call returning. Poll the run for progress."
+        )
+    rungs = list(_status_next_step(handle) or [])
+    if _has_load_errors(sandbox, advisories):
+        rungs = _with_grammar_scan(rungs, plan.project_name)
+    if not rungs:
+        rungs = [
+            _read_run_rung(
+                handle.run_id,
+                "This run's record -- per-word results and the hc output -- is on disk.",
+            )
+        ]
+    result["next_step"] = rungs
+    return json_response(build_response_with_context(result))
+
+
+# -- create_sandbox (US3, contracts section 5.2) -----------------------------
+
+
+async def _sandbox_create(plan: _SandboxPlan) -> List[TextContent]:
+    """Make the named sandbox from the project's cache entry, synchronously.
+
+    If no cache entry is usable one is built first (`cache.ensure_entry`),
+    in a copy folder this function makes and ALWAYS deletes -- cache.py never
+    creates or deletes work folders. No run id exists: a generation failure
+    is `parser_config_failed` with `run_id: null` (section 5.2).
+    """
+    from ..sandbox import cache as sandbox_cache
+    from ..sandbox import workdir as sandbox_workdir
+
+    request, project_name = plan.request, plan.project_name
+    name = request.sandbox
+    fwdata = _sandbox_fwdata_path(project_name) or Path(f"{project_name}.fwdata")
+    generator = getattr(plan.generator, "expected_path", None)
+
+    op_id = uuid.uuid4().hex
+    work = sandbox_workdir.create(op_id, source_fwdata=fwdata)
+    try:
+        entry = await sandbox_cache.ensure_entry(
+            project_name,
+            fwdata,
+            generator,
+            work_dir=work,
+            run_id=None,
+            versions=_sandbox_versions(plan),
+            timeout_seconds=request.timeout_seconds,
+        )
+    except sandbox_cache.ParserConfigFailed as failed:
+        detail = failed.detail
+        kwargs = (
+            _sandbox_detail_kwargs(detail) if hasattr(detail, "model_dump")
+            else {k: v for k, v in dict(detail or {}).items() if k != "error_code"}
+        )
+        kwargs["run_id"] = None  # no run exists for create_sandbox
+        return error_response(
+            "parser_config_failed",
+            "GenerateHCConfig could not export the project's grammar, so no "
+            "sandbox was created.",
+            **kwargs,
+            next_step=[
+                _grammar_scan_rung(project_name),
+                _rung(
+                    action="Check the environment and the sandbox components.",
+                    tool="flextools_health",
+                    args={"verbose": True},
+                    rationale=(
+                        "The generator's own output is in log_path; health reports "
+                        "where GenerateHCConfig.exe was found."
+                    ),
+                    est_cost="seconds",
+                ),
+            ],
+        )
+    finally:
+        sandbox_workdir.delete(work)
+
+    try:
+        created = _sandbox_store().create_sandbox(project_name, name, entry)
+    except FileExistsError:
+        return _sandbox_refused(
+            "sandbox_exists",
+            f"A sandbox named {name!r} already exists for this project.",
+            name=name,
+            path=str(_sandbox_config_path(project_name, name)),
+            hint="Pick a new name, or parse against the existing sandbox.",
+            next_step=[_sandbox_list_rung(project_name)],
+        )
+
+    load_error_count = int(getattr(entry, "load_error_count", 0) or 0)
+    rungs = [
+        _rung(
+            action="Edit the XML, then run words against the sandbox.",
+            tool="flextools_parse_sandbox",
+            args={"action": "parse", "project_name": project_name, "sandbox": name},
+            rationale=(
+                "The sandbox is a user-owned copy of the exported grammar at path; "
+                "edit it with ordinary file tools. No cache refresh or grammar "
+                "change overwrites it."
+            ),
+            est_cost="minutes",
+        )
+    ]
+    result: Dict[str, Any] = {
+        "status": "ok",
+        "action": "create_sandbox",
+        "project": project_name,
+        "name": created.get("name", name),
+        "path": created.get("path"),
+        "origin": created.get("origin"),
+        "generation": {
+            "reused_cache": not bool(getattr(entry, "built", False)),
+            "load_error_count": load_error_count,
+        },
+    }
+    if load_error_count:
+        result["advisories"] = [{
+            "code": "grammar_load_errors",
+            "note": _ADVISORY_NOTES["grammar_load_errors"].format(
+                a=None, b=None, n=load_error_count
+            ),
+        }]
+        rungs = _with_grammar_scan(rungs, project_name)
+    result["next_step"] = rungs
+    return json_response(build_response_with_context(result))
+
+
+# -- list (contracts section 5.4) --------------------------------------------
+
+
+def _sandbox_list(plan: _SandboxPlan) -> List[TextContent]:
+    """Synchronous and read-only: the project's sandboxes and corpora."""
+    project_name = plan.project_name
+    store = _sandbox_store()
+    sandboxes = list(store.list_sandboxes(project_name) or [])
+    list_corpora = getattr(store, "list_corpora", None)
+    corpora = list(list_corpora(project_name) or []) if callable(list_corpora) else []
+    if sandboxes:
+        rung = _rung(
+            action="Run words against one of these sandboxes.",
+            tool="flextools_parse_sandbox",
+            args={"action": "parse", "project_name": project_name,
+                  "sandbox": sandboxes[0].get("name")},
+            rationale="Each sandbox is used exactly as it is on disk.",
+            est_cost="minutes",
+        )
+    else:
+        rung = _rung(
+            action="Create a sandbox from the project's current grammar.",
+            tool="flextools_parse_sandbox",
+            args={"action": "create_sandbox", "project_name": project_name,
+                  "sandbox": None},
+            rationale="A sandbox is a named, user-owned copy of the exported grammar.",
+            est_cost="seconds to a minute",
+        )
+    result = {
+        "status": "ok",
+        "action": "list",
+        "project": project_name,
+        "sandboxes": sandboxes,
+        "corpora": corpora,
+        "next_step": [rung],
+    }
+    return json_response(build_response_with_context(result))
+
+
+# -- step 6: the corpus (run_corpus) -----------------------------------------
+
+
+def _sandbox_load_corpus(plan: _SandboxPlan) -> Optional[List[TextContent]]:
+    """Step 6: load and validate the whole corpus file (data-model 5).
+
+    `corpus_not_found` / `corpus_invalid` (naming the JSON path of the first
+    fault). An assertion hc cannot express is NOT a fault here (FR-027): the
+    script marks it `not_expressible` and the run goes ahead.
+    """
+    store = _sandbox_store()
+    name = plan.request.corpus
+    try:
+        corpus = store.load_corpus(plan.project_name, name)
+    except sandbox_paths.SandboxNameError as bad:
+        return _sandbox_name_refusal(name, bad.detail, plan.project_name)
+    except store.CorpusNotFound as missing:
+        return _sandbox_refused(
+            "corpus_not_found",
+            f"No corpus named {name!r} exists for this project.",
+            name=name,
+            path=missing.path,
+            hint=(
+                "Seed one from a completed sandbox parse run with "
+                "action='seed_corpus', or pick an existing corpus name."
+            ),
+            next_step=[_sandbox_list_rung(plan.project_name)],
+        )
+    except store.CorpusInvalid as invalid:
+        refusal = _sandbox_refused(
+            "corpus_invalid",
+            f"The corpus {name!r} is not valid at {invalid.json_path}.",
+            name=name,
+            path=invalid.path,
+            hint=(
+                f"Fix the corpus file at {invalid.json_path}: {invalid.detail}. "
+                "The whole file is checked before anything runs."
+            ),
+            next_step=[_sandbox_list_rung(plan.project_name)],
+        )
+        return _with_extra(refusal, json_path=invalid.json_path)
+    plan.corpus = corpus
+    plan.words = [a["word"] for a in corpus.assertions]
+    plan.word_count = len(plan.words)
+    plan.scope_value = sorted(plan.words)
+    plan.truncated = False
+    return None
+
+
+def _with_extra(envelope: List[TextContent], **extra: Any) -> List[TextContent]:
+    """Re-emit an error envelope with data fields appended after its own."""
+    data = json.loads(envelope[0].text)
+    fields = {k: v for k, v in data.items()
+              if k not in ("_contract", "status", "error_code", "message", "error")}
+    fields.update(extra)
+    return error_response(data["error_code"], data["message"], **fields)
+
+
+def _sandbox_meta_of(handle) -> Optional[Dict[str, Any]]:
+    """`meta.sandbox` for a SANDBOX_ROLE run, `{}` if unreadable; None otherwise."""
+    if getattr(handle, "worker_role", None) != _sandbox_role():
+        return None
+    try:
+        meta = handle.record.read_meta()
+        sandbox = getattr(meta, "sandbox", None) if meta is not None else None
+    except Exception:  # noqa: BLE001 -- a record not yet readable is not a failure
+        sandbox = None
+    return sandbox if isinstance(sandbox, dict) else {}
+
+
+def _sandbox_summary_block(handle, sandbox: Dict[str, Any]) -> Dict[str, Any]:
+    """data-model 6.6: counts by outcome (parse) or by classification (test)."""
+    if sandbox.get("mode") == "test":
+        return _sandbox_test_summary(handle, sandbox)
+    from ..sandbox import classify as sandbox_classify
+
+    lines = [r for r in (getattr(handle, "results", None) or [])
+             if isinstance(r, dict) and isinstance(r.get("parse"), dict)
+             and r["parse"].get("outcome")]
+    try:
+        outcomes = sandbox_classify.tally_outcomes(lines)
+    except KeyError:
+        outcomes = None
+    hc = sandbox.get("hc") if isinstance(sandbox.get("hc"), dict) else {}
+    return {"outcomes": outcomes, "counters": hc.get("counters")}
+
+
+def _sandbox_test_summary(handle, sandbox: Dict[str, Any]) -> Dict[str, Any]:
+    """data-model 6.6's test block: classifications, hc_counters, agreement."""
+    from ..sandbox import classify as sandbox_classify
+    from ..sandbox import hc_output as sandbox_hc_output
+
+    lines = [r for r in (getattr(handle, "results", None) or [])
+             if isinstance(r, dict) and isinstance(r.get("assertion"), dict)]
+    classifications = sandbox_classify.tally_classifications(lines)
+    hc = sandbox.get("hc") if isinstance(sandbox.get("hc"), dict) else {}
+    counters = hc.get("hc_counters") if isinstance(hc.get("hc_counters"), dict) else None
+    agreement: Optional[bool] = None
+    if counters is not None:
+        try:
+            divergences = sandbox_classify.reconcile_test_counters(
+                lines, sandbox_hc_output.TestCounters(**counters)
+            )
+            agreement = not divergences
+        except Exception:  # noqa: BLE001 -- unreadable counters: agreement unknown
+            agreement = None
+    return {
+        "classifications": classifications,
+        "hc_counters": counters,
+        "counter_agreement": agreement,
+    }
+
+
+# -- seed_corpus (contracts sections 3 and 5.3) -------------------------------
+
+
+def _sandbox_seed(plan: _SandboxPlan) -> List[TextContent]:
+    """Seed a corpus from a completed sandbox parse run. Synchronous; no run.
+
+    The store checks, in order: the run exists (`parse_run_not_found`); it is
+    a completed sandbox PARSE run of this project (`run_not_seedable`); the
+    name is valid and new (`name_invalid` / `corpus_exists`).
+    """
+    from ..parse.record import RunRecord
+
+    request, project_name = plan.request, plan.project_name
+    run_id = request.from_run_id
+    search_rung = _rung(
+        action="See which runs have records on disk.",
+        tool="flextools_parse_status",
+        args=None,
+        rationale="Seed from the run id of a completed sandbox parse run.",
+        est_cost="instant",
+    )
+    if not run_id:
+        return _ensure_next_step(_run_not_found(""), [search_rung])
+    store = _sandbox_store()
+    runner = _runner
+    record = RunRecord(run_id, record_dir=runner.record_dir if runner is not None else None)
+    name = request.corpus
+    try:
+        seeded = store.seed_corpus(project_name, name, record)
+    except MetaUnreadable as exc:
+        # Pattern audit sweep 6: the run exists but its meta.json stayed
+        # unreadable -- transient, so not `parse_run_not_found`.
+        return _run_record_unreadable(
+            run_id, exc, tool="flextools_parse_sandbox",
+            args={"action": "seed_corpus", "project_name": project_name,
+                  "from_run_id": run_id, "corpus": name})
+    except store.RunNotFound:
+        return _ensure_next_step(_run_not_found(run_id), [search_rung])
+    except store.RunNotSeedable as refused:
+        return _sandbox_refused(
+            "run_not_seedable",
+            f"Run {run_id} cannot seed a corpus: {refused.detail}.",
+            name=name if isinstance(name, str) else None,
+            hint=(
+                "A corpus is seeded from a COMPLETED sandbox parse run of this "
+                "project (action='parse'), not a corpus run or an in-process run."
+            ),
+            next_step=[
+                _rung(
+                    action="Parse the words with the sandbox spine first.",
+                    tool="flextools_parse_sandbox",
+                    args={"action": "parse", "project_name": project_name},
+                    rationale="Its completed run can then seed the corpus.",
+                    est_cost="minutes",
+                )
+            ],
+        )
+    except sandbox_paths.SandboxNameError as bad:
+        return _sandbox_name_refusal(name, bad.detail, project_name)
+    except store.CorpusExists as exists:
+        return _sandbox_refused(
+            "corpus_exists",
+            f"A corpus named {name!r} already exists for this project.",
+            name=name,
+            path=exists.path,
+            hint="Pick a new corpus name; an existing corpus is never overwritten.",
+            next_step=[_sandbox_list_rung(project_name)],
+        )
+    result = {
+        "status": "ok",
+        "action": "seed_corpus",
+        "project": project_name,
+        **{k: seeded.get(k) for k in ("name", "path", "assertion_count",
+                                      "no_parse_count", "excluded", "from_run_id")},
+        "next_step": [
+            _rung(
+                action="Run the corpus against the project's grammar or a sandbox.",
+                tool="flextools_parse_sandbox",
+                args={"action": "run_corpus", "project_name": project_name,
+                      "corpus": seeded.get("name")},
+                rationale=(
+                    "Each assertion is then classified pass, regression, "
+                    "new_ambiguity, changed or error."
+                ),
+                est_cost="minutes",
+            )
+        ],
+    }
+    return json_response(build_response_with_context(result))
+
+
+async def handle_flextools_parse_sandbox(args: dict) -> List[TextContent]:
+    """The sandbox spine's entry point (contracts/tools.md sections 1-3).
+
+    Runs the check order one step helper at a time; the first refusal wins.
+    Every action is built: `parse` and `run_corpus` (steps 1-8; step 6 is
+    run_corpus's corpus load), `create_sandbox` (steps 1-4, 7, then a
+    synchronous export), and `seed_corpus` / `list` (step 1, then their own
+    synchronous checks; no run).
+    """
+    # Already validated at the dispatch boundary; rebuilt here for the typed
+    # model, as `flextools_parse_text` does, so a direct call validates too.
+    request = ParseSandboxInput(**args)
+    plan = _SandboxPlan(request=request)
+
+    refusal = _sandbox_resolve_project(plan) or _sandbox_check_root(plan)
+    if refusal is not None:
+        return refusal
+
+    if request.action == "list":
+        return _sandbox_list(plan)                                  # read-only
+    if request.action == "seed_corpus":
+        return _sandbox_seed(plan)                                  # sync, no run
+
+    for step in (
+        _sandbox_resolve_source,     # 2
+        _sandbox_read_words,         # 2b (parse)
+        _sandbox_check_tools,        # 3
+    ):
+        refusal = step(plan)
+        if refusal is not None:
+            return refusal
+
+    refusal = _sandbox_run_engine_check(plan)                       # 4
+    if refusal is not None:
+        return refusal
+
+    if request.action == "create_sandbox":
+        refusal = _sandbox_space_check(request, plan.project_name)  # 7
+        if refusal is not None:
+            return refusal
+        return await _sandbox_create(plan)                          # sync, no run
+
+    _sandbox_access(plan)                                           # 5 (never refuses)
+    if request.action == "run_corpus":
+        refusal = _sandbox_load_corpus(plan)                        # 6
+        if refusal is not None:
+            return refusal
+    refusal = _sandbox_space_check(request, plan.project_name)      # 7
+    if refusal is not None:
+        return refusal
+    return await _sandbox_start_parse(plan)                         # 8
+
+
+# ---------------------------------------------------------------------------
 # flextools_parse_release (issue #223)
 # ---------------------------------------------------------------------------
 
@@ -2593,41 +4123,56 @@ async def handle_flextools_parse_release(args: dict) -> List[TextContent]:
     if busy_roles:
         role = busy_roles[0]
         run_ids = runner.active_run_ids(project_name, role=role)
-        run_note = f" (run {run_ids[0]})" if run_ids else ""
+        run_note = busy_own_worker_run_note(run_ids)
+        guidance = busy_own_worker_guidance("retry flextools_parse_release")
         return error_response(
             "project_locked",
             f"Project '{project_name}' has a live parse run on this "
             f"server's own worker{run_note}. Releasing now would end work "
-            "in progress, so this refuses. Wait for the run to finish, or "
-            "cancel it first, then retry.",
-            guidance=(
-                "Wait for the run to finish (flextools_parse_status), or "
-                "cancel it with flextools_parse_cancel(run_id=...), then "
-                "retry flextools_parse_release."
-            ),
-            remedy=(
-                "Wait for the run to finish (flextools_parse_status), or "
-                "cancel it with flextools_parse_cancel(run_id=...), then "
-                "retry flextools_parse_release."
-            ),
+            f"in progress, so this refuses. {guidance}",
+            guidance=guidance,
+            remedy=guidance,
             verdict="held_by_mcp_read_worker",
             sharing_enabled=None,
             holder_pid=None,
             holder_process="this server's own parse worker",
         )
 
-    released = sorted(workers.keys())
-    for role in released:
-        await runner.release_worker(project_name, role=role)
+    # THE PER-ROLE RELEASE IS ATOMIC, CHECK-AND-POP UNDER ONE LOCK (#223 QC
+    # P1). `busy_roles` above is a point-in-time snapshot, taken purely so
+    # the common case can be refused in one clear message rather than one
+    # role at a time; the loop below is what actually tears a worker down,
+    # and it re-checks busyness (via `release_worker_if_idle`) at the
+    # instant of the pop, so a run that starts using one of these roles
+    # between the snapshot above and this loop reaching it is never torn
+    # down out from under it -- it is left running, and reported as such
+    # rather than silently counted as released.
+    released = []
+    raced_busy = []
+    for role in sorted(workers.keys()):
+        if await runner.release_worker_if_idle(project_name, role=role):
+            released.append(role)
+        else:
+            raced_busy.append(role)
+
+    note = (
+        f"Released this server's parse worker(s) for '{project_name}' "
+        f"({', '.join(released)}). Any lock this worker held on the "
+        "project's .fwdata is now dropped."
+    ) if released else (
+        f"No idle parse worker for '{project_name}' was found to release."
+    )
+    if raced_busy:
+        note += (
+            f" {', '.join(raced_busy)} started a new run just as this "
+            "call reached it and was left running rather than torn down "
+            "mid-parse; retry flextools_parse_release once it finishes."
+        )
     return json_response(build_response_with_context({
         "status": "ok",
         "project": project_name,
         "released": released,
-        "note": (
-            f"Released this server's parse worker(s) for '{project_name}' "
-            f"({', '.join(released)}). Any lock this worker held on the "
-            "project's .fwdata is now dropped."
-        ),
+        "note": note,
     }))
 
 

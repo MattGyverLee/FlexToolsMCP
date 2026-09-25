@@ -387,6 +387,31 @@ survive. Separately, submit an urgent single word during a running batch.
   alone is conditional and would fail silently, serving the next parse from the stale
   grammar the caller believes it discarded.
 
+  **Amendment (2026-09-24, issue #223)**: "held" is now scoped to the project
+  being open, not to the worker process's lifetime. `<project>.fwdata.lock`
+  MUST NOT be held while the worker is idle (no request in flight) -- see
+  `parser-check-cp5`'s evidence and decision record for the P0 this closes.
+  The worker therefore closes the project the instant its request queue goes
+  idle and reopens it on demand for the next request. FR-042's "at most one
+  grammar held at a time" and FR-043's "currency confirmed before reuse"
+  still hold **for the duration the project stays open** -- unchanged within
+  a single request, a batch, or an interleave, none of which ever observes
+  an idle gap (the queue is non-empty throughout). What changes is BETWEEN
+  two separate requests separated by an idle gap: the project (and the
+  grammar with it) is released rather than kept warm, so the next request
+  pays a fresh `OpenProject()` and grammar load rather than a currency
+  check against a still-held grammar. This is a reload, not a violation of
+  FR-043's currency clause -- there is no held grammar left to confirm
+  currency against once the project has closed. Live-measured cost (small
+  `IndonesianHC-Complete` project): ~3.3s cold vs. ~0.8s for the
+  post-idle-release reopen (`specs/parser-check-cp2/evidence/issue223-live.md`);
+  accepted as the cost of never holding the lock while idle. Within one
+  worker's held-open window (no idle gap), FR-042/FR-043 are unchanged and
+  remain live-tested by `tests/test_parse_live.py`'s scenario 1 / FR-043
+  tests, updated in the same commit to assert the amended boundary: no
+  reload across back-to-back calls with no idle gap, a reload IS expected
+  after an idle release, and the lock is observably released between calls.
+
 **Explicitly out of scope**
 
 - Writing, filing or recording parse results anywhere in a project (later checkpoint).

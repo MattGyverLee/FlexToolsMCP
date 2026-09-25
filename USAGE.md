@@ -71,6 +71,7 @@ server itself. Response shapes and error codes are in
 | `flextools_parse_diff` | Compare two batch runs word by word -- did a grammar edit help? |
 | `flextools_parse_cancel` | Cancel a parse run by its handle -- it stops at the next word boundary |
 | `flextools_parse_release` | Release this server's own idle parse worker(s) for a project, dropping the fwdata lock |
+| `flextools_parse_sandbox` | Parse on an exported copy of the grammar with the stand-alone `hc` tool -- never touches the live project; rehearse speculative grammar edits in named sandboxes and re-run saved corpora |
 
 ## API Modes
 

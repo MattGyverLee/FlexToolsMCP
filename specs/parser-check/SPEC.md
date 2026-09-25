@@ -1740,12 +1740,22 @@ is reported as a warning on the run summary, not a refusal (5.6).
 | `read: unavailable` | "install/repair FieldWorks so ParserCore is reachable" | none (external) | -- | n/a |
 | `write: unavailable`, `read: ready` | "use read-only Try A Word; filing unavailable" | `flextools_try_word` | `{}` | inline |
 | `sandbox.components[hc].found=false` | "install the hc dotnet tool" | none (external) | -- | n/a |
+| `sandbox.components[hc].found=true, starts=false` (CP5) | "install the .NET runtime hc needs" -- the rationale names the runtime from the probe's `reason` (a `-h` timeout reads "did not answer `-h` within the probe bound") | none (external) | -- | n/a |
+| `sandbox.components[GenerateHCConfig.exe].found=false` (CP5) | "repair or reinstall FieldWorks (GenerateHCConfig.exe missing)" | none (external) | -- | n/a |
+| `sandbox: ready` (CP5) | "rehearse a grammar change on an exported copy" | `flextools_parse_sandbox` | `{"action": "parse", "words": []}` | minutes |
 | `sandbox: unavailable` (either component missing) | never propose `flextools_parse_sandbox` | -- | -- | -- |
 | `write: unavailable`, `signal: parser_agent_missing` | "this project has never run HermitCrab; run it once from FLEx's Parser menu, then retry filing" | `flextools_try_word` (read-only diagnosis is unaffected) | `{}` | inline |
 | `active_engine` mismatch | "project is on {configured_engine}; HC tools refused" | none (external, switch engine in FLEx) | -- | n/a |
 
 No rung ever names a tool whose spine is `unavailable` -- consistent with the
 "never propose a rung the project cannot reach" rule above.
+
+**CP5 sandbox rows** (`diagnostic_health._build_parser_next_steps`, CP5
+contracts/tools.md section 6). While the sandbox spine is `unavailable`, each
+cause gets its own tool-less repair rung -- hc not found, hc found but cannot
+start, GenerateHCConfig.exe missing -- keyed on `found`/`starts`, not on the
+signal, and `flextools_parse_sandbox` is named nowhere, not in `tool` and not in
+any prose (CP5 FR-006). Only when it is `ready` does exactly one rung name it.
 
 ---
 
@@ -2048,6 +2058,23 @@ never run the parser.
 | H11 | Preserve verbatim: UTF-8 no-BOM script write, `-Encoding UTF8`, `[,\s]+` splitting | Section 4 -- bug fixes, not style |
 | H12 | `$script:HCPARSE_VERSION`, bumped on behavioural change | Feeds the cache key |
 
+**CP5 notes on H1 and H4** (CP5 research F-1, R-04):
+
+- **H1 / F-1 -- hc's stdout is UTF-16LE.** `hc` sets `Console.OutputEncoding =
+  Encoding.Unicode`, so its piped stdout is UTF-16LE, not UTF-8. Every reader
+  of it -- the discovery probe and the script's `StandardOutputEncoding =
+  [Text.Encoding]::Unicode` -- decodes it as UTF-16LE (a BOM is tolerated);
+  stderr stays UTF-8. Decoding it as UTF-8 or ANSI is section 4's mojibake
+  bug one layer down. The script's `hc-stdout.txt` is re-encoded as UTF-8, no
+  BOM.
+- **H1 / H4 / R-04 -- the CP1 boundary is narrowed, not dropped.** Locating hc
+  now includes one bounded startability probe, so CP1's "health never shells
+  out to the parser" invariant permits exactly one argv shape: `[<hc>, "-h"]`,
+  or `[dotnet, <hc.dll>, "-h"]` for a `.dll` hit. `-h` exits before any `-i`
+  is read, so health still loads no grammar and parses nothing. A pinned test
+  asserts discovery never passes `-i`, `-s` or `-o` and never runs
+  `GenerateHCConfig`, so the exception cannot widen silently.
+
 ---
 
 ## 14. Error codes
@@ -2061,7 +2088,8 @@ entry under **"Tool contract"**.
 | `parser_core_missing` | `signal` (`absent` \| `foreign_install` \| `incompatible_surface` \| `load_failed`), `expected_path`, `detected_version`, `missing_members`, `lcmodel_install_path`, `install_hint`, `load_error` |
 | `grammar_load_unclean` | `signal` (`morpher_null` \| `new_load_errors` \| `eligible_forms_dropped`), `new_error_count`, `baseline_error_count`, `baseline_source` (`this_run` \| `prior_run:<run_id>` \| `absent`), `log_path`, then -- appended at CP4, the five above kept as a strict prefix -- `new_errors`, `dropped_entries`, `baseline_eligible_count`, `eligible_count`. `eligible_forms_dropped` (CP4 FR-039, D-1) is the case the load-error file cannot see: an entry whose every form the loader excludes silently, with no error logged |
 | `parser_tool_missing` | `component` (`"hc"` \| `"GenerateHCConfig.exe"`, closed enum -- shared with `flextools_health`'s `sandbox.components[].component`, 10.2), `expected_path`, `install_hint` |
-| `parser_config_failed` | `exit_code`, `stderr_tail`, `log_path`, `run_id` |
+| `parser_config_failed` | `exit_code` (int \| null), `stderr_tail` (str), `log_path` (str), `run_id` (str \| null) -- first emitted at CP5. `stderr_tail` is the last 20 lines of the combined generator output, ASCII-escaped, capped at 4 KiB; `log_path` is the run's `sandbox/generate-config.log`. `run_id` is null only for a synchronous `create_sandbox` generation, which has no run |
+| `parse_sandbox_refused` | `reason` (`name_invalid` \| `sandbox_exists` \| `sandbox_not_found` \| `corpus_exists` \| `corpus_not_found` \| `corpus_invalid` \| `run_not_seedable` \| `insufficient_disk_space` \| `word_file_invalid`, closed enum), `name` (str \| null), `path` (str \| null), `hint` (str), `needed_bytes` (int \| null), `free_bytes` (int \| null) -- new at CP5 |
 | `parser_timeout` | `timeout_seconds`, `words_completed`, `run_id`, `hint` |
 | `parser_job_failed` | `state_at_failure`, `failure` (`out_of_memory` \| `crashed` \| `cancelled`), `words_completed`, `words_total`, `run_id`, `log_path` |
 | `parse_scope_empty` | `scope`, `matched_texts`, `hint` |

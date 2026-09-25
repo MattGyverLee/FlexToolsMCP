@@ -177,6 +177,31 @@ class InternalErrorDetail(BaseModel):
     tool: Optional[str] = None
 
 
+class SessionNotInitializedDetail(BaseModel):
+    """Pre-handler gate: session not configured (issue #243)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["session_not_initialized"] = "session_not_initialized"
+    tool: Optional[str] = None
+    hint: Optional[str] = None
+    _diagnostic: Optional[Any] = None
+    available_task_examples: Optional[List[str]] = None
+
+
+class UnknownToolDetail(BaseModel):
+    """Pre-handler gate: tool name not in dispatch router (issue #243)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["unknown_tool"] = "unknown_tool"
+    tool: Optional[str] = None
+
+
+class InvalidInputDetail(BaseModel):
+    """Pre-handler gate: Pydantic argument validation failed (issue #243)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["invalid_input"] = "invalid_input"
+    tool: Optional[str] = None
+    received_arguments: Optional[Any] = None
+
+
 class PartialModuleStructureDetail(BaseModel):
     """Detail payload for partial_module_structure rejections."""
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -805,13 +830,16 @@ class ParseSandboxRefusedDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 36 per-code detail models
+# Discriminated union over all 39 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
     SyntaxErrorDetail,
     ServerStateErrorDetail,
     InternalErrorDetail,
+    SessionNotInitializedDetail,
+    UnknownToolDetail,
+    InvalidInputDetail,
     PartialModuleStructureDetail,
     UnprotectedWritesDetail,
     CastingIssuesDetectedDetail,

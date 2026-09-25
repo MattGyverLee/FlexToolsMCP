@@ -19,6 +19,12 @@ sorted position, not the top). Changes without an issue go under Other.
   appears when callers resolve properties with those types as
   `context_entity`, so exploring `.Name` is answerable before a runtime
   `ICmPossibility` cast fails.
+- **Preflight rejects `ICmPossibility` casts on morphology lists that are not possibilities**
+  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
+  run_module casting validator now errors on `ICmPossibility(...)` when the
+  argument is known to be `IMoInflAffixSlot`, `IMoInflAffixTemplate`, or
+  `IMoInflClass`, including `ICmPossibility(x).Name` chains that previously
+  passed at `injection_tier=none` and failed at runtime.
 - **`undiscovered_entity` rejected facade-only Operations (e.g. `project.Variants`)**
   ([#162](https://github.com/MattGyverLee/FlexToolsMCP/issues/162)). Using
   ``project.Variants`` / ``project.Allomorphs`` (and other index-mapped facade

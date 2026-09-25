@@ -85,6 +85,31 @@ PROJECT_ACCESSOR_ALIASES = {
     "PhonologicalRule": "PhonRules",
 }
 
+# Issue #101: morphology list types that declare their own `Name` field but are
+# NOT ICmPossibility (base=CmObject in MasterLCModel.xml). Curated set only --
+# not a structural heuristic (see handlers/api.py docstring).
+NOT_CMPOSSIBILITY_NAME_COLLISION = frozenset({
+    "IMoInflAffixSlot", "MoInflAffixSlot",
+    "IMoInflAffixTemplate", "MoInflAffixTemplate",
+    "IMoInflClass", "MoInflClass",
+})
+
+
+def not_cmpossibility_warning(object_type: str) -> str | None:
+    """Human-readable warning for issue #101 name-collision types, else None."""
+    if object_type not in NOT_CMPOSSIBILITY_NAME_COLLISION:
+        return None
+    return (
+        f"{object_type} is NOT ICmPossibility (base=CmObject in "
+        f"MasterLCModel.xml). Its `Name` is its own MultiUnicode attribute, "
+        f"not an inherited ICmPossibility.Name -- do NOT cast via "
+        f"ICmPossibility(obj).Name. Access .Name directly on the object "
+        f"(cast to {object_type} itself if you need the interface). "
+        f"Contrast: IMoMorphType genuinely IS ICmPossibility, so that cast "
+        f"is correct there."
+    )
+
+
 # ============================================================
 # API Mode Values
 # ============================================================

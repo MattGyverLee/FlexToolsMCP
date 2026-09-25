@@ -19,9 +19,19 @@ import tokenize
 from typing import Dict, Iterator, List, Set, Optional, Any, Tuple, TypeGuard, Union
 
 try:
-    from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
+    from .constants import (
+        KNOWN_OPERATIONS,
+        NOT_CMPOSSIBILITY_NAME_COLLISION,
+        PROJECT_ACCESSOR_ALIASES,
+        not_cmpossibility_warning,
+    )
 except ImportError:
-    from server.constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
+    from server.constants import (
+        KNOWN_OPERATIONS,
+        NOT_CMPOSSIBILITY_NAME_COLLISION,
+        PROJECT_ACCESSOR_ALIASES,
+        not_cmpossibility_warning,
+    )
 
 
 # ============================================================
@@ -2292,6 +2302,119 @@ def _chain_has_redundant_project_cache(parts: List[str]) -> bool:
         if parts[i : i + 3] == ["project", "project", "Cache"]:
             return True
     return False
+
+
+def _lcm_interface_types_for_expr(
+    expr: ast.AST,
+    *,
+    at_line: int,
+    cast_aliases: Dict[str, str],
+    loop_element_types: Dict[Tuple[int, str], Tuple[str, bool]],
+    line_var_cast_types: Dict[Tuple[int, str], Set[str]],
+    parents: Dict[ast.AST, ast.AST],
+    tree: ast.AST,
+) -> Set[str]:
+    """Best-effort static LCM interface types for a cast argument (issue #101)."""
+    ifaces: Set[str] = set()
+    if isinstance(expr, ast.Name):
+        var = expr.id
+        resolved = _resolve_cast_type_at(expr, parents, var)
+        if resolved is not None:
+            ifaces.add(resolved)
+        ifaces.update(line_var_cast_types.get((at_line, var)) or ())
+        ifaces.update(_build_cast_candidate_set(expr, parents, tree).get(var, ()))
+        flat = cast_aliases.get(var)
+        if flat:
+            ifaces.add(flat)
+        binding = loop_element_types.get((at_line, var))
+        if binding and not binding[1]:
+            ifaces.add(binding[0])
+    elif isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
+        fid = expr.func.id
+        if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
+            ifaces.add(fid)
+    return ifaces
+
+
+def _invalid_icmpossibility_cast_issues(
+    tree: ast.AST,
+    code: str,
+    *,
+    cast_aliases: Dict[str, str],
+    loop_element_types: Dict[Tuple[int, str], Tuple[str, bool]],
+    line_var_cast_types: Dict[Tuple[int, str], Set[str]],
+    parents: Dict[ast.AST, ast.AST],
+) -> List[Dict[str, Any]]:
+    """Issue #101: reject ICmPossibility(...) when the argument is a morphology
+    list type that does not implement ICmPossibility (runtime TypeError)."""
+    code_lines = code.split("\n")
+    seen_lines: Set[int] = set()
+    issues: List[Dict[str, Any]] = []
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Name) or node.func.id != "ICmPossibility":
+            continue
+        if not node.args:
+            continue
+        arg = node.args[0]
+        ifaces = _lcm_interface_types_for_expr(
+            arg,
+            at_line=node.lineno,
+            cast_aliases=cast_aliases,
+            loop_element_types=loop_element_types,
+            line_var_cast_types=line_var_cast_types,
+            parents=parents,
+            tree=tree,
+        )
+        collision = ifaces & NOT_CMPOSSIBILITY_NAME_COLLISION
+        if not collision:
+            continue
+        if node.lineno in seen_lines:
+            continue
+        seen_lines.add(node.lineno)
+
+        src_type = sorted(collision)[0]
+        warning = not_cmpossibility_warning(src_type) or (
+            f"{src_type} is NOT ICmPossibility."
+        )
+        src_line = (
+            code_lines[node.lineno - 1]
+            if 0 <= node.lineno - 1 < len(code_lines)
+            else ""
+        )
+        iface = (
+            src_type
+            if src_type.startswith("I")
+            else f"I{src_type[2:]}" if src_type.startswith("Mo") else src_type
+        )
+        arg_text = (
+            arg.id
+            if isinstance(arg, ast.Name)
+            else "obj"
+        )
+        issues.append(
+            {
+                "property": "ICmPossibility",
+                "line": node.lineno,
+                "pattern": src_line.strip()[:80],
+                "found_at": src_line.strip()[:120],
+                "missing_on": ["ICmPossibility"],
+                "available_on": [src_type],
+                "fix": warning,
+                "flexicon_helper": (
+                    f"Access .Name on {arg_text} directly (cast to {iface} if "
+                    f"needed), not via ICmPossibility."
+                ),
+                "severity": "error",
+                "rewrite": None,
+                "imports_needed": [],
+                "cast_interface": None,
+                "kind": "invalid_icmpossibility_cast",
+            }
+        )
+    return issues
 
 
 def _redundant_project_cache_casting_issues(tree: ast.AST) -> List[Dict[str, Any]]:
@@ -6096,6 +6219,17 @@ def detect_casting_needs(
             operations_aliases,
             facade_names,
             casting_index=casting_index,
+        )
+        _ic_poss_parents = _parents if _parents else _build_parent_map(tree)
+        issues.extend(
+            _invalid_icmpossibility_cast_issues(
+                tree,
+                code,
+                cast_aliases=cast_aliases,
+                loop_element_types=loop_element_types,
+                line_var_cast_types=line_var_cast_types,
+                parents=_ic_poss_parents,
+            )
         )
 
     def _receiver_ifaces_for(ln: int, var: str) -> Set[str]:

@@ -6,6 +6,12 @@ Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
+- **Raw `AddCustomField` on the LCM metadata cache refused at preflight on write runs**
+  ([#70](https://github.com/MattGyverLee/FlexToolsMCP/issues/70)). Bypassing
+  ``project.CustomFields.CreateField`` with ``IFwMetaDataCacheManaged.AddCustomField``
+  can corrupt projects and, with ``fieldWs=0`` followed by ``IUndoStackManager.Save()``,
+  hung ``run_module`` until timeout. Write-enabled runs now return
+  ``raw_addcustomfield_write_risk``; read-only runs surface an advisory.
 - **Non-`ICmPossibility` morphology list types warned in `resolve_property`**
   ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
   curated `not_cmpossibility_warning` (already on `get_object_api` for

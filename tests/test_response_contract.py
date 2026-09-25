@@ -49,6 +49,7 @@ from flextoolsmcp.server.response_models import (
     RuntimeErrorDetail,
     HvoLiteralWriteRiskDetail,
     DeprecatedMemberDetail,
+    RawAddCustomFieldWriteRiskDetail,
 )
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "responses"
@@ -259,6 +260,10 @@ ALL_ERROR_CODES = [
         replacement_example="entry.LexemeFormOA.IsAbstract = True",
         next_steps=["Set IsAbstract on the entry's forms"],
     )),
+    ("raw_addcustomfield_write_risk", dict(
+        findings=[{"line": 2, "detail": "mdc.AddCustomField(...)"}],
+        next_steps=["Use project.CustomFields.CreateField or FLEx UI"],
+    )),
     # parser-check CP2b
     ("parse_morph_unresolved", dict(
         morph="kirim",
@@ -329,6 +334,7 @@ DETAIL_MODEL_MAP = {
     "runtime_error": RuntimeErrorDetail,
     "hvo_literal_write_risk": HvoLiteralWriteRiskDetail,
     "deprecated_member": DeprecatedMemberDetail,
+    "raw_addcustomfield_write_risk": RawAddCustomFieldWriteRiskDetail,
 }
 
 #: CP2b's three. Separate from the map above because two of them have
@@ -451,7 +457,7 @@ class TestParserCheckCP2bCodes:
         with pytest.raises(pydantic.ValidationError):
             models[code].model_validate(payload)
 
-    def test_the_documented_error_code_count_is_forty(self):
+    def test_the_documented_error_code_count_is_forty_one(self):
         """FR-037: the hand-maintained count in the contract doc tracks reality.
 
         Hand-maintained counts drift silently, which is why this compares
@@ -468,8 +474,9 @@ class TestParserCheckCP2bCodes:
         # parser_filing_in_progress and grammar_load_unclean -> 34; CP5 adds
         # parser_config_failed and parse_sandbox_refused (M-2) -> 36;
         # #243 adds session_not_initialized, unknown_tool, invalid_input -> 39;
-        # curated deprecations add deprecated_member -> 40.
-        assert union_size == 40, f"the detail union holds {union_size} models"
+        # curated deprecations add deprecated_member -> 40;
+        # #70 adds raw_addcustomfield_write_risk -> 41.
+        assert union_size == 41, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

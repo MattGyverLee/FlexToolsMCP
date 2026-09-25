@@ -4152,6 +4152,100 @@ def detect_hvo_literal_args(
     return {"has_hvo_literal_risk": bool(findings), "findings": findings}
 
 
+def _is_zero_int_literal(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, int)
+        and not isinstance(node.value, bool)
+        and node.value == 0
+    )
+
+
+def detect_raw_addcustomfield_risk(
+    code: str, tree: Optional[ast.AST] = None
+) -> dict:
+    """Detect raw ``AddCustomField`` schema bypass (issue #70).
+
+    Flexicon exposes custom-field creation via ``project.CustomFields.CreateField``,
+    which enforces transaction safety. Raw ``IFwMetaDataCacheManaged.AddCustomField``
+    bypasses that guard: fields can exist only in memory, corrupting the project
+    on the next FLEx UI open (see shared-mode live-session evidence). The
+    multilingual overload with ``fieldWs=0`` (WsSelector 0) followed by
+    ``IUndoStackManager.Save()`` has hung ``run_module`` until the 150s timeout
+    in production logs (issue #70).
+
+    ``project.CustomFields`` uses ``CreateField``, not ``AddCustomField``, so
+    supported wrapper usage is never flagged.
+
+    Returns:
+        dict with:
+          has_raw_addcustomfield_risk: bool
+          findings: [{"line": int, "detail": str, "field_ws_zero": bool}, ...]
+          has_undo_stack_save: bool -- script also calls ``.Save()`` somewhere
+    """
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return {
+                "has_raw_addcustomfield_risk": False,
+                "findings": [],
+                "has_undo_stack_save": False,
+            }
+
+    findings: List[Dict[str, Any]] = []
+    has_undo_stack_save = False
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if node.func.attr == "Save":
+                has_undo_stack_save = True
+            if node.func.attr != "AddCustomField":
+                continue
+
+            field_ws_zero = False
+            for kw in node.keywords:
+                if kw.arg in ("fieldWs", "field_ws", "WsSelector") and _is_zero_int_literal(
+                    kw.value
+                ):
+                    field_ws_zero = True
+            if len(node.args) >= 6 and _is_zero_int_literal(node.args[5]):
+                field_ws_zero = True
+
+            receiver = ast.unparse(node.func.value) if hasattr(ast, "unparse") else "..."
+            detail = (
+                f"{receiver}.AddCustomField(...) -- raw LCM schema mutation bypasses "
+                "flexicon's CustomFields.CreateField guard. Create fields in the "
+                "FLEx UI (Tools > Configure > Custom Fields) or use "
+                "project.CustomFields.CreateField when the runner allows schema work."
+            )
+            if field_ws_zero and has_undo_stack_save:
+                detail += (
+                    " This script also calls .Save() after a multilingual AddCustomField "
+                    "with fieldWs/WsSelector=0 -- that pattern hung run_module for 150s+ "
+                    "(issue #70)."
+                )
+            elif field_ws_zero:
+                detail += (
+                    " fieldWs/WsSelector=0 on AddCustomField is the multilingual overload "
+                    "from issue #70; do not follow it with IUndoStackManager.Save()."
+                )
+
+            findings.append(
+                {
+                    "line": node.lineno,
+                    "detail": detail,
+                    "field_ws_zero": field_ws_zero,
+                }
+            )
+
+    return {
+        "has_raw_addcustomfield_risk": bool(findings),
+        "findings": findings,
+        "has_undo_stack_save": has_undo_stack_save,
+    }
+
+
 def _extract_interface_names(entries: List[str]) -> set:
     """Pull bare interface names out of `acceptable_interfaces` strings.
 

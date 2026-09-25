@@ -7,8 +7,9 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 40 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
-  + hvo_literal_write_risk + invalid_api_mode + 4 parser-check CP1 codes
+- 41 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+  + hvo_literal_write_risk + raw_addcustomfield_write_risk + invalid_api_mode
+  + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
   parse_job_cancelled
   + 5 parser-check CP3 codes: parse_scope_empty, parse_scope_ambiguous,
@@ -437,6 +438,19 @@ class DeprecatedMemberDetail(BaseModel):
     next_steps: List[Any] = Field(default_factory=list)
 
 
+class RawAddCustomFieldWriteRiskDetail(BaseModel):
+    """Detail payload for raw_addcustomfield_write_risk rejections (issue #70).
+
+    Fires when write-enabled code calls raw ``AddCustomField`` on the LCM
+    metadata cache instead of ``project.CustomFields.CreateField`` or the
+    FLEx UI. See validators.detect_raw_addcustomfield_risk().
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["raw_addcustomfield_write_risk"] = "raw_addcustomfield_write_risk"
+    findings: List[Any] = Field(default_factory=list)
+    next_steps: List[Any] = Field(default_factory=list)
+
+
 class ParserEngineMismatchDetail(BaseModel):
     """Detail payload for parser_engine_mismatch rejections (parser-check CP1).
 
@@ -853,7 +867,7 @@ class ParseSandboxRefusedDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 40 per-code detail models
+# Discriminated union over all 41 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -881,6 +895,7 @@ AnyDetail = Union[
     RuntimeErrorDetail,
     HvoLiteralWriteRiskDetail,
     DeprecatedMemberDetail,
+    RawAddCustomFieldWriteRiskDetail,
     ParserEngineMismatchDetail,
     ParserCoreMissingDetail,
     ParserAgentMissingDetail,

@@ -33,9 +33,9 @@ def load_project_env(project_root: Optional[Path] = None) -> Optional[Path]:
     via :func:`collect_obsolete_env_warnings` instead.
     """
     if project_root is None:
-        try:
+        if __package__:
             from .file_utils import get_project_root
-        except ImportError:
+        else:
             from file_utils import get_project_root
         project_root = get_project_root()
 

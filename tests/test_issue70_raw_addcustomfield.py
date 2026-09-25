@@ -4,8 +4,6 @@
 import asyncio
 import json
 
-import pytest
-
 from flextoolsmcp.server import kernel, project_discovery
 from flextoolsmcp.server.handlers import execution as execution_mod
 from flextoolsmcp.server.validators import detect_raw_addcustomfield_risk

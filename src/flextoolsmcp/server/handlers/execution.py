@@ -1498,6 +1498,95 @@ def _inline_discovery_docs(
     return inlined
 
 
+def _api_discovery_required_copy(
+    session_state: Any,
+    *,
+    has_inline_discovery: bool,
+) -> Dict[str, Any]:
+    """User-facing copy for the write-only api_discovery_required gate (#244).
+
+    Read-only runs may auto-discover entities (issue #47) without adding them to
+    ``discovered_apis``. The first WRITE run then hits the zero-discovery gate
+    with a misleading "No APIs discovered yet" unless we name the auto-grants.
+    """
+    auto = sorted(getattr(session_state, "auto_discovered_apis", None) or [])
+    auto_joined = ", ".join(auto)
+
+    if auto:
+        log_summary = (
+            f"Write blocked: auto-discovered but not validated via get_object_api: "
+            f"{auto_joined}"
+        )
+        auto_paragraph = (
+            f"During earlier read-only runs, {len(auto)} entit"
+            f"{'y was' if len(auto) == 1 else 'ies were'} auto-discovered "
+            f"({auto_joined}) — that does not satisfy the write gate. Call "
+            f"flextools_get_object_api(object_type=...) for each entity you use "
+            f"before resubmitting WRITE code.\n\n"
+        )
+    else:
+        log_summary = (
+            "No APIs discovered yet -- call start() / get_object_api() / "
+            "search_by_capability() first."
+        )
+        auto_paragraph = ""
+
+    if has_inline_discovery:
+        message = (
+            "Discovery required before a WRITE run, but I ran get_object_api "
+            "for the entities I detected in your code -- see _inline_discovery. "
+            "Use these method/property shapes and resubmit.\n\n"
+        )
+        if auto_paragraph:
+            message += auto_paragraph
+        message += (
+            "(You can also call start(task='...'), get_object_api(object_type='...'), "
+            "or search_by_capability(query='...') for additional entities.)"
+        )
+        hint = "Apply the method/property shapes from _inline_discovery and resubmit."
+        if auto:
+            hint += (
+                f" Also validate auto-discovered entities via get_object_api: "
+                f"{auto_joined}."
+            )
+    elif auto:
+        message = (
+            "No APIs have been validated yet for a WRITE run.\n\n"
+            + auto_paragraph
+            + "Before running WRITE code, you MUST validate APIs explicitly:\n"
+            "1. get_object_api(object_type='...') — required for each Operations entity\n"
+            "2. start(task='...') — discovers relevant APIs automatically\n"
+            "3. search_by_capability(query='...') — search for APIs by description\n\n"
+            "Auto-discovery on read-only runs is intentionally separate from validated "
+            "discovery; this prevents using incorrect/hallucinated method names on writes."
+        )
+        hint = (
+            f"Call flextools_get_object_api for the auto-discovered entities: "
+            f"{auto_joined}."
+        )
+    else:
+        message = (
+            "No APIs have been discovered yet. Before running WRITE code, you "
+            "MUST use one of these tools first:\n"
+            "1. start(task='...') - discovers relevant APIs automatically\n"
+            "2. get_object_api(object_type='...') - get API for specific object\n"
+            "3. search_by_capability(query='...') - search for APIs by description\n\n"
+            "This prevents using incorrect/hallucinated method names."
+        )
+        hint = (
+            "Call get_object_api() for each object/operation you use "
+            "(FLExProject, LexEntryOperations, etc.), then write code using "
+            "those discovered APIs."
+        )
+
+    return {
+        "message": message,
+        "hint": hint,
+        "log_summary": log_summary,
+        "auto_discovered_pending_validation": auto,
+    }
+
+
 def _build_capability_query(
     code_tree: Optional[ast.AST],
     undiscovered: List[str],
@@ -1992,10 +2081,13 @@ def _build_validate_only_checks(
     else:
         no_prior_discovery = len(session_state_obj.get_discovered_apis()) == 0
         if no_prior_discovery and write_enabled:
+            discovery_copy = _api_discovery_required_copy(
+                session_state_obj, has_inline_discovery=False
+            )
             checks.append({
                 "gate": "api_discovery_required",
                 "passed": False,
-                "issues": ["No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first."],
+                "issues": [discovery_copy["log_summary"]],
             })
         else:
             checks.append({"gate": "api_discovery_required", "passed": True})
@@ -3534,45 +3626,29 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         if write_enabled:
             # WRITE path: hard gate -- discovery is required before any write.
             # Write isolation is non-negotiable; issue #80 leaves this unchanged.
-            _log_preflight_reject(
-                op_id, seq, time.monotonic() - t_start,
-                "api_discovery_required",
-                "No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first.",
-            log_dir_fn=get_log_dir,
-            )
             # Issue #29: inline get_object_api for the top entities we can spot in
             # the submitted code, so the LLM gets the real method shapes in the
             # rejection itself and can recover in one round-trip instead of three.
             candidates = detect_candidate_entities(code_tree, api_idx, limit=3)
             inline = _inline_discovery_docs(candidates, api_idx) if candidates else {}
-            if inline:
-                message = (
-                    "Discovery required before a WRITE run, but I ran get_object_api "
-                    "for the entities I detected in your code -- see _inline_discovery. "
-                    "Use these method/property shapes and resubmit.\n\n"
-                    "(You can also call start(task='...'), get_object_api(object_type='...'), "
-                    "or search_by_capability(query='...') for additional entities.)"
-                )
-            else:
-                message = (
-                    "No APIs have been discovered yet. Before running WRITE code, you "
-                    "MUST use one of these tools first:\n"
-                    "1. start(task='...') - discovers relevant APIs automatically\n"
-                    "2. get_object_api(object_type='...') - get API for specific object\n"
-                    "3. search_by_capability(query='...') - search for APIs by description\n\n"
-                    "This prevents using incorrect/hallucinated method names."
-                )
+            discovery_copy = _api_discovery_required_copy(
+                session_state, has_inline_discovery=bool(inline)
+            )
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
+                "api_discovery_required",
+                discovery_copy["log_summary"],
+            log_dir_fn=get_log_dir,
+            )
+            message = discovery_copy["message"]
             extras: Dict[str, Any] = {
-                "hint": (
-                    "Apply the method/property shapes from _inline_discovery and resubmit."
-                    if inline else
-                    "Call get_object_api() for each object/operation you use "
-                    "(FLExProject, LexEntryOperations, etc.), then write code using "
-                    "those discovered APIs."
-                ),
+                "hint": discovery_copy["hint"],
                 "session": session_state.summary(),
                 "op_id": op_id,
                 "detected_candidates": candidates,
+                "auto_discovered_pending_validation": discovery_copy[
+                    "auto_discovered_pending_validation"
+                ],
             }
             if inline:
                 extras["_inline_discovery"] = inline

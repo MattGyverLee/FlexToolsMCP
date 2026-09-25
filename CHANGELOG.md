@@ -237,6 +237,13 @@ sorted position, not the top). Changes without an issue go under Other.
   so the worker queue was empty between words and `_release_if_idle` dropped
   the lock after every word. The runner now sends `run_end` when a run
   finishes; the worker holds the project until then.
+- **Filing always failed at `starting` with `'NoneType' object has no attribute
+  'ObjectRepository'`** ([#239](https://github.com/MattGyverLee/FlexToolsMCP/issues/239),
+  regression from #223). The filing worker idle-released its one writable open
+  on its first empty-queue tick, before `filing_setup` arrived, so no
+  `flextools_parse_text(apply=true)` run could file a word. `FilingWorker` now
+  never idle-releases; `final_commit` closes the project. `FilingBackend.setup`
+  refuses by name (`runtime_error` / `ProjectNotOpen`) if the project is closed.
 
 ### Added
 

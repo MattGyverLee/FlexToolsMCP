@@ -117,7 +117,10 @@ _REPO_SIGNATURES: Tuple[Dict[str, Any], ...] = (
 )
 
 # Once-per-process guard for the envelope-attached copy of the notice.
-_notice_emitted = False
+# Issue #151: keyed by detected repo_root so a cwd move to a different checkout
+# can still surface the warning; only repeat calls from the same checkout are
+# suppressed when once=True.
+_notice_emitted_roots: set[str] = set()
 _lock = threading.Lock()
 
 
@@ -261,15 +264,17 @@ def get_workspace_notice(
     """Return the workspace-notice payload, or None when the workspace is fine.
 
     Args:
-        once: When True, emit at most once per process. Used by the response
-            envelope, which would otherwise repeat the notice on every single
-            tool call. Call sites that *should* always report -- session start
-            and ``flextools_health`` -- pass False.
+        once: When True, emit at most once per detected checkout (repo_root)
+            per process. Used by the response envelope, which would otherwise
+            repeat the notice on every single tool call. A cwd change into a
+            different source checkout can emit again (issue #151). Call sites
+            that *should* always report -- session start and
+            ``flextools_health`` -- pass False.
         cwd_fn: Injectable working-directory resolver (tests).
 
     Never raises: a notice must never be the reason a tool response fails.
     """
-    global _notice_emitted
+    global _notice_emitted_roots
     try:
         if opted_out():
             return None
@@ -279,10 +284,11 @@ def get_workspace_notice(
             return None
 
         if once:
+            repo_root = checkout["repo_root"]
             with _lock:
-                if _notice_emitted:
+                if repo_root in _notice_emitted_roots:
                     return None
-                _notice_emitted = True
+                _notice_emitted_roots.add(repo_root)
 
         return build_notice(checkout)
     except Exception:

@@ -17,11 +17,11 @@ from flextoolsmcp import workspace_check as wc
 
 @pytest.fixture(autouse=True)
 def _reset_process_guard(monkeypatch):
-    """Clear the once-per-process gate and any inherited opt-out."""
+    """Clear the once-per-checkout gate and any inherited opt-out."""
     monkeypatch.delenv(wc._ENV_OPT_OUT, raising=False)
-    wc._notice_emitted = False
+    wc._notice_emitted_roots.clear()
     yield
-    wc._notice_emitted = False
+    wc._notice_emitted_roots.clear()
 
 
 def _make_repo(root, signature_key):
@@ -204,7 +204,18 @@ def test_once_gate_is_not_consumed_when_workspace_is_clean(tmp_path):
     work = tmp_path / "clean"
     work.mkdir()
     assert wc.get_workspace_notice(once=True, cwd_fn=lambda: work) is None
-    assert wc._notice_emitted is False
+    assert not wc._notice_emitted_roots
+
+
+def test_once_gate_re_emits_after_cwd_moves_to_different_checkout(tmp_path):
+    """Issue #151: once=True must not suppress a notice for a new checkout."""
+    repo_a = _make_repo(tmp_path / "FlexToolsMCP-a", "flextools-mcp")
+    repo_b = _make_repo(tmp_path / "FlexToolsMCP-b", "flextools-mcp")
+    first = wc.get_workspace_notice(once=True, cwd_fn=lambda: repo_a)
+    assert first is not None
+    assert wc.get_workspace_notice(once=True, cwd_fn=lambda: repo_a) is None
+    second = wc.get_workspace_notice(once=True, cwd_fn=lambda: repo_b)
+    assert second is not None
 
 
 # --------------------------------------------------------------------------

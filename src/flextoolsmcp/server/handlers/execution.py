@@ -2767,8 +2767,12 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
       (2) a small race window between a result going out and the worker's
           own next idle check (`_POLL_INTERVAL_SECONDS`, 50ms) -- a write
           landing in that window still sees `held_by_other` and still
-          needs the idle-release branch below, just for a far smaller
-          window than the up-to-600s gap this originally closed.
+          needs the idle-release branch below on non-shared projects, just
+          for a far smaller window than the up-to-600s gap this originally
+          closed.
+      (3) on shared projects, an idle own worker is left running and the
+          write proceeds anyway (L-0 coexistence, mirroring filing's gate) --
+          the probe's `held_by_other` is cleared without a release.
 
     Returns `(refusal_response, decision)`:
       * own worker, busy   -> `(refusal_response, decision)` (unchanged
@@ -2789,12 +2793,14 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     """
     try:
         from ..parse.own_worker import (
+            HELD_BY_OWN_READ_WORKER,
             own_worker_role,
             busy_own_worker_guidance,
             busy_own_worker_run_note,
         )
     except (ImportError, ValueError):
         from server.parse.own_worker import (
+            HELD_BY_OWN_READ_WORKER,
             own_worker_role,
             busy_own_worker_guidance,
             busy_own_worker_run_note,
@@ -2811,6 +2817,39 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     role = own_worker_role(runner, project_name, decision)
     if role is None:
         return None, decision
+
+    if runner.worker_busy(project_name, role=role):
+        run_ids = runner.active_run_ids(project_name, role=role)
+        run_note = busy_own_worker_run_note(run_ids)
+        guidance = busy_own_worker_guidance("resubmit the write")
+        refusal = error_response(
+            "project_locked",
+            f"Project '{project_name}' is held by this server's own parse "
+            f"worker, which is busy running a parse{run_note}. This is NOT "
+            f"a foreign process -- do not end it. {guidance}",
+            guidance=guidance,
+            remedy=guidance,
+            lock_file_path=decision.refusal.get("lock_file_path"),
+            verdict=decision.verdict,
+            sharing_enabled=decision.refusal.get("sharing_enabled"),
+            holder_pid=decision.refusal.get("holder_pid"),
+            holder_process="this server's own parse worker",
+            op_id=op_id,
+        )
+        return refusal, decision
+
+    sharing = bool(decision.refusal.get("sharing_enabled"))
+    if sharing:
+        # Mirror filing's confirmed gate (handlers/parse.py row 11): on a
+        # shared project our read worker coexists with a writable open, so
+        # do not release it first -- the probe's `held_by_other` is our own
+        # worker, not a foreign collision (issue #223, second repro).
+        return None, write_ladder.AccessDecision(
+            project_name=project_name,
+            access=decision.access,
+            verdict=HELD_BY_OWN_READ_WORKER,
+            refusal=None,
+        )
 
     if await runner.release_worker_if_idle(project_name, role=role):
         try:

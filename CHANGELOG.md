@@ -226,6 +226,11 @@ sorted position, not the top). Changes without an issue go under Other.
     release, and the lock is observably dropped in between. See
     `specs/parser-check-cp2/spec.md`'s FR-042/043 amendment and
     `specs/parser-check-cp2/evidence/issue223-live.md`.
+  - **Shared projects: `run_module` coexists with an idle own read worker**
+    (issue #223 second repro). Filing already persisted while the parse
+    worker stayed open on a shared project; the write gate now mirrors that
+    L-0 coexistence -- clearing the probe refusal without releasing the warm
+    worker -- instead of treating the lock as a foreign collision.
 - **Parse worker reopened the project for every word of a server-paced batch**
   ([#235](https://github.com/MattGyverLee/FlexToolsMCP/issues/235), regression
   from #223). `ParseRunner` sends one word at a time and awaits each result,

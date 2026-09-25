@@ -276,6 +276,15 @@ class FakePool:
     def peek(self, name, *, role=SHARED_ROLE):
         return self.filing if role == FILING_ROLE else self.read
 
+    def workers_for(self, name):
+        """Mirrors `WorkerPool.workers_for` (#223 own-worker detection)."""
+        workers = {}
+        if self.read is not None:
+            workers[SHARED_ROLE] = self.read
+        if FILING_ROLE in self.spawned and self.filing is not None:
+            workers[FILING_ROLE] = self.filing
+        return workers
+
     async def release(self, name, *, role=None):
         self.released.append((name, role))
 

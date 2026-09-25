@@ -6,7 +6,6 @@ Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
-
 - **Unhandled tool handler exceptions bypassed the structured error envelope**
   ([#89](https://github.com/MattGyverLee/FlexToolsMCP/issues/89)). `call_tool`
   now catches handler failures and returns `internal_error` with
@@ -26,6 +25,11 @@ sorted position, not the top). Changes without an issue go under Other.
   chaining ``.Cache`` after ``project.project`` (which is already the
   ``LcmCache``) and emit a concrete rewrite such as
   ``project.project.LangProject`` instead of deferring to a generic resubmit.
+- **Cross-session `operations.log` rotation dropped multi-day spans** ([#110](https://github.com/MattGyverLee/FlexToolsMCP/issues/110)).
+  The durable rollup now keeps 12 size-based backups (was 3) while per-session
+  log files stay at 3. Confirmed log triage still has jsonl and dated session
+  folders as authoritative fallbacks when a byte cursor on `operations.log`
+  crosses a rotation boundary.
 - **`flextools_run_module` success responses omitted `_contract` / `status`**
   ([#119](https://github.com/MattGyverLee/FlexToolsMCP/issues/119)). Subprocess
   execution results (success, runtime failure, timeout, and temp-file errors)
@@ -50,6 +54,18 @@ sorted position, not the top). Changes without an issue go under Other.
   ``if not modifyAllowed: ...; return`` followed by writes is now treated as
   equivalent to ``if modifyAllowed: ... else: ...`` for line-level protection
   in ``find_protected_ranges`` / ``certify_script_readonly``.
+- **Ephemeral MCP clients blocked by `api_discovery_required` every turn**
+  ([#142](https://github.com/MattGyverLee/FlexToolsMCP/issues/142)). Set
+  ``FLEXTOOLS_STATELESS=1`` in the server environment to skip API discovery gates
+  (same cost lever as ``source='existing'``). Write-safety, casting, syntax, and
+  unprotected-write preflight are unchanged. ``flextools_health`` exposes
+  ``server.stateless_client_mode``; ``flextools_start`` documents the mode when
+  active.
+- **Silent no-op mutating runs surfaced via `effect_check`** ([#143](https://github.com/MattGyverLee/FlexToolsMCP/issues/143)).
+  Write-enabled runs preflight already flagged as mutating now attach an advisory
+  `effect_check` block when execution succeeds but `lcm_undoable_action_count`
+  is zero, so a wrapper that mutates nothing is no longer indistinguishable from
+  a real write.
 - **`flextools_start` `api_versions` misreported index-file versions as installed
   libraries under `fallback_latest`** ([#149](https://github.com/MattGyverLee/FlexToolsMCP/issues/149)).
   Session state and the start response now carry the same
@@ -57,6 +73,11 @@ sorted position, not the top). Changes without an issue go under Other.
 - **`collect_inherited_members` memo could survive LibLCM index reload** ([#150](https://github.com/MattGyverLee/FlexToolsMCP/issues/150)).
   Cache keys now use ``APIIndex.liblcm_entities_epoch`` (bumped on each load)
   instead of ``id(entities)`` alone, and the memo is cleared when LibLCM reloads.
+- **`get_workspace_notice(once=True)` suppressed warnings after cwd change** ([#151](https://github.com/MattGyverLee/FlexToolsMCP/issues/151)).
+  The response-envelope guard is now keyed by detected ``repo_root`` instead of a
+  single process-global flag, so moving into a different source checkout can
+  surface the workspace warning again while repeat calls from the same checkout
+  stay deduplicated.
 - **Docs gap: `find_writing_system()` / `GetMorphType()` return raw LCM objects**
   ([#160](https://github.com/MattGyverLee/FlexToolsMCP/issues/160)). Added a
   ``FLEXTOOLS-STYLE-GUIDE.md`` callout (section 5b) with JSON-boundary patterns
@@ -77,6 +98,50 @@ sorted position, not the top). Changes without an issue go under Other.
 - **Issue #173:** Pytest no longer writes into the real `~/.flextoolsmcp/logs`
   tree. `get_log_dir()` honors `FLEXTOOLSMCP_LOG_DIR`; the suite sets it via
   `pytest_configure`, with a regression test guarding against silent lapse.
+- **`run_module` refused writes against its own idle parse worker, naming it as
+  a foreign process to kill** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)).
+  `flextools_try_word` / `flextools_parse_text` leave a shared read worker
+  running until its idle timeout, and `write_ladder.probe_write_access` is pure
+  filesystem: it cannot tell that worker apart from a genuinely foreign Python
+  process holding the same lock, so it always answered `held_by_other` -- on
+  both shared and non-shared projects. `run_module`'s write gate now detects
+  this server's own worker (any role the pool tracks, not just the shared read
+  worker) via the same logic filing already used, shared through the new
+  `parse/own_worker.py`. An idle own worker is released and access re-probed
+  before the refusal would be issued (never at the earlier confirmation-preview
+  probe, so an unconfirmed call cannot tear down a warm worker); a *busy* own
+  worker still refuses, but names itself plainly and never tells the caller to
+  end the process -- it points at `flextools_parse_status` / `parse_cancel`
+  instead. Any remaining foreign holder is refused exactly as before.
+- **Parse worker held `<project>.fwdata.lock` while idle, up to 600s after
+  results were already back** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223),
+  scope change). The fix above worked around the collision; this closes the
+  gap at the source. `ParseWorker` (`parse/worker_main.py`) used to open the
+  project once at startup and hold it for the worker's whole life (up to
+  `DEFAULT_IDLE_TIMEOUT_SECONDS`, 600s, after the last word). It now closes
+  the project -- and drops the lock -- the instant its queue goes idle
+  (`ParseWorker._release_if_idle`), and reopens on demand for the next
+  request (`ParseWorker._ensure_project_open`), which also drops this
+  worker's own caches that named identifiers scoped to the closed cache
+  (`self._index`'s entry/MSA HVOs -- "an hvo is a session-scoped handle that
+  liblcm renumbers on every cache load", issue #103 -- and
+  `_RealBackend._wordforms_by_ws`'s live LCM objects). Holding the lock
+  WHILE a parse runs is unchanged; only the idle gap between requests
+  shrank, from up to 600s down to one poll tick (`_POLL_INTERVAL_SECONDS`,
+  50ms). The worker PROCESS still lives out the idle timeout so a request
+  in that window reuses the warm interpreter, but it now pays again for
+  `OpenProject()` and the first grammar load -- `run_module`'s own-worker
+  release (above) stays in place as a safety net for a write landing during
+  a live parse or in that ~50ms race, rather than as the primary fix.
+
+### Added
+
+- **`flextools_parse_release`** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)).
+  Releases this server's own idle parse worker(s) for a project, dropping the
+  fwdata lock without killing anything. Takes an optional `project_name`
+  (falls back to the session). Refuses with `project_locked` (pointing at
+  `flextools_parse_cancel`) if a run is currently live on one of the
+  project's workers; a no-op success if no worker is running at all.
 
 ### Governance
 

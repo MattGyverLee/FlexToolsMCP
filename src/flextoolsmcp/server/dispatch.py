@@ -42,6 +42,7 @@ from .models import (
     ParseDiffInput,
     ParseCancelInput,
     ParseSandboxInput,
+    ParseReleaseInput,
 )
 
 # ============================================================
@@ -105,6 +106,8 @@ TOOL_PARSE_CANCEL = "flextools_parse_cancel"
 
 # Parse tools (parser-check CP5)
 TOOL_PARSE_SANDBOX = "flextools_parse_sandbox"
+# Parse tools (issue #223)
+TOOL_PARSE_RELEASE = "flextools_parse_release"
 
 # All tool names for validation
 ALL_TOOL_NAMES = frozenset([
@@ -137,6 +140,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_PARSE_DIFF,
     TOOL_PARSE_CANCEL,
     TOOL_PARSE_SANDBOX,
+    TOOL_PARSE_RELEASE,
 ])
 
 # Import all handler functions
@@ -192,6 +196,7 @@ def _import_handlers():
             handle_flextools_parse_diff,
             handle_flextools_parse_cancel,
             handle_flextools_parse_sandbox,
+            handle_flextools_parse_release,
         )
     except ImportError:
         # Fallback to non-package mode (absolute imports)
@@ -243,6 +248,7 @@ def _import_handlers():
             handle_flextools_parse_diff,
             handle_flextools_parse_cancel,
             handle_flextools_parse_sandbox,
+            handle_flextools_parse_release,
         )
 
     return {
@@ -275,6 +281,7 @@ def _import_handlers():
         "handle_flextools_parse_diff": handle_flextools_parse_diff,
         "handle_flextools_parse_cancel": handle_flextools_parse_cancel,
         "handle_flextools_parse_sandbox": handle_flextools_parse_sandbox,
+        "handle_flextools_parse_release": handle_flextools_parse_release,
     }
 
 
@@ -308,6 +315,7 @@ handle_flextools_parse_log = _handlers["handle_flextools_parse_log"]
 handle_flextools_parse_diff = _handlers["handle_flextools_parse_diff"]
 handle_flextools_parse_cancel = _handlers["handle_flextools_parse_cancel"]
 handle_flextools_parse_sandbox = _handlers["handle_flextools_parse_sandbox"]
+handle_flextools_parse_release = _handlers["handle_flextools_parse_release"]
 
 
 # Type alias for tool handlers
@@ -376,6 +384,8 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
 
     # Parse tools (parser-check CP5)
     TOOL_PARSE_SANDBOX: (handle_flextools_parse_sandbox, ParseSandboxInput),
+    # Parse tools (issue #223)
+    TOOL_PARSE_RELEASE: (handle_flextools_parse_release, ParseReleaseInput),
 }
 
 # Cache tool names (avoid O(n) list rebuild on every call)

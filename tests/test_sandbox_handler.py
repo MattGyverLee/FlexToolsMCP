@@ -955,7 +955,9 @@ class TestParseStaleness:
         """Pattern audit sweep 3: our own read worker has no unsaved edits."""
         parse_ready.access.verdict = "held_by_other"
         parse_ready.access.holder_pid = 4242
-        parse_ready.runner.read_worker_pid = lambda project_name: 4242
+        parse_ready.runner.own_worker_role_for_pid = (
+            lambda project_name, pid: "shared" if pid == 4242 else None
+        )
         payload = await _call(PARSE_ARGS)
         assert payload["status"] == "ok", payload
         assert "staleness" not in payload and "staleness_note" not in payload
@@ -966,7 +968,9 @@ class TestParseStaleness:
     async def test_other_holder_pid_stays_stale(self, parse_ready):
         parse_ready.access.verdict = "held_by_other"
         parse_ready.access.holder_pid = 999
-        parse_ready.runner.read_worker_pid = lambda project_name: 4242
+        parse_ready.runner.own_worker_role_for_pid = (
+            lambda project_name, pid: "shared" if pid == 4242 else None
+        )
         payload = await _call(PARSE_ARGS)
         assert payload["staleness"] == parse_diff.SHARED_MODE_STALENESS
         recorded = parse_ready.runner.last["project_state"]

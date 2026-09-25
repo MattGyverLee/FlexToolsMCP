@@ -45,9 +45,21 @@ _, get_operations_logger = safe_import_logging_helpers()
 SessionState = safe_import_session_state()
 
 try:
-    from ..kernel import get_pattern_tracker, get_project_write_lock
+    from ..kernel import (
+        get_pattern_tracker,
+        get_project_write_lock,
+        should_skip_discovery_gates,
+        discovery_gate_skip_note,
+        is_stateless_client_mode,
+    )
 except ImportError:
-    from server.kernel import get_pattern_tracker, get_project_write_lock
+    from server.kernel import (
+        get_pattern_tracker,
+        get_project_write_lock,
+        should_skip_discovery_gates,
+        discovery_gate_skip_note,
+        is_stateless_client_mode,
+    )
 
 # Skeleton storage closet (issue #24): persist helper defs from successful ops.
 try:
@@ -146,6 +158,43 @@ def _finalize_run_module_response(payload: Dict[str, Any]) -> Dict[str, Any]:
         else:
             payload[KEY_STATUS] = "ok"
     return build_response_with_context(payload, include_session=True)
+
+
+def build_effect_check_payload(
+    execution_result: Dict[str, Any],
+    *,
+    write_enabled: bool,
+    is_mutating_script: bool,
+) -> Optional[Dict[str, Any]]:
+    """Issue #143: surface silent no-op writes on mutating runs.
+
+    When preflight already classified the script as mutating but LCM recorded
+    zero undoable actions, attach an advisory ``effect_check`` block so callers
+    can distinguish success-with-no-exception from success-with-no-mutation.
+    """
+    if not write_enabled or not is_mutating_script:
+        return None
+    if not execution_result.get("success"):
+        return None
+    count = execution_result.get("lcm_undoable_action_count")
+    if count is None:
+        return None
+    try:
+        count_int = int(count)
+    except (TypeError, ValueError):
+        return None
+    if count_int != 0:
+        return None
+    return {
+        "signal": "lcm_undoable_action_count",
+        "lcm_undoable_action_count": 0,
+        "verdict": "no_observable_effect",
+        "note": (
+            "Preflight classified this run as mutating, but LCM recorded zero "
+            "undoable actions. The script reported success without raising, so "
+            "a wrapper no-op or wrong collection target may have done nothing."
+        ),
+    }
 
 
 # Issue #46: auto-fix config
@@ -1929,10 +1978,17 @@ def _build_validate_only_checks(
         checks.append({"gate": "casting", "passed": True})
 
     # --- Gates 6+7: API discovery (REPORT ONLY -- no session mutation) ---
-    _skip_discovery_gates = skip_api_check or provenance_existing
+    _skip_discovery_gates = should_skip_discovery_gates(
+        skip_api_check=skip_api_check,
+        provenance_existing=provenance_existing,
+    )
     if _skip_discovery_gates:
-        checks.append({"gate": "api_discovery_required", "passed": True, "note": "skipped (skip_api_check/source=existing)"})
-        checks.append({"gate": "undiscovered_entity", "passed": True, "note": "skipped (skip_api_check/source=existing)"})
+        _skip_note = discovery_gate_skip_note(
+            skip_api_check=skip_api_check,
+            provenance_existing=provenance_existing,
+        )
+        checks.append({"gate": "api_discovery_required", "passed": True, "note": _skip_note})
+        checks.append({"gate": "undiscovered_entity", "passed": True, "note": _skip_note})
     else:
         no_prior_discovery = len(session_state_obj.get_discovered_apis()) == 0
         if no_prior_discovery and write_enabled:
@@ -2681,6 +2737,101 @@ def _invalidate_sandbox_cache_after_write(project_name: str) -> None:
                 )
 
 
+async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: Optional[str] = None):
+    """Own idle parse worker -> release it and re-probe; own busy one ->
+    refuse, naming it plainly. Neither ours -> unchanged (issue #223).
+
+    `write_ladder.probe_write_access` is pure filesystem: it cannot tell
+    this server's own parse worker (`flextools_try_word` /
+    `flextools_parse_text`'s shared read worker, or the bounded measurement
+    worker) apart from a genuinely foreign Python process holding the same
+    `.fwdata.lock`. Both report as `held_by_other`. Mirrors filing's own
+    handling of this (`handlers/parse.py:_held_by_own_read_worker` and the
+    release around L1700), generalized to any of the pool's roles and
+    shared through `parse/own_worker.py` so the two write gates cannot
+    answer "is this ours?" differently.
+
+    Called only from the point where a refusal would actually be issued
+    (after `run_module`'s confirmation gate), never from the earlier probe
+    used to build the confirmation preview -- releasing there would tear
+    down a warm worker under an unconfirmed, maybe-never-submitted call.
+
+    STILL NEEDED AFTER THE #223 SCOPE CHANGE (the worker now releases the
+    project itself the instant its queue goes idle --
+    `parse/worker_main.py`'s `ParseWorker._release_if_idle` -- rather than
+    holding it for the rest of `DEFAULT_IDLE_TIMEOUT_SECONDS`). Two gaps
+    that self-release does not close on its own:
+      (1) the busy case -- a write landing WHILE a parse is genuinely
+          running still needs this function's refusal, which is now this
+          function's PRIMARY remaining job rather than a secondary one;
+      (2) a small race window between a result going out and the worker's
+          own next idle check (`_POLL_INTERVAL_SECONDS`, 50ms) -- a write
+          landing in that window still sees `held_by_other` and still
+          needs the idle-release branch below, just for a far smaller
+          window than the up-to-600s gap this originally closed.
+
+    Returns `(refusal_response, decision)`:
+      * own worker, busy   -> `(refusal_response, decision)` (unchanged
+        decision; caller returns the refusal as-is).
+      * own worker, idle   -> `(None, new_decision)`, released and
+        re-probed. Any holder remaining in `new_decision` is genuine.
+      * not our worker     -> `(None, decision)`, unchanged.
+    """
+    try:
+        from ..parse.own_worker import own_worker_role
+    except (ImportError, ValueError):
+        from server.parse.own_worker import own_worker_role
+    try:
+        from .parse import peek_runner
+    except (ImportError, ValueError):
+        from server.handlers.parse import peek_runner
+
+    runner = peek_runner()
+    if runner is None:
+        return None, decision
+
+    role = own_worker_role(runner, project_name, decision)
+    if role is None:
+        return None, decision
+
+    if runner.worker_busy(project_name, role=role):
+        run_ids = runner.active_run_ids(project_name, role=role)
+        run_note = f" (run {run_ids[0]})" if run_ids else ""
+        refusal = error_response(
+            "project_locked",
+            f"Project '{project_name}' is held by this server's own parse "
+            f"worker, which is busy running a parse{run_note}. This is NOT "
+            "a foreign process -- do not end it. Wait for the run to "
+            "finish, or cancel it, then resubmit the write.",
+            guidance=(
+                "Wait for the run to finish (flextools_parse_status), or "
+                "cancel it with flextools_parse_cancel(run_id=...), then "
+                "resubmit the write."
+            ),
+            remedy=(
+                "Wait for the run to finish (flextools_parse_status), or "
+                "cancel it with flextools_parse_cancel(run_id=...), then "
+                "resubmit the write."
+            ),
+            lock_file_path=decision.refusal.get("lock_file_path"),
+            verdict=decision.verdict,
+            sharing_enabled=decision.refusal.get("sharing_enabled"),
+            holder_pid=decision.refusal.get("holder_pid"),
+            holder_process="this server's own parse worker",
+            op_id=op_id,
+        )
+        return refusal, decision
+
+    await runner.release_worker(project_name, role=role)
+    try:
+        return None, write_ladder.probe_write_access(project_name)
+    except Exception:
+        # A re-probe failure here should read as "still refused with the
+        # original detail", not crash the write gate: fall back to the
+        # decision as it stood before the release attempt.
+        return None, decision
+
+
 async def handle_run_module(args: dict) -> list[TextContent]:
     """Execute code (snippet or full module) against a FieldWorks project.
 
@@ -3320,7 +3471,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "undiscovered_entity gates (issue #80). Write-safety + casting already "
             "ran and are unaffected by provenance."
         )
-    _skip_discovery_gates = skip_api_check or _provenance_existing
+    if is_stateless_client_mode() and not skip_api_check and not _provenance_existing:
+        get_operations_logger().info(
+            "[DISCOVERY] FLEXTOOLS_STATELESS=1 -- skipping api_discovery_required and "
+            "undiscovered_entity gates (issue #142). Write-safety + casting already "
+            "ran and are unaffected."
+        )
+    _skip_discovery_gates = should_skip_discovery_gates(
+        skip_api_check=skip_api_check,
+        provenance_existing=_provenance_existing,
+    )
 
     if not _skip_discovery_gates and len(session_state.get_discovered_apis()) == 0:
         if write_enabled:
@@ -4533,6 +4693,28 @@ MODULE_CODE = {code}
         _shared_mode = None
         if needs_lock and _decision is not None and _access is not None:
             if _decision.refusal is not None:
+                # Issue #223: this is the point where a refusal is actually
+                # issued (after confirmation, never at the earlier preview
+                # probe), so releasing our own idle worker here cannot tear
+                # one down under an unconfirmed call. Any holder left in the
+                # re-probed decision below is genuine.
+                _own_worker_refusal, _decision = await _release_own_worker_or_refuse(
+                    project_name, _decision, op_id=op_id
+                )
+                if _own_worker_refusal is not None:
+                    _refusal = _decision.refusal
+                    _log_preflight_reject(
+                        op_id, seq, time.monotonic() - t_start, "project_locked",
+                        f"verdict={_decision.verdict} own_worker=busy "
+                        f"holder_pid={_refusal.get('holder_pid')}",
+                    log_dir_fn=get_log_dir,
+                    )
+                    return _attach_assistance_if_loop(
+                        _own_worker_refusal,
+                        error_code="project_locked",
+                        code_size_bytes=_code_size_bytes,
+                    )
+            if _decision.refusal is not None:
                 _refusal = _decision.refusal
                 _lock_msg = (
                     f"Project '{project_name}' is held for exclusive access "
@@ -4971,6 +5153,13 @@ MODULE_CODE = {code}
             _diagnostic_advisory = build_advisory_for_success_close(op_id)
             if _diagnostic_advisory:
                 execution_result[KEY_DIAGNOSTIC_REPORT] = _diagnostic_advisory
+            _effect_check = build_effect_check_payload(
+                execution_result,
+                write_enabled=write_enabled,
+                is_mutating_script=is_mutating_script,
+            )
+            if _effect_check is not None:
+                execution_result["effect_check"] = _effect_check
         else:
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,

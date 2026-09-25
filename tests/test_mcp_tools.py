@@ -106,6 +106,10 @@ EXPECTED_TOOL_NAMES = [
     # (contracts/tools.md section 1): it parses a copy with the stand-alone
     # hc tool and writes only under ~/.flextoolsmcp/parse/ and the run record.
     "flextools_parse_sandbox",
+    # issue #223. Releases this server's own idle parse worker(s); writes
+    # nothing to the project, so it is neither READ_ONLY (it ends a worker
+    # process) nor DESTRUCTIVE.
+    "flextools_parse_release",
 ]
 # Dynamically derive count instead of magic number (eliminates out-of-sync issues)
 EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)

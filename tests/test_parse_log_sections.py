@@ -291,8 +291,11 @@ async def test_a_run_from_an_earlier_server_process_is_readable(record_dir):
     record = _completed_run(record_dir)
     # A fresh runner that has never heard of this run.
     parse_handler.set_runner(ParseRunner(pool=ExplodingPool(), record_dir=record_dir))
-    payload = await _log(record.run_id, "summary")
-    assert payload["content"]["stage"] == "completed"
+    try:
+        payload = await _log(record.run_id, "summary")
+        assert payload["content"]["stage"] == "completed"
+    finally:
+        parse_handler.set_runner(None)
 
 
 # ===========================================================================
@@ -443,8 +446,17 @@ def _four_runs(record_dir):
 
 @pytest.fixture
 def quiet_context(monkeypatch):
-    """Drop the environment-dependent workspace notice from responses."""
+    """Drop environment-dependent extras from golden responses.
+
+    Clears any prior test's session so ``build_response_with_context`` does
+    not append ``session_context`` (and suppresses the workspace notice).
+    """
+    from flextoolsmcp.server.kernel import reset_session
+
     monkeypatch.setenv("FLEXTOOLSMCP_NO_WORKSPACE_CHECK", "1")
+    reset_session()
+    yield
+    reset_session()
 
 
 async def test_every_section_of_the_four_sandbox_runs_is_real_or_typed(record_dir):

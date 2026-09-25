@@ -31,6 +31,15 @@ REL_OWNS = "owns"
 REL_OWNED_BY = "owned_by"
 REL_REFERENCES = "references"
 REL_REFERENCED_BY = "referenced_by"
+REL_REQUIRED_CAST = "required_cast"
+
+# Issue #91: downcast edges from a base interface to a single primary concrete
+# subtype. Wrong-subtype paths are worse than no path; stem MSAs dominate
+# affixal entries, and closed feature values are the common ValueRA target.
+CURATED_PRIMARY_DOWNCASTS: List[tuple[str, str]] = [
+    ("IMoMorphSynAnalysis", "IMoStemMsa"),
+    ("IFsFeatureSpecification", "FsClosedValue"),
+]
 
 
 def entity_var_name(entity_id: str) -> str:
@@ -131,11 +140,22 @@ def extract_relationships(liblcm: Dict) -> Dict[str, Any]:
     }
 
 
+def inject_primary_downcast_edges(graph: Dict[str, List]) -> None:
+    """Add curated required_cast edges so BFS can reach concrete-only members.
+
+    See issue #91 for the policy rationale (primary subtype per base type).
+    """
+    for base_type, concrete_type in CURATED_PRIMARY_DOWNCASTS:
+        graph.setdefault(base_type, []).append(
+            (concrete_type, "cast_to_concrete", REL_REQUIRED_CAST)
+        )
+
+
 def find_path(
     graph: Dict[str, List],
     start: str,
     end: str,
-    max_depth: int = 5
+    max_depth: int = 8
 ) -> Optional[List[Dict]]:
     """Find path between two entity types using BFS.
 
@@ -185,6 +205,7 @@ def precompute_common_paths(graph: Dict[str, List]) -> Dict[str, Any]:
         ("ILexEntry", "IMoForm"),
         ("ILexSense", "ILexExampleSentence"),
         ("ILexSense", "ICmSemanticDomain"),
+        ("ILexSense", "IFsSymFeatVal"),
         ("ILexDb", "ILexEntry"),
 
         # === Lexicon Navigation (Extended) ===
@@ -284,12 +305,13 @@ def build_navigation_graph(liblcm_path: Path) -> Dict[str, Any]:
 
     # Extract relationships
     rel_data = extract_relationships(liblcm)
+    inject_primary_downcast_edges(rel_data["graph"])
 
     # Precompute common paths
     common_paths = precompute_common_paths(rel_data["graph"])
 
     result = {
-        "_schema": "navigation-graph/1.0",
+        "_schema": "navigation-graph/1.1",
         "entities": rel_data["entities"],
         "graph": rel_data["graph"],
         "common_paths": common_paths,

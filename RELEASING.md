@@ -169,6 +169,8 @@ Before tagging any release, verify:
       skipped for a patch release with no assistant-facing changes (tool
       descriptions, preflight gates, or index content).
 - [ ] `CHANGELOG.md` entry written for this version.
+      Unreleased hygiene before the cut: Fixed bullets ascending by issue
+      number; no-issue items under Other.
 - [ ] `VERSION` file bumped to the new version number.
 - [ ] TestPyPI dry-run completed and the uploaded package starts without
       errors (`uvx --index https://test.pypi.org/simple/ flextools-mcp`).

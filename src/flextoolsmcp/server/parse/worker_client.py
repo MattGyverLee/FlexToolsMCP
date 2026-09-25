@@ -909,6 +909,58 @@ class WorkerPool:
         for worker in workers:
             await worker.aclose()
 
+    async def release_if_idle(
+        self,
+        project_name: str,
+        *,
+        role: str,
+        is_busy: Callable[[], bool],
+    ) -> bool:
+        """Check-and-release, atomically, under the SAME lock `get()` uses
+        (#223 QC P1).
+
+        The write gates (`handlers/execution.py`'s
+        `_release_own_worker_or_refuse`, `handlers/parse.py`'s
+        `handle_flextools_parse_release`) used to call `ParseRunner.worker_busy()`
+        and this pool's `release()` as two separate steps, with a real
+        `await` (worker teardown, `aclose()`) between them. A run that
+        registers itself in `ParseRunner._runs` and then calls `get()` for
+        this SAME `(project_name, role)` in that gap would find its worker
+        torn out from under it mid-parse, because nothing re-checked
+        busyness at the moment of the actual pop.
+
+        `is_busy` is called from inside the lock, synchronously (it must
+        not itself `await` -- `ParseRunner.worker_busy` is a plain
+        generator expression over its own `_runs` dict, so it never does).
+        `ParseRunner.start_run` registers a new run's handle in `_runs`
+        *before* anything in it ever awaits (record.py's `RunRecord.create`
+        is synchronous, and the handle is registered before the run's task
+        is even created) and strictly before that run's own task calls
+        `get()` for this same key -- so a caller re-checking `is_busy()`
+        under this lock, right before the pop, cannot observe a worker as
+        idle and then have a concurrent run silently start using it: either
+        the new run's registration already happened (this call correctly
+        sees busy and declines) or it has not (the new run's task has not
+        reached `get()` yet either, since registration always precedes it).
+
+        Returns `False` only when `is_busy()` said yes -- a genuine busy
+        refusal the caller should report. Returns `True` both when a
+        worker was actually released and when there was nothing to
+        release (already gone on its own): either way, it was safe to
+        proceed, which is the only thing callers use the return value for.
+        """
+        async with self._lock:
+            if is_busy():
+                return False
+            keys = [
+                key for key in self._workers
+                if key[0] == project_name and key[1] == role
+            ]
+            workers = [self._workers.pop(key) for key in keys]
+        for worker in workers:
+            await worker.aclose()
+        return True
+
     async def terminate(self, project_name: str, *, role: str) -> bool:
         """Kill one worker's process tree immediately (FR-052).
 

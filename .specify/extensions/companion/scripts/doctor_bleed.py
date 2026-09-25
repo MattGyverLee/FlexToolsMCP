@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from spec_context import resolve_feature_spec_md  # noqa: E402
 from doctor import (  # noqa: E402
     CheckStatus,
     Finding,
@@ -127,26 +128,28 @@ def _artifact_signals(feature_dir: Path, ctx: dict) -> list:
     fast_path = size == "simple"
     signals = []
 
-    spec = read_text(feature_dir / "spec.md")
+    spec_path = resolve_feature_spec_md(feature_dir)
+    spec = read_text(spec_path) if spec_path else ""
     plan = read_text(feature_dir / "plan.md")
     tasks = read_text(feature_dir / "tasks.md")
+    spec_label = spec_path.name if spec_path else "spec.md"
 
     if spec:
-        ids = _task_ids(feature_dir / "spec.md")
+        ids = _task_ids(spec_path)
         if ids:
             # A fast-tracked change keeps its approach inline, but never its task list.
             signals.append({
                 "step": "specify", "did": "tasks",
-                "what": f"{len(ids)} task checkbox(es) in spec.md",
-                "where": "spec.md", "evidence": sorted(set(ids))[:10],
+                "what": f"{len(ids)} task checkbox(es) in {spec_label}",
+                "where": spec_label, "evidence": sorted(set(ids))[:10],
             })
         if not fast_path:
-            signals += _code_signals("specify", "spec.md", spec)
+            signals += _code_signals("specify", spec_label, spec)
             if re.search(r"^##+\s*(Approach|Project Structure|Architecture|Design)\b", spec, re.MULTILINE):
                 signals.append({
                     "step": "specify", "did": "plan",
-                    "what": "a plan-shaped section in spec.md (approach, structure, or design)",
-                    "where": "spec.md", "evidence": [],
+                    "what": f"a plan-shaped section in {spec_label} (approach, structure, or design)",
+                    "where": spec_label, "evidence": [],
                 })
 
     if plan:
@@ -168,8 +171,16 @@ def _artifact_signals(feature_dir: Path, ctx: dict) -> list:
 def _duplication_signals(feature_dir: Path) -> list:
     """Task identifiers living in more than one document — two copies that will diverge."""
     where: dict = {}
-    for name in ("spec.md", "plan.md", "tasks.md"):
-        for tid in set(_task_ids(feature_dir / name)):
+    doc_paths: list[tuple[str, Path]] = []
+    spec_path = resolve_feature_spec_md(feature_dir)
+    if spec_path is not None:
+        doc_paths.append((spec_path.name, spec_path))
+    for name in ("plan.md", "tasks.md"):
+        path = feature_dir / name
+        if path.is_file():
+            doc_paths.append((name, path))
+    for name, path in doc_paths:
+        for tid in set(_task_ids(path)):
             where.setdefault(tid, []).append(name)
     dupes = {tid: docs for tid, docs in where.items() if len(docs) > 1}
     if not dupes:
@@ -237,7 +248,10 @@ def _time_share(ctx: dict) -> dict | None:
 def check_bleed(root, feature_dir: Path, ctx: dict, report=None) -> tuple:
     """Report where one step did another step's work."""
     feature_dir = Path(feature_dir)
-    if not any((feature_dir / n).is_file() for n in ("spec.md", "plan.md", "tasks.md")):
+    has_spec = resolve_feature_spec_md(feature_dir) is not None
+    has_plan = (feature_dir / "plan.md").is_file()
+    has_tasks = (feature_dir / "tasks.md").is_file()
+    if not (has_spec or has_plan or has_tasks):
         return CheckStatus("bleed", "not-applicable"), []
 
     signals = _artifact_signals(feature_dir, ctx)

@@ -794,11 +794,15 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         _log_info(
             f"Auto-refreshing API indexes (triggered by missing {library_name})..."
         )
+        # Explicit codec on both ends (CP5 pattern audit, sweep 4).
         result = subprocess.run(
             cmd,
             cwd=project_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=dict(os.environ, PYTHONIOENCODING="utf-8"),
             timeout=300
         )
 
@@ -1058,6 +1062,23 @@ async def main():
 
     _main_start = _time_module.time()
     _module_init_elapsed = _main_start - _startup_begin
+
+    # Issue #141: load repo-root .env on server startup (refresh.py already
+    # did this for CLI refresh, but MCP entry points did not) and warn on
+    # obsolete keys such as FLEXLIBS2_PATH that look active but are ignored.
+    try:
+        if __package__:
+            from .env_config import emit_obsolete_env_warnings, load_project_env
+            from .file_utils import get_project_root
+        else:
+            from env_config import emit_obsolete_env_warnings, load_project_env
+            from file_utils import get_project_root
+        _env_file = load_project_env(get_project_root())
+        if _env_file is not None:
+            _log_info(f"Loaded configuration from {_env_file}")
+        emit_obsolete_env_warnings(print_fn=_log_warning)
+    except Exception as _env_exc:  # noqa: BLE001 -- env load must never block startup
+        _log_warning(f"Project .env load skipped: {_env_exc}")
 
     # Pre-load indexes
     _log_info("Loading API indexes...")

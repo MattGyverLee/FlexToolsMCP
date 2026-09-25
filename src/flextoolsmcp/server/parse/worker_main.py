@@ -963,9 +963,22 @@ class _RealBackend(_ParseBackend):
         `ParserOperations._CurrentHandle` already discards and rebuilds it
         by comparing cache identity (see `open()`'s docstring) the next
         time anything asks `project.Parser` for a fresh `self._project`.
+
+        `_occurrence` (`_segment_occurrence`, this class) is the same shape
+        of bug as `_wordforms_by_ws`, found in QC after the idle-release
+        change shipped: it is a join built from live LCM objects
+        (`_iter_segments`'s `IStTxtPara`/segment objects) read off THIS
+        cache, and its own docstring says "held for the worker's life" --
+        which stopped being true the moment release-on-idle made
+        "the worker's life" outlive any one open project. Left uncleared,
+        a reopened worker would serve a segment-occurrence join built
+        against a cache that no longer exists, for every FR-043 currency
+        check made against the new one. Cleared here for the same reason
+        `_wordforms_by_ws` is.
         """
         self._grammar_loaded = False
         self._wordforms_by_ws = None
+        self._occurrence = None
         project, self._project = self._project, None
         if project is not None:
             try:
@@ -1463,7 +1476,9 @@ class _RealBackend(_ParseBackend):
         references, resolving a gloss to its owning analysis -- is
         `signals.oracle.segment_occurrence`, the implementation CP4's
         deletion projection reuses. Built lazily on the first stored analysis
-        a batch reads and held for the worker's life.
+        a batch reads and held while the project stays open -- `release()`
+        clears it (#223: a released/reopened worker gets a new cache, and
+        this join is built from objects bound to the old one).
         """
         cached = getattr(self, "_occurrence", None)
         if cached is None:
@@ -2431,20 +2446,43 @@ class ParseWorker:
             meta = self._pending_meta.pop(key, None)
             if meta is None:
                 continue
-            self._emit(
-                {
-                    "type": "error",
-                    "request_id": meta.get("request_id"),
-                    "run_id": run_id,
-                    "error_code": "parse_job_cancelled",
-                    "detail": None,
-                    "message": (
-                        f"Run {run_id} was cancelled before this word was "
-                        f"parsed. Words already completed are unaffected "
-                        f"(FR-032)."
-                    ),
-                }
-            )
+            self._answer_word_cancelled(meta, run_id)
+
+    def _answer_word_cancelled(self, meta: dict[str, Any], run_id: str) -> None:
+        """Resolve ONE word's own per-request future as `parse_job_cancelled`.
+
+        Shared by `_answer_orphaned_requests` (a word never dequeued at
+        all) and `_parse_one`'s two in-flight cancellation checks (#223
+        scenario 6 -- see there for why the second call site is
+        load-bearing, not defensive). Every caller has already popped
+        `meta` from `self._pending_meta`, so this is the ONLY place left
+        that can still answer that word's `request_id`; skipping it here
+        is not "the word is lost, but harmlessly" -- it is a `request_id`
+        this worker accepted and will now never answer, which on the
+        server side is not a missing result but a permanently hung
+        `await` (see `_drain_cancellations`'s docstring for the general
+        case this is the specific one of).
+        """
+        request_id = meta.get("request_id")
+        if request_id is None:
+            # No caller is waiting on a bare request_id of `None` (the
+            # stub default `_parse_one` substitutes when `meta` was
+            # already gone) -- nothing to resolve.
+            return
+        self._emit(
+            {
+                "type": "error",
+                "request_id": request_id,
+                "run_id": run_id,
+                "error_code": "parse_job_cancelled",
+                "detail": None,
+                "message": (
+                    f"Run {run_id} was cancelled before this word was "
+                    f"parsed. Words already completed are unaffected "
+                    f"(FR-032)."
+                ),
+            }
+        )
 
     def _parse_one(self, word: QueuedWord) -> None:
         """Parse one word. THIS IS THE WORD BOUNDARY.
@@ -2452,12 +2490,31 @@ class ParseWorker:
         Cancellation is checked here, before any work, so a run cancelled
         while the previous word was in flight stops without that word being
         lost and without this one starting (FR-032).
+
+        BOTH CHECKS BELOW MUST ANSWER `meta`'S OWN `request_id` (#223
+        scenario 6), not just call `_report_cancelled`. `meta` is popped
+        from `self._pending_meta` at the top of this method, before either
+        check runs -- so a word that reaches either check discovering its
+        run already cancelled is answered by NEITHER of this protocol's
+        other two paths: `dequeue()` only discards a cancelled run's words
+        BEFORE they are handed to `_parse_one` (this word already was), and
+        `_answer_orphaned_requests` only finds requests still IN
+        `_pending_meta` (this word's entry is already gone). Without
+        `_answer_word_cancelled` here, that word's own per-request future
+        is never resolved by anything, and the server's `_execute_run` loop
+        -- which awaits it one word at a time -- hangs on it forever. Found
+        live: `_before_parse` (grammar load / preflight, the longest step)
+        is real wall-clock time during which the reader thread can process
+        an incoming `cancel` and set `is_cancelled` for THIS run, so the
+        SECOND check below is not a defensive extra -- it is the one that
+        actually fires under load.
         """
         meta = self._pending_meta.pop(
             (word.run_id, word.index_in_run), {"request_id": None, "level": "plain"}
         )
 
         if self._queue.is_cancelled(word.run_id):
+            self._answer_word_cancelled(meta, word.run_id)
             self._report_cancelled(word.run_id)
             return
 
@@ -2479,6 +2536,7 @@ class ParseWorker:
         # Without this second check a cancelled run would still parse one
         # word after a multi-second load.
         if self._queue.is_cancelled(word.run_id):
+            self._answer_word_cancelled(meta, word.run_id)
             self._report_cancelled(word.run_id)
             return
 

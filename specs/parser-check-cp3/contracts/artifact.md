@@ -96,6 +96,8 @@ whole state or the other, never a half-written file.
 
 **CP4 additions** (additive, parser-check CP4): `filing`.
 
+**CP5 additions** (additive, parser-check CP5): `spine`, `sandbox`.
+
 Field meanings are in [`../data-model.md`](../data-model.md) sections 3 and 4.
 As shipped (`record.RunMeta`):
 
@@ -324,3 +326,113 @@ CP4 record exactly as it read a CP3 one. And, as ever, nothing here is written
 inside a FieldWorks project folder (CP4 FR-042): the whole record lives under
 `record.get_record_dir()`, and a record directory inside the projects directory
 is refused at filing time.
+
+---
+
+## 11. CP5 additions (additive; parser-check CP5)
+
+Everything above is unchanged. CP5 adds a second spine -- the sandbox, which
+runs the stand-alone `hc` against a configuration exported from a copy of the
+project -- and records its runs in this same artifact. It adds two `meta.json`
+fields, one run subdirectory, and additive keys on the `results.jsonl` line. It
+removes nothing. Field meanings are in
+[`../../parser-check-cp5/data-model.md`](../../parser-check-cp5/data-model.md)
+section 6.
+
+1. **`meta.json` `spine`** -- `"in_process" | "sandbox" | null`
+   (`record.SPINE_IN_PROCESS`, `record.SPINE_SANDBOX`). Default `null`, and
+   `null` is **read as `"in_process"`**, so every pre-CP5 record reads
+   correctly (CP5 FR-037). Readers branch on `RunMeta.effective_spine`, never on
+   the raw value. `flextools_parse_log` decides which sections apply from it.
+2. **`meta.json` `sandbox`** -- the sandbox section (CP5 data-model 6.2).
+   Present only on a sandbox run; `null` on every in-process run. As written by
+   `sandbox/client.py`:
+
+   | Key | Shape |
+   |---|---|
+   | `mode` | `"parse" \| "test"` |
+   | `config_source` | exactly one of `{"kind": "project_cache", "cache_key": str}` or `{"kind": "named_sandbox", "name": str, "edited": bool, "predates_project_grammar": bool}` |
+   | `corpus` | `{"name": str, "assertion_count": int}`; `mode == "test"` only |
+   | `versions` | `{"hc_tool", "fieldworks_hermitcrab", "generate_hc_config", "hcparse"}`, each str \| null -- read from file metadata, never compared to a floor (FR-005) |
+   | `version_skew` | bool, recomputed from `versions` on every update; `true` adds the `hc_engine_version_skew` advisory. A warning, never a refusal |
+   | `hc_source` | `"override" \| "path" \| "dotnet_tools_dir" \| "dotnet_tool_list"` |
+   | `generation` | `{"reused_cache": bool, "cache_key": str, "load_error_count": int, "load_errors": [...]}`; `null` until the config is resolved |
+   | `copy` | `{"bytes": int, "cleanup": "deleted" \| "failed" \| "not_made", "path_if_failed": str \| null}` |
+   | `hc` | the run outcome folded from the script's `run.json` (FR-023): `exit_code`, `timed_out`, `killed`, `in_flight_index`, `in_flight_word`, `duration_ms`, `counters` (`"ok" \| "unavailable_timeout" \| "unavailable"`), `hc_counters`, `stdout_bom`, `script_exit_code`, `watchdog_fired`, `load_error` (hc's `Load Error:` line, or `null`) |
+   | `truncated_by_limit` | bool |
+   | `advisories` | list of code strings (`sandbox_predates_project_grammar`, `hc_engine_version_skew`, `grammar_load_errors`), a union -- a code is never removed once added |
+
+   Updates **merge**: nested objects merge key by key, `advisories` is a union,
+   and anything else is replaced. On a sandbox run the existing fields are also
+   filled: `scope_fingerprint` with `scope_kind: "words"`, `engine: "HC"` and
+   `vernacular_ws: ""` (the vernacular writing system is not known without
+   opening the project); `project_state.staleness` on the shared-mode verdicts
+   (R-13); and `counters` / `counter_divergences` from hc's `stats -p` or
+   `stats -t` line.
+3. **`<run_id>/sandbox/`** -- the sandbox run's own files, a closed set
+   (`record.SANDBOX_FILES`); `RunRecord.sandbox_path` refuses any other name,
+   and every path goes through `_child` (no absolute path, no `..`). The
+   directory is created on first write, never up front: **an in-process run
+   has no `sandbox/` at all**, so section 7's first paragraph still holds for
+   it.
+
+   | File | Written by | Encoding and content |
+   |---|---|---|
+   | `generate-config.log` | the client | UTF-8. The generator's stdout and stderr verbatim (copied from the cache entry). On a warm run it is prefixed by one line naming the reused entry; on a named-sandbox run, by one line saying no generation ran |
+   | `hc-script.txt` | the script | UTF-8, **no BOM**. One command per sent word, then `stats -p` (parse) or `stats -t` (test). Never `tracing on`, `-o` or `-c` |
+   | `dispatch.json` | the script, before hc starts | UTF-8. Per-word `{index, word, sent, line, reason, flags}` |
+   | `hc-stdout.txt` | the script | UTF-8, no BOM, **decoded from hc's UTF-16LE** stdout (a BOM is stripped and recorded as `hc.stdout_bom`), flushed per line so a killed run keeps every line it printed |
+   | `hc-stderr.txt` | the script | UTF-8 |
+   | `hc-output.txt` | the client | UTF-8. `hc-stdout.txt` minus the load banner |
+   | `run.json` | the script, in `finally` | UTF-8. The hand-off Python folds into `meta.sandbox`; console prose is never scraped |
+
+   `flextools_parse_log` serves them as `config_generation`
+   (`generate-config.log`, plus the itemised load errors), `hc_stdout` and
+   `hc_output`. An empty file is reported as empty, never as a missing section.
+4. **`results.jsonl`, the sandbox line** (CP5 data-model 6.4;
+   `classify.word_result_to_line`). CP3's line with additive keys inside
+   `parse`, in this order: `parsed`, `analysis_count`, `outcome`, `analyses`,
+   `position`, `flags`, `parse_time_ms`. `wordform` is the word **as sent**.
+   - `outcome` is a closed enum (FR-018): `parsed`, `not_parsed`,
+     `invalid_segment` (with `position` set), `not_expressible` (never sent),
+     `error_no_output` (the word in flight at a crash or timeout),
+     `not_reached` (never processed because of a timeout, crash or cancel).
+     `parsed` is true only for `parsed`.
+   - `analyses` is a list **only for `parsed` and `not_parsed`**. For every
+     other outcome it is `null`, with `analysis_count: 0` -- CP3's
+     `HostCounters` reads `analyses: []` as a zero-parse word, which a word hc
+     produced nothing for is not.
+   - Each analysis is `{signature, rendered_morphs, morphs, readable, raw}`.
+     `signature` is always `null` (hc has no LCM identifiers).
+     `morphs` is `[{"form", "gloss"}]`, read from hc's `Morphs:` / `Gloss:`
+     columns. An empty gloss is `"?"`: real hc substitutes it (`MorphInfo.cs:25-26`,
+     CP5 research F-6) and `MorphInfo.Equals` compares the substituted gloss
+     (F-7), so a seeded expectation `form:?` round-trips exactly.
+     An analysis that could not be read has `readable: false`, keeps
+     hc's raw lines in `raw`, and has `morphs` and `rendered_morphs` `null`
+     (FR-019). `raw` is otherwise `null`.
+   - `flags` is a list of strings, e.g. `leading_dash_unverified` (R-09).
+   - `parse_time_ms` is hc's `Parse time: <n>ms` when it printed one, else
+     `null` (none for an invalid segment).
+   - A sandbox line carries no `human_analyses` and no `trace_path`: CP5 has no
+     trace and never reads the project's stored analyses.
+5. **`results.jsonl`, the assertion line** (test mode; CP5 data-model 6.5;
+   `classify.assertion_to_line`). The sandbox line plus an `assertion` object,
+   in this order: `classification` (`pass | regression | new_ambiguity |
+   changed | error`), `label` (`"now_parses"` only for an expected-no-parse
+   assertion that now parses, else `null`), `missing` (expected parses hc did
+   not produce, each a `[{"form", "gloss"}]` list), `unexpected` (actual parses
+   nothing expected, same shape; `null` for one that could not be read), and
+   `error_reason` (`invalid_segment`, `not_expressible`, `error_no_output`,
+   `not_reached` or `timeout`; `null` unless `classification` is `error`).
+   On a test line `parse.analyses` holds the **unmatched actual** parses only --
+   the ones hc prints on a failure -- so it is `[]` on a pass, and
+   `analysis_count` is hc's actual parse count. An `error` line's `parse`
+   carries the error outcome with `analyses: null`.
+
+Rule 1 of section 9 covers all of it: a reader that ignores unknown keys reads
+a CP5 record -- either spine -- exactly as it read a CP3 or CP4 one, and a
+reader that does not know `spine` sees an in-process run, which is what a
+pre-CP5 record is. Rule 2 applies to the sandbox line as to any other. And
+nothing here is written inside a FieldWorks project folder (CP5 FR-042, FR-043):
+the record, the cache, the sandboxes and the project copy all live outside it.

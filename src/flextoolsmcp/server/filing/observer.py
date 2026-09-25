@@ -30,12 +30,15 @@ Approvals recorded on analyses in use in a text are counted under
 from __future__ import annotations
 
 import contextlib
+import logging
 from typing import Any, Dict, Optional
 
 from . import claims, wording
 from .classify import add_counts, empty_counts
 
 __all__ = ["FilingObserver"]
+
+_log = logging.getLogger(__name__)
 
 
 class FilingObserver:
@@ -154,7 +157,14 @@ class FilingObserver:
         A worker something is running on is not killed -- a single word a
         user is waiting for is not lost to tidy a cache -- but it is marked
         stale, and the next filing preflight read recycles it first.
+
+        Also invalidates the project's sandbox config cache (CP5 FR-026): the
+        exported HermitCrab config predates the filing. This happens on every
+        terminal state -- a failed or cancelled run may have filed some words
+        -- and whether or not the read worker is recycled. The import is lazy
+        and any failure is logged, never propagated.
         """
+        _invalidate_sandbox_cache(self.project_name)
         if not self.recycle_read_worker:
             return
         from ..parse.worker_client import SHARED_ROLE
@@ -164,3 +174,16 @@ class FilingObserver:
             return
         with contextlib.suppress(Exception):
             await runner.release_worker(self.project_name, role=SHARED_ROLE)
+
+
+def _invalidate_sandbox_cache(project_name: str) -> None:
+    """Invalidate `project_name`'s sandbox cache; log, never raise (FR-026)."""
+    try:
+        from ..sandbox.cache import invalidate
+
+        invalidate(project_name)
+    except Exception as exc:  # noqa: BLE001 -- a cache must never break filing
+        _log.warning(
+            "Could not invalidate the sandbox cache for %r after filing: %s",
+            project_name, exc,
+        )

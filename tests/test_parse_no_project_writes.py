@@ -51,10 +51,13 @@ from flextoolsmcp.server.parse.stages import RunStage, can_transition  # noqa: E
 
 #: Every module this checkpoint's code path runs through: the parse package
 #: (runner, worker, scope, record, measurement, comparison), the signals
-#: package (the report), and the parse tool handlers.
+#: package (the report), and the parse tool handlers. CP5 (T055, FR-043)
+#: adds the sandbox spine's package, `server/sandbox/`: it never opens the
+#: live project at all, so it must hold to the same no-write rules.
 CP3_MODULES = sorted(
     list((SRC / "parse").glob("*.py"))
     + list((SRC / "signals").glob("*.py"))
+    + list((SRC / "sandbox").glob("*.py"))
     + [SRC / "handlers" / "parse.py"]
 )
 
@@ -83,6 +86,9 @@ _READ_ONLY_MESSAGE_TYPES = {
     # sent only to the filing worker, from server/filing/client.py, never
     # from this module.
     "agent_probe", "filing_gate", "filing_preview",
+    # #235: runner closes a server-paced batch; worker only drops run_id from
+    # `_open_runs` so `_release_if_idle` may run. No project write.
+    "run_end",
 }
 
 
@@ -105,6 +111,9 @@ def test_the_module_list_covers_what_cp3_ships():
                      "diff.py", "record.py", "report.py", "oracle.py",
                      "projections.py"):
         assert expected in names, f"{expected} is not under the no-write scan"
+    sandbox = {p.name for p in CP3_MODULES if p.parent.name == "sandbox"}
+    for expected in ("cache.py", "engine.py", "paths.py", "script.py", "workdir.py"):
+        assert expected in sandbox, f"sandbox/{expected} is not under the no-write scan"
 
 
 def test_every_project_open_is_read_only():

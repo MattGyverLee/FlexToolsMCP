@@ -55,6 +55,7 @@ from flextoolsmcp.server.parse.runner import (  # noqa: E402
     RunFailure,
 )
 from flextoolsmcp.server.parse.stages import RunStage  # noqa: E402
+from flextoolsmcp.server.parse.worker_client import SHARED_ROLE  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +132,7 @@ class FakePool:
     def __init__(self, worker):
         self.worker = worker
         self.closed = False
+        self.release_if_idle_calls = []
 
     async def get(self, project_name):
         return self.worker
@@ -140,6 +142,17 @@ class FakePool:
 
     async def aclose(self):
         self.closed = True
+
+    async def release_if_idle(self, project_name, *, role, is_busy):
+        """#223 QC P1: `ParseRunner.release_worker_if_idle` must hand this
+        its OWN `worker_busy` as the predicate, not decide busyness itself
+        -- the atomicity guarantee lives in the real `WorkerPool`
+        (`tests/test_parse_worker_lifetime.py`); this double only proves
+        the wiring calls through with the right predicate."""
+        self.release_if_idle_calls.append((project_name, role))
+        if is_busy():
+            return False
+        return True
 
 
 @pytest.fixture
@@ -738,3 +751,39 @@ async def test_every_run_enters_through_one_item_per_wordform(record_dir):
     source = inspect.getsource(runner_module.ParseRunner._execute_run)
     assert "enqueue_run(" in source
     assert "dequeue()" in source
+
+
+# ---------------------------------------------------------------------------
+# release_worker_if_idle -- #223 QC P1's atomic check-and-release, wired
+# ---------------------------------------------------------------------------
+
+
+async def test_release_worker_if_idle_delegates_to_the_pool_with_its_own_busy_predicate(
+    record_dir,
+):
+    """`ParseRunner.release_worker_if_idle` must not decide busyness itself
+    (that would reintroduce the check/act gap) -- it hands the pool ITS
+    OWN `worker_busy(project_name, role=role)` as the predicate, so the
+    pool can evaluate it atomically under its own lock at the moment of
+    the pop (`WorkerPool.release_if_idle`, proven directly in
+    `tests/test_parse_worker_lifetime.py`)."""
+    worker = FakeWorker()
+    runner = make_runner(worker, record_dir, grace_window=30.0)
+    pool = runner._pool
+
+    released = await runner.release_worker_if_idle("P", role=SHARED_ROLE)
+
+    assert released is True, "nothing running on P, so idle"
+    assert pool.release_if_idle_calls == [("P", SHARED_ROLE)]
+
+
+async def test_release_worker_if_idle_reports_false_while_a_run_is_live(record_dir):
+    worker = FakeWorker(delay=0.2)
+    runner = make_runner(worker, record_dir, grace_window=0.01)
+    handle = await runner.start_run(project_name="P", wordforms=["a"])
+    assert not handle.is_terminal, "precondition: still running"
+
+    released = await runner.release_worker_if_idle("P", role=SHARED_ROLE)
+
+    assert released is False, "worker_busy() must refuse release of a live run"
+    await asyncio.wait_for(handle.done.wait(), timeout=5)

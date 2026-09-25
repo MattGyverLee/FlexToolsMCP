@@ -929,3 +929,17 @@ def get_pattern_tracker() -> Optional[PatternTracker]:
     """
     global pattern_tracker
     return pattern_tracker
+
+
+def _register_kernel_module_aliases() -> None:
+    """Collapse dual import spellings for kernel and its SessionState module."""
+    from ._dual_path import alias_dual_path_modules
+
+    alias_dual_path_modules(
+        ("flextoolsmcp.server.kernel", "server.kernel"),
+        ("flextoolsmcp.server.session", "server.session"),
+        ("flextoolsmcp.server._dual_path", "server._dual_path"),
+    )
+
+
+_register_kernel_module_aliases()

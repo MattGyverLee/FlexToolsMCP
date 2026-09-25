@@ -39,8 +39,13 @@ those was an assumption in the plan before it was an observation here.
     Scenario 6  interleave, cooperative cancel, and survival of a killed
                 worker with 0 results lost
     FR-042/043  at most ONE held grammar, released when another project's
-                is needed, currency confirmed before every reuse, and an
-                explicit reload performed as reset-then-update
+                is needed, currency confirmed before every reuse WITHIN one
+                still-open project (amended 2026-09-24, issue #223: the
+                project -- and the grammar with it -- is now released as
+                soon as the worker goes idle between calls, so a reload
+                across separate calls is expected, not a currency-check
+                failure), and an explicit reload performed as reset-then-
+                update
     Resolver    all three resolution outcomes against a REAL lexicon --
                 `ok`, `ambiguous` and `no_msa` -- on a project that has the
                 data for them
@@ -344,42 +349,114 @@ async def test_scenario_1_a_word_parses_inline_against_a_held_grammar(tmp_path):
 
 
 async def test_scenario_1_a_second_call_does_not_reload_the_grammar(tmp_path):
-    """The grammar is held: only the FIRST run may enter `loading_grammar`.
+    """The grammar is held for as long as the project stays open: within one
+    submission that never lets the worker's queue go idle (a batch, or an
+    interleave -- data-model.md section 1), only the FIRST word may enter
+    `loading_grammar`.
 
-    This is the observable behind FR-042's held grammar. Asserted on the
-    stage path rather than on elapsed time, because a fast second call could
-    also mean a grammar that reloaded quickly, and those are different
-    claims.
+    AMENDED (2026-09-24, issue #223, `specs/parser-check-cp2/spec.md`'s
+    FR-042/043 amendment): "held between calls" used to mean "for the
+    worker process's whole idle-timeout life", so any two SEPARATE
+    `flextools_try_word` calls, however close together, exercised the same
+    held grammar. #223 changed that: the worker now drops the project (and
+    its `.fwdata` lock) the instant its queue goes idle
+    (`ParseWorker._release_if_idle`), so two separate tool calls -- each
+    its own run, each fully drained before the caller's `await` returns --
+    now ALWAYS see the queue empty in between and ALWAYS reload. What is
+    still guaranteed, and still worth a live test, is that the grammar is
+    held **for the duration the project stays open**: many words submitted
+    as ONE run (this test) never observe an idle gap between them, so they
+    share the one load the first of them paid for. The genuinely-separate-
+    call case (which now DOES reload, and DOES observe the lock dropped in
+    between) is `test_a_call_after_an_idle_release_reloads_the_grammar_and_the_lock_is_released_between_calls`,
+    below.
     """
     async with live_runner(tmp_path) as (runner, recorder):
-        first = await warm(runner)
+        probe = await try_word(
+            project_name=HC_PROJECT, word=PARSING_WORD, level="plain"
+        )
+        skip_unless_live(probe, HC_PROJECT)
+
+        # THE WHOLE POINT: one run, three words, submitted together --
+        # `queue.enqueue_run` enqueues all three before the worker drains
+        # any of them, so the queue never empties between them and
+        # `_release_if_idle` never fires mid-run.
+        handle = await runner.start_run(
+            project_name=HC_PROJECT,
+            wordforms=[PARSING_WORD, PARSING_WORD, PARSING_WORD],
+        )
+        if not handle.is_terminal:
+            await asyncio.wait_for(handle.done.wait(), timeout=30)
+
+        assert handle.stage is RunStage.COMPLETED, handle.stage
+        assert handle.words_completed == 3, handle.words_completed
+
+        stages = recorder.for_run(handle.run_id)
+        load_count = stages.count(RunStage.LOADING_GRAMMAR.value)
+        assert load_count == 1, (
+            f"a run with no idle gap between its words must pay for exactly "
+            f"one grammar load, at its own start -- {load_count} were "
+            f"reported ({stages}); FR-042's held grammar is only guaranteed "
+            f"while the project stays open, and if it can be lost WITHIN "
+            f"one still-running batch/interleave, that guarantee is broken, "
+            f"not just narrowed"
+        )
+        assert RunStage.PARSING.value in stages, (
+            f"the run never reached parsing: {stages}"
+        )
+
+
+async def test_a_call_after_an_idle_release_reloads_the_grammar_and_the_lock_is_released_between_calls(
+    tmp_path,
+):
+    """The other half of the FR-042/043 amendment (issue #223): once the
+    worker's queue actually goes idle between two SEPARATE calls, the
+    project -- and its `.fwdata.lock` -- is dropped, and the next call pays
+    for a real reopen and a real grammar reload. This is the accepted cost
+    of never holding the lock while idle
+    (`specs/parser-check-cp2/evidence/issue223-live.md`: ~3.3s cold vs.
+    ~0.8s post-idle-release, on `IndonesianHC-Complete`), asserted here as a
+    live behaviour rather than left to the earlier "must never reload"
+    test, which would otherwise still pass for the wrong reason if release
+    silently stopped happening.
+    """
+    from flextoolsmcp.server.project_discovery import check_project_locked
+
+    async with live_runner(tmp_path) as (runner, recorder):
+        first = await try_word(
+            project_name=HC_PROJECT, word=PARSING_WORD, level="plain"
+        )
         skip_unless_live(first, HC_PROJECT)
+        if first.get("run_id"):
+            handle = runner.get(first["run_id"])
+            if handle is not None and not handle.is_terminal:
+                await asyncio.wait_for(handle.done.wait(), timeout=30)
+
+        # The queue is idle now (the call above has fully returned, and
+        # nothing else is in flight) -- give the worker's own poll loop a
+        # moment to notice and release, the same margin the live probe in
+        # the evidence artifact used.
+        await asyncio.sleep(1.0)
+
+        assert check_project_locked(HC_PROJECT) is None, (
+            "the project's fwdata lock is supposed to be dropped once the "
+            "worker's queue goes idle between calls (#223), not held out to "
+            "the process's own idle_timeout"
+        )
 
         second = await try_word(
             project_name=HC_PROJECT, word=PARSING_WORD, level="plain"
         )
-        third = await try_word(
-            project_name=HC_PROJECT, word=PARSING_WORD, level="plain"
-        )
-
         assert second["status"] == "ok", second
-        assert third["status"] == "ok", third
 
-        for label, payload in (("second", second), ("third", third)):
-            stages = recorder.for_run(payload["run_id"])
-            assert RunStage.LOADING_GRAMMAR.value not in stages, (
-                f"the {label} call re-entered loading_grammar ({stages}); the "
-                f"grammar is supposed to be held between calls (FR-042)"
-            )
-            assert RunStage.PARSING.value in stages, (
-                f"the {label} call never reached parsing: {stages}"
-            )
-
-        cold = recorder.for_run(first["run_id"])
-        assert RunStage.LOADING_GRAMMAR.value in cold, (
-            "the FIRST call must show the load it paid for -- if it does not, "
-            "the stage is never reported at all and the assertion above is "
-            f"vacuous: {cold}"
+        stages = recorder.for_run(second["run_id"])
+        assert RunStage.LOADING_GRAMMAR.value in stages, (
+            f"a call after an idle release is expected to reload the "
+            f"grammar (the amended FR-042/043, issue #223) -- it did not: "
+            f"{stages}"
+        )
+        assert RunStage.PARSING.value in stages, (
+            f"the reloaded call never reached parsing: {stages}"
         )
 
 
@@ -1146,36 +1223,58 @@ async def test_fr042_at_most_one_grammar_is_held_at_a_time(tmp_path):
 
 
 async def test_fr043_currency_is_confirmed_before_every_reuse(tmp_path):
-    """`IsUpToDate()` is ASKED on every reuse, never assumed.
+    """`IsUpToDate()` is ASKED on every reuse, never assumed -- for as long
+    as the project stays open, i.e. within one run that never lets the
+    worker's queue go idle.
+
+    AMENDED (2026-09-24, issue #223, `specs/parser-check-cp2/spec.md`'s
+    FR-042/043 amendment). Before #223's scope change, "every reuse" meant
+    every SEPARATE call within the worker's whole idle-timeout life, since
+    the project stayed open that whole time. It no longer does: the worker
+    now drops the project the instant its queue empties
+    (`ParseWorker._release_if_idle`), so a currency check can only be
+    observed across reuses that share one still-open project -- multiple
+    words in ONE run, as below. Two genuinely separate calls now see the
+    queue go idle in between and reload rather than reuse (expected and
+    covered by
+    `test_a_call_after_an_idle_release_reloads_the_grammar_and_the_lock_is_released_between_calls`),
+    which is a reload, not a currency-check failure: there is no held
+    grammar left once the project has closed to ask `IsUpToDate()` about.
 
     Observed through the stage reporting, which is the only read-only
     observable available: the worker asks `IsUpToDate()` to decide whether
     the next parse pays for a load, and reports `loading_grammar` only when
-    it does. A second call reporting no load is therefore evidence the
-    question was asked and answered -- an implementation that skipped the
-    question could not distinguish the two cases at all.
+    it does. A later word in the same run reporting no load is therefore
+    evidence the question was asked and answered -- an implementation that
+    skipped the question could not distinguish the two cases at all.
 
     The facade performs any reload itself as part of the parse; CP2b
     deliberately does not add a second currency path (spec.md Delta 2).
     """
     async with live_runner(tmp_path) as (runner, recorder):
-        first = await warm(runner)
-        skip_unless_live(first, HC_PROJECT)
+        probe = await try_word(
+            project_name=HC_PROJECT, word=PARSING_WORD, level="plain"
+        )
+        skip_unless_live(probe, HC_PROJECT)
 
-        for _ in range(3):
-            payload = await try_word(
-                project_name=HC_PROJECT, word=PARSING_WORD, level="plain"
-            )
-            assert payload["status"] == "ok", payload
-            stages = recorder.for_run(payload["run_id"])
-            assert RunStage.LOADING_GRAMMAR.value not in stages, (
-                f"an unchanged model triggered a reload: {stages}"
-            )
+        # One run, four words, submitted together -- never an idle gap
+        # between them, so the SAME open project answers all four reuses.
+        handle = await runner.start_run(
+            project_name=HC_PROJECT,
+            wordforms=[PARSING_WORD, PARSING_WORD, PARSING_WORD, PARSING_WORD],
+        )
+        if not handle.is_terminal:
+            await asyncio.wait_for(handle.done.wait(), timeout=30)
 
-        cold = recorder.for_run(first["run_id"])
-        assert RunStage.LOADING_GRAMMAR.value in cold, (
-            "the cold run reported no load either, so the assertions above "
-            "are vacuous -- the stage is never reported at all"
+        assert handle.stage is RunStage.COMPLETED, handle.stage
+        assert handle.words_completed == 4, handle.words_completed
+
+        stages = recorder.for_run(handle.run_id)
+        load_count = stages.count(RunStage.LOADING_GRAMMAR.value)
+        assert load_count == 1, (
+            f"an unchanged model, reused within one still-open run, "
+            f"triggered {load_count} reloads instead of the one paid for "
+            f"at the run's own start: {stages}"
         )
 
 

@@ -252,3 +252,36 @@ def test_release_if_idle_is_a_no_op_when_already_closed():
     worker._release_if_idle()
 
     assert backend.release_count == 1, "no second release() call when already closed"
+
+
+def test_real_backend_release_clears_the_segment_occurrence_join_too():
+    """QC P0 (cycle 2): `_RealBackend._segment_occurrence` builds
+    `self._occurrence`, a FR-043 join over live LCM segment/analysis
+    objects read off THIS cache -- the same shape of bug as
+    `_wordforms_by_ws` (already covered above), just missed the first
+    time: `release()` dropped `_wordforms_by_ws` but left `_occurrence`
+    behind, so a worker that released-and-reopened would keep answering
+    FR-043 currency checks from a join built against a cache that no
+    longer exists. `release()` must clear it exactly like the others.
+
+    Driven against `_RealBackend` directly (no live FieldWorks needed):
+    the project handle is a bare stand-in whose `CloseProject()` is a
+    no-op, since `release()` only needs `self._project` to be truthy to
+    exercise its cache-clearing side effects.
+    """
+    from flextoolsmcp.server.parse.worker_main import _RealBackend
+
+    backend = _RealBackend("Occurrence223 Project")
+    backend._project = type("P", (), {"CloseProject": lambda self: None})()
+    backend._occurrence = "sentinel-join-built-from-the-old-cache"
+    backend._wordforms_by_ws = {"en": {"kata": object()}}
+
+    backend.release()
+
+    assert backend._project is None
+    assert backend._occurrence is None, (
+        "a segment-occurrence join built from the old cache must not "
+        "survive release(); the next open() gets a new cache and must "
+        "rebuild it (#223 QC P0)"
+    )
+    assert backend._wordforms_by_ws is None

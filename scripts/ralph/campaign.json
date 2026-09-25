@@ -62,7 +62,7 @@
       "scope": "Hardened hcparse.ps1 (H1/H4, three lifecycles), flextools_parse_sandbox, corpus assertions via `test` with regression / new-ambiguity classification.",
       "scope_refs": [
         "specs/parser-check/SPEC.md section 13 (sandbox spine), H1/H4",
-        "hcparse.ps1 at the repo root"
+        "src/flextoolsmcp/scripts/hcparse.ps1 (the packaged script; the root-level contributed hcparse.ps1 was retired in CP5 T057, its history stays in git)"
       ],
       "extra_dirs": []
     },

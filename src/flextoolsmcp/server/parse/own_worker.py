@@ -38,6 +38,31 @@ from typing import Any, Optional
 HELD_BY_OWN_READ_WORKER = "held_by_mcp_read_worker"
 
 
+def busy_own_worker_run_note(run_ids: list) -> str:
+    """` (run <id>)` for a refusal message, or `""` if no run id is known.
+
+    Shared so the two busy-own-worker refusals (`handlers/execution.py`'s
+    `_release_own_worker_or_refuse`, `handlers/parse.py`'s
+    `handle_flextools_parse_release`) format the run reference identically
+    (#223 QC P2 -- the two messages had drifted into near-duplicates).
+    """
+    return f" (run {run_ids[0]})" if run_ids else ""
+
+
+def busy_own_worker_guidance(next_action: str) -> str:
+    """"Wait or cancel, then <next_action>." -- the remedy text every
+    busy-own-worker refusal gives (#223 QC P2), parameterized only by what
+    the caller should do once the run is out of the way (resubmit a write,
+    retry `flextools_parse_release`, ...). Used for both `guidance` and
+    `remedy` at each call site: the two fields have always carried the same
+    text here, so there is nothing role-specific for them to diverge on.
+    """
+    return (
+        "Wait for the run to finish (flextools_parse_status), or cancel "
+        f"it with flextools_parse_cancel(run_id=...), then {next_action}."
+    )
+
+
 def own_worker_role(runner: Optional[Any], project_name: str, decision: Any) -> Optional[str]:
     """Which of this project's own workers (any role) holds the probed lock?
 

@@ -2131,10 +2131,9 @@ async def _handle_validate_only(
             project_lock["probed"] = _access.probed
             project_lock["verdict"] = _access.verdict
             if _access.probed:
-                project_lock["blocking"] = _access.verdict in (
-                    "open_exclusive",
-                    "held_by_other",
-                )
+                # The one refusing set (pattern audit sweep 3): a copied
+                # literal here could drift from the write ladder's.
+                project_lock["blocking"] = _access.verdict in write_ladder.REFUSING_VERDICTS
             else:
                 # Issue #118: projects directory unresolvable -- never assert
                 # blocking:false; LCM remains the backstop at open time.
@@ -2717,6 +2716,27 @@ def _validate_patched_code(
     return True
 
 
+def _invalidate_sandbox_cache_after_write(project_name: str) -> None:
+    """Invalidate the project's sandbox config cache (CP5 FR-026).
+
+    The import is lazy (this module imports nothing from the sandbox at load
+    time) and every failure -- an import error included -- is logged, never
+    raised: a cache must never break run_module.
+    """
+    try:
+        from ..sandbox.cache import invalidate
+
+        invalidate(project_name)
+    except Exception as exc:  # noqa: BLE001 -- must never break run_module
+        op_logger = get_operations_logger()
+        if op_logger is not None:
+            with contextlib.suppress(Exception):
+                op_logger.warning(
+                    f"[SANDBOX] could not invalidate the config cache for "
+                    f"'{project_name}' after a write run: {exc}"
+                )
+
+
 async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: Optional[str] = None):
     """Own idle parse worker -> release it and re-probe; own busy one ->
     refuse, naming it plainly. Neither ours -> unchanged (issue #223).
@@ -2756,11 +2776,29 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
       * own worker, idle   -> `(None, new_decision)`, released and
         re-probed. Any holder remaining in `new_decision` is genuine.
       * not our worker     -> `(None, decision)`, unchanged.
+
+    THE CHECK AND THE RELEASE ARE NOW ONE ATOMIC CALL (#223 QC P1): a
+    separate `worker_busy()` check followed by a separate `release_worker()`
+    left a real `await` gap (worker teardown) between "found idle" and
+    "popped from the pool", long enough for a run that had just registered
+    itself to grab this same worker and have it torn down mid-parse.
+    `release_worker_if_idle` re-checks busyness under the pool's own lock
+    at the moment of the pop, closing that gap (see
+    `WorkerPool.release_if_idle`'s docstring for why registration order
+    makes that sufficient rather than just narrower).
     """
     try:
-        from ..parse.own_worker import own_worker_role
+        from ..parse.own_worker import (
+            own_worker_role,
+            busy_own_worker_guidance,
+            busy_own_worker_run_note,
+        )
     except (ImportError, ValueError):
-        from server.parse.own_worker import own_worker_role
+        from server.parse.own_worker import (
+            own_worker_role,
+            busy_own_worker_guidance,
+            busy_own_worker_run_note,
+        )
     try:
         from .parse import peek_runner
     except (ImportError, ValueError):
@@ -2774,42 +2812,33 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     if role is None:
         return None, decision
 
-    if runner.worker_busy(project_name, role=role):
-        run_ids = runner.active_run_ids(project_name, role=role)
-        run_note = f" (run {run_ids[0]})" if run_ids else ""
-        refusal = error_response(
-            "project_locked",
-            f"Project '{project_name}' is held by this server's own parse "
-            f"worker, which is busy running a parse{run_note}. This is NOT "
-            "a foreign process -- do not end it. Wait for the run to "
-            "finish, or cancel it, then resubmit the write.",
-            guidance=(
-                "Wait for the run to finish (flextools_parse_status), or "
-                "cancel it with flextools_parse_cancel(run_id=...), then "
-                "resubmit the write."
-            ),
-            remedy=(
-                "Wait for the run to finish (flextools_parse_status), or "
-                "cancel it with flextools_parse_cancel(run_id=...), then "
-                "resubmit the write."
-            ),
-            lock_file_path=decision.refusal.get("lock_file_path"),
-            verdict=decision.verdict,
-            sharing_enabled=decision.refusal.get("sharing_enabled"),
-            holder_pid=decision.refusal.get("holder_pid"),
-            holder_process="this server's own parse worker",
-            op_id=op_id,
-        )
-        return refusal, decision
+    if await runner.release_worker_if_idle(project_name, role=role):
+        try:
+            return None, write_ladder.probe_write_access(project_name)
+        except Exception:
+            # A re-probe failure here should read as "still refused with
+            # the original detail", not crash the write gate: fall back
+            # to the decision as it stood before the release attempt.
+            return None, decision
 
-    await runner.release_worker(project_name, role=role)
-    try:
-        return None, write_ladder.probe_write_access(project_name)
-    except Exception:
-        # A re-probe failure here should read as "still refused with the
-        # original detail", not crash the write gate: fall back to the
-        # decision as it stood before the release attempt.
-        return None, decision
+    run_ids = runner.active_run_ids(project_name, role=role)
+    run_note = busy_own_worker_run_note(run_ids)
+    guidance = busy_own_worker_guidance("resubmit the write")
+    refusal = error_response(
+        "project_locked",
+        f"Project '{project_name}' is held by this server's own parse "
+        f"worker, which is busy running a parse{run_note}. This is NOT "
+        f"a foreign process -- do not end it. {guidance}",
+        guidance=guidance,
+        remedy=guidance,
+        lock_file_path=decision.refusal.get("lock_file_path"),
+        verdict=decision.verdict,
+        sharing_enabled=decision.refusal.get("sharing_enabled"),
+        holder_pid=decision.refusal.get("holder_pid"),
+        holder_process="this server's own parse worker",
+        op_id=op_id,
+    )
+    return refusal, decision
 
 
 async def handle_run_module(args: dict) -> list[TextContent]:
@@ -4869,6 +4898,17 @@ MODULE_CODE = {code}
             execution_result["shared_mode"] = _shared_mode
         if _shared_mode_read_back is not None:
             execution_result["shared_mode_read_back"] = _shared_mode_read_back
+
+        # CP5 FR-026: a write-enabled run that completed without error may have
+        # changed the grammar, so the project's sandbox config cache is
+        # invalidated. Trigger = write_enabled AND an error-free completion
+        # (success True, no error). A read-only run never invalidates. A run
+        # that errored (or timed out, which returned above) does not either:
+        # the cache key includes the .fwdata mtime, so any partial write that
+        # was saved still misses the cache on the next lookup. The helper is
+        # lazy and guarded -- a sandbox failure can never break run_module.
+        if write_enabled and execution_result.get("success") is True                 and not execution_result.get("error"):
+            _invalidate_sandbox_cache_after_write(project_name)
 
         # Include write certification result (issue #131: surface guarded hits too)
         execution_result["write_certification"] = build_write_certification_payload(

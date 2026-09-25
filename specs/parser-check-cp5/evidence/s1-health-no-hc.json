@@ -1,0 +1,134 @@
+{
+  "scenario": "S1",
+  "project": "IndonesianHC-Complete",
+  "versions": {
+    "hc_tool": null,
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "hc_source": null,
+    "hc_path": null
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\IndonesianHC-Complete",
+      "before": {
+        "sha256": "08ad2b1c017613607f1b5fe49ede8091f6b0ae03f6932ea1f2075dd68526f4f3",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": [
+          "IndonesianHC-Complete.fwdata.lock"
+        ]
+      },
+      "after": {
+        "sha256": "08ad2b1c017613607f1b5fe49ede8091f6b0ae03f6932ea1f2075dd68526f4f3",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": [
+          "IndonesianHC-Complete.fwdata.lock"
+        ]
+      }
+    }
+  ],
+  "responses": {
+    "health_parser": {
+      "read": {
+        "status": "ready",
+        "reason": null
+      },
+      "write": {
+        "status": "ready",
+        "reason": {
+          "signal": null,
+          "expected_path": "C:\\Program Files\\SIL\\FieldWorks 9\\ParserCore.dll",
+          "detected_version": "9.3.11",
+          "missing_members": [],
+          "lcmodel_install_path": "C:\\Program Files\\SIL\\FieldWorks 9",
+          "agent_probe": "skipped"
+        }
+      },
+      "sandbox": {
+        "status": "unavailable",
+        "components": [
+          {
+            "component": "hc",
+            "found": false,
+            "expected_path": "hc (dotnet global tool, PATH / `dotnet tool list -g`)",
+            "starts": null,
+            "signal": "not_found",
+            "source": null,
+            "reason": "dotnet tool list -g exited 2147516561: https://aka.ms/dotnet/sdk-not-found"
+          },
+          {
+            "component": "GenerateHCConfig.exe",
+            "found": true,
+            "expected_path": "C:\\Program Files\\SIL\\FieldWorks 9\\GenerateHCConfig.exe",
+            "starts": null,
+            "signal": null,
+            "source": "fieldworks_dir",
+            "reason": null
+          }
+        ],
+        "advisories": []
+      },
+      "active_engine": null,
+      "detected": {
+        "parser_core_version": "9.3.11",
+        "lcmodel_install_path": "C:\\Program Files\\SIL\\FieldWorks 9",
+        "hc_tool_version": null,
+        "hc_path": null,
+        "generate_hc_config_path": "C:\\Program Files\\SIL\\FieldWorks 9\\GenerateHCConfig.exe",
+        "fieldworks_hermitcrab_version": "3.8.2.0",
+        "generate_hc_config_version": "9.3.11.2703",
+        "hc_source": null
+      }
+    },
+    "health_parser_next_steps": [
+      {
+        "action": "install the hc dotnet tool",
+        "tool": null,
+        "args": null,
+        "rationale": "hc is a dotnet global tool, located via PATH / `dotnet tool list -g`. Install it with: dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool Installing it needs a .NET SDK, and hc 3.8 and later need the .NET 10 runtime to run.",
+        "est_cost": "n/a"
+      }
+    ],
+    "parse_sandbox_refusal": {
+      "status": "error",
+      "error_code": "parser_tool_missing",
+      "message": "The hc tool was not found: dotnet tool list -g exited 2147516561: https://aka.ms/dotnet/sdk-not-found.",
+      "component": "hc",
+      "expected_path": "hc (dotnet global tool, PATH / `dotnet tool list -g`)",
+      "install_hint": "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool Installing it needs a .NET SDK, and hc 3.8 and later need the .NET 10 runtime to run.",
+      "next_step": [
+        {
+          "action": "Install hc with the dotnet tool command in install_hint, then retry.",
+          "tool": null,
+          "args": null,
+          "rationale": "hc is required for this action and was not found or could not start. Nothing was copied or created.",
+          "est_cost": "minutes"
+        },
+        {
+          "action": "Check the sandbox components' status.",
+          "tool": "flextools_health",
+          "args": {
+            "verbose": true
+          },
+          "rationale": "flextools_health reports each sandbox component (hc, GenerateHCConfig.exe) with where it was looked for.",
+          "est_cost": "seconds"
+        }
+      ]
+    }
+  },
+  "observations": {
+    "discovery": {
+      "found": false,
+      "starts": null,
+      "source": null,
+      "signal": "not_found",
+      "reason": "dotnet tool list -g exited 2147516561: https://aka.ms/dotnet/sdk-not-found",
+      "expected_path": "hc (dotnet global tool, PATH / `dotnet tool list -g`)"
+    },
+    "sandbox_root_unchanged": true
+  },
+  "needs_human": false,
+  "recorded_at": "2026-09-24T19:58:05.339251+00:00"
+}

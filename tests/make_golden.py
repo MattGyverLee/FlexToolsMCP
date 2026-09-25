@@ -209,6 +209,39 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "baseline_eligible_count": 118,
         "eligible_count": 118,
     },
+    # Parser-check CP5 (FR-009, M-2): detail fields in contracts/tools.md s.4 order.
+    "parser_config_failed": {
+        "message": (
+            "GenerateHCConfig.exe did not write a HermitCrab configuration for "
+            "project 'Demo' (no 'Writing completed.' line in its output)."
+        ),
+        "exit_code": 1,
+        "stderr_tail": (
+            "Loading project 'Demo'...\n"
+            "The FieldWorks project is currently open in another application.\n"
+            "Close the project in FieldWorks and try again."
+        ),
+        "log_path": (
+            "C:\\Users\\demo\\.flextoolsmcp\\parse-runs\\"
+            "0123456789abcdef0123456789abcdef\\sandbox\\generate-config.log"
+        ),
+        "run_id": "0123456789abcdef0123456789abcdef",
+    },
+    "parse_sandbox_refused": {
+        "message": (
+            "Sandbox refused: not enough free disk space to copy project 'Demo' "
+            "for this run."
+        ),
+        "reason": "insufficient_disk_space",
+        "name": None,
+        "path": "C:\\Users\\demo\\.flextoolsmcp\\parse\\work",
+        "hint": (
+            "Free at least 1.2 GB on the drive holding the sandbox root, or point "
+            "FLEXTOOLSMCP_PARSE_SANDBOX_DIR at a drive with more space."
+        ),
+        "needed_bytes": 1288490188,
+        "free_bytes": 524288000,
+    },
 }
 
 

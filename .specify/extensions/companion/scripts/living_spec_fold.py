@@ -385,7 +385,16 @@ def fold_living_spec(feature_dir: Path, by: str) -> Path | None:
         )
         return None
 
-    spec_md = feature_dir / "spec.md"
+    from spec_context import resolve_feature_spec_md
+
+    spec_md = resolve_feature_spec_md(feature_dir)
+    if spec_md is None:
+        print(
+            f"[companion] Living-spec fold: no spec.md/SPEC.md in {feature_dir}; "
+            "nothing folded.",
+            file=sys.stderr,
+        )
+        return None
     try:
         spec_text = spec_md.read_text(encoding="utf-8")
     except OSError:

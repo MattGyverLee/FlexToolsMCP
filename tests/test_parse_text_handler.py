@@ -341,8 +341,13 @@ async def test_a_read_only_response_is_cp3s_apart_from_filing_not_requested(runn
     runner = runner_for(worker)
     payload = await _call({"scope_kind": "words", "scope_value": ["a"]})
     await asyncio.wait_for(runner.get(payload["run_id"]).done.wait(), timeout=5)
-    optional = {"result_summary", "failure", "counters", "counter_divergences",
-                "engine_changed_midjob", "warnings", "next_step", "note", "session", "_contract"}
+    optional = {
+        "result_summary", "failure", "counters", "counter_divergences",
+        "engine_changed_midjob", "warnings", "next_step", "note", "session",
+        "_contract",
+        # Envelope keys other tests / prior starts may leave armed:
+        "session_context", "workspace_notice",
+    }
     assert _CP3_SUBMISSION_KEYS <= set(payload)
     assert set(payload) - _CP3_SUBMISSION_KEYS <= optional
     assert payload["filing"] == "not_requested"

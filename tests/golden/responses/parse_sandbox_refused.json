@@ -1,0 +1,22 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "parse_sandbox_refused",
+  "message": "Sandbox refused: not enough free disk space to copy project 'Demo' for this run.",
+  "reason": "insufficient_disk_space",
+  "name": null,
+  "path": "C:\\Users\\demo\\.flextoolsmcp\\parse\\work",
+  "hint": "Free at least 1.2 GB on the drive holding the sandbox root, or point FLEXTOOLSMCP_PARSE_SANDBOX_DIR at a drive with more space.",
+  "needed_bytes": 1288490188,
+  "free_bytes": 524288000,
+  "error": {
+    "code": "parse_sandbox_refused",
+    "message": "Sandbox refused: not enough free disk space to copy project 'Demo' for this run.",
+    "reason": "insufficient_disk_space",
+    "name": null,
+    "path": "C:\\Users\\demo\\.flextoolsmcp\\parse\\work",
+    "hint": "Free at least 1.2 GB on the drive holding the sandbox root, or point FLEXTOOLSMCP_PARSE_SANDBOX_DIR at a drive with more space.",
+    "needed_bytes": 1288490188,
+    "free_bytes": 524288000
+  }
+}

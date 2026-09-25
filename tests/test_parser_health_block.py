@@ -57,6 +57,7 @@ import json
 import shutil
 import subprocess
 import sys
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
@@ -80,6 +81,11 @@ GENERATE_CONFIG_EXPECTED_PATH = (
 )
 HC_INSTALL_HINT = "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool"
 
+#: parser.sandbox.components[*] keys at CP5 (data-model section 7).
+SANDBOX_COMPONENT_KEYS = {
+    "component", "found", "expected_path", "starts", "signal", "source", "reason",
+}
+
 
 @dataclass
 class FakeProbeResult:
@@ -91,6 +97,21 @@ class FakeProbeResult:
     missing_members: List[str] = field(default_factory=list)
     detected_version: Optional[str] = None
     load_error: Optional[str] = None
+
+
+@dataclass
+class FakeHcDiscovery(FakeProbeResult):
+    """Stand-in for parser_probe.HcToolDiscovery (CP5, T024/T030): a
+    ProbeResult plus the discovery fields. ``ok`` is kept equal to
+    ``found and starts is True`` by ``_hc()`` below, the invariant the
+    real class carries."""
+
+    found: bool = False
+    starts: Optional[bool] = None
+    source: Optional[str] = None
+    path: Optional[str] = None
+    reason: Optional[str] = None
+    invoke_argv: Optional[List[str]] = None
 
 
 @dataclass
@@ -116,6 +137,10 @@ class FakeVersions:
     parser_core_version: Optional[str] = None
     lcmodel_install_path: Optional[str] = None
     hc_tool_version: Optional[str] = None
+    # CP5 (FR-005, T031): reported, never compared to a floor.
+    fieldworks_hermitcrab_version: Optional[str] = None
+    generate_hc_config_version: Optional[str] = None
+    hc_engine_version_skew: bool = False
 
 
 @dataclass
@@ -140,13 +165,49 @@ def _probe(ok, signal=None, expected_path="C:\\fake\\ParserCore.dll",
     )
 
 
-def _sandbox(hc_ok=True, generate_config_ok=True):
+HC_FOUND_PATH = r"C:\Users\u\.dotnet\tools\hc.exe"
+
+
+def _hc(found, starts=None, signal=None, source=None, reason=None, path=None):
+    """A FakeHcDiscovery with ``ok == (found and starts is True)``.
+
+    A found hc reports its real path as ``expected_path`` (data-model
+    section 7's example); an unfound one reports the search description."""
+    if found and path is None:
+        path = HC_FOUND_PATH
+    return FakeHcDiscovery(
+        ok=bool(found and starts is True),
+        signal=signal,
+        expected_path=path if found else HC_EXPECTED_PATH,
+        found=found,
+        starts=starts,
+        source=source,
+        path=path if found else None,
+        reason=reason,
+        invoke_argv=[path] if found else None,
+    )
+
+
+def _hc_ready(source="path"):
+    return _hc(True, starts=True, source=source)
+
+
+def _hc_not_found():
+    return _hc(
+        False, signal="not_found",
+        reason="hc was not found on PATH, in the dotnet tools folder or in `dotnet tool list -g`",
+    )
+
+
+def _sandbox(hc_ok=True, generate_config_ok=True, hc=None):
+    if hc is None:
+        hc = _hc_ready() if hc_ok else _hc_not_found()
     return FakeSandboxProbe(
-        hc=_probe(hc_ok, expected_path=HC_EXPECTED_PATH, signal=None if hc_ok else "absent"),
+        hc=hc,
         generate_config=_probe(
             generate_config_ok,
             expected_path=GENERATE_CONFIG_EXPECTED_PATH,
-            signal=None if generate_config_ok else "absent",
+            signal=None if generate_config_ok else "not_found",
         ),
     )
 
@@ -162,11 +223,12 @@ def _detector(
     agent_state="skipped",
     agent_guid=None,
     active_engine=None,
+    hc=None,
 ):
     return FakeParserDetector(
         read_probe=_probe(read_ok, signal=read_signal),
         write_probe=_probe(write_ok, signal=write_signal, missing_members=write_missing_members),
-        sandbox_probe=_sandbox(sandbox_hc_ok, sandbox_generate_config_ok),
+        sandbox_probe=_sandbox(sandbox_hc_ok, sandbox_generate_config_ok, hc=hc),
         agent_probe=FakeAgentProbe(state=agent_state, agent_guid=agent_guid, active_engine=active_engine),
         active_engine=active_engine,
         versions=FakeVersions(),
@@ -585,8 +647,9 @@ class TestNextStepRowsThatNameTryWord:
         because no proposable tool existed yet; it would have had to be
         deleted the moment one did, taking the guarantee with it. Checking
         against the REGISTRY instead means the rule survives every tool this
-        project ever adds -- and still fails today if a rung names
-        `flextools_parse_sandbox`, which does not exist.
+        project ever adds. (At CP5 `flextools_parse_sandbox` became
+        registered; whether it may be named is now FR-006's spine rule,
+        asserted in TestSandboxSpineCp5 below.)
 
         Swept over every unhealthy combination, because a rung reachable
         from only one of them would otherwise escape.
@@ -610,14 +673,20 @@ class TestNextStepRowsThatNameTryWord:
         work. This injects a rung naming a tool that does not exist and
         confirms the same check rejects it -- so the sweep is known to be
         load-bearing rather than merely green.
+
+        CP5 (T027): the example used to be `flextools_parse_sandbox`, which
+        is now registered (FR-034). The example is now a name that cannot be
+        registered, and the test checks that before relying on it.
         """
         from flextoolsmcp.server.dispatch import get_all_tool_names
 
         registered = set(get_all_tool_names())
+        bogus = "flextools_no_such_tool_" + uuid.uuid4().hex
+        assert bogus not in registered
         detector = _detector(sandbox_hc_ok=False)
         data = _run_health(monkeypatch, tmp_path, detector)
         data["parser_next_steps"].append(
-            {"action": "x", "tool": "flextools_parse_sandbox", "args": None,
+            {"action": "x", "tool": bogus, "args": None,
              "rationale": "y", "est_cost": "z"}
         )
 
@@ -625,7 +694,7 @@ class TestNextStepRowsThatNameTryWord:
             t for t in _find_all(data, "tool")
             if t is not None and t not in registered
         ]
-        assert offenders == ["flextools_parse_sandbox"], offenders
+        assert offenders == [bogus], offenders
 
 
 # ---------------------------------------------------------------------------
@@ -644,8 +713,9 @@ class TestSandboxComponentsShape:
         names = {c["component"] for c in components}
         assert names == {"hc", "GenerateHCConfig.exe"}
 
+        # CP5 (data-model section 7): additive keys on every component.
         for c in components:
-            assert set(c.keys()) == {"component", "found", "expected_path"}
+            assert set(c.keys()) == SANDBOX_COMPONENT_KEYS
 
         by_name = {c["component"]: c for c in components}
         assert by_name["hc"]["found"] is False
@@ -668,6 +738,10 @@ class TestParserBlockFullShape:
             "hc_tool_version",
             "hc_path",
             "generate_hc_config_path",
+            # CP5 additions (data-model section 7, FR-005)
+            "fieldworks_hermitcrab_version",
+            "generate_hc_config_version",
+            "hc_source",
         }
 
     def test_detected_never_decides_a_status(self, monkeypatch, tmp_path):
@@ -681,6 +755,267 @@ class TestParserBlockFullShape:
         assert parser["read"]["status"] == "ready"
         assert parser["write"]["status"] == "ready"
         assert parser["detected"]["parser_core_version"] == "0.0.1-totally-unexpected"
+
+
+# ---------------------------------------------------------------------------
+# CP5 (T027): the sandbox spine -- additive keys, two-state status decided by
+# found+starts, one rung per cause, FR-006's naming rule
+# (specs/parser-check-cp5/contracts/tools.md section 6, data-model section 7)
+# ---------------------------------------------------------------------------
+
+SANDBOX_TOOL = "flextools_parse_sandbox"
+RUNG_INSTALL_HC = "install the hc dotnet tool"
+RUNG_INSTALL_RUNTIME = "install the .NET runtime hc needs"
+RUNG_REPAIR_FIELDWORKS = "repair or reinstall FieldWorks (GenerateHCConfig.exe missing)"
+RUNG_REHEARSE = "rehearse a grammar change on an exported copy"
+READY_ARGS = {"action": "parse", "words": []}
+
+RUNTIME_REASON = (
+    "hc needs the .NET runtime Microsoft.NETCore.App 10.0, which is not installed"
+)
+
+#: Every unavailable variant FR-004/SC-002 names, as (id, hc discovery,
+#: GenerateHCConfig found, the rung action this state must produce).
+UNAVAILABLE_VARIANTS = [
+    ("no_hc", lambda: _hc_not_found(), True, RUNG_INSTALL_HC),
+    (
+        "runtime_missing",
+        lambda: _hc(True, starts=False, signal="runtime_missing",
+                    source="dotnet_tools_dir", reason=RUNTIME_REASON),
+        True,
+        RUNG_INSTALL_RUNTIME,
+    ),
+    (
+        # FR-003: anything that is not the HermitCrab tool counts as not found.
+        "not_hermitcrab",
+        lambda: _hc(False, signal="not_hermitcrab",
+                    reason="the hc on PATH is not the HermitCrab tool"),
+        True,
+        RUNG_INSTALL_HC,
+    ),
+    (
+        # probe_hc: a -h probe that times out is found=True, starts=False.
+        # contracts/tools.md section 6 keys the rung on found/starts alone.
+        "timeout",
+        lambda: _hc(True, starts=False, signal="timeout", source="path",
+                    reason="hc did not answer `hc -h` within 5 seconds"),
+        True,
+        RUNG_INSTALL_RUNTIME,
+    ),
+    ("generate_hc_config_missing", lambda: _hc_ready(), False, RUNG_REPAIR_FIELDWORKS),
+]
+
+
+def _components_by_name(data):
+    return {c["component"]: c for c in data["parser"]["sandbox"]["components"]}
+
+
+def _rungs(data, action):
+    return [r for r in data["parser_next_steps"] if r["action"] == action]
+
+
+class TestSandboxSpineCp5:
+    # -- additive keys ------------------------------------------------------
+
+    def test_sandbox_block_keys(self, monkeypatch, tmp_path):
+        data = _run_health(monkeypatch, tmp_path, _detector())
+        sandbox = data["parser"]["sandbox"]
+        assert set(sandbox.keys()) == {"status", "components", "advisories"}
+        assert isinstance(sandbox["advisories"], list)
+        for c in sandbox["components"]:
+            assert set(c.keys()) == SANDBOX_COMPONENT_KEYS
+
+    def test_hc_component_carries_discovery_fields(self, monkeypatch, tmp_path):
+        hc = _hc(True, starts=False, signal="runtime_missing",
+                 source="dotnet_tools_dir", reason=RUNTIME_REASON)
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=hc))
+        c = _components_by_name(data)["hc"]
+        assert c["found"] is True, "a found-but-cannot-start hc must not read as absent (FR-004)"
+        assert c["starts"] is False
+        assert c["signal"] == "runtime_missing"
+        assert c["source"] == "dotnet_tools_dir"
+        assert c["reason"] == RUNTIME_REASON
+        assert c["expected_path"] == HC_FOUND_PATH
+
+    def test_hc_component_when_not_found(self, monkeypatch, tmp_path):
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=_hc_not_found()))
+        c = _components_by_name(data)["hc"]
+        assert c["found"] is False
+        assert c["starts"] is None
+        assert c["signal"] == "not_found"
+        assert c["source"] is None
+
+    def test_ready_hc_component(self, monkeypatch, tmp_path):
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=_hc_ready(source="path")))
+        c = _components_by_name(data)["hc"]
+        assert (c["found"], c["starts"], c["signal"], c["source"]) == (True, True, None, "path")
+
+    @pytest.mark.parametrize("gc_ok", [True, False])
+    def test_generate_hc_config_component_is_never_executed(self, monkeypatch, tmp_path, gc_ok):
+        """Health does not run GenerateHCConfig, so its `starts` is null."""
+        data = _run_health(monkeypatch, tmp_path, _detector(sandbox_generate_config_ok=gc_ok))
+        c = _components_by_name(data)["GenerateHCConfig.exe"]
+        assert c["found"] is gc_ok
+        assert c["starts"] is None
+        assert c["expected_path"] == GENERATE_CONFIG_EXPECTED_PATH
+        if gc_ok:
+            assert c["signal"] is None
+            assert c["source"] == "fieldworks_dir"
+        else:
+            assert c["signal"] == "not_found"
+
+    def test_detected_additions(self, monkeypatch, tmp_path):
+        detector = _detector(hc=_hc_ready(source="dotnet_tool_list"))
+        detector.versions.hc_tool_version = "1.2.3"
+        detector.versions.fieldworks_hermitcrab_version = "3.8.2.0"
+        detector.versions.generate_hc_config_version = "9.3.11.1"
+        detected = _run_health(monkeypatch, tmp_path, detector)["parser"]["detected"]
+        assert detected["hc_tool_version"] == "1.2.3"
+        assert detected["fieldworks_hermitcrab_version"] == "3.8.2.0"
+        assert detected["generate_hc_config_version"] == "9.3.11.1"
+        assert detected["hc_source"] == "dotnet_tool_list"
+
+    def test_hc_source_reported_even_when_hc_cannot_start(self, monkeypatch, tmp_path):
+        hc = _hc(True, starts=False, signal="runtime_missing",
+                 source="dotnet_tools_dir", reason=RUNTIME_REASON)
+        detected = _run_health(monkeypatch, tmp_path, _detector(hc=hc))["parser"]["detected"]
+        assert detected["hc_source"] == "dotnet_tools_dir"
+
+    # -- advisories (FR-005: a skew warns, never refuses) --------------------
+
+    def test_version_skew_is_an_advisory_and_still_ready(self, monkeypatch, tmp_path):
+        detector = _detector()
+        detector.versions.fieldworks_hermitcrab_version = "3.8.2.0"
+        detector.versions.hc_tool_version = "3.9.0"
+        detector.versions.hc_engine_version_skew = True
+        sandbox = _run_health(monkeypatch, tmp_path, detector)["parser"]["sandbox"]
+        assert sandbox["status"] == "ready"
+        assert sandbox["advisories"] == ["hc_engine_version_skew"]
+
+    def test_no_skew_no_advisory(self, monkeypatch, tmp_path):
+        sandbox = _run_health(monkeypatch, tmp_path, _detector())["parser"]["sandbox"]
+        assert sandbox["advisories"] == []
+
+    # -- status: ready only if hc.found and hc.starts and generate.found ------
+
+    @pytest.mark.parametrize(
+        "found,starts,gc_ok,expected",
+        [
+            (True, True, True, "ready"),
+            (True, False, True, "unavailable"),
+            (True, None, True, "unavailable"),  # dotnet-tool-list-only hit: never probed
+            (False, None, True, "unavailable"),
+            (True, True, False, "unavailable"),
+            (True, False, False, "unavailable"),
+            (False, None, False, "unavailable"),
+        ],
+    )
+    def test_status_rule(self, monkeypatch, tmp_path, found, starts, gc_ok, expected):
+        if not found:
+            signal = "not_found"
+        elif starts is False:
+            signal = "runtime_missing"
+        else:
+            signal = None
+        hc = _hc(found, starts=starts, signal=signal, source="path" if found else None)
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=hc, sandbox_generate_config_ok=gc_ok))
+        assert data["parser"]["sandbox"]["status"] == expected
+
+    def test_found_but_unprobed_hc_never_names_the_tool(self, monkeypatch, tmp_path):
+        """A `dotnet tool list` row alone (starts=None) is not a start."""
+        hc = _hc(True, starts=None, source="dotnet_tool_list")
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=hc))
+        assert data["parser"]["sandbox"]["status"] == "unavailable"
+        assert SANDBOX_TOOL not in json.dumps(data)
+
+    # -- unavailable: never names the tool; the right rung ------------------
+
+    @pytest.mark.parametrize(
+        "make_hc,gc_ok,action",
+        [v[1:] for v in UNAVAILABLE_VARIANTS],
+        ids=[v[0] for v in UNAVAILABLE_VARIANTS],
+    )
+    def test_unavailable_never_names_the_sandbox_tool(self, monkeypatch, tmp_path, make_hc, gc_ok, action):
+        """FR-006 / SC-002: not in any field, not in any prose, anywhere."""
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=make_hc(), sandbox_generate_config_ok=gc_ok))
+        assert data["parser"]["sandbox"]["status"] == "unavailable"
+        assert SANDBOX_TOOL not in json.dumps(data)
+        assert not _rungs(data, RUNG_REHEARSE)
+
+    @pytest.mark.parametrize(
+        "make_hc,gc_ok,action",
+        [v[1:] for v in UNAVAILABLE_VARIANTS],
+        ids=[v[0] for v in UNAVAILABLE_VARIANTS],
+    )
+    def test_unavailable_has_the_rung_for_its_cause(self, monkeypatch, tmp_path, make_hc, gc_ok, action):
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=make_hc(), sandbox_generate_config_ok=gc_ok))
+        rows = _rungs(data, action)
+        assert len(rows) == 1, data["parser_next_steps"]
+        assert rows[0]["tool"] is None
+        assert rows[0]["args"] is None
+
+    def test_hc_not_found_rung_carries_the_full_hint(self, monkeypatch, tmp_path):
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=_hc_not_found()))
+        (row,) = _rungs(data, RUNG_INSTALL_HC)
+        assert HC_INSTALL_HINT in row["rationale"]
+        assert row["est_cost"] == "n/a"
+        assert not _rungs(data, RUNG_INSTALL_RUNTIME)
+
+    def test_cannot_start_rung_names_the_runtime_not_absence(self, monkeypatch, tmp_path):
+        """FR-004 / US1 scenario 3: the reason names the missing runtime
+        rather than reporting hc as absent."""
+        hc = _hc(True, starts=False, signal="runtime_missing",
+                 source="dotnet_tools_dir", reason=RUNTIME_REASON)
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=hc))
+        (row,) = _rungs(data, RUNG_INSTALL_RUNTIME)
+        assert row["tool"] is None
+        assert row["est_cost"] == "n/a"
+        assert "Microsoft.NETCore.App 10.0" in row["rationale"]
+        assert not _rungs(data, RUNG_INSTALL_HC), (
+            "a found-but-cannot-start hc must not be told to install hc"
+        )
+
+    def test_both_components_missing_gives_both_rungs(self, monkeypatch, tmp_path):
+        data = _run_health(monkeypatch, tmp_path, _detector(hc=_hc_not_found(), sandbox_generate_config_ok=False))
+        assert len(_rungs(data, RUNG_INSTALL_HC)) == 1
+        assert len(_rungs(data, RUNG_REPAIR_FIELDWORKS)) == 1
+        assert SANDBOX_TOOL not in json.dumps(data)
+
+    # -- ready: names the tool with usable args ------------------------------
+
+    def test_ready_names_the_sandbox_tool(self, monkeypatch, tmp_path):
+        data = _run_health(monkeypatch, tmp_path, _detector())
+        assert data["parser"]["sandbox"]["status"] == "ready"
+        rows = [r for r in data["parser_next_steps"] if r["tool"] == SANDBOX_TOOL]
+        assert len(rows) == 1, data["parser_next_steps"]
+        row = rows[0]
+        assert row["action"] == RUNG_REHEARSE
+        assert row["args"] == READY_ARGS
+        assert row["est_cost"] == "minutes"
+
+    def test_ready_rung_args_validate_against_the_input_model(self, monkeypatch, tmp_path):
+        from flextoolsmcp.server.models import ParseSandboxInput
+
+        data = _run_health(monkeypatch, tmp_path, _detector())
+        (row,) = [r for r in data["parser_next_steps"] if r["tool"] == SANDBOX_TOOL]
+        ParseSandboxInput(**row["args"])  # raises on unusable args
+
+    def test_ready_rung_names_a_registered_tool(self, monkeypatch, tmp_path):
+        from flextoolsmcp.server.dispatch import get_all_tool_names
+
+        assert SANDBOX_TOOL in set(get_all_tool_names())
+
+    def test_ready_emits_no_sandbox_repair_rungs(self, monkeypatch, tmp_path):
+        data = _run_health(monkeypatch, tmp_path, _detector())
+        for action in (RUNG_INSTALL_HC, RUNG_INSTALL_RUNTIME, RUNG_REPAIR_FIELDWORKS):
+            assert not _rungs(data, action)
+
+    def test_sandbox_rung_independent_of_in_process_spines(self, monkeypatch, tmp_path):
+        """One dead spine must not blank the others: a dead read/write spine
+        does not withdraw the sandbox rung."""
+        detector = _detector(read_ok=False, read_signal="absent", write_ok=False, write_signal="absent")
+        data = _run_health(monkeypatch, tmp_path, detector)
+        assert [r for r in data["parser_next_steps"] if r["tool"] == SANDBOX_TOOL]
 
 
 # ---------------------------------------------------------------------------

@@ -90,6 +90,7 @@ from .stages import (
     working_stage,
 )
 from .worker_client import MEASUREMENT_ROLE, SHARED_ROLE, WorkerError, WorkerPool
+from ..sandbox.client import SANDBOX_ROLE, SandboxClient
 
 __all__ = [
     "DEFAULT_GRACE_WINDOW_SECONDS",
@@ -99,6 +100,7 @@ __all__ = [
     "ParseRunner",
     "MEASUREMENT_ROLE",
     "SHARED_ROLE",
+    "SANDBOX_ROLE",
 ]
 
 _log = logging.getLogger(__name__)
@@ -245,6 +247,12 @@ class RunHandle:
     #: bookkeeping and the terminal hook. None on every read-only run.
     observer: Any = None
 
+    # -- CP5 (sandbox spine) ----------------------------------------------
+
+    #: The run's OWN `SandboxClient`, built per run under `SANDBOX_ROLE`
+    #: and never pooled (F-13). None on every in-process run.
+    sandbox_client: Any = None
+
     @property
     def is_terminal(self) -> bool:
         return is_terminal(self.stage)
@@ -317,6 +325,10 @@ class ParseRunner:
         # Projects whose shared read worker holds a cache older than a write
         # made elsewhere, and was busy when that write ended (CP4 R-09).
         self._stale_read_workers: set[str] = set()
+        # CP5 R-11: the third way a copy is deleted -- once, before this
+        # server's first sandbox job, every marked `work/<id>/` whose run is
+        # not live here.
+        self._sandbox_swept = False
 
     # -- introspection ----------------------------------------------------
 
@@ -603,6 +615,9 @@ class ParseRunner:
         filing_setup: Optional[dict[str, Any]] = None,
         observer: Any = None,
         record_guard: Any = None,
+        spine: Optional[str] = None,
+        sandbox: Optional[dict[str, Any]] = None,
+        sandbox_launch: Any = None,
     ) -> RunHandle:
         """Start a run and wait out the grace window. THE only entry point.
 
@@ -637,6 +652,15 @@ class ParseRunner:
         has already walked every rung of the write ladder; this method only
         runs what it was given. `record_guard` vets the record's directory
         (FR-042) before anything is created in it.
+
+        A SANDBOX run (CP5) is this same call too, under `SANDBOX_ROLE`, with
+        `spine="sandbox"`, its initial `sandbox` meta section, and the
+        `sandbox_launch` (a `sandbox.client.SandboxLaunch` or the handler's
+        dict: fwdata_path, generate_hc_config_path, hc_path, hc_invoke_argv,
+        config_path, timeout_seconds) its client is built from. The client is
+        built HERE, fresh for this run, instead of taken from the pool (F-13):
+        two concurrent sandbox jobs on one project get two clients and two
+        copies. `sandbox_launch` is not persisted.
         """
         window = grace_window if grace_window is not None else self._grace_window
         batch = scope_fingerprint is not None
@@ -652,7 +676,21 @@ class ParseRunner:
             project_state=project_state,
             filing=section,
             guard=record_guard,
+            spine=spine,
+            sandbox=sandbox,
         )
+        sandbox_client = None
+        if worker_role == SANDBOX_ROLE:
+            if sandbox_launch is None:
+                raise ValueError("A sandbox run needs its sandbox_launch.")
+            self._sweep_sandbox_copies(exclude=record.run_id)
+            sandbox_client = SandboxClient(
+                project_name,
+                run_id=record.run_id,
+                record=record,
+                wordforms=list(wordforms),
+                launch=sandbox_launch,
+            )
         handle = RunHandle(
             run_id=record.run_id,
             project_name=project_name,
@@ -668,6 +706,7 @@ class ParseRunner:
             is_filing=bool(filing),
             filing=section,
             observer=observer if filing else None,
+            sandbox_client=sandbox_client,
         )
         self._runs[handle.run_id] = handle
         self._displace(handle)
@@ -731,6 +770,11 @@ class ParseRunner:
         try:
             worker = await self._worker_for(handle)
             worker.listen_to_run(handle.run_id, lambda m: self._on_run_message(handle, m))
+            if handle.sandbox_client is not None:
+                # CP5: the per-run client resolves its config (generating it
+                # on a cache miss) and launches the script for the whole list.
+                # Listening first, so its `loading_grammar` stage is heard.
+                await worker.start()
             if handle.is_filing:
                 await worker.filing_setup(
                     request_id=f"setup:{handle.run_id}:{uuid.uuid4().hex[:8]}",
@@ -815,6 +859,9 @@ class ParseRunner:
                     "wordform": wordform,
                     "parse": result.get("parse"),
                 }
+                if "assertion" in result:
+                    # CP5 test mode: the data-model 6.5 assertion line.
+                    entry["assertion"] = result["assertion"]
                 trace_xml = result.get("trace_xml")
                 if trace_xml:
                     # Out of line: a trace is tens or hundreds of KB, and
@@ -837,6 +884,10 @@ class ParseRunner:
                     handle.counters._add(entry)
                     self._persist_progress(handle)
 
+            # CP5: the script's outcome is folded into the record and the copy
+            # deleted BEFORE any terminal stage, so a caller woken by it
+            # reads a finished record (and an empty work/, FR-011).
+            await self._finalize_sandbox(handle)
             if handle.cancel_requested:
                 stage_at_cancel = handle.stage.value
                 if handle.is_filing:
@@ -877,6 +928,7 @@ class ParseRunner:
             # attach diagnostic guidance to a user's own decision.
             if handle.is_filing and not handle.is_terminal:
                 await self._end_filing_on_error(handle, worker, exc)
+            await self._finalize_sandbox(handle)
             if handle.cancel_requested:
                 with contextlib.suppress(InvalidStageTransition):
                     self._set_stage(
@@ -900,6 +952,13 @@ class ParseRunner:
                 if existing is not None:
                     await existing.run_end(handle.run_id)
                     existing.stop_listening(handle.run_id)
+            if handle.sandbox_client is not None:
+                # Idempotent backstop: no process, watchdog or copy outlives
+                # the run, however it ended (R-11).
+                with contextlib.suppress(Exception):
+                    await self._finalize_sandbox(handle)
+                with contextlib.suppress(Exception):
+                    await handle.sandbox_client.aclose()
             if handle.is_filing:
                 # The filing worker is spawned for one run and released with
                 # it: the process that holds a writable open does not outlive
@@ -1010,6 +1069,8 @@ class ParseRunner:
             error_type=type(exc).__name__,
         )
         detail = getattr(exc, "detail", None)
+        if handle.sandbox_client is not None:
+            detail = self._sandbox_failure_detail(handle, exc)
         if isinstance(detail, dict):
             failure.detail = detail
             if detail.get("hint"):
@@ -1027,6 +1088,93 @@ class ParseRunner:
         with contextlib.suppress(InvalidStageTransition):
             self._set_stage(handle, RunStage.FAILED)
         handle.done.set()
+
+    # -- CP5: the sandbox spine's terminal states --------------------------
+
+    def _sweep_sandbox_copies(self, *, exclude: str) -> None:
+        """R-11's sweep, once per server, before its first sandbox job."""
+        if self._sandbox_swept:
+            return
+        self._sandbox_swept = True
+        from ..sandbox import workdir
+
+        live = [h.run_id for h in self._runs.values() if not h.is_terminal] + [exclude]
+        try:
+            workdir.sweep(live)
+        except Exception as exc:  # noqa: BLE001 -- a sweep never fails a run
+            _log.warning("Sandbox copy sweep failed: %s", exc)
+
+    @staticmethod
+    async def _finalize_sandbox(handle: RunHandle) -> None:
+        """Fold a sandbox run's script outcome into its record. Never raises."""
+        if handle.sandbox_client is None:
+            return
+        try:
+            await handle.sandbox_client.finalize()
+        except Exception as exc:  # noqa: BLE001 -- the run's own outcome stands
+            _log.warning("Sandbox run %s could not be finalized: %s", handle.run_id, exc)
+
+    @staticmethod
+    def _sandbox_failure_detail(handle: RunHandle, exc: Exception) -> Optional[dict[str, Any]]:
+        """The error detail a sandbox failure is re-emitted with (CP5
+        contracts/tools.md section 3 step 8; section 4 field order).
+
+          parser_timeout      timeout_seconds, words_completed, run_id, hint
+          parser_job_failed   state_at_failure, failure ("crashed"),
+                              words_completed, words_total, run_id, log_path,
+                              then `load_error` (hc's line) on a start failure
+          parser_config_failed / parser_engine_mismatch
+                              the client's detail, `run_id` filled in
+
+        A failure with none of these codes (a bug in the client) keeps no
+        detail and surfaces through `error_type`, like any other run.
+        """
+        code = getattr(exc, "error_code", None)
+        facts = dict(getattr(exc, "facts", None) or {})
+        if code == "parser_timeout":
+            timeout = facts.get("timeout_seconds")
+            in_flight = facts.get("in_flight_index")
+            where = ""
+            if isinstance(in_flight, int) and not isinstance(in_flight, bool):
+                where = (
+                    f" Word {in_flight + 1} of {handle.words_total} was in flight when "
+                    f"it was stopped (meta.sandbox.hc.in_flight_index and in_flight_word)."
+                )
+            hint = (
+                f"hc did not finish within {timeout} seconds and its process tree was "
+                f"stopped.{where} {handle.words_completed} completed words are recorded "
+                f"and readable with flextools_parse_log. Raise timeout_seconds or send "
+                f"fewer words; flextools_grammar_health shows what the grammar costs."
+            )
+            return {
+                "error_code": "parser_timeout",
+                "timeout_seconds": timeout,
+                "words_completed": handle.words_completed,
+                "run_id": handle.run_id,
+                "hint": hint,
+            }
+        if code == "parser_job_failed":
+            detail = {
+                "error_code": "parser_job_failed",
+                "state_at_failure": handle.stage.value,
+                "failure": facts.get("failure") or "crashed",
+                "words_completed": handle.words_completed,
+                "words_total": handle.words_total,
+                "run_id": handle.run_id,
+                "log_path": str(facts.get("log_path") or handle.record.root),
+            }
+            if "load_error" in facts:
+                # hc's verbatim `Load Error:` / `IO Error:` line: a DATA field
+                # the handler passes through (FR-016, FR-044).
+                detail["load_error"] = facts["load_error"]
+            return detail
+        detail = getattr(exc, "detail", None)
+        if isinstance(detail, dict):
+            detail = dict(detail)
+            if "run_id" in detail and detail.get("run_id") is None:
+                detail["run_id"] = handle.run_id
+            return detail
+        return None
 
     def _on_run_message(self, handle: RunHandle, message: dict[str, Any]) -> None:
         """Apply a worker message that belongs to a run rather than a word.
@@ -1056,9 +1204,35 @@ class ParseRunner:
                     handle.stage, interleaved_by=handle.interleaved_by
                 )
         elif kind == "cancelled":
-            handle.words_completed = int(
-                message.get("words_completed", handle.words_completed)
-            )
+            # #223 follow-up (scenario 6 regression): this used to trust the
+            # worker's own `words_completed` counter verbatim. That counter
+            # and this run's `handle.results` list are filled from two
+            # different code paths over the SAME stream -- a word's
+            # `result` message resolves a per-request future (whose
+            # `_execute_run` continuation, which appends to
+            # `handle.results`/`handle.record` and increments
+            # `words_completed`, only *runs* on a later event-loop tick),
+            # while `cancelled` is a run-listener message `_dispatch`
+            # invokes synchronously, in-line, the moment it is read.
+            # `ParseWorkerClient._read_loop` does not force a real
+            # scheduler yield between reading two already-buffered lines,
+            # so a `result` for the last word and the `cancelled` right
+            # behind it can be *read* in order but *applied* out of
+            # order: this branch used to run first and stamp
+            # `words_completed` with a count that already includes that
+            # last word, and then the delayed continuation added 1 more
+            # on top -- one word double-counted, so `words_completed`
+            # read N+1 while only N results ever reached `handle.record`
+            # (live scenario 6: "10 words completed but 9 readable on
+            # disk"). `len(handle.results)` is filled by that same
+            # continuation, in the same statement group as the record
+            # write and the increment this replaces, so it can never
+            # race ahead of what is actually on disk: if the last word's
+            # continuation has not run yet, this reads one short (correct
+            # for what has landed so far) and the continuation's own `+=
+            # 1` catches it up when it runs; if it already ran, this
+            # matches. Either scheduling order is now correct.
+            handle.words_completed = len(handle.results)
         elif kind == "engine_changed":
             # A warning, never a refusal (FR-024). The run carries on and
             # its results stay labelled with the submission engine.
@@ -1155,6 +1329,27 @@ class ParseRunner:
         with contextlib.suppress(Exception):
             await self._pool.release(project_name, role=role)
 
+    async def release_worker_if_idle(self, project_name: str, *, role: str) -> bool:
+        """Release this project's `role` worker, but only if idle, atomically
+        (#223 QC P1). See `WorkerPool.release_if_idle` for why the
+        check-then-release used to race a run starting in between.
+
+        Returns `False` for a genuine busy refusal (the caller should
+        report it); `True` otherwise (released, or nothing was there).
+        """
+        try:
+            return await self._pool.release_if_idle(
+                project_name,
+                role=role,
+                is_busy=lambda: self.worker_busy(project_name, role=role),
+            )
+        except Exception:
+            # Same fail-open-to-"nothing to release" posture as
+            # `release_worker`'s `contextlib.suppress(Exception)`: a
+            # release that could not complete must not be mistaken for a
+            # busy refusal by its caller.
+            return True
+
     async def worker(self, project_name: str, *, role: str = SHARED_ROLE):
         """The worker for a project and role, started if necessary."""
         if role == SHARED_ROLE:
@@ -1162,9 +1357,14 @@ class ParseRunner:
         return await self._pool.get(project_name, role=role)
 
     async def _worker_for(self, handle: RunHandle):
+        if handle.sandbox_client is not None:
+            # CP5: the run's own client, never a pooled worker (F-13).
+            return handle.sandbox_client
         return await self.worker(handle.project_name, role=handle.worker_role)
 
     def _peek_worker(self, handle: RunHandle):
+        if handle.sandbox_client is not None:
+            return handle.sandbox_client
         if handle.worker_role == SHARED_ROLE:
             return self._pool.peek(handle.project_name)
         return self._pool.peek(handle.project_name, role=handle.worker_role)

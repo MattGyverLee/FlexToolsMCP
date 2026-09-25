@@ -41,6 +41,7 @@ from .models import (
     ParseLogInput,
     ParseDiffInput,
     ParseCancelInput,
+    ParseSandboxInput,
     ParseReleaseInput,
 )
 
@@ -103,6 +104,8 @@ TOOL_PARSE_DIFF = "flextools_parse_diff"
 # Parse tools (parser-check CP4)
 TOOL_PARSE_CANCEL = "flextools_parse_cancel"
 
+# Parse tools (parser-check CP5)
+TOOL_PARSE_SANDBOX = "flextools_parse_sandbox"
 # Parse tools (issue #223)
 TOOL_PARSE_RELEASE = "flextools_parse_release"
 
@@ -136,6 +139,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_PARSE_LOG,
     TOOL_PARSE_DIFF,
     TOOL_PARSE_CANCEL,
+    TOOL_PARSE_SANDBOX,
     TOOL_PARSE_RELEASE,
 ])
 
@@ -191,6 +195,7 @@ def _import_handlers():
             handle_flextools_parse_log,
             handle_flextools_parse_diff,
             handle_flextools_parse_cancel,
+            handle_flextools_parse_sandbox,
             handle_flextools_parse_release,
         )
     except ImportError:
@@ -242,6 +247,7 @@ def _import_handlers():
             handle_flextools_parse_log,
             handle_flextools_parse_diff,
             handle_flextools_parse_cancel,
+            handle_flextools_parse_sandbox,
             handle_flextools_parse_release,
         )
 
@@ -274,6 +280,7 @@ def _import_handlers():
         "handle_flextools_parse_log": handle_flextools_parse_log,
         "handle_flextools_parse_diff": handle_flextools_parse_diff,
         "handle_flextools_parse_cancel": handle_flextools_parse_cancel,
+        "handle_flextools_parse_sandbox": handle_flextools_parse_sandbox,
         "handle_flextools_parse_release": handle_flextools_parse_release,
     }
 
@@ -307,6 +314,7 @@ handle_flextools_parse_text = _handlers["handle_flextools_parse_text"]
 handle_flextools_parse_log = _handlers["handle_flextools_parse_log"]
 handle_flextools_parse_diff = _handlers["handle_flextools_parse_diff"]
 handle_flextools_parse_cancel = _handlers["handle_flextools_parse_cancel"]
+handle_flextools_parse_sandbox = _handlers["handle_flextools_parse_sandbox"]
 handle_flextools_parse_release = _handlers["handle_flextools_parse_release"]
 
 
@@ -374,6 +382,8 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     # Parse tools (parser-check CP4)
     TOOL_PARSE_CANCEL: (handle_flextools_parse_cancel, ParseCancelInput),
 
+    # Parse tools (parser-check CP5)
+    TOOL_PARSE_SANDBOX: (handle_flextools_parse_sandbox, ParseSandboxInput),
     # Parse tools (issue #223)
     TOOL_PARSE_RELEASE: (handle_flextools_parse_release, ParseReleaseInput),
 }

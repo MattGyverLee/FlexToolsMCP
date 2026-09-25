@@ -42,6 +42,30 @@ IDENTITY CHANGE (FR-032): neither a behavioural change nor "unchanged".
 Something did change in the lexicon -- an entry was re-created, merged or
 re-linked -- and the parser's visible behaviour did not.
 
+CROSS-SPINE PAIRS (parser-check CP5, R-14, FR-039). A sandbox run's
+analyses come from the stand-alone `hc` tool: `signature` is null (no
+lexical objects exist outside the project), `rendered_morphs` holds the
+forms, `morphs` the (form, gloss) pairs, and there are no category labels.
+The mode is NOT auto-selected per pair here -- `signature_mode()` is one
+global setting and `compare_word` applies it to both sides. Left alone, that
+misreads every pair that has a sandbox side (the R-14 check, settled):
+
+  * identifier mode gives every sandbox analysis the same empty triple
+    tuple, so all of a word's sandbox analyses collapse to one key;
+  * the rendered key includes category labels, which a sandbox analysis
+    never has, so every cross-spine word would read `changed`;
+  * a rendered match over differing triples reads as an identity change,
+    which across spines means nothing.
+
+So the caller asks `spine_pair_mode(before_spine, after_spine, mode)`: an
+in-process pair keeps the mode it was given (CP3, unchanged); any other pair
+is forced to RENDERED_FALLBACK with an explicit comparison key -- FORMS only
+for a cross-spine pair (glosses and object identity do not exist on both
+sides), and (form, gloss) through `morphs` for a sandbox pair. With a key,
+`compare_word` has no identity dimension. An unreadable sandbox analysis
+(`readable: false`) keys on its raw printed lines, so it never silently
+matches anything but the same unreadable output.
+
 Pure server-side: reads `results.jsonl` lines, never a project.
 """
 
@@ -61,6 +85,10 @@ __all__ = [
     "IDENTITY_CHANGE_NOTE",
     "WordComparison",
     "compare_word",
+    "KEY_FORMS",
+    "KEY_MORPHS",
+    "spine_pair_mode",
+    "signatures_of",
 ]
 
 #: The live verdict on whether analysis identifiers are stable across
@@ -86,6 +114,32 @@ def signature_mode() -> str:
     """The comparison mode in force. Identifier only when stability is confirmed."""
     verdict = os.environ.get(_ENV_STABILITY, IDENTIFIER_STABILITY).strip().lower()
     return SignatureMode.IDENTIFIER if verdict == "confirmed" else SignatureMode.RENDERED_FALLBACK
+
+
+#: CP5: explicit comparison keys for pairs with a sandbox side (R-14).
+KEY_FORMS = "forms"
+KEY_MORPHS = "morphs"
+
+_IN_PROCESS = "in_process"
+_SANDBOX = "sandbox"
+
+
+def spine_pair_mode(
+    before_spine: Optional[str], after_spine: Optional[str], mode: str
+) -> Tuple[str, Optional[str]]:
+    """(mode, key) for a pair of spines. None spines read as in-process.
+
+    in_process + in_process -> (mode, None): CP3's comparison, unchanged.
+    in_process + sandbox    -> (RENDERED_FALLBACK, KEY_FORMS), either order.
+    sandbox + sandbox       -> (RENDERED_FALLBACK, KEY_MORPHS).
+    """
+    before = before_spine or _IN_PROCESS
+    after = after_spine or _IN_PROCESS
+    if before == _IN_PROCESS and after == _IN_PROCESS:
+        return mode, None
+    if before == _SANDBOX and after == _SANDBOX:
+        return SignatureMode.RENDERED_FALLBACK, KEY_MORPHS
+    return SignatureMode.RENDERED_FALLBACK, KEY_FORMS
 
 
 #: Stated in every report produced in fallback mode (FR-033).
@@ -124,6 +178,10 @@ class DurableAnalysisSignature:
     rendered_morphs: Tuple[str, ...]
     category_labels: Tuple[str, ...]
     has_guessed_form: bool = False
+    #: CP5 sandbox analyses: (form, gloss) pairs, readability, raw lines.
+    morphs: Tuple[Tuple[str, str], ...] = ()
+    readable: bool = True
+    raw: Tuple[str, ...] = ()
 
     @classmethod
     def from_record(cls, record: Dict[str, Any]) -> "DurableAnalysisSignature":
@@ -138,6 +196,12 @@ class DurableAnalysisSignature:
             rendered_morphs=tuple(str(m) for m in record.get("rendered_morphs") or ()),
             category_labels=tuple(str(c) for c in record.get("category_labels") or ()),
             has_guessed_form=bool(record.get("has_guessed_form")),
+            morphs=tuple(
+                (str(m.get("form")), str(m.get("gloss")))
+                for m in record.get("morphs") or ()
+            ),
+            readable=record.get("readable", True) is not False,
+            raw=tuple(str(line) for line in record.get("raw") or ()),
         )
 
     def identifier_key(self) -> tuple:
@@ -151,6 +215,24 @@ class DurableAnalysisSignature:
     def key(self, mode: str) -> tuple:
         return self.identifier_key() if mode == SignatureMode.IDENTIFIER else self.rendered_key()
 
+    def pair_key(self, key: str) -> tuple:
+        """A CP5 explicit key: forms only, or (form, gloss) pairs (R-14)."""
+        if not self.readable:
+            return ("unreadable", self.raw)
+        if key == KEY_MORPHS:
+            return ("morphs", self.morphs)
+        return ("forms", self.rendered_morphs)
+
+    def legible_for(self, key: Optional[str]) -> str:
+        """`legible()`, or the explicit key's own rendering."""
+        if key is None:
+            return self.legible()
+        if not self.readable:
+            return "unreadable: " + " / ".join(line.rstrip() for line in self.raw)
+        if key == KEY_MORPHS:
+            return "+".join(f"{f}:{g}" for f, g in self.morphs) or "?"
+        return "+".join(self.rendered_morphs) or "?"
+
     def legible(self) -> str:
         """For a report: 'mem+buat [v+v]' -- rendered without the project."""
         morphs = "+".join(self.rendered_morphs) or "?"
@@ -163,12 +245,13 @@ def signatures_of(line: Optional[Dict[str, Any]]) -> Optional[List[DurableAnalys
 
     None -- a CP2b single-word line, or a word that errored -- is NOT the
     same as an empty list: an empty list means the word parsed to nothing,
-    None means nothing is known about it.
+    None means nothing is known about it. CP5: a sandbox line whose
+    `analyses` is null (hc produced nothing for the word) is None too.
     """
     if not line:
         return None
     parse = line.get("parse")
-    if not isinstance(parse, dict) or "analyses" not in parse:
+    if not isinstance(parse, dict) or parse.get("analyses") is None:
         return None
     return [DurableAnalysisSignature.from_record(a) for a in parse.get("analyses") or ()]
 
@@ -210,6 +293,7 @@ def compare_word(
     before: List[DurableAnalysisSignature],
     after: List[DurableAnalysisSignature],
     mode: str,
+    key: Optional[str] = None,
 ) -> WordComparison:
     """Classify one word on SIGNATURE SETS, never on counts (FR-030).
 
@@ -228,6 +312,9 @@ def compare_word(
     rendered sets match (so the word would be unchanged) while identifier
     sets differ. Either way the word gets no bucket -- it is reported as an
     identity change, never as behavioural change and never as unchanged.
+
+    CP5: with an explicit `key` (see `spine_pair_mode`), the sets are
+    compared on that key alone and there is no identity dimension.
     """
     provisional = any(s.has_guessed_form for s in list(before) + list(after))
     base = dict(wordform=wordform, before_count=len(before), after_count=len(after),
@@ -238,10 +325,22 @@ def compare_word(
         return WordComparison(bucket="unchanged", identity_change=False, **base)
     if not before:
         return WordComparison(bucket="fixed", identity_change=False,
-                              added=tuple(s.legible() for s in after), **base)
+                              added=tuple(s.legible_for(key) for s in after), **base)
     if not after:
         return WordComparison(bucket="broken", identity_change=False,
-                              removed=tuple(s.legible() for s in before), **base)
+                              removed=tuple(s.legible_for(key) for s in before), **base)
+
+    if key is not None:
+        before_keys = {s.pair_key(key): s for s in before}
+        after_keys = {s.pair_key(key): s for s in after}
+        if set(before_keys) == set(after_keys):
+            return WordComparison(bucket="unchanged", identity_change=False, **base)
+        added = tuple(after_keys[k].legible_for(key) for k in after_keys
+                      if k not in before_keys)
+        removed = tuple(before_keys[k].legible_for(key) for k in before_keys
+                        if k not in after_keys)
+        return WordComparison(bucket="changed", identity_change=False,
+                              added=added, removed=removed, **base)
 
     by_ids_same = _keyset(before, SignatureMode.IDENTIFIER) == _keyset(after, SignatureMode.IDENTIFIER)
     by_render_same = _keyset(before, SignatureMode.RENDERED_FALLBACK) == _keyset(

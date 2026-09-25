@@ -6,6 +6,11 @@ Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
+- **`flextools_find_wrappers_for_lcm` downgraded `Entity.Property` to misleading entity hits**
+  ([#87](https://github.com/MattGyverLee/FlexToolsMCP/issues/87)). Dotted
+  LCM names now resolve as property lookups; when a property has no wrapper
+  method the tool returns ``found: false`` with ``kind: property`` instead of
+  ``found: true`` for the bare entity with an empty method list.
 - **Misleading `api_discovery_required` after read-only auto-discovery**
   ([#244](https://github.com/MattGyverLee/FlexToolsMCP/issues/244)). The
   write gate still requires explicit `get_object_api` validation, but rejections

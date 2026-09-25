@@ -226,6 +226,7 @@ class ApiDiscoveryRequiredDetail(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["api_discovery_required"] = "api_discovery_required"
     detected_candidates: List[str] = Field(default_factory=list)
+    auto_discovered_pending_validation: List[str] = Field(default_factory=list)
     session: Optional[Any] = None
     missing_entity: Optional[str] = None
     suggested_tool_call: Optional[str] = None

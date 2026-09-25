@@ -6,6 +6,12 @@ Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
+- **Misleading `api_discovery_required` after read-only auto-discovery**
+  ([#244](https://github.com/MattGyverLee/FlexToolsMCP/issues/244)). The
+  write gate still requires explicit `get_object_api` validation, but rejections
+  now name entities that were auto-discovered on earlier read-only runs and
+  expose them as `auto_discovered_pending_validation` instead of claiming no
+  APIs were discovered.
 - **Unhandled tool handler exceptions bypassed the structured error envelope**
   ([#89](https://github.com/MattGyverLee/FlexToolsMCP/issues/89)). `call_tool`
   now catches handler failures and returns `internal_error` with

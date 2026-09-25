@@ -449,6 +449,15 @@ class FilingBackend(_RealBackend):
                 "the filing worker. Nothing was opened for writing.",
                 {"error_code": "parser_core_missing", **detail},
             )
+        if self._project is None:
+            # #239: the one writable open is gone before the run was bound.
+            # Refuse by name rather than let `_resolve_hc_agent` raise an
+            # AttributeError on None that reads like a grammar-load failure.
+            raise FilingRefusal(
+                "Filing is unavailable: the filing worker's project is not open. "
+                "Nothing was filed.",
+                {"error_code": "runtime_error", "error_type": "ProjectNotOpen"},
+            )
         record_root = Path(setup["record_root"])
         paths.assert_outside_project(record_root)
         from ..parse.record import RunRecord
@@ -678,6 +687,19 @@ class FilingWorker(ParseWorker):
     """`ParseWorker`, plus the two messages only a filing worker answers."""
 
     _FILING_CONTROLS = ("filing_setup", "filing_commit")
+
+    def _release_if_idle(self) -> None:
+        """Never idle-release: the filing worker holds its project for the run (#239).
+
+        #223's idle release fits a read worker, which reopens on demand. This
+        worker's writable open is THE one (FR-029): `setup()` binds the parser
+        agent and filing context to it, and the queue is empty both before
+        `filing_setup` arrives and between server-paced words -- before #235's
+        `_open_runs` hold can start. Closing it there left `setup()` calling
+        `ObjectRepository` on None. `final_commit()` closes the project, and
+        `main()`'s `finally: worker.release()` is the backstop on idle or crash.
+        """
+        return None
 
     def handle_message(self, message: Dict[str, Any]) -> None:
         if message.get("type") in self._FILING_CONTROLS:

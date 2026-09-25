@@ -34,11 +34,15 @@ sorted position, not the top). Changes without an issue go under Other.
   fix/issue-95-regression-shapes to pin both call shapes (bare snippet and
   `Main`-wrapped module) and confirm `status=error`, `error_code=unprotected_writes`,
   non-empty `next_steps`, and `modifyAllowed` in the `why` field.
-- **Mutations factored into helpers invoked only from `if modifyAllowed:` were
-  flagged as unprotected** ([#97](https://github.com/MattGyverLee/FlexToolsMCP/issues/97)).
-  ``certify_script_readonly`` now extends guard protection into callee function
-  bodies when every call site is already inside a protected range (including
-  helper chains). Mixed guarded/unguarded call sites stay conservative.
+- **Casting validator false positives and misleading fix text**
+  ([#97](https://github.com/MattGyverLee/FlexToolsMCP/issues/97)). Branch-aware
+  cast tracking stops mutually exclusive ``if``/``elif`` arms from conflating the
+  same variable name onto the last arm's interface (Bug 2). Ambiguous-property
+  advisories no longer pick ``defined_on[0]`` as a confident target; they emit
+  ranked uncertainty instead (Bug 1). Mutations inside helpers called only from
+  ``if modifyAllowed:`` inherit guard protection instead of reporting as
+  unprotected (minor, #254). Tier-1 eval corpus entry
+  ``issue97_msa_if_elif_branches_ok.yaml`` pins Bug 2 on the preflight chain.
 - **Stale worked example `analysis-subtype-disambiguation`** ([#98](https://github.com/MattGyverLee/FlexToolsMCP/issues/98)).
   Replaced removed liblcm 11 `LangProject.WordformInventoryOA` access with
   `project.Wordforms.GetAll()` / `GetForm()` so the example runs on current

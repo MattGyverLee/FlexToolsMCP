@@ -5,6 +5,15 @@
 Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
+### Fixed
+
+- **Preflight rejects `ICmPossibility` casts on morphology lists that are not possibilities**
+  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
+  run_module casting validator now errors on `ICmPossibility(...)` when the
+  argument is known to be `IMoInflAffixSlot`, `IMoInflAffixTemplate`, or
+  `IMoInflClass`, including `ICmPossibility(x).Name` chains that previously
+  passed at `injection_tier=none` and failed at runtime.
+
 ### Other
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*

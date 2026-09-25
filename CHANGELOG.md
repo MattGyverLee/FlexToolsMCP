@@ -27,6 +27,13 @@ sorted position, not the top). Changes without an issue go under Other.
   navigation graph now includes curated `required_cast` downcast edges (primary
   concrete subtype per base type) so paths such as `ILexSense` →
   `IFsSymFeatVal` resolve instead of returning `found: false`.
+- **Unguarded `project.LexEntry.Create(...)` calls (bare snippet and Main-shaped
+  module) raised `AttributeError` instead of returning `unprotected_writes`**
+  ([#95](https://github.com/MattGyverLee/FlexToolsMCP/issues/95)). The fix
+  landed in PR #200 / commit 7851a9b; regression tests were added in
+  fix/issue-95-regression-shapes to pin both call shapes (bare snippet and
+  `Main`-wrapped module) and confirm `status=error`, `error_code=unprotected_writes`,
+  non-empty `next_steps`, and `modifyAllowed` in the `why` field.
 - **Stale worked example `analysis-subtype-disambiguation`** ([#98](https://github.com/MattGyverLee/FlexToolsMCP/issues/98)).
   Replaced removed liblcm 11 `LangProject.WordformInventoryOA` access with
   `project.Wordforms.GetAll()` / `GetForm()` so the example runs on current

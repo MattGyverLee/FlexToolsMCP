@@ -867,7 +867,7 @@ class ParseSandboxRefusedDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 40 per-code detail models
+# Discriminated union over all 41 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[

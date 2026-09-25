@@ -43,7 +43,10 @@ MULTISTRING_OPERATIONS = {
 
 # Pre-compiled regex patterns for performance (avoid re-compilation in hot paths)
 PATTERN_ARGUMENT_SPEC = re.compile(r'^(\w+)(?:\s*\(([^)]+)\))?:\s*(.*)$')
-PATTERN_RETURN_TYPE = re.compile(r'^([A-Za-z_][\w\[\], ]*?):\s+')
+# `|` admits PEP 604 unions (`EnumerableWrapper[IConstChart | IDsChart]`);
+# without it such a line fell through to the type-erased .pyi stub
+# (flexicon #527).
+PATTERN_RETURN_TYPE = re.compile(r'^([A-Za-z_][\w\[\], |]*?):\s+')
 PATTERN_EXCEPTION_SPEC = re.compile(r'^([A-Z][A-Za-z]*(?:Error|Exception|Warning)?)\s*[:\-]?\s*(.*)$')
 PATTERN_CAMEL_CASE_SPLIT = re.compile(r'([A-Z])')  # Split camelCase to words
 

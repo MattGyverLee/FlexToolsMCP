@@ -170,6 +170,23 @@ def test_docstring_beats_stub_when_they_disagree():
     assert info["return_type"] == "ICmAgent"
 
 
+UNION_DOCSTRING_METHOD = (
+    "def GetAll(self):\n"
+    "    \"\"\"Get all rules.\n\n"
+    "    Returns:\n"
+    "        EnumerableWrapper[CompoundRule | AffixTemplate]: Each rule.\n"
+    "    \"\"\"\n"
+)
+
+
+def test_union_docstring_beats_type_erased_stub():
+    """flexicon #527: a PEP 604 union in Returns: must not fall to `Any`."""
+    node = _method_node(UNION_DOCSTRING_METHOD)
+    info = analyze_method(node, "MorphRuleOperations", [],
+                          {("MorphRuleOperations", "GetAll"): "EnumerableWrapper[Any]"})
+    assert info["return_type"] == "EnumerableWrapper[CompoundRule | AffixTemplate]"
+
+
 def test_inline_annotation_beats_both():
     node = _method_node(ANNOTATED_METHOD)
     info = analyze_method(node, "AgentOperations", [],

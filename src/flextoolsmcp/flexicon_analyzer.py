@@ -1765,6 +1765,50 @@ def _resolve_element_type_hint(func_node, source_property: str) -> Optional[str]
     return None
 
 
+# ---- Top-level export detection (issue #245) -----------------------------------
+#
+# flexicon re-exports a curated subset of its classes from flexicon/__init__.py.
+# The index documents many more classes (collections, base types) whose
+# namespace is flexicon.code.* but which are NOT available as
+# `from flexicon import X`. AST-parse __init__.py (never import flexicon --
+# that pulls in pythonnet/FieldWorks) to learn the export surface at refresh
+# time.
+
+
+def extract_flexicon_top_level_exports_from_init(init_path: Path) -> frozenset[str]:
+    """Return class/function names re-exported from flexicon's package __init__.py."""
+    if not init_path.is_file():
+        return frozenset()
+
+    try:
+        tree = ast.parse(init_path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        return frozenset()
+
+    names: set[str] = set()
+
+    for node in tree.body:
+        if isinstance(node, ast.ImportFrom):
+            # `from .code... import Foo, Bar` (relative package re-exports)
+            if node.level and node.level >= 1:
+                for alias in node.names:
+                    if alias.name != "*":
+                        names.add(alias.asname or alias.name)
+            continue
+
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == "__all__":
+                value = node.value
+                if isinstance(value, (ast.List, ast.Tuple)):
+                    for elt in value.elts:
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                            names.add(elt.value)
+
+    return frozenset(names)
+
+
 # ---- Facade access-path detection (issue #100) --------------------------------
 #
 # Some Operations classes (e.g. MSAOperations) are reachable only via a
@@ -1862,7 +1906,8 @@ def _extract_facade_access_paths(flexicon_code_base: Path) -> Dict[str, str]:
 
 def analyze_class(node, module_path: str, lcm_imports: List[Dict],
                    facade_access_paths: Optional[Dict[str, str]] = None,
-                   stub_returns: Optional[Dict[Tuple[Optional[str], str], str]] = None
+                   stub_returns: Optional[Dict[Tuple[Optional[str], str], str]] = None,
+                   top_level_exports: Optional[frozenset[str]] = None,
                    ) -> Dict[str, Any]:
     """Analyze a class definition and extract its API information."""
     docstring = extract_docstring(node)
@@ -1938,11 +1983,16 @@ def analyze_class(node, module_path: str, lcm_imports: List[Dict],
     if facade_access_paths and node.name in facade_access_paths:
         entity["access_path"] = facade_access_paths[node.name]
 
+    # Issue #245: record whether `from flexicon import {name}` is valid.
+    if top_level_exports is not None:
+        entity["top_level_importable"] = node.name in top_level_exports
+
     return entity
 
 
 def _parse_and_analyze_file(file_path: Path, base_path: Path,
-                             facade_access_paths: Optional[Dict[str, str]] = None
+                             facade_access_paths: Optional[Dict[str, str]] = None,
+                             top_level_exports: Optional[frozenset[str]] = None,
                              ) -> Optional[Tuple[Dict[str, Any], ast.AST]]:
     """Parse a Python file and return both file analysis and parsed AST for reuse."""
     try:
@@ -1972,8 +2022,10 @@ def _parse_and_analyze_file(file_path: Path, base_path: Path,
         # Find top-level classes
         for node in tree.body:
             if isinstance(node, ast.ClassDef):
-                class_info = analyze_class(node, module_path, lcm_imports,
-                                           facade_access_paths, stub_returns)
+                class_info = analyze_class(
+                    node, module_path, lcm_imports,
+                    facade_access_paths, stub_returns, top_level_exports,
+                )
                 file_info["classes"].append(class_info)
 
         return (file_info, tree)
@@ -1984,14 +2036,17 @@ def _parse_and_analyze_file(file_path: Path, base_path: Path,
 
 
 def analyze_python_file(file_path: Path, base_path: Path,
-                         facade_access_paths: Optional[Dict[str, str]] = None
+                         facade_access_paths: Optional[Dict[str, str]] = None,
+                         top_level_exports: Optional[frozenset[str]] = None,
                          ) -> Optional[Dict[str, Any]]:
     """Analyze a single Python file and extract its API structure.
 
     For callers that need both the file info and parsed tree, use
     _parse_and_analyze_file() instead to avoid parsing the file twice.
     """
-    result = _parse_and_analyze_file(file_path, base_path, facade_access_paths)
+    result = _parse_and_analyze_file(
+        file_path, base_path, facade_access_paths, top_level_exports,
+    )
     if result is None:
         return None
     file_info, _ = result
@@ -2013,6 +2068,9 @@ def analyze_flexicon(flexicon_path: str) -> Dict[str, Any]:
     # front so every class's analyze_class() call can annotate its
     # `access_path` (e.g. MSAOperations -> "project.MSA") in the same pass.
     facade_access_paths = _extract_facade_access_paths(base_path)
+    top_level_exports = extract_flexicon_top_level_exports_from_init(
+        Path(flexicon_path) / "flexicon" / "__init__.py"
+    )
 
     result = {
         "_schema": "unified-api-doc/2.0",
@@ -2027,6 +2085,8 @@ def analyze_flexicon(flexicon_path: str) -> Dict[str, Any]:
             "total_properties": 0,
             "methods_with_return_type": 0,
             "files_analyzed": 0,
+            # Issue #245: export surface parsed from flexicon/__init__.py (sorted for JSON).
+            "top_level_exports": sorted(top_level_exports),
             "categories": {},
             "lcm_interfaces_used": set(),
             "mapping_types": {
@@ -2046,7 +2106,9 @@ def analyze_flexicon(flexicon_path: str) -> Dict[str, Any]:
         if py_file.name.startswith("__"):
             continue
 
-        file_info = analyze_python_file(py_file, base_path, facade_access_paths)
+        file_info = analyze_python_file(
+            py_file, base_path, facade_access_paths, top_level_exports,
+        )
         if file_info and file_info["classes"]:
             result["metadata"]["files_analyzed"] += 1
 

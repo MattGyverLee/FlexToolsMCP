@@ -40,7 +40,7 @@ try:
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
         KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
-        KEY_ERROR, KEY_HINT,
+        KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -69,7 +69,7 @@ except ImportError:
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
         KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
-        KEY_ERROR, KEY_HINT,
+        KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -787,6 +787,10 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
             }
             if KEY_INHERITED_FROM in m:
                 row[KEY_INHERITED_FROM] = m[KEY_INHERITED_FROM]
+            # Issue #124: surface per-GetAll collection contract in the thin
+            # index so models see it without opening the wrap_enumerable doc blob.
+            if m.get(KEY_NAME) == "GetAll" and m.get(KEY_COLLECTION_CONTRACT):
+                row[KEY_COLLECTION_CONTRACT] = m[KEY_COLLECTION_CONTRACT]
             thin_methods.append(row)
         result[KEY_METHODS] = thin_methods
         if force_thin:

@@ -495,6 +495,15 @@ def run_postprocess_element_types() -> bool:
     return run_command(cmd, "Annotating element types (collection casting hints)")
 
 
+def run_postprocess_getall_contract() -> bool:
+    """Annotate flexicon GetAll methods with collection_contract (issue #124)."""
+    cmd = [
+        sys.executable,
+        _pkg_script("build_getall_contract.py"),
+    ]
+    return run_command(cmd, "Annotating GetAll collection contracts")
+
+
 def run_archive_old_versions() -> bool:
     """Archive old versions of API files."""
     cmd = [
@@ -606,8 +615,12 @@ def main():
             success = False
 
         # Annotate element types (issue #121) -- needs the casting index
-        # just built above, so it runs last in this chain.
+        # just built above.
         if not run_postprocess_element_types():
+            success = False
+
+        # GetAll collection contracts (issue #124) -- flexicon index only.
+        if not run_postprocess_getall_contract():
             success = False
 
     # Archive old versions - runs after ANY successful refresh (full or

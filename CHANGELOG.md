@@ -40,6 +40,13 @@ sorted position, not the top). Changes without an issue go under Other.
   innermost traceback frame is inside the flexicon package, `run_module` now
   reports `WrapperInternalError` with upstream-oriented guidance instead of
   advising a cast/resubmit loop the user cannot satisfy.
+- **GetAll collection contract surfaced per method in the flexicon index** ([#124](https://github.com/MattGyverLee/FlexToolsMCP/issues/124)).
+  Post-process step ``build_getall_contract.py`` annotates every shipped
+  ``GetAll`` with a structured ``collection_contract`` (shape, element type,
+  whether elements are raw LCM objects vs flexicon wrapper collections).
+  ``get_object_api`` includes that field on GetAll rows in the thin method
+  index so callers see the contract where they look up methods, not only in
+  the ``wrap_enumerable`` doc blob.
 - **`detect_interface_attribute_typos` ignored loop variables** ([#127](https://github.com/MattGyverLee/FlexToolsMCP/issues/127)).
   For-loop targets with a non-polymorphic flexicon ``element_type`` (e.g.
   ``GetSenses`` → ``ILexSense``) are now checked for high-confidence attribute

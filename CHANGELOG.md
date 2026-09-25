@@ -50,6 +50,11 @@ sorted position, not the top). Changes without an issue go under Other.
   raises a bare ``Exception``; the template now captures that separately from a
   missing package and reports a FieldWorks-oriented message instead of
   ``pip install pyflexicon``.
+- **Runtime ``PolymorphicAttributeError`` on indexed LCM types had no did-you-mean**
+  ([#137](https://github.com/MattGyverLee/FlexToolsMCP/issues/137)). When a
+  script hits a missing member on an interface the liblcm index knows (e.g.
+  ``ITsString.get_WritingSystem``), ``run_module`` now surfaces index-backed
+  name suggestions instead of a bare polymorphic hint.
 - **`unprotected_writes` rejected the early-return guard idiom** ([#139](https://github.com/MattGyverLee/FlexToolsMCP/issues/139)).
   ``if not modifyAllowed: ...; return`` followed by writes is now treated as
   equivalent to ``if modifyAllowed: ... else: ...`` for line-level protection

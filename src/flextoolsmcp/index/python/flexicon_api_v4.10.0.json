@@ -2096,6 +2096,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmAgent",
+            "return_type": "list[ICmAgent]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Iterate over all agents in the project's AnalyzingAgentsOC.\n\nOverrides the PossibilityItemOperations.GetAll inherited\ndefault, which assumes the list-object has PossibilitiesOS.\nLangProject.AnalyzingAgentsOC is a plain LcmOwningCollection\nof ICmAgent, not a CmPossibilityList, so PossibilitiesOS\ndoesn't exist on it -- AttributeError every call. Iterate the\ncollection directly.\n",
           "element_type": "ICmAgent",
           "example": "",
@@ -3863,6 +3870,14 @@
           "usage_hint": null
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "Allomorph",
+            "note": "Yields flexicon Allomorph wrapper objects (`.form`, `.class_type`), not raw LCM interfaces.",
+            "return_type": "AllomorphCollection[Allomorph]",
+            "shape": "allomorph_collection",
+            "yields_lcm_objects": false
+          },
           "description": "Get all allomorphs for a lexical entry, or all allomorphs in the entire project.\n\nReturns a smart collection of wrapped allomorph objects that transparently\nhandle the two concrete types (MoStemAllomorph and MoAffixAllomorph).\n",
           "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>>\n            >>> # Get all allomorphs for specific entry\n            >>> allomorphs = allomorphOps.GetAll(entry)\n            >>> print(allomorphs)  # Shows type breakdown\n            # AllomorphCollection (8 total)\n            #   MoStemAllomorph: 5 (62%)\n            #   MoAffixAllomorph: 3 (38%)\n            >>>\n            >>> # Iterate through wrapped objects\n            >>> for allomorph in allomorphs:\n            ...     print(f\"Form: {allomorph.form}, Type: {allomorph.class_type}\")\n            Form: run, Type: MoStemAllomorph\n            Form: ran, Type: MoStemAllomorph\n            Form: running, Type: MoStemAllomorph\n            >>>\n            >>> # Filter by type\n            >>> stems = allomorphs.stem_allomorphs()\n            >>> print(f\"Found {len(stems)} stem allomorphs\")\n            Found 5 stem allomorphs\n            >>>\n            >>> # Filter by form\n            >>> ing_forms = allomorphs.filter(form_contains='ing')\n            >>> for allomorph in ing_forms:\n            ...     print(allomorph.form)\n            running\n            >>>\n            >>> # Chain filters\n            >>> ing_stems = allomorphs.stem_allomorphs().filter(form_contains='ing')\n            >>>\n            >>> # Get ALL allomorphs in entire project\n            >>> all_project_allomorphs = allomorphOps.GetAll()\n            >>> print(f\"Project has {len(all_project_allomorphs)} allomorphs\")\n",
           "is_classmethod": false,
@@ -6067,6 +6082,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmAnnotationDefn",
+            "return_type": "EnumerableWrapper[ICmAnnotationDefn]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all annotation definitions in the project.\n",
           "element_type": "ICmAnnotationDefn",
           "example": "            >>> for anno_def in project.AnnotationDef.GetAll():\n            ...     name = project.AnnotationDef.GetName(anno_def)\n            ...     anno_type = project.AnnotationDef.GetAnnotationType(anno_def)\n            ...     user_create = project.AnnotationDef.GetUserCanCreate(anno_def)\n            ...     print(f\"{name} ({anno_type}): user_create={user_create}\")\n            To Do (katGeneralNote): user_create=True\n            Question (katGeneralNote): user_create=True\n            Resolved (katGeneralNote): user_create=False\n",
@@ -7546,6 +7568,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmAnthroItem",
+            "return_type": "list[ICmAnthroItem]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all anthropology items in the project.\n",
           "element_source_property": "PossibilitiesOS",
           "element_type": "ICmAnthroItem",
@@ -11971,6 +12000,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IConstChartTag",
+            "return_type": "list[IConstChartTag]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Iterate every IConstChartTag in ``row.CellsOS`` (other\ncell-part subtypes are filtered out).\n",
           "element_cast_applied": true,
           "element_source_property": "CellsOS",
@@ -12375,6 +12411,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IConstChartClauseMarker",
+            "return_type": "list[IConstChartClauseMarker]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all clause markers in a chart row.\n",
           "element_type": "IConstChartClauseMarker",
           "example": "            >>> row = project.ConstChartRows.Find(chart, 0)\n            >>> markers = project.ConstChartClauseMarkers.GetAll(row)\n            >>> for marker in markers:\n            ...     wg = project.ConstChartClauseMarkers.GetWordGroup(marker)\n            ...     print(f\"Marker for word group {wg.Hvo}\")\n",
@@ -12815,6 +12858,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmPossibility",
+            "return_type": "list[ICmPossibility]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Iterate every marker in the project, hierarchy included.\n\nReturns markers in depth-first order: a top-level marker is\nyielded before its sub-markers, then its sub-markers'\nsub-markers, and so on.\n",
           "element_type": "ICmPossibility",
           "example": "",
@@ -13191,6 +13241,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IConstChartMovedTextMarker",
+            "return_type": "list[IConstChartMovedTextMarker]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all moved text markers in a constituent chart.\n",
           "element_source_property": "CellsOS",
           "element_type": "IConstituentChartCellPart",
@@ -13615,6 +13672,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IDsConstChart",
+            "return_type": "EnumerableWrapper[IDsConstChart]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all constituent charts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IDsConstChart objects in the\nproject database, allowing iteration over all discourse analysis charts.\n",
           "element_type": "IDsConstChart",
           "example": "            >>> for chart in project.ConstCharts.GetAll():\n            ...     name = project.ConstCharts.GetName(chart)\n            ...     row_count = chart.RowsOS.Count\n            ...     print(f\"{name} ({row_count} rows)\")\n            Genesis 1 Analysis (45 rows)\n            Mark 1 Analysis (32 rows)\n",
@@ -14088,6 +14152,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IConstChartRow",
+            "return_type": "list[IConstChartRow]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all rows in a constituent chart.\n",
           "element_source_property": "RowsOS",
           "element_type": "IConstChartRow",
@@ -14662,6 +14733,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IConstChartWordGroup",
+            "return_type": "list[IConstChartWordGroup]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all word groups in a chart row.\n",
           "element_cast_applied": true,
           "element_source_property": "CellsOS",
@@ -17520,6 +17598,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IRnGenericRec",
+            "return_type": "EnumerableWrapper[IRnGenericRec]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all research notebook records in the project.\n\nReturns all top-level notebook records. Use GetSubRecords() to navigate\nthe hierarchical structure of records and their sub-records.\n",
           "element_source_property": "RecordsOC",
           "element_type": "IRnGenericRec",
@@ -20573,6 +20658,13 @@
           "usage_hint": null
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IPhEnvironment",
+            "return_type": "EnumerableWrapper[IPhEnvironment]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all phonological environments in the project.\n",
           "element_type": "IPhEnvironment",
           "example": "            >>> envOps = EnvironmentOperations(project)\n            >>> for env in envOps.GetAll():\n            ...     name = envOps.GetName(env)\n            ...     notation = envOps.GetStringRepresentation(env)\n            ...     print(f\"{name}: {notation}\")\n            Word Initial: #_\n            Word Final: _#\n            Between Vowels: V_V\n            Before Consonant: _C\n",
@@ -21286,6 +21378,13 @@
           "usage_hint": null
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ILexEtymology",
+            "return_type": "EnumerableWrapper[ILexEtymology]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all etymologies for a lexical entry, or all etymologies in the entire project.\n",
           "element_type": "ILexEtymology",
           "example": "            >>> etymOps = EtymologyOperations(project)\n            >>> # Get etymologies for specific entry\n            >>> entry = project.LexEntry.Find(\"telephone\")\n            >>> for etym in etymOps.GetAll(entry):\n            ...     source = etymOps.GetSource(etym)\n            ...     form = etymOps.GetForm(etym)\n            ...     gloss = etymOps.GetGloss(etym)\n            ...     print(f\"Etymology: {source} '{form}' ({gloss})\")\n            Etymology: Greek 'tele' (far)\n            Etymology: Greek 'phone' (sound)\n\n            >>> # Get ALL etymologies in entire project\n            >>> for etym in etymOps.GetAll():\n            ...     source = etymOps.GetSource(etym)\n            ...     print(f\"Etymology source: {source}\")\n",
@@ -22696,6 +22795,13 @@
           "usage_hint": null
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ILexExampleSentence",
+            "return_type": "EnumerableWrapper[ILexExampleSentence]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get example sentences for a sense or all examples in the project.\n",
           "element_type": "ILexExampleSentence",
           "example": "            >>> exampleOps = ExampleOperations(project)\n            >>>\n            >>> # Get examples for a specific sense\n            >>> entry = project.LexiconAllEntries().__next__()\n            >>> sense = entry.SensesOS[0]\n            >>> for example in exampleOps.GetAll(sense):\n            ...     text = exampleOps.GetExample(example)\n            ...     print(f\"Example: {text}\")\n            >>>\n            >>> # Get ALL examples in entire project\n            >>> for example in exampleOps.GetAll():\n            ...     text = exampleOps.GetExample(example)\n            ...     print(f\"Example: {text}\")\n",
@@ -31436,6 +31542,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "dict",
+            "return_type": "EnumerableWrapper[dict]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": false
+          },
           "description": "Get all saved filters in the project.\n\nThis method returns all filter objects stored in the project,\nregardless of their type.\n",
           "example": "            >>> for filter_obj in project.Filter.GetAll():\n            ...     name = filter_obj['name']\n            ...     filter_type = filter_obj['filter_type']\n            ...     print(f\"{name} ({filter_type})\")\n            Verbs (LexEntry)\n            Nouns (LexEntry)\n            Correct Wordforms (Wordform)\n",
           "is_classmethod": false,
@@ -34842,6 +34955,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ILexEntry",
+            "return_type": "EnumerableWrapper[ILexEntry]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all lexical entries in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ILexEntry objects in the\nproject database, allowing iteration over the complete lexicon.\n",
           "element_type": "ILexEntry",
           "example": "            >>> for entry in project.LexEntry.GetAll():\n            ...     headword = project.LexEntry.GetHeadword(entry)\n            ...     senses = project.LexEntry.GetSenseCount(entry)\n            ...     print(f\"{headword} ({senses} senses)\")\n            run (3 senses)\n            walk (2 senses)\n            house (4 senses)\n",
@@ -37715,6 +37835,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ILexReference",
+            "return_type": "EnumerableWrapper[ILexReference]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all lexical references for a sense or entry, or all references in the entire project.\n\nThis returns all LexReference objects that include the specified\nsense or entry as one of their targets.\n",
           "element_type": "ILexReference",
           "example": "            >>> # Get references for specific sense\n            >>> entry = project.LexEntry.Find(\"run\")\n            >>> if entry:\n            ...     senses = list(project.Senses.GetAll(entry))\n            ...     if senses:\n            ...         for ref in project.LexReferences.GetAll(senses[0]):\n            ...             ref_type = project.LexReferences.GetType(ref)\n            ...             type_name = project.LexReferences.GetTypeName(ref_type)\n            ...             targets = project.LexReferences.GetTargets(ref)\n            ...             print(f\"{type_name}: {len(targets)} targets\")\n            Synonym: 3 targets\n            Hypernym: 2 targets\n\n            >>> # Get ALL lexical references in entire project\n            >>> for ref in project.LexReferences.GetAll():\n            ...     ref_type = project.LexReferences.GetType(ref)\n            ...     type_name = project.LexReferences.GetTypeName(ref_type)\n            ...     print(f\"Reference type: {type_name}\")\n",
@@ -39172,6 +39299,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ILexSense",
+            "return_type": "EnumerableWrapper[ILexSense]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get senses for an entry or all senses in the project.\n",
           "element_type": "ILexSense",
           "example": "            >>> # Every sense in the project, subsenses included\n            >>> for sense in project.Senses.GetAll():\n            ...     print(project.Senses.GetGloss(sense))\n\n            >>> # Top-level senses only, scoped to one entry\n            >>> entry = project.LexEntry.Find(\"run\")\n            >>> for sense in project.Senses.GetAll(entry, recursive=False):\n            ...     print(project.Senses.GetGloss(sense))\n\n        See Also:\n            Create, GetSubsenses, GetOwningEntry",
@@ -43026,6 +43160,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmLocation",
+            "return_type": "list[ICmLocation]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all locations in the project.\n",
           "element_source_property": "PossibilitiesOS",
           "element_type": "ICmLocation",
@@ -44537,6 +44678,14 @@
           "usage_hint": "creation"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "MorphosyntaxAnalysis",
+            "note": "Yields flexicon MorphosyntaxAnalysis wrapper objects, not raw LCM interfaces.",
+            "return_type": "MSACollection[MorphosyntaxAnalysis]",
+            "shape": "msa_collection",
+            "yields_lcm_objects": false
+          },
           "description": "Get every morphosyntactic analysis owned by an entry, or by the\nwhole project.\n\nReads ``entry.MorphoSyntaxAnalysesOC`` and returns a smart\ncollection of wrapped MSA objects that transparently handle the\nfour concrete subtypes (MoStemMsa, MoDerivAffMsa, MoInflAffMsa,\nMoUnclassifiedAffixMsa). The caller never tests ``ClassName`` and\nnever casts: subtype differences are reached through the\nwrapper's ``is_*`` / ``as_*`` / ``pos_*`` families instead.\n",
           "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>>\n            >>> # Every MSA on one entry\n            >>> msas = project.MSA.GetAll(entry)\n            >>> print(msas)  # Shows subtype breakdown\n            # MSACollection (3 total)\n            #   MoStemMsa: 2 (66%)\n            #   MoDerivAffMsa: 1 (33%)\n            >>>\n            >>> # Iterate the wrapped objects -- no ClassName, no cast\n            >>> for msa in msas:\n            ...     if msa.is_deriv_aff_msa:\n            ...         print(msa.pos_from, \"->\", msa.pos_to)\n            ...     else:\n            ...         print(msa.pos_main)\n            >>>\n            >>> # len() and indexing work directly on the collection\n            >>> print(len(msas))\n            3\n            >>> first = msas[0]\n            >>>\n            >>> # Filter by subtype, or by POS, and chain the two\n            >>> verb_pos = project.POS.Find(\"Verb\")\n            >>> verb_stems = project.MSA.GetAll(entry).filter(pos_main=verb_pos)\n            >>>\n            >>> # Project-wide sweep\n            >>> all_msas = project.MSA.GetAll()\n            >>> print(f\"Project has {len(all_msas)} MSAs\")\n",
           "is_classmethod": false,
@@ -45232,6 +45381,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmFile",
+            "return_type": "EnumerableWrapper[ICmFile]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Retrieve all media files in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmFile objects in the\nproject database, allowing iteration over the complete media inventory.\n",
           "element_type": "ICmFile",
           "example": "            >>> for media in project.Media.GetAll():\n            ...     path = project.Media.GetInternalPath(media)\n            ...     label = project.Media.GetLabel(media, \"en\")\n            ...     print(f\"{label}: {path}\")\n            Recording1: audio/recording1.wav\n            Video1: videos/intro.mp4\n            Photo1: images/photo1.jpg\n",
@@ -46630,6 +46786,13 @@
           "usage_hint": null
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "Any",
+            "return_type": "EnumerableWrapper[Any]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": false
+          },
           "description": "Get all compound rules and affix templates in the project.\n\nYields items from CompoundRulesOS and AffixTemplatesOS. All yielded\nitems support GetName, GetDescription, and GetStratum.\n\nAd hoc co-prohibitions are NOT included (different property interface);\nuse GetAllAdhocCoProhibitions() separately.\n",
           "example": "            >>> ruleOps = MorphRuleOperations(project)\n            >>> for rule in ruleOps.GetAll():\n            ...     name = ruleOps.GetName(rule)\n            ...     print(f\"{name} ({rule.ClassName})\")\n            Noun-Noun Compound (MoEndoCompound)\n            Verb Inflection (MoInflAffixTemplate)\n\n        See Also:\n            GetAllCompoundRules, GetAllAffixTemplates, GetAllAdhocCoProhibitions",
           "is_classmethod": false,
@@ -48385,6 +48548,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IPhNaturalClass",
+            "return_type": "EnumerableWrapper[IPhNaturalClass]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all natural classes in the phonological inventory.\n",
           "element_type": "IPhNaturalClass",
           "example": "            >>> for nc in project.NaturalClasses.GetAll():\n            ...     name = project.NaturalClasses.GetName(nc)\n            ...     abbr = project.NaturalClasses.GetAbbreviation(nc)\n            ...     phonemes = project.NaturalClasses.GetPhonemes(nc)\n            ...     print(f\"{name} ({abbr}): {len(phonemes)} phonemes\")\n            Voiceless Stops (VLS): 3 phonemes\n            Voiced Stops (VCD): 3 phonemes\n            Nasals (N): 3 phonemes\n            Vowels (V): 5 phonemes\n",
@@ -49231,6 +49401,13 @@
           "usage_hint": null
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmBaseAnnotation",
+            "return_type": "EnumerableWrapper[ICmBaseAnnotation]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all notes attached to an object.\n",
           "element_type": "ICmBaseAnnotation",
           "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> for note in project.Note.GetAll(entry):\n            ...     content = project.Note.GetContent(note)\n            ...     print(f\"Note: {content}\")",
@@ -50233,6 +50410,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "Any",
+            "return_type": "List[Any]",
+            "shape": "python_list",
+            "yields_lcm_objects": false
+          },
           "description": "Return all overlays in the project.",
           "element_source_property": "OverlaysOC",
           "element_type": "ICmOverlay",
@@ -51542,6 +51726,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IPartOfSpeech",
+            "return_type": "EnumerableWrapper[IPartOfSpeech]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all parts of speech in the project.\n\nCan be called two ways:\nPOSOperations.GetAll(project)         # Class-level, no instantiation\nPOSOperations(project).GetAll()       # Instance-level, traditional\n",
           "element_type": "IPartOfSpeech",
           "example": "            >>> posOps = POSOperations(project)\n            >>> for pos in posOps.GetAll():\n            ...     print(posOps.GetName(pos))      # Includes Proper Noun, Common Noun, etc.\n\n            >>> # Top-level only\n            >>> for pos in posOps.GetAll(recursive=False):\n            ...     print(posOps.GetName(pos))\n\n        See Also:\n            GetSubcategories, Find",
@@ -52546,6 +52737,13 @@
           "usage_hint": null
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IStTxtPara",
+            "return_type": "EnumerableWrapper[IStTxtPara]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all paragraphs in a text.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily\nmaterialized) over all paragraph objects in the text's paragraph\ncollection, in order.\n",
           "element_type": "IStTxtPara",
           "example": "            >>> # Iterate over all paragraphs\n            >>> text = project.Texts.Find(\"Genesis\")\n            >>> for para in project.Paragraphs.GetAll(text):\n            ...     text = project.Paragraphs.GetText(para)\n            ...     print(f\"Paragraph: {text[:50]}...\")\n\n            >>> # Get as list\n            >>> all_paras = list(project.Paragraphs.GetAll(text))\n            >>> print(f\"Total paragraphs: {len(all_paras)}\")\n",
@@ -53849,6 +54047,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmPerson",
+            "return_type": "EnumerableWrapper[ICmPerson]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all people in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmPerson objects in the\nproject database, allowing iteration over all registered people.\n",
           "element_type": "ICmPerson",
           "example": "            >>> for person in project.Person.GetAll():\n            ...     name = project.Person.GetName(person)\n            ...     print(name)\n            John Smith\n            Maria Garcia\n            Ahmed Hassan\n",
@@ -55304,6 +55509,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IFsClosedFeature",
+            "return_type": "EnumerableWrapper[IFsClosedFeature]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all phonological features in the project.\n",
           "element_type": "IFsClosedFeature",
           "example": "",
@@ -56222,6 +56434,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IPhPhoneme",
+            "return_type": "EnumerableWrapper[IPhPhoneme]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all phonemes in the project.\n",
           "element_type": "IPhPhoneme",
           "example": "            >>> phonemeOps = PhonemeOperations(project)\n            >>> for phoneme in phonemeOps.GetAll():\n            ...     representation = phonemeOps.GetRepresentation(phoneme)\n            ...     description = phonemeOps.GetDescription(phoneme)\n            ...     print(f\"{representation}: {description}\")\n            /p/: voiceless bilabial stop\n            /b/: voiced bilabial stop\n            /t/: voiceless alveolar stop\n            /d/: voiced alveolar stop\n",
@@ -58840,6 +59059,14 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "PhonologicalRule",
+            "note": "Yields flexicon PhonologicalRule wrapper objects, not raw LCM interfaces.",
+            "return_type": "RuleCollection[PhonologicalRule]",
+            "shape": "rule_collection",
+            "yields_lcm_objects": false
+          },
           "description": "Get all phonological rules in the project.\n",
           "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> rules = phonRuleOps.GetAll()\n            >>> print(rules)  # Shows type breakdown\n            RuleCollection (10 total)\n              PhRegularRule: 7 (70%)\n              PhMetathesisRule: 3 (30%)\n\n            >>> # Access individual rules\n            >>> for rule in rules:\n            ...     print(rule.name)\n\n            >>> # Filter to specific type\n            >>> regular_only = rules.regular_rules()\n\n            >>> # Filter by name\n            >>> voicing_rules = rules.filter(name_contains='voicing')\n",
           "is_classmethod": false,
@@ -59895,6 +60122,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmPossibility",
+            "return_type": "list[ICmPossibility]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all items in the list.\n",
           "element_cast_applied": true,
           "element_source_property": "PossibilitiesOS",
@@ -63476,6 +63710,13 @@
           "usage_hint": null
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ILexPronunciation",
+            "return_type": "EnumerableWrapper[ILexPronunciation]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all pronunciations for a lexical entry, or all pronunciations in the entire project.\n",
           "element_type": "ILexPronunciation",
           "example": "            >>> # Get pronunciations for specific entry\n            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> for pron in project.Pronunciations.GetAll(entry):\n            ...     ipa = project.Pronunciations.GetForm(pron, \"en-fonipa\")\n            ...     print(f\"IPA: {ipa}\")\n            IPA: rʌn\n            IPA: ɹʌn\n\n            >>> # Get ALL pronunciations in entire project\n            >>> for pron in project.Pronunciations.GetAll():\n            ...     ipa = project.Pronunciations.GetForm(pron, \"en-fonipa\")\n            ...     print(f\"IPA: {ipa}\")\n",
@@ -64190,6 +64431,13 @@
           "usage_hint": "creation"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmPossibility",
+            "return_type": "list[ICmPossibility]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all publications in the project.\n",
           "element_cast_applied": true,
           "element_source_property": "PossibilitiesOS",
@@ -65340,6 +65588,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IReversalIndexEntry",
+            "return_type": "EnumerableWrapper[IReversalIndexEntry]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all reversal entries in a reversal index.\n",
           "element_type": "IReversalIndexEntry",
           "example": "            >>> idx = project.ReversalIndexes.Find(\"English\")\n            >>> for entry in project.ReversalEntries.GetAll(idx):\n            ...     form = project.ReversalEntries.GetForm(entry)\n            ...     sense_count = len(list(project.ReversalEntries.GetSenses(entry)))\n            ...     print(f\"{form}: {sense_count} senses\")\n            run: 3 senses\n            walk: 2 senses\n",
@@ -65934,6 +66189,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IReversalIndex",
+            "return_type": "EnumerableWrapper[IReversalIndex]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all reversal indexes in the project.\n",
           "element_type": "IReversalIndex",
           "example": "            >>> for idx in project.ReversalIndexes.GetAll():\n            ...     name = project.ReversalIndexes.GetName(idx)\n            ...     ws = project.ReversalIndexes.GetWritingSystem(idx)\n            ...     entry_count = len(list(project.ReversalIndexes.GetEntries(idx)))\n            ...     print(f\"{name} ({ws}): {entry_count} entries\")\n            English (en): 250 entries\n            French (fr): 120 entries\n",
@@ -66867,6 +67129,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IScrBook",
+            "return_type": "EnumerableWrapper[IScrBook]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all Scripture books in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrBook objects in the\nproject, allowing iteration over all Scripture books.\n",
           "element_source_property": "ScriptureBooksOS",
           "element_type": "IScrBook",
@@ -67295,6 +67564,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IScrDraft",
+            "return_type": "EnumerableWrapper[IScrDraft]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all Scripture drafts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrDraft objects in the\nproject, allowing iteration over all saved Scripture versions.\n",
           "element_source_property": "ArchivedDraftsOC",
           "element_type": "IScrDraft",
@@ -67698,6 +67974,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IScrScriptureNote",
+            "return_type": "list[IScrScriptureNote]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all Scripture notes in a book.\n",
           "element_source_property": "NotesOS",
           "element_type": "IScrScriptureNote",
@@ -68195,6 +68478,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IScrSection",
+            "return_type": "list[IScrSection]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all Scripture sections in a book.\n",
           "element_source_property": "SectionsOS",
           "element_type": "IScrSection",
@@ -68670,6 +68960,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IScrTxtPara",
+            "return_type": "list[IScrTxtPara]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all Scripture paragraphs in a section.\n",
           "element_source_property": "ParagraphsOS",
           "element_type": "IStPara",
@@ -69274,6 +69571,13 @@
           "usage_hint": "validation"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ISegment",
+            "return_type": "EnumerableWrapper[ISegment]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all segments in a paragraph.\n",
           "element_type": "ISegment",
           "example": "            >>> para = project.Object(para_hvo)\n            >>> for segment in project.Segments.GetAll(para):\n            ...     text = project.Segments.GetBaselineText(segment)\n            ...     print(text)\n            In the beginning God created the heavens and the earth.\n            Now the earth was formless and empty.\n\n        See Also:\n            GetBaselineText, GetFreeTranslation, GetAnalyses",
@@ -70868,6 +71172,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ICmSemanticDomain",
+            "return_type": "list[ICmSemanticDomain]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Get all semantic domains in the project.\n",
           "element_source_property": "PossibilitiesOS",
           "element_type": "ICmSemanticDomain",
@@ -72171,6 +72482,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IMoStratum",
+            "return_type": "EnumerableWrapper[IMoStratum]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Yield every stratum in ``MorphologicalDataOA.StrataOS``.\n",
           "element_type": "IMoStratum",
           "example": "",
@@ -72906,6 +73224,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IText",
+            "return_type": "EnumerableWrapper[IText]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all texts in the project.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) that yields IText objects. This is a wrapper around\nthe existing TextsGetAll method but returns the raw IText objects instead\nof (name, content) tuples.\n",
           "element_type": "IText",
           "example": "            >>> # Iterate over all texts\n            >>> for text in project.Texts.GetAll():\n            ...     name = text.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Text: {name}\")\n\n            >>> # Get as list\n            >>> all_texts = list(project.Texts.GetAll())\n            >>> print(f\"Total texts: {len(all_texts)}\")\n\n        See Also:\n            Create, Delete, Exists, project.TextsGetAll()",
@@ -74581,6 +74906,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "ILexEntryRef",
+            "return_type": "EnumerableWrapper[ILexEntryRef]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all variant references for a lexical entry, or all variants in the entire project.\n\nThis returns the entry references that define this entry as a variant\nof other entries, or other entries as variants of this one.\n",
           "element_type": "ILexEntryRef",
           "example": "            >>> # Get variant references for specific entry\n            >>> entry = project.LexEntry.Find(\"colour\")\n            >>> for variant_ref in project.Variants.GetAll(entry):\n            ...     vtype = project.Variants.GetType(variant_ref)\n            ...     type_name = project.Variants.GetTypeName(vtype)\n            ...     print(f\"Variant type: {type_name}\")\n            Variant type: Spelling Variant\n\n            >>> # Get ALL variant references in entire project\n            >>> for variant_ref in project.Variants.GetAll():\n            ...     form = project.Variants.GetForm(variant_ref)\n            ...     print(f\"Variant form: {form}\")\n",
@@ -75648,6 +75980,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IWfiAnalysis",
+            "return_type": "list[IWfiAnalysis]",
+            "shape": "python_list",
+            "yields_lcm_objects": true
+          },
           "description": "Retrieve all analyses for a wordform.\n\nThis method returns all IWfiAnalysis objects associated with a given\nwordform, representing different possible linguistic interpretations.\n",
           "element_source_property": "AnalysesOC",
           "element_type": "IWfiAnalysis",
@@ -77043,6 +77382,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IWfiGloss",
+            "return_type": "EnumerableWrapper[IWfiGloss]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Retrieve all glosses for a wordform analysis.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able,\nlazily materialized) over all IWfiGloss objects associated with the\nspecified analysis, allowing iteration over all meaning glosses.\n",
           "element_type": "IWfiGloss",
           "example": "            >>> wf = project.Wordforms.Find(\"running\")\n            >>> analyses = project.Wordforms.GetAnalyses(wf)\n            >>> if analyses:\n            ...     for gloss in project.WfiGlosses.GetAll(analyses[0]):\n            ...         form = project.WfiGlosses.GetForm(gloss)\n            ...         print(form)\n",
@@ -77739,6 +78085,13 @@
           "usage_hint": null
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IWfiMorphBundle",
+            "return_type": "EnumerableWrapper[IWfiMorphBundle]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all morph bundles for a wordform analysis.\n",
           "element_type": "IWfiMorphBundle",
           "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> analysis = analyses[0]\n            >>> for bundle in morphBundleOps.GetAll(analysis):\n            ...     form = morphBundleOps.GetForm(bundle)\n            ...     gloss = morphBundleOps.GetGloss(bundle)\n            ...     print(f\"{form} - {gloss}\")\n            run - run\n            -ing - PROG\n",
@@ -79097,6 +79450,13 @@
           "usage_hint": "retrieval"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IWfiWordform",
+            "return_type": "EnumerableWrapper[IWfiWordform]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Retrieve all wordforms in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IWfiWordform objects in the\nproject database, allowing iteration over the complete wordform inventory.\n",
           "element_type": "IWfiWordform",
           "example": "            >>> for wordform in project.Wordforms.GetAll():\n            ...     form = project.Wordforms.GetForm(wordform)\n            ...     print(form)\n",
@@ -80026,6 +80386,13 @@
           "usage_hint": "validation"
         },
         {
+          "collection_contract": {
+            "behavioral": true,
+            "element_type": "IWritingSystemDefinition",
+            "return_type": "EnumerableWrapper[IWritingSystemDefinition]",
+            "shape": "enumerable_wrapper",
+            "yields_lcm_objects": true
+          },
           "description": "Get all active writing systems in the project.\n\nReturns all writing systems that are currently active (both vernacular\nand analysis) in the project.\n",
           "element_type": "IWritingSystemDefinition",
           "example": "            >>> for ws in project.WritingSystems.GetAll():\n            ...     name = project.WritingSystems.GetDisplayName(ws)\n            ...     tag = project.WritingSystems.GetLanguageTag(ws)\n            ...     font = project.WritingSystems.GetFontName(ws)\n            ...     print(f\"{name} ({tag}): {font}\")\n            English (en): Calibri\n            French (fr): Arial\n            Vernacular (qaa-x-kal): Charis SIL\n",

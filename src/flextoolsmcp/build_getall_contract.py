@@ -26,6 +26,8 @@ KEY_COLLECTION_CONTRACT = "collection_contract"
 _RETURN_TYPE_PATTERNS: Tuple[Tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^EnumerableWrapper\[(.+)\]$"), "enumerable_wrapper"),
     (re.compile(r"^list\[(.+)\]$"), "python_list"),
+    # typing.List / builtins alias as emitted by some Flexicon stubs
+    (re.compile(r"^List\[(.+)\]$"), "python_list"),
     (re.compile(r"^AllomorphCollection\[(.+)\]$"), "allomorph_collection"),
     (re.compile(r"^RuleCollection\[(.+)\]$"), "rule_collection"),
     (re.compile(r"^MSACollection\[(.+)\]$"), "msa_collection"),

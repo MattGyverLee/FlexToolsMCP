@@ -100,6 +100,13 @@ sorted position, not the top). Changes without an issue go under Other.
   shared `reset_session_state` pytest fixture imports the canonical kernel helper
   (`flextoolsmcp.server.kernel`) instead of the legacy top-level `server` alias,
   which loaded a duplicate kernel module.
+- **Duplicate kernel module objects under pytest / script imports**
+  ([#172](https://github.com/MattGyverLee/FlexToolsMCP/issues/172)). Register
+  ``server.kernel`` / ``flextoolsmcp.server.kernel`` (and the matching
+  ``session`` spellings) as aliases in ``sys.modules``, bind them on the parent
+  package for attribute / ``patch`` resolution on Python 3.10, and stop
+  recreating ``session_state`` in ``admin.py`` on a failed ``isinstance`` check
+  so ``SessionState`` class identity cannot reintroduce the #10 split-brain.
 - **Issue #173:** Pytest no longer writes into the real `~/.flextoolsmcp/logs`
   tree. `get_log_dir()` honors `FLEXTOOLSMCP_LOG_DIR`; the suite sets it via
   `pytest_configure`, with a regression test guarding against silent lapse.

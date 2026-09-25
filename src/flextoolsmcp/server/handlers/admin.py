@@ -73,8 +73,10 @@ json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_de
 rotate_logging_to_session, _ = safe_import_logging_helpers()
 SessionState = safe_import_session_state()
 
-if not isinstance(session_state, SessionState):
-    session_state = SessionState()
+# Do NOT recreate session_state on a failed isinstance check. Dual-path
+# imports (server.session vs flextoolsmcp.server.session) can briefly make
+# the same object look like a different class; replacing it here reintroduces
+# the #10 split-brain this module is supposed to share with the kernel.
 
 
 # ============================================================

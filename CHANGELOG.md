@@ -66,6 +66,11 @@ sorted position, not the top). Changes without an issue go under Other.
   ``if not modifyAllowed: ...; return`` followed by writes is now treated as
   equivalent to ``if modifyAllowed: ... else: ...`` for line-level protection
   in ``find_protected_ranges`` / ``certify_script_readonly``.
+- **Obsolete `FLEXLIBS2_PATH` in `.env` looked like active configuration but was
+  silently ignored** ([#141](https://github.com/MattGyverLee/FlexToolsMCP/issues/141)).
+  The MCP server now loads repo-root `.env` on startup (matching
+  `flextoolsmcp.refresh`), skips applying obsolete keys, and logs a clear warning
+  pointing at `FLEXICON_PATH` / `pip install pyflexicon`.
 - **Ephemeral MCP clients blocked by `api_discovery_required` every turn**
   ([#142](https://github.com/MattGyverLee/FlexToolsMCP/issues/142)). Set
   ``FLEXTOOLS_STATELESS=1`` in the server environment to skip API discovery gates

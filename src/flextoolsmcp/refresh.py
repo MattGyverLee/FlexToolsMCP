@@ -53,17 +53,17 @@ def load_env():
     - Leave paths commented out (default) → use installed packages
     - Uncomment paths in .env → use repository clones instead
     """
-    env_file = get_project_root() / ".env"
-    if env_file.exists():
+    if __package__:
+        from .env_config import emit_obsolete_env_warnings, load_project_env
+    else:
+        from env_config import emit_obsolete_env_warnings, load_project_env
+
+    env_file = load_project_env(get_project_root())
+    if env_file is not None:
         print(f"[INFO] Loading configuration from {env_file}")
-        with open(env_file, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    os.environ.setdefault(key.strip(), value.strip())
     else:
         print("[WARN] No .env file found. Using defaults. Copy .env.example to .env to configure paths.")
+    emit_obsolete_env_warnings()
 
 
 # Load .env on import

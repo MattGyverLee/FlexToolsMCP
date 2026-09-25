@@ -12,7 +12,7 @@ code: |
   entries = project.LexEntry.GetAll()
   report.Info(f"Project: {lp}, entries: {len(entries)}")
 expect:
-  outcome: preflight_ok
+  outcome: ok
   error_code: null
   auto_fixes: 0
 issue: 69

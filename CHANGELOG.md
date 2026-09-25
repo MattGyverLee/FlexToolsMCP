@@ -6,6 +6,21 @@ Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
+- **`project.LangProject` resolved to a wrong or empty suggestion; no-match fell
+  through without a discovery-tool pointer** ([#69](https://github.com/MattGyverLee/FlexToolsMCP/issues/69)).
+  Runtime `AttributeError` on `project.LangProject`, `project.LangProj`, or
+  `project.LanguageProject` now correctly suggests `project.lp`; `project.LexDb` /
+  `project.LexDbOA` suggest `project.lexDB`. These aliases live in
+  `PROJECT_RAW_HANDLE_ALIASES` and take highest priority over the fuzzy matcher.
+  A single `_MIN_SUGGESTION_RATIO = 0.6` constant is now shared between preflight
+  chain-detection and runtime attribute-error suggestions, closing the gap that
+  let the acronym fallback produce nonsense hits like `PossibilityList → PLPL`.
+  Preflight emits a non-blocking advisory (not a hard rejection) for raw-handle
+  aliases so the `hasattr`-guarded fallback pattern
+  (`project.lp if hasattr(project, "lp") else project.LangProject`) continues to
+  work. When no candidate clears the 0.6 floor, `did_you_mean` is now `[]` and
+  `help` carries an explicit pointer to `flextools_get_object_api` /
+  `flextools_search_by_capability` rather than an empty or misleading hint.
 - **Unhandled tool handler exceptions bypassed the structured error envelope**
   ([#89](https://github.com/MattGyverLee/FlexToolsMCP/issues/89)). `call_tool`
   now catches handler failures and returns `internal_error` with
@@ -284,9 +299,13 @@ and `parse_sandbox_refused` (`reason`, `name`, `path`, `hint`,
 `corpus_exists`, `corpus_not_found`, `corpus_invalid`, `run_not_seedable`,
 `insufficient_disk_space`, `word_file_invalid`; each fires before a file is
 created). `parser_tool_missing` (CP1) and `parser_timeout` (CP3) get their
-first emitter here. Additive: `tool-responses/1.0` is unchanged, no existing
-code changes shape, and the hand-maintained count in `docs/TOOL-CONTRACT.md`
-goes from 34 to 36. `flextools_health` gains a `parser.sandbox` block
+first emitter here. `parser_job_failed` (CP3) gains two `failure` values
+for the sandbox worker: `engine_unavailable` (the config never loaded into a
+usable HermitCrab `Morpher`) and `id_map_invalid` (the config source's
+`lcm-ids.json` id map failed validation, so Try A Word's result shaping
+could not be applied safely); its field order is unchanged. Additive:
+`tool-responses/1.0` is unchanged, no existing code changes shape, and the
+hand-maintained count in `docs/TOOL-CONTRACT.md` goes from 34 to 36. `flextools_health` gains a `parser.sandbox` block
 reporting whether the sandbox spine is ready.
 
 ### Other

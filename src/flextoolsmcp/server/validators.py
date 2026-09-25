@@ -19,9 +19,9 @@ import tokenize
 from typing import Dict, Iterator, List, Set, Optional, Any, Tuple, TypeGuard, Union
 
 try:
-    from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
+    from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES, PROJECT_RAW_HANDLE_ALIASES
 except ImportError:
-    from server.constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
+    from server.constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES, PROJECT_RAW_HANDLE_ALIASES
 
 
 # ============================================================
@@ -686,11 +686,23 @@ def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
     have -- keeping them here made the gate bless code that AttributeErrors at
     runtime, and made the failing name its own top "did you mean" suggestion.
     """
+    # Issue #69: "lp", "project", and "lexDB" are real FLExProject accessors
+    # that the KNOWN_OPERATIONS heuristic never produces (they are not derived
+    # from Operations class names). Pin them here so the legacy fallback path
+    # (no API index available) still accepts them.
+    _ALWAYS_VALID = ("lp", "project", "lexDB")
+
     legacy = [
         op[: -len("Operations")]
         for op in KNOWN_OPERATIONS
         if op.endswith("Operations") and op[: -len("Operations")] not in PROJECT_ACCESSOR_ALIASES
     ]
+    # Merge the pinned names into legacy; use a set for O(1) dedup guard.
+    legacy_set = set(legacy)
+    for name in _ALWAYS_VALID:
+        if name not in legacy_set:
+            legacy.append(name)
+
     if api_index is None:
         return legacy
     flexicon = getattr(api_index, "flexicon", None) or {}
@@ -729,16 +741,19 @@ def _suggest_attribute_matches(attr_name: str, candidates: List[str], cutoff: fl
     if matches:
         return matches
 
-    # Acronym fallback: trailing uppercase letters of attr match candidate's
-    # camelcase initials (e.g., POS in GetPOS -> initials of GetPartOfSpeech).
+    # Acronym fallback: uppercase letters in attr_name match candidate's
+    # camelCase initials ONLY (e.g., POS in GetPOS -> initials of GetPartOfSpeech).
+    # Issue #69: the previous implementation concatenated camelCase initials +
+    # ALL uppercase letters of the candidate, which turned "PossibilityList" into
+    # "PLPL" and falsely matched the "LP" in "LangProject". Using camelCase
+    # initials alone is sufficient for the intended GetPOS -> GetPartOfSpeech
+    # pattern and avoids the double-letter false-positive.
     upper_letters = "".join(c for c in attr_name if c.isupper())
     if len(upper_letters) < 2:
         return []
     acronym_hits = []
     for cand in candidates:
-        initials = "".join(re.findall(r"(?:^|[a-z])([A-Z])", cand)) + "".join(
-            c for c in cand if c.isupper()
-        )
+        initials = "".join(re.findall(r"(?:^|[a-z])([A-Z])", cand))
         if upper_letters in initials:
             acronym_hits.append(cand)
     return acronym_hits[:3]
@@ -797,14 +812,80 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
     if not candidates:
         return {"has_suggestion": False, "object_type": object_type, "attribute_name": attr_name}
 
+    # Issue #69: check alias tables BEFORE fuzzy matching so authoritative
+    # one-right-answer mappings always win over difflib's best guess.
+    if scope == "project":
+        # Raw LCM handle alias (e.g. LangProject -> lp) takes highest priority.
+        if attr_name in PROJECT_RAW_HANDLE_ALIASES:
+            alias = PROJECT_RAW_HANDLE_ALIASES[attr_name]
+            return {
+                "has_suggestion": True,
+                "object_type": object_type,
+                "attribute_name": attr_name,
+                "did_you_mean": [alias],
+                "suggestion": (
+                    f"use project.{alias} (an ILangProject; same as "
+                    f"project.project.LangProject in LCM)"
+                    if alias == "lp"
+                    else f"use project.{alias} instead of project.{attr_name}"
+                ),
+            }
+        # Operations-shorthand alias (e.g. LexSense -> Senses).
+        if attr_name in PROJECT_ACCESSOR_ALIASES:
+            alias = PROJECT_ACCESSOR_ALIASES[attr_name]
+            return {
+                "has_suggestion": True,
+                "object_type": object_type,
+                "attribute_name": attr_name,
+                "did_you_mean": [alias],
+                "suggestion": (
+                    f"'{attr_name}' is not a project accessor "
+                    f"({attr_name}Operations has no same-named accessor). "
+                    f"Use project.{alias} instead."
+                ),
+            }
+
     matches = _suggest_attribute_matches(attr_name, candidates)
-    # A known Operations-shorthand mistake has one right answer -- lead with it
-    # rather than whatever difflib ranks first.
-    if scope == "project" and attr_name in PROJECT_ACCESSOR_ALIASES:
-        alias = PROJECT_ACCESSOR_ALIASES[attr_name]
-        matches = [alias] + [m for m in matches if m != alias]
-    if not matches:
-        return {"has_suggestion": False, "object_type": object_type, "attribute_name": attr_name}
+
+    # Issue #69: apply the shared similarity floor to PROJECT ACCESSOR
+    # suggestions.  The acronym fallback was the root cause of the LangProject
+    # -> PossibilityLists false match, and fixing it (above) eliminates the
+    # specific bug, but low-confidence difflib hits can still slip through for
+    # project accessors.  For Operations METHOD suggestions the acronym path is
+    # intentional (GetPOS -> GetPartOfSpeech) and the ratio between an acronym
+    # and a long method name is legitimately low (e.g. ~0.57), so the floor
+    # does not apply there.
+    if scope == "project":
+        import difflib as _dl
+        matches = [
+            m for m in matches
+            if _dl.SequenceMatcher(None, attr_name.lower(), m.lower()).ratio()
+            >= _MIN_SUGGESTION_RATIO
+        ]
+        if not matches:
+            # No confident candidate -- point at discovery tools instead of guessing.
+            return {
+                "has_suggestion": True,
+                "object_type": object_type,
+                "attribute_name": attr_name,
+                "did_you_mean": [],
+                "suggestion": (
+                    "No close match found. Use flextools_get_object_api(\"FLExProject\") "
+                    "to browse valid project accessors, or flextools_search_by_capability "
+                    "to find what you need."
+                ),
+            }
+    elif not matches:
+        return {
+            "has_suggestion": True,
+            "object_type": object_type,
+            "attribute_name": attr_name,
+            "did_you_mean": [],
+            "suggestion": (
+                f"No close match found. Use flextools_get_object_api(\"{scope}\") "
+                f"to browse available methods."
+            ),
+        }
 
     if scope == "project":
         suggestion = f"'{attr_name}' is not a project accessor. Did you mean: {', '.join('project.' + m for m in matches)}?"
@@ -820,17 +901,39 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
     }
 
 
-# Issue #69: the accessor/method rejection gate must not surface low-confidence
-# matches as authoritative "did you mean" fixes. difflib's cutoff=0.7 already
-# guards the primary path, but the acronym fallback in _suggest_attribute_matches
-# can return a garbage candidate (e.g. LangProject -> PossibilityLists, because
-# the acronym "LP" appears in the scrambled initials of "PossibilityList(s)") at
-# a real similarity ratio of ~0.15. A wrong-but-confident suggestion is worse
-# than none, so any candidate whose measured ratio is below this floor is
-# dropped and the code is left for runtime to handle. Calibration: genuine
-# accessor typos we DO want to catch score >=0.78 (LexEntries->LexEntry 0.78,
-# ReversalEntrie->ReversalEntries 0.97); the false LangProject match is 0.15.
-_MIN_CHAIN_MATCH_RATIO = 0.5
+# Issue #69: shared similarity floor applied by BOTH the runtime suggestion
+# path (detect_unknown_attribute_error) and the preflight gate
+# (detect_invalid_project_chains) before naming any "did you mean" candidate.
+# A wrong-but-confident suggestion is worse than none: it reads as authoritative
+# and sends the caller toward a name that has nothing to do with the real fix.
+#
+# Calibration: genuine typos we DO want to catch score >=0.78 (LexEntries ->
+# LexEntry 0.78, ReversalEntrie -> ReversalEntries 0.97). The previous false
+# LangProject -> PossibilityLists match was 0.15. Floor 0.6 leaves room for
+# legitimate near-misses while rejecting the sub-0.5 acronym-fallback garbage
+# that triggered issue #69.
+#
+# Previously _MIN_CHAIN_MATCH_RATIO = 0.5 (preflight only). Raised to 0.6 and
+# promoted to a shared constant so both surfaces enforce the same floor.
+_MIN_SUGGESTION_RATIO = 0.6
+_MIN_CHAIN_MATCH_RATIO = _MIN_SUGGESTION_RATIO  # backwards-compat alias
+
+# PATTERN AUDIT (issue #69) — every fuzzy-match surface in src/flextoolsmcp/server
+# that can name a "did you mean" candidate to the user:
+#
+# | Caller                                      | Location                 | Floor / guard                          |
+# |---------------------------------------------|--------------------------|----------------------------------------|
+# | detect_unknown_attribute_error (project)    | this file (alias+fuzzy)  | _MIN_SUGGESTION_RATIO (project scope)  |
+# | detect_unknown_attribute_error (Ops method) | this file                | no ratio floor — acronym path intentional (GetPOS~0.57) |
+# | detect_invalid_project_chains (accessor)    | this file                | _MIN_CHAIN_MATCH_RATIO                 |
+# | detect_invalid_project_chains (method)      | this file                | _MIN_CHAIN_MATCH_RATIO                 |
+# | detect_interface_attribute_typos            | this file                | _INTERFACE_TYPO_MIN_RATIO (= 0.6)      |
+# | project_discovery.resolve_project_name      | project_discovery.py:262 | difflib cutoff=0.6 (project *names*,   |
+# |                                             |                          | not API attrs; generation cutoff IS    |
+# |                                             |                          | the floor — out of #69 scope)          |
+#
+# July #69 fix only floored preflight; August recurrence was the runtime path.
+# When adding a new suggestion surface, add a row here and apply the floor.
 
 
 def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optional[Any] = None) -> dict:
@@ -881,6 +984,37 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
         if isinstance(node.value, ast.Name) and node.value.id == "project":
             x = node.attr
             if x in accessors:
+                continue
+            # Issue #69: raw LCM handle names (LangProject, LexDb, …) that
+            # Flexicon exposes under a different accessor name.  These are NOT
+            # invalid -- code using the fallback pattern
+            #   `project.lp if hasattr(project, "lp") else project.LangProject`
+            # is correct and should not be hard-rejected.  Emit a NON-BLOCKING
+            # advisory so callers learn the Flexicon name without being blocked.
+            # match_ratio is intentionally set below 0.9 so the auto-fix rewrite
+            # (which requires >=0.9) never rewrites a hasattr-guarded fallback.
+            if x in PROJECT_RAW_HANDLE_ALIASES:
+                correct = PROJECT_RAW_HANDLE_ALIASES[x]
+                advisory_msg = (
+                    f"'project.{x}' is not a valid accessor — use project.{correct} instead "
+                    f"(ILangProject, always present). "
+                    f"The hasattr guard here is safe but unnecessary for pyflexicon 4.x+."
+                    if correct == "lp"
+                    else (
+                        f"'project.{x}' is not a valid accessor — use project.{correct} instead."
+                    )
+                )
+                issues.append({
+                    "kind": "advisory",
+                    "expr": f"project.{x}",
+                    "typo_attr": x,
+                    "lineno": node.lineno,
+                    "col_offset": node.col_offset,
+                    "did_you_mean": [correct],
+                    "match_ratio": 0.5,  # below 0.9 => auto-fix skips this
+                    "suggestion": advisory_msg,
+                    "blocking": False,
+                })
                 continue
             # Issue #84: Operations-shorthand names that FLExProject does not
             # actually expose. There is exactly one right answer, so skip the
@@ -974,8 +1108,12 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
     if not unique_issues:
         return {"has_invalid": False, "issues": []}
 
+    # has_invalid is True only when at least one BLOCKING issue is present.
+    # Advisory issues (kind="advisory", blocking=False) are informational; they
+    # appear in `issues` but do not cause a preflight rejection on their own.
+    has_blocking = any(i.get("blocking", True) for i in unique_issues)
     return {
-        "has_invalid": True,
+        "has_invalid": has_blocking,
         "issues": unique_issues,
         "suggestion": " ".join(i["suggestion"] for i in unique_issues),
     }

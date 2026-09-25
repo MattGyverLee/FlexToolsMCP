@@ -86,6 +86,27 @@ PROJECT_ACCESSOR_ALIASES = {
 }
 
 # ============================================================
+# Raw LCM handle names that map to Flexicon project accessors (issue #69)
+# ============================================================
+# These are native LCM/C# handle names that Flexicon exposes under a different
+# (shorter) accessor name.  Code that uses the raw name directly (e.g. taken
+# from LCM documentation or older FlexLibs scripts) gets a helpful advisory
+# pointing at the Flexicon name instead of a confusing fuzzy-match suggestion.
+#
+# Unlike PROJECT_ACCESSOR_ALIASES (Operations shorthands), these keys are NOT
+# required to be Operations class names -- they are raw LCM property names that
+# don't correspond to any Operations class at all.
+#
+# Hint texts are defined in validators.py alongside the detection logic.
+PROJECT_RAW_HANDLE_ALIASES = {
+    "LangProject": "lp",
+    "LanguageProject": "lp",
+    "LangProj": "lp",
+    "LexDb": "lexDB",
+    "LexDbOA": "lexDB",
+}
+
+# ============================================================
 # API Mode Values
 # ============================================================
 # Supported API modes. Used across validators, models,

@@ -5,6 +5,60 @@
 Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
+### Other
+
+*(Unreleased changes with no issue link go here; append at the bottom.)*
+
+## [2.13.0] - 2026-09-25
+
+### Headline: parser checks
+
+FLExToolsMCP can now run FieldWorks' HermitCrab parser, not just document the
+APIs around it. This release ships the whole parser-check series (CP1-CP5,
+[#166](https://github.com/MattGyverLee/FlexToolsMCP/issues/166)):
+
+- **Try a word** -- `flextools_try_word` parses one word the way FLEx's Try A
+  Word does, with `explain` (trace) and `restricted` (test a proposed
+  decomposition) levels; `flextools_grammar_health` reports grammar-load
+  problems.
+- **Batch parsing** -- `flextools_parse_text` parses a scope of texts in a
+  background worker; `flextools_parse_status`, `flextools_parse_log`,
+  `flextools_parse_diff` (did a grammar edit help?), `flextools_parse_cancel`
+  and `flextools_parse_release` manage the runs.
+- **Filing results (the one write path)** -- `flextools_parse_text` with
+  `apply` files parse results into the project, only after a preview is
+  confirmed by `plan_id`; there is no setting that skips the confirmation.
+- **Sandbox** -- `flextools_parse_sandbox` rehearses speculative grammar
+  edits on an exported copy of the grammar, with FieldWorks' own bundled
+  HermitCrab engine, and re-runs saved word corpora. It never opens or writes
+  the live project.
+
+Everything is additive: the tool contract stays at `tool-responses/1.0`, and
+no existing response shape changes. The new error codes are listed under
+[Tool contract](#tool-contract) below.
+
+### flexicon 4.10.0 is the new minimum; index refreshed
+
+The `pyflexicon` floor moves `>=4.9.0` -> `>=4.10.0` (the `<5` cap is
+unchanged), in `pyproject.toml` and its `requirements.txt` mirror, so the
+floor again covers the version the bundled index was built against. 4.10.0 is
+the current release on PyPI. The `*_flexicon-v4.9.0` index files leave the
+repo.
+
+`python -m flextoolsmcp.refresh` against flexicon 4.10.0: the flexicon-mode
+index, LCM bridge and common-patterns files move to `v4.10.0`. The change is
+purely additive: 120 -> 121 entities (`FP_DeduplicationError`), 1541 -> 1581
+methods, and nothing removed (new `OverlayOperations`, complex-form-type
+lookups, `LexSenseOperations.GetMSA`, `FLExProject.SyncForeignChanges`, among
+others). LibLCM `v11.0.0` (with its reverse mapping) was regenerated;
+flexlibs stays at `v1.2.8`.
+
+### Verification
+
+- `pytest -m "not requires_flex"`: green.
+- `python scripts/validate_integrity.py all`: clean.
+- eval: Tier-2 live task evals NOT run for this release.
+
 ### Fixed
 - **`project.LangProject` resolved to a wrong or empty suggestion; no-match fell
   through without a discovery-tool pointer** ([#69](https://github.com/MattGyverLee/FlexToolsMCP/issues/69)).
@@ -309,10 +363,6 @@ could not be applied safely); its field order is unchanged. Additive:
 `tool-responses/1.0` is unchanged, no existing code changes shape, and the
 hand-maintained count in `docs/TOOL-CONTRACT.md` goes from 34 to 36. `flextools_health` gains a `parser.sandbox` block
 reporting whether the sandbox spine is ready.
-
-### Other
-
-*(Unreleased changes with no issue link go here; append at the bottom.)*
 
 ## [2.12.0] - 2026-09-10
 

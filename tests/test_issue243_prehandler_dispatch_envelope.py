@@ -9,7 +9,6 @@ from pathlib import Path
 from unittest import TestCase, main
 
 from flextoolsmcp.response_utils import CONTRACT_VERSION
-from flextoolsmcp.server.dispatch import TOOL_LIST_CATEGORIES
 
 
 def _load_server_module():

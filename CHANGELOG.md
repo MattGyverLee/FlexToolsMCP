@@ -11,6 +11,11 @@ sorted position, not the top). Changes without an issue go under Other.
   now catches handler failures and returns `internal_error` with
   `error_type` / `traceback` / `tool` detail; the traceback is also logged via
   `operations_logger`.
+- **`flextools_get_navigation_path` could not reach concrete-only properties**
+  ([#91](https://github.com/MattGyverLee/FlexToolsMCP/issues/91)). The
+  navigation graph now includes curated `required_cast` downcast edges (primary
+  concrete subtype per base type) so paths such as `ILexSense` →
+  `IFsSymFeatVal` resolve instead of returning `found: false`.
 - **Stale worked example `analysis-subtype-disambiguation`** ([#98](https://github.com/MattGyverLee/FlexToolsMCP/issues/98)).
   Replaced removed liblcm 11 `LangProject.WordformInventoryOA` access with
   `project.Wordforms.GetAll()` / `GetForm()` so the example runs on current

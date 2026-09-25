@@ -29,6 +29,11 @@ reviewed by a human and only added to this file once flipped to "curated"
 
 from typing import Any, Dict
 
+if __package__:
+    from .curated_deprecations import CURATED_DEPRECATIONS
+else:
+    from curated_deprecations import CURATED_DEPRECATIONS
+
 FLEXICON_VERIFIED_VERSION = "4.2.1"
 
 CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
@@ -444,5 +449,29 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
         "notes": "GetAll returns a behavioral collection that supports len(), subscripting, and re-iteration directly; only wrap in list(...) if you specifically need a plain list.",
         "source": "curated",
         "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "eval-corpus"},
+    },
+    # Replacement for the deprecated ILexEntry.DoNotUseForParsing /
+    # LexEntryOperations.SetDoNotUseForParsing (see curated_deprecations.py):
+    # the code is the deprecation's own example, so the two can't drift.
+    "hide-entry-from-parser": {
+        "intent": "Hide an entry from the parser (mark its forms abstract)",
+        "match_terms": [
+            "hide from parser", "hide entry from parser", "exclude from parser",
+            "exclude from parsing", "do not use for parsing", "not used for parsing",
+            "skip parsing", "abstract form", "mark form abstract",
+        ],
+        "entities": ["LexEntry", "MoForm"],
+        "operations": ["update", "write", "iterate"],
+        "requires_write": True,
+        "code": CURATED_DEPRECATIONS["lexentry-donotuseforparsing"]["example"],
+        "notes": (
+            "WARNING: this recipe writes to the database. IsAbstract is on IMoForm "
+            "(entry.LexemeFormOA and each entry.AlternateFormsOS item), NOT on "
+            "ILexEntry. The entry is hidden from the parser only when every form is "
+            "abstract. Do not use DoNotUseForParsing: no FLEx parser reads it "
+            "(HCLoader.cs:543/585 check only IsAbstract)."
+        ),
+        "source": "curated",
+        "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "preflight"},
     },
 }

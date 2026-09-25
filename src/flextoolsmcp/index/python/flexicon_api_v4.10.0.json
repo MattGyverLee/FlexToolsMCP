@@ -35596,6 +35596,23 @@
           "usage_hint": "retrieval"
         },
         {
+          "deprecated": true,
+          "deprecation": {
+            "evidence": [
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:543 (affix forms: skipped only when IsAbstract)",
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:585 (stem forms: skipped only when IsAbstract)",
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:538-540 (IMoAffixProcess forms bypass the IsAbstract check)",
+              "FieldWorks Src/Transforms/Application/FxtM3ParserToXAmpleLex.xsl (XAmple filters only on @IsAbstract)"
+            ],
+            "example": "# Hide an entry from the parser: mark every one of its FORMS abstract.\n# IsAbstract is on IMoForm (entry.LexemeFormOA and each item of\n# entry.AlternateFormsOS), not on the entry -- entry.IsAbstract does not exist.\nTARGET = \"example-headword\"  # the entry to hide\nfor entry in project.LexEntry.GetAll():\n    if project.LexEntry.GetHeadword(entry) != TARGET:\n        continue\n    forms = []\n    if entry.LexemeFormOA is not None:  # an entry can lack a lexeme form\n        forms.append(entry.LexemeFormOA)\n    forms.extend(entry.AlternateFormsOS)  # allomorphs, already IMoForm\n    if modifyAllowed:\n        for form in forms:\n            form.IsAbstract = True\n    report.Info(f\"{TARGET}: {len(forms)} form(s) marked abstract\")\n",
+            "id": "lexentry-donotuseforparsing",
+            "note": "Deprecated: no parser effect. ILexEntry.DoNotUseForParsing is not read by either FLEx parser -- HermitCrab (HCLoader.cs) loads every entry and skips only forms whose IsAbstract is set (HCLoader.cs:543 for affixes, :585 for stems), and XAmple (FxtM3ParserToXAmpleLex.xsl) filters only on @IsAbstract. The field is used only by LIFT import/export and is not shown in the FLEx UI. To hide an entry from the parser, set IsAbstract on its forms (IMoForm), not on the entry: entry.LexemeFormOA.IsAbstract = True, and on each allomorph in entry.AlternateFormsOS. The entry is fully hidden only when every form is abstract. There is no ILexEntry.IsAbstract. Caveat: HermitCrab does not check IsAbstract on IMoAffixProcess forms (HCLoader.cs:538-540).",
+            "replacement_owner": "IMoForm",
+            "replacement_paths": [
+              "ILexEntry.LexemeFormOA.IsAbstract",
+              "ILexEntry.AlternateFormsOS[*].IsAbstract"
+            ]
+          },
           "description": "Check if an entry is excluded from parsing.\n",
           "example": "",
           "is_classmethod": false,
@@ -36743,6 +36760,23 @@
           "usage_hint": "modification"
         },
         {
+          "deprecated": true,
+          "deprecation": {
+            "evidence": [
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:543 (affix forms: skipped only when IsAbstract)",
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:585 (stem forms: skipped only when IsAbstract)",
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:538-540 (IMoAffixProcess forms bypass the IsAbstract check)",
+              "FieldWorks Src/Transforms/Application/FxtM3ParserToXAmpleLex.xsl (XAmple filters only on @IsAbstract)"
+            ],
+            "example": "# Hide an entry from the parser: mark every one of its FORMS abstract.\n# IsAbstract is on IMoForm (entry.LexemeFormOA and each item of\n# entry.AlternateFormsOS), not on the entry -- entry.IsAbstract does not exist.\nTARGET = \"example-headword\"  # the entry to hide\nfor entry in project.LexEntry.GetAll():\n    if project.LexEntry.GetHeadword(entry) != TARGET:\n        continue\n    forms = []\n    if entry.LexemeFormOA is not None:  # an entry can lack a lexeme form\n        forms.append(entry.LexemeFormOA)\n    forms.extend(entry.AlternateFormsOS)  # allomorphs, already IMoForm\n    if modifyAllowed:\n        for form in forms:\n            form.IsAbstract = True\n    report.Info(f\"{TARGET}: {len(forms)} form(s) marked abstract\")\n",
+            "id": "lexentry-donotuseforparsing",
+            "note": "Deprecated: no parser effect. ILexEntry.DoNotUseForParsing is not read by either FLEx parser -- HermitCrab (HCLoader.cs) loads every entry and skips only forms whose IsAbstract is set (HCLoader.cs:543 for affixes, :585 for stems), and XAmple (FxtM3ParserToXAmpleLex.xsl) filters only on @IsAbstract. The field is used only by LIFT import/export and is not shown in the FLEx UI. To hide an entry from the parser, set IsAbstract on its forms (IMoForm), not on the entry: entry.LexemeFormOA.IsAbstract = True, and on each allomorph in entry.AlternateFormsOS. The entry is fully hidden only when every form is abstract. There is no ILexEntry.IsAbstract. Caveat: HermitCrab does not check IsAbstract on IMoAffixProcess forms (HCLoader.cs:538-540).",
+            "replacement_owner": "IMoForm",
+            "replacement_paths": [
+              "ILexEntry.LexemeFormOA.IsAbstract",
+              "ILexEntry.AlternateFormsOS[*].IsAbstract"
+            ]
+          },
           "description": "Set whether an entry is excluded from parsing.\n",
           "example": "",
           "is_classmethod": false,

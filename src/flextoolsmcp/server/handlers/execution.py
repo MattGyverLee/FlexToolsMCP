@@ -90,6 +90,7 @@ try:
         build_writeability_payload, build_write_certification_payload,
         compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
+        detect_deprecated_members, build_deprecated_member_rejection,
     )
 except ImportError:
     from server.validators import (
@@ -107,6 +108,7 @@ except ImportError:
         build_writeability_payload, build_write_certification_payload,
         compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
+        detect_deprecated_members, build_deprecated_member_rejection,
     )
 
 # The write ladder's shared rungs (parser-check CP4, R-07): the access gate,
@@ -2015,6 +2017,22 @@ def _build_validate_only_checks(
     else:
         checks.append({"gate": "partial_module_structure", "passed": True, "note": "skipped (skip_module_check=True)"})
 
+    # --- Gate 3b: deprecated_member (curated_deprecations.py) ---
+    # Same detector + message builder handle_run_module uses; hard-rejects
+    # there on read-only and write-enabled runs alike.
+    deprecated_check = detect_deprecated_members(code, code_tree)
+    if deprecated_check["has_deprecated"]:
+        rejection = build_deprecated_member_rejection(deprecated_check)
+        checks.append({
+            "gate": "deprecated_member",
+            "passed": False,
+            "issues": deprecated_check["findings"],
+            "message": rejection["message"],
+            "next_steps": rejection["next_steps"],
+        })
+    else:
+        checks.append({"gate": "deprecated_member", "passed": True})
+
     # --- Gate 4: unprotected_writes (also feeds the writeability builder) ---
     cud_info = detect_cud_operations(code)
     cert = certify_script_readonly(code, api_idx, code_tree)
@@ -3212,6 +3230,37 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 error_code="partial_module_structure",
                 code_size_bytes=_code_size_bytes,
             )
+
+    # Deprecated-member check (curated_deprecations.py): HARD BLOCK on both
+    # read-only and write-enabled runs. A curated-deprecated member exists in
+    # the API but does not do what its name says -- e.g.
+    # ILexEntry.DoNotUseForParsing has no effect on either FLEx parser, so a
+    # read answers the wrong question and a write silently changes nothing
+    # the parser sees. Runs before the write-safety gates so an unguarded
+    # SetDoNotUseForParsing is told "wrong field", not "add a guard".
+    # Not bypassable by skip_module_check / source='existing'.
+    deprecated_check = detect_deprecated_members(code, code_tree)
+    if deprecated_check["has_deprecated"]:
+        rejection = build_deprecated_member_rejection(deprecated_check)
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "deprecated_member",
+            f"findings={[f.get('expr') for f in deprecated_check['findings'][:5]]}",
+        log_dir_fn=get_log_dir,
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "deprecated_member",
+                rejection["message"],
+                findings=deprecated_check["findings"],
+                deprecations=list(deprecated_check["deprecations"].values()),
+                replacement_example=rejection["replacement_example"],
+                next_steps=rejection["next_steps"],
+                op_id=op_id,
+            ),
+            error_code="deprecated_member",
+            code_size_bytes=_code_size_bytes,
+        )
 
     # Nested-UnitOfWork check (issue #92 follow-up, re-derived for issue
     # #144): a script that opens its OWN raw UnitOfWork --

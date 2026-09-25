@@ -670,6 +670,118 @@ def detect_nested_unit_of_work(code: str, tree: Optional[ast.AST] = None) -> dic
     }
 
 
+# ============================================================
+# Deprecated members (curated_deprecations.py)
+# ============================================================
+
+def detect_deprecated_members(code: str, tree: Optional[ast.AST] = None) -> dict:
+    """Detect use of a curated-deprecated API member (read OR write).
+
+    Driven by ``curated_deprecations.CURATED_DEPRECATIONS`` -- no member name
+    is hard-coded here. Today that is ``ILexEntry.DoNotUseForParsing`` and
+    flexicon's ``LexEntryOperations.Get/SetDoNotUseForParsing``: the field has
+    no effect on either FLEx parser, so reading it answers the wrong question
+    and writing it silently does nothing. The redirect is ``IsAbstract`` on
+    the entry's FORMS (``LexemeFormOA`` / ``AlternateFormsOS``), never on the
+    entry.
+
+    AST-based, so comments and ordinary string literals never match (Python's
+    parser never turns them into Attribute nodes). Flags attribute access in
+    any context on any receiver -- the names are distinctive enough that an
+    exact attribute-name match is not a realistic false positive -- plus
+    ``getattr/setattr/hasattr/delattr(obj, "<name>")`` with a literal name.
+    Unrelated identifiers that merely contain the name (``DoNotUseForParsingX``,
+    a local variable called ``do_not_use_for_parsing``) are not flagged.
+
+    Returns:
+        dict with:
+          has_deprecated: bool
+          findings: [{member, deprecation_id, access, expr, line, col_offset}]
+          deprecations: {deprecation_id: record} for every id found
+          suggestion: combined human-readable message ("" when clean)
+          example: runnable replacement code of the first deprecation found
+    """
+    empty = {"has_deprecated": False, "findings": [], "deprecations": {}, "suggestion": "", "example": ""}
+    try:
+        from ..curated_deprecations import iter_deprecated_uses, deprecation_record
+    except ImportError:
+        from curated_deprecations import iter_deprecated_uses, deprecation_record
+
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return empty
+
+    findings: List[Dict[str, Any]] = []
+    seen: Set[Tuple[str, Optional[int], Optional[int]]] = set()
+    for use in iter_deprecated_uses(tree):
+        key = (use["member"], use["line"], use["col_offset"])
+        if key in seen:
+            continue
+        seen.add(key)
+        findings.append(use)
+
+    if not findings:
+        return empty
+
+    findings.sort(key=lambda f: (f.get("line") or 0, f.get("col_offset") or 0))
+    deprecations: Dict[str, Dict[str, Any]] = {}
+    for f in findings:
+        if f["deprecation_id"] not in deprecations:
+            deprecations[f["deprecation_id"]] = deprecation_record(f["deprecation_id"])
+
+    where = ", ".join(f"{f['expr']} (line {f['line']})" for f in findings[:5])
+    notes = " ".join(d["note"] for d in deprecations.values())
+    first = next(iter(deprecations.values()))
+    return {
+        "has_deprecated": True,
+        "findings": findings,
+        "deprecations": deprecations,
+        "suggestion": f"Deprecated member(s) used: {where}. {notes}",
+        "example": first["example"],
+    }
+
+
+def build_deprecated_member_rejection(check: dict) -> dict:
+    """Message + next_steps for a ``deprecated_member`` preflight refusal.
+
+    Shared by run_module and validate_only so the two can't drift. Both the
+    message and next_steps carry the runnable replacement code, which walks
+    from the entry to its forms (IsAbstract is on IMoForm, not ILexEntry).
+    """
+    try:
+        from ..curated_deprecations import fix_steps
+    except ImportError:
+        from curated_deprecations import fix_steps
+
+    findings = check.get("findings") or []
+    deprecations = list((check.get("deprecations") or {}).values())
+    example = check.get("example") or (deprecations[0]["example"] if deprecations else "")
+    where = ", ".join(f"`{f['expr']}` (line {f['line']})" for f in findings[:5])
+    notes = " ".join(d["note"] for d in deprecations)
+    message = (
+        f"Refused: this code uses a deprecated API member -- {where}. "
+        f"The MCP will not run code that reads or writes it. {notes}\n\n"
+        f"Runnable replacement:\n{example}"
+    )
+    steps: List[str] = [
+        "Remove every use of "
+        + ", ".join(sorted({f["member"] for f in findings}))
+        + " -- it does not do what its name says (see `deprecations[*].note`)."
+    ]
+    for d in deprecations:
+        steps.extend(fix_steps(d["id"]))
+    steps.append("Runnable replacement (keep the write under `if modifyAllowed:`):\n" + example)
+    steps.append("Re-run flextools_run_module().")
+    next_steps = [f"{i}. {text}" for i, text in enumerate(steps, 1)]
+    return {
+        "message": message,
+        "next_steps": next_steps,
+        "replacement_example": example,
+    }
+
+
 def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
     """Valid project.<X> accessor names.
 
@@ -1054,6 +1166,61 @@ def _interface_member_names(interface: str, api_index: Optional[Any], _depth: in
     return names
 
 
+def _misplaced_member_issue(
+    node: ast.Attribute, attr: str, interfaces: List[str]
+) -> Optional[Dict[str, Any]]:
+    """Issue dict (detect_interface_attribute_typos shape) for a curated
+    misplaced member on a statically typed receiver, or None."""
+    try:
+        from ..curated_deprecations import misplaced_member
+    except ImportError:
+        from curated_deprecations import misplaced_member
+    for iface in interfaces:
+        info = misplaced_member(iface, attr)
+        if info is None:
+            continue
+        try:
+            receiver_src = ast.unparse(node.value)
+        except Exception:
+            receiver_src = iface
+        paths = info.get("correct_paths", [])
+        rewrite_paths = [
+            p.replace(f"{iface}.", f"{receiver_src}.", 1) for p in paths
+        ]
+        suggestion = (
+            f"{info['hint']} Replace `{receiver_src}.{attr}` with "
+            f"{' and '.join('`' + p + '`' for p in rewrite_paths)}."
+        )
+        return {
+            "kind": "misplaced_member",
+            "expr": f"{iface}.{attr}",
+            "property": attr,
+            "line": node.lineno,
+            "col_offset": node.col_offset,
+            "pattern": f"{receiver_src}.{attr}",
+            "found_at": f"{receiver_src}.{attr}",
+            "object_type": iface,
+            "typo_attr": attr,
+            # Deliberately NOT a bare member name: the fix is a path on a
+            # different object (see curated_deprecations.MISPLACED_MEMBERS).
+            "did_you_mean": rewrite_paths,
+            "correct_owner": info.get("correct_owner"),
+            "correct_paths": paths,
+            "deprecation_id": info.get("deprecation_id"),
+            "missing_on": [iface],
+            "available_on": [info.get("correct_owner")] if info.get("correct_owner") else [],
+            "fix": suggestion,
+            "flexicon_helper": suggestion,
+            "severity": "error",
+            # No mechanical rewrite: one attribute becomes a loop over forms.
+            "rewrite": None,
+            "imports_needed": [],
+            "cast_interface": None,
+            "suggestion": suggestion,
+        }
+    return None
+
+
 def detect_interface_attribute_typos(
     code_tree: Optional[ast.AST], api_index: Optional[Any] = None
 ) -> dict:
@@ -1174,6 +1341,21 @@ def detect_interface_attribute_typos(
         members: Set[str] = set()
         for iface in resolved_interfaces:
             members |= _interface_member_names(iface, api_index)
+
+        # Curated "right member, wrong object" hints (curated_deprecations.
+        # MISPLACED_MEMBERS), e.g. `entry.IsAbstract` -- the mistake made
+        # when migrating off the deprecated ILexEntry.DoNotUseForParsing.
+        # IsAbstract is on IMoForm, so neither a spelling suggestion nor a
+        # cast of the entry is the fix; point at the forms instead.
+        if attr not in members:
+            misplaced = _misplaced_member_issue(node, attr, resolved_interfaces)
+            if misplaced is not None:
+                dedup_key = (misplaced["expr"], "misplaced")
+                if dedup_key not in seen:
+                    seen.add(dedup_key)
+                    issues.append(misplaced)
+                continue
+
         if not members or attr in members:
             # Unknown interface(s) (can't check), OR the attribute exists
             # on at least one candidate -- flag only if it exists on NONE,

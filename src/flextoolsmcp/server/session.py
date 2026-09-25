@@ -98,6 +98,14 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "Main/docs/FlexToolsModule scaffold, OR drop the def Main "
         "wrapper entirely and submit the body as a bare snippet."
     ),
+    "deprecated_member": (
+        "the code uses a curated-deprecated member (e.g. "
+        "DoNotUseForParsing, which no FLEx parser reads). Remove it -- do "
+        "not rename it: to hide an entry from the parser set IsAbstract on "
+        "its FORMS (entry.LexemeFormOA, if not None, and each item of "
+        "entry.AlternateFormsOS), not on the entry. Copy the "
+        "replacement_example from the rejection."
+    ),
     "nested_unit_of_work": (
         # Re-scoped for issue #144: what's already open around the mutation
         # is the runner's session-long task on older flexicon, or

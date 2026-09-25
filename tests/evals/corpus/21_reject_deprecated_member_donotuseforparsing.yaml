@@ -1,0 +1,18 @@
+intent: "Hide an entry from the parser by setting the deprecated DoNotUseForParsing flag"
+api_mode: flexicon
+write_enabled: true
+code: |
+  for entry in project.LexEntry.GetAll():
+      if modifyAllowed:
+          project.LexEntry.SetDoNotUseForParsing(entry, True)
+expect:
+  outcome: preflight_reject
+  error_code: deprecated_member
+  auto_fixes: 0
+notes: >
+  ILexEntry.DoNotUseForParsing (and flexicon's Get/SetDoNotUseForParsing)
+  has no effect on either FLEx parser (HCLoader.cs:543/585 check only
+  MoForm.IsAbstract). curated_deprecations.py marks it deprecated and
+  validators.detect_deprecated_members refuses it on every run, guarded or
+  not. The fix is IsAbstract on the entry's forms (LexemeFormOA and each
+  AlternateFormsOS item), not on the entry.

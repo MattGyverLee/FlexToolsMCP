@@ -453,6 +453,35 @@ reporting whether the sandbox spine is ready.
   a 20-wordform sample and counts, and writes the full plan to
   `<record dir>/plans/<plan_id>.json` (`plan.detail.full_plan_path`). The stored
   plan, `plan_id` and the confirmation binding are unchanged.
+- **`DoNotUseForParsing` is deprecated and refused at preflight.**
+  `ILexEntry.DoNotUseForParsing` (and flexicon's
+  `LexEntryOperations.Get/SetDoNotUseForParsing`) has no effect on either FLEx
+  parser: HermitCrab skips only forms whose `IsAbstract` is set (HCLoader.cs:543
+  affixes, :585 stems) and XAmple filters only on `@IsAbstract`. It is used only
+  by LIFT import/export. A new curated overlay, `curated_deprecations.py`, marks
+  such members `deprecated` with a note and a runnable replacement. The index
+  builders apply it before writing, the server re-applies it on load, and it is
+  applied to the checked-in indexes (`python -m flextoolsmcp.curated_deprecations
+  --apply`). The discovery tools flag it (`get_object_api` adds
+  `deprecated_members`), push deprecated rows below live ones in
+  `search_by_capability`, and attach `deprecation_redirects`. A new
+  `hide-entry-from-parser` recipe covers the replacement. `run_module` refuses any
+  read, write or call of it with the new error code `deprecated_member`. This
+  applies to read-only and write runs, and to `validate_only` as a new
+  `deprecated_member` gate. The message and `next_steps` carry the replacement,
+  which is to set `IsAbstract` on the entry's forms (`LexemeFormOA`, if not None,
+  and each `AlternateFormsOS` item), not on the entry. `entry.IsAbstract` on an
+  `ILexEntry` receiver now gets a `misplaced_member` hint that points to those
+  forms, instead of a spelling or cast suggestion.
+- **Weekly watch for when the `DoNotUseForParsing` block can be lifted.**
+  The block is temporary. FLEx may implement the field in its parsers
+  ([LT-22810](https://jira.sil.org/browse/LT-22810)), so the deprecation entry
+  now carries `tracking` and `upstream_watch` data. The new workflow
+  `upstream-flag-watch.yml` runs `scripts/upstream_flag_watch.py` every Monday.
+  It searches sillsdev/FieldWorks, liblcm and machine for the term and ignores
+  the 2026-09-25 baseline paths and PRs. When something new appears (a code
+  path, PR, issue or commit), it opens one sticky `upstream-flag-watch` issue
+  with the lift steps and comments only on later new findings.
 
 ## [2.12.0] - 2026-09-10
 

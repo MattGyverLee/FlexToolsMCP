@@ -82,6 +82,8 @@ __all__ = [
     # Equivalence / bridge tools
     'KEY_LIBRARY', 'KEY_METHOD', 'KEY_LCM_INTERNALS', 'KEY_ADVISORY',
     'KEY_LCM_NAME', 'KEY_COVERAGE', 'KEY_GAPS',
+    # Curated deprecations (curated_deprecations.py)
+    'KEY_DEPRECATED', 'KEY_DEPRECATION', 'KEY_DEPRECATED_MEMBERS', 'KEY_DEPRECATION_REDIRECTS',
     # Operation type constants
     'OP_CREATE', 'OP_READ', 'OP_UPDATE', 'OP_DELETE', 'OP_ITERATE', 'OP_SEARCH',
 ]
@@ -248,6 +250,15 @@ KEY_ACCESS_PATH = "access_path"
 # whose own `Name` field collides in name (not inheritance) with
 # ICmPossibility.Name -- see handlers/api.py's NOT_CMPOSSIBILITY_NAME_COLLISION.
 KEY_NOT_CMPOSSIBILITY_WARNING = "not_cmpossibility_warning"
+# Curated deprecations (curated_deprecations.py). On a member row:
+# `deprecated: true` + `deprecation` {id, note, replacement_paths,
+# replacement_owner, example, evidence}. `deprecated_members` summarizes
+# an entity's deprecated members on get_object_api; `deprecation_redirects`
+# carries the redirect on search/examples/lookup responses.
+KEY_DEPRECATED = "deprecated"
+KEY_DEPRECATION = "deprecation"
+KEY_DEPRECATED_MEMBERS = "deprecated_members"
+KEY_DEPRECATION_REDIRECTS = "deprecation_redirects"
 KEY_TOTAL_METHODS = "total_methods"
 KEY_RETURNED_METHODS = "returned_methods"
 KEY_TOTAL_PROPERTIES = "total_properties"

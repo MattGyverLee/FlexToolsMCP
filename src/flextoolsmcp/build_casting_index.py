@@ -20,9 +20,11 @@ from collections import defaultdict
 if __package__:
     from .json_utils import sort_json_arrays
     from .file_utils import get_index_dir
+    from .curated_deprecations import apply_to_casting_index
 else:
     from json_utils import sort_json_arrays
     from file_utils import get_index_dir
+    from curated_deprecations import apply_to_casting_index
 
 
 # ============================================================
@@ -262,6 +264,8 @@ def main():
 
     print("[INFO] Building casting index...")
     casting_index = build_casting_index(liblcm_path)
+    # Curated deprecations (curated_deprecations.py) survive regeneration.
+    apply_to_casting_index(casting_index)
 
     # Save with version suffix
     output_filename = f"casting_index_liblcm-v{liblcm_version}.json"

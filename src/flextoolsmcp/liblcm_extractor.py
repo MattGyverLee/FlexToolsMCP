@@ -28,6 +28,7 @@ from typing import Dict, List, Any, Optional, Tuple
 
 if __package__:
     from .json_utils import sort_json_arrays
+    from .curated_deprecations import apply_to_api_index as apply_curated_deprecations
     from .flexicon_analyzer import infer_unified_output_behavior
     from .constants import (
         PROPERTY_KIND_OWNING_SEQUENCE,
@@ -58,6 +59,7 @@ if __package__:
     )
 else:
     from json_utils import sort_json_arrays
+    from curated_deprecations import apply_to_api_index as apply_curated_deprecations
     from flexicon_analyzer import infer_unified_output_behavior
     from constants import (
         PROPERTY_KIND_OWNING_SEQUENCE,
@@ -1245,6 +1247,11 @@ Examples:
         # Ensure output directory exists
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Curated deprecations (curated_deprecations.py): reflection cannot
+        # know a member is a no-op, so re-apply the hand-maintained overlay on
+        # every regeneration instead of losing it.
+        apply_curated_deprecations(stamped_doc, "liblcm")
 
         # Write output
         stamped_doc = sort_json_arrays(stamped_doc)

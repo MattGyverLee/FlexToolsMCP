@@ -443,8 +443,17 @@ def _four_runs(record_dir):
 
 @pytest.fixture
 def quiet_context(monkeypatch):
-    """Drop the environment-dependent workspace notice from responses."""
+    """Drop environment-dependent extras from golden responses.
+
+    Clears any prior test's session so ``build_response_with_context`` does
+    not append ``session_context`` (and suppresses the workspace notice).
+    """
+    from flextoolsmcp.server.kernel import reset_session
+
     monkeypatch.setenv("FLEXTOOLSMCP_NO_WORKSPACE_CHECK", "1")
+    reset_session()
+    yield
+    reset_session()
 
 
 async def test_every_section_of_the_four_sandbox_runs_is_real_or_typed(record_dir):

@@ -29,6 +29,12 @@ class _FakeAPIIndex:
                             "polymorphic": get_senses_polymorphic,
                         },
                         {
+                            "name": "GetAllSenses",
+                            "is_mutating": False,
+                            "element_type": "ILexSense",
+                            "polymorphic": get_senses_polymorphic,
+                        },
+                        {
                             "name": "GetComplexFormComponents",
                             "is_mutating": False,
                             "element_type": "ICmObject",
@@ -69,6 +75,17 @@ class TestIssue127LoopTypoPreflight(unittest.TestCase):
         self.assertTrue(result["has_typos"], result)
         self.assertEqual(result["issues"][0]["typo_attr"], "Glosss")
         self.assertIn("Gloss", result["issues"][0]["did_you_mean"])
+
+    def test_getallsenses_loop_typo_detected(self):
+        """GetAllSenses shares GetSenses' element_type binding (common in scripts)."""
+        code = (
+            "def f(entry):\n"
+            "    for s in project.LexEntry.GetAllSenses(entry):\n"
+            "        print(s.Glosss)\n"
+        )
+        result = self._run(code, _FakeAPIIndex())
+        self.assertTrue(result["has_typos"], result)
+        self.assertEqual(result["issues"][0]["typo_attr"], "Glosss")
 
     def test_explicit_cast_still_catches_same_typo(self):
         code = (

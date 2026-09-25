@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """Issue #175: module-level parse runner must not leak across tests."""
 
-import asyncio
 import json
 import sys
 from pathlib import Path

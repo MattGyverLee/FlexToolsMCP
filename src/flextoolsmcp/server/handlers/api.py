@@ -737,8 +737,19 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     # specs/swahili-audit-2026-09/reviews/cycle7-programmer-p2.md).
     is_operations_class = object_type in OPERATIONS_CLASSES
     if is_operations_class:
-        result[KEY_IMPORT_STATEMENT] = f"from {library} import {object_type}"
-        result[KEY_IMPORT_REQUIRED] = True
+        # Issue #100 (deferred cycle-7): honor facade `access_path` the same way
+        # search/resolve paths do via `_build_entity_import`, so a class that is
+        # only reachable as `project.MSA` never gets a broken
+        # `from flexicon import MSAOperations` line if it ever lands in
+        # KNOWN_OPERATIONS. For the 42 dual-access classes, `access_path` is
+        # the runtime idiom flexicon's own docs teach (`project.LexEntry.*`).
+        namespace = entity.get(KEY_NAMESPACE, "") or ""
+        import_line = _build_entity_import(
+            library, object_type, namespace, entity
+        )
+        if import_line:
+            result[KEY_IMPORT_STATEMENT] = import_line
+            result[KEY_IMPORT_REQUIRED] = True
 
     inherited_methods: list = []
     inherited_properties: list = []

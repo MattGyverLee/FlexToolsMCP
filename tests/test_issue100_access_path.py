@@ -38,6 +38,17 @@ import unittest
 from pathlib import Path
 
 
+def _shipped_flexicon_index_path() -> Path | None:
+    """Latest shipped flexicon API index (version-suffixed filename)."""
+    python_dir = (
+        Path(__file__).parent.parent / "src" / "flextoolsmcp" / "index" / "python"
+    )
+    if not python_dir.is_dir():
+        return None
+    candidates = sorted(python_dir.glob("flexicon_api_v*.json"))
+    return candidates[-1] if candidates else None
+
+
 # ---------------------------------------------------------------------------
 # _extract_facade_access_paths
 # ---------------------------------------------------------------------------
@@ -300,6 +311,34 @@ class TestPaginateEntityAccessPath(unittest.TestCase):
         )
         self.assertNotIn("access_path", result)
 
+    def test_operations_class_import_uses_access_path_when_present(self):
+        """Cycle-7 deferred fix: paginate_entity's is_operations_class branch
+        must route through `_build_entity_import`, not a bare by-name import."""
+        from server.handlers.api import paginate_entity
+
+        entity = self._entity(access_path="project.LexEntry")
+        result = paginate_entity(
+            entity, summary_only=False, method_filter="", limit=50, offset=0,
+            object_type="LexEntryOperations", library="flexicon",
+        )
+        self.assertEqual(result.get("import_statement"), "project.LexEntry")
+        self.assertNotEqual(
+            result.get("import_statement"),
+            "from flexicon import LexEntryOperations",
+        )
+
+    def test_operations_class_without_access_path_keeps_top_level_import(self):
+        from server.handlers.api import paginate_entity
+
+        entity = self._entity()
+        result = paginate_entity(
+            entity, summary_only=False, method_filter="", limit=50, offset=0,
+            object_type="LexEntryOperations", library="flexicon",
+        )
+        self.assertEqual(
+            result.get("import_statement"), "from flexicon import LexEntryOperations"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Real shipped index: locks in the post-refresh (fixed) state
@@ -320,11 +359,8 @@ class TestRealIndexPostRefreshState(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        idx_path = (
-            Path(__file__).parent.parent
-            / "src" / "flextoolsmcp" / "index" / "python" / "flexicon_api_v4.5.2.json"
-        )
-        if not idx_path.exists():
+        idx_path = _shipped_flexicon_index_path()
+        if idx_path is None:
             cls.entity = None
             return
         with open(idx_path, encoding="utf-8") as f:
@@ -393,10 +429,9 @@ class TestKnownOperationsImportInvariant(unittest.TestCase):
         hardcoded list), mirroring cycle8-qc.md's P1-1 measurement."""
         import flexicon
 
-        idx_path = (
-            Path(__file__).parent.parent
-            / "src" / "flextoolsmcp" / "index" / "python" / "flexicon_api_v4.5.2.json"
-        )
+        idx_path = _shipped_flexicon_index_path()
+        if idx_path is None:
+            return set()
         with open(idx_path, encoding="utf-8") as f:
             data = json.load(f)
         ops_names = sorted(n for n in data.get("entities", {}) if n.endswith("Operations"))

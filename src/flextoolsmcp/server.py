@@ -75,6 +75,7 @@ if __package__:
     )
     from .server.startup_notices import record_index_refresh_failure
     from .response_utils import error_response
+    from . import curated_deprecations
 else:
     from server.kernel import (
         get_operations_logger,
@@ -90,6 +91,7 @@ else:
     )
     from server.startup_notices import record_index_refresh_failure
     from response_utils import error_response
+    import curated_deprecations
 _local_imports_done = _time_module.time()
 
 # Safe logging helper that works even before initialization
@@ -452,7 +454,12 @@ def _load_library_api_index(
     if api_path:
         try:
             with open(api_path, "r", encoding="utf-8") as f:
-                setattr(index, attr_name, json.load(f))
+                loaded = json.load(f)
+            # Curated deprecations are re-applied on load, so an index
+            # generated before an entry was added (a local refresh, or the
+            # per-user overlay copy a wheel seeds) still carries it.
+            curated_deprecations.apply_to_api_index(loaded, attr_name)
+            setattr(index, attr_name, loaded)
             if attr_name == "liblcm":
                 index.liblcm_entities_epoch += 1
                 try:
@@ -638,6 +645,7 @@ class APIIndex:
             "casting_index_liblcm",
             "casting_index.json"
         )
+        curated_deprecations.apply_to_casting_index(self.casting_index)
         _cast_done = _time_module.time()
 
     def ensure_semantic_search_loaded(self) -> None:
@@ -666,6 +674,9 @@ class APIIndex:
         try:
             with open(bridge_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            curated_deprecations.apply_to_bridge(
+                data, "flexlibs_stable" if prefix.startswith("flexlibs") else "flexicon"
+            )
             _log_info(f"Loaded {library_label} LCM bridge from {bridge_path.name}")
             return data
         except Exception as e:

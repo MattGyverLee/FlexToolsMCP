@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 39 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 40 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + invalid_api_mode + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
   parse_job_cancelled
@@ -17,7 +17,8 @@ Provides:
   + 2 parser-check CP4 codes: parser_filing_in_progress, grammar_load_unclean
   + 2 parser-check CP5 codes: parser_config_failed, parse_sandbox_refused
   + 3 pre-handler dispatch codes (#243): session_not_initialized,
-  unknown_tool, invalid_input)
+  unknown_tool, invalid_input
+  + deprecated_member (curated_deprecations.py))
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -414,6 +415,25 @@ class HvoLiteralWriteRiskDetail(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["hvo_literal_write_risk"] = "hvo_literal_write_risk"
     findings: List[Any] = Field(default_factory=list)
+    next_steps: List[Any] = Field(default_factory=list)
+
+
+class DeprecatedMemberDetail(BaseModel):
+    """Detail payload for deprecated_member rejections.
+
+    Fires on ANY run (read-only or write-enabled) whose code reads, writes or
+    calls a member listed in curated_deprecations.CURATED_DEPRECATIONS --
+    today ILexEntry.DoNotUseForParsing and flexicon's
+    LexEntryOperations.Get/SetDoNotUseForParsing, which have no effect on
+    either FLEx parser. The redirect is IsAbstract on the entry's forms
+    (LexemeFormOA / AlternateFormsOS), not on the entry. See
+    validators.detect_deprecated_members().
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["deprecated_member"] = "deprecated_member"
+    findings: List[Any] = Field(default_factory=list)
+    deprecations: List[Any] = Field(default_factory=list)
+    replacement_example: Optional[str] = None
     next_steps: List[Any] = Field(default_factory=list)
 
 
@@ -833,7 +853,7 @@ class ParseSandboxRefusedDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 39 per-code detail models
+# Discriminated union over all 40 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -860,6 +880,7 @@ AnyDetail = Union[
     ProjectNotFoundDetail,
     RuntimeErrorDetail,
     HvoLiteralWriteRiskDetail,
+    DeprecatedMemberDetail,
     ParserEngineMismatchDetail,
     ParserCoreMissingDetail,
     ParserAgentMissingDetail,

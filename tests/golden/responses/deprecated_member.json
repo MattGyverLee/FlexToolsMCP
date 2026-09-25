@@ -1,0 +1,48 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "deprecated_member",
+  "message": "Refused: this code uses a deprecated API member -- `entry.DoNotUseForParsing` (line 2).",
+  "findings": [
+    {
+      "member": "DoNotUseForParsing",
+      "deprecation_id": "lexentry-donotuseforparsing",
+      "access": "write",
+      "expr": "entry.DoNotUseForParsing",
+      "line": 2,
+      "col_offset": 4
+    }
+  ],
+  "deprecations": [
+    {
+      "id": "lexentry-donotuseforparsing"
+    }
+  ],
+  "replacement_example": "entry.LexemeFormOA.IsAbstract = True",
+  "next_steps": [
+    "Set IsAbstract on the entry's forms (LexemeFormOA, AlternateFormsOS)"
+  ],
+  "error": {
+    "code": "deprecated_member",
+    "message": "Refused: this code uses a deprecated API member -- `entry.DoNotUseForParsing` (line 2).",
+    "findings": [
+      {
+        "member": "DoNotUseForParsing",
+        "deprecation_id": "lexentry-donotuseforparsing",
+        "access": "write",
+        "expr": "entry.DoNotUseForParsing",
+        "line": 2,
+        "col_offset": 4
+      }
+    ],
+    "deprecations": [
+      {
+        "id": "lexentry-donotuseforparsing"
+      }
+    ],
+    "replacement_example": "entry.LexemeFormOA.IsAbstract = True",
+    "next_steps": [
+      "Set IsAbstract on the entry's forms (LexemeFormOA, AlternateFormsOS)"
+    ]
+  }
+}

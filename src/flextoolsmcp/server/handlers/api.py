@@ -44,6 +44,7 @@ try:
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
         KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
+        KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -73,9 +74,15 @@ except ImportError:
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
         KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
+        KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
+
+try:
+    from ... import curated_deprecations
+except ImportError:
+    import curated_deprecations
 
 # Skeleton storage closet (issue #24): surface prior-session helpers in find_examples.
 try:
@@ -701,6 +708,67 @@ def _ancestor_entity_names(entity_name: str, index: dict) -> list:
     return order
 
 
+# ============================================================
+# Curated deprecations (curated_deprecations.py)
+# ============================================================
+
+_DEPRECATED_PREFIX = "DEPRECATED (see deprecation): "
+
+
+def _member_deprecation(member: dict, entity_name: str, library: str) -> dict | None:
+    """Deprecation record for an index member row, or None.
+
+    Prefers the annotation the overlay put on the index row; falls back to
+    the curated table so a row from an index loaded some other way (tests,
+    an un-overlaid dict) is still caught.
+    """
+    if not isinstance(member, dict):
+        return None
+    if member.get(KEY_DEPRECATED) and isinstance(member.get(KEY_DEPRECATION), dict):
+        return member[KEY_DEPRECATION]
+    owner = member.get(KEY_INHERITED_FROM) or entity_name
+    return curated_deprecations.lookup_member(member.get(KEY_NAME), owner, library)
+
+
+def _flag_deprecated_row(row: dict, deprecation: dict) -> dict:
+    """Mark a rendered row deprecated (in place) and prefix its description."""
+    row[KEY_DEPRECATED] = True
+    row[KEY_DEPRECATION] = deprecation
+    desc = row.get(KEY_DESCRIPTION) or ""
+    if not desc.startswith(_DEPRECATED_PREFIX):
+        row[KEY_DESCRIPTION] = _DEPRECATED_PREFIX + desc
+    return row
+
+
+def _deprecation_redirects(query: str | None, rows: list) -> list:
+    """Unique deprecation records relevant to a query and/or flagged rows."""
+    seen = set()
+    out = []
+    for dep in [r.get(KEY_DEPRECATION) for r in rows if r.get(KEY_DEPRECATED)] + curated_deprecations.match_intent(query):
+        if isinstance(dep, dict) and dep.get("id") not in seen:
+            seen.add(dep.get("id"))
+            out.append(dep)
+    return out
+
+
+def _demote_deprecated_results(results: list) -> list:
+    """Flag deprecated search rows and move them below every other row.
+
+    Deprecated rows are kept (so a query naming the member explains why it
+    is refused) but never outrank a working API.
+    """
+    live, dead = [], []
+    for r in results:
+        dep = curated_deprecations.lookup_member(r.get(KEY_NAME), r.get(KEY_ENTITY), r.get(KEY_SOURCE))
+        if dep is None and r.get(KEY_SOURCE) not in ("flexicon", "liblcm", "flexlibs_stable"):
+            dep = curated_deprecations.lookup_member(r.get(KEY_NAME), r.get(KEY_ENTITY))
+        if dep is not None:
+            dead.append(_flag_deprecated_row(r, dep))
+        else:
+            live.append(r)
+    return live + dead
+
+
 def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon", casting_index: dict | None = None, entities_index: dict | None = None, inherited_members_cache_token: int | None = None) -> dict:
     """Apply pagination and filtering to an entity's methods and properties.
 
@@ -818,6 +886,7 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     methods = entity.get(KEY_METHODS, [])
     own_method_count = len(methods)
     methods = methods + inherited_methods
+    methods_all = methods
 
     if method_filter:
         filter_lower = method_filter.lower()
@@ -855,6 +924,9 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
             # index so models see it without opening the wrap_enumerable doc blob.
             if m.get(KEY_NAME) == "GetAll" and m.get(KEY_COLLECTION_CONTRACT):
                 row[KEY_COLLECTION_CONTRACT] = m[KEY_COLLECTION_CONTRACT]
+            _dep = _member_deprecation(m, object_type, library)
+            if _dep is not None:
+                _flag_deprecated_row(row, _dep)
             thin_methods.append(row)
         result[KEY_METHODS] = thin_methods
         if force_thin:
@@ -888,6 +960,7 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
 
     own_property_count = len(properties)
     properties = properties + inherited_properties
+    properties_all = properties
 
     if method_filter:
         filter_lower = method_filter.lower()
@@ -929,6 +1002,9 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
             }
             if KEY_INHERITED_FROM in p:
                 row[KEY_INHERITED_FROM] = p[KEY_INHERITED_FROM]
+            _dep = _member_deprecation(p, object_type, library)
+            if _dep is not None:
+                _flag_deprecated_row(row, _dep)
             thin_properties.append(row)
         result[KEY_PROPERTIES] = thin_properties
     else:
@@ -951,6 +1027,33 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
             result[KEY_CASTING_NOTES] = notes
 
     result[KEY_RETURNED_PROPERTIES] = len(result[KEY_PROPERTIES])
+
+    # Curated deprecations: summarize over the WHOLE entity (not just this
+    # page) so a deprecated member is flagged even when paginated away, and
+    # flag full (non-thin) rows too. Full rows are copied before flagging --
+    # they are the shared index dicts.
+    deprecated_members = []
+    for kind_key, all_members in ((KEY_METHODS, methods_all), (KEY_PROPERTIES, properties_all)):
+        for m in all_members:
+            dep = _member_deprecation(m, object_type, library)
+            if dep is not None:
+                deprecated_members.append({
+                    KEY_NAME: m.get(KEY_NAME),
+                    KEY_KIND: "method" if kind_key == KEY_METHODS else "property",
+                    "note": dep.get("note"),
+                    "replacement_paths": dep.get("replacement_paths", []),
+                    "replacement_owner": dep.get("replacement_owner"),
+                })
+    if deprecated_members:
+        result[KEY_DEPRECATED_MEMBERS] = deprecated_members
+        for kind_key in (KEY_METHODS, KEY_PROPERTIES):
+            rows = []
+            for row in result.get(kind_key, []):
+                dep = _member_deprecation(row, object_type, library)
+                if dep is not None:
+                    row = _flag_deprecated_row(dict(row), dep)
+                rows.append(row)
+            result[kind_key] = rows
 
     return result
 
@@ -1406,7 +1509,16 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         if max_results:
             results = results[:max_results]
 
+    # Curated deprecations: deprecated members are flagged and demoted below
+    # every live hit, and the redirect (e.g. "set IsAbstract on the entry's
+    # forms" for DoNotUseForParsing) is attached whenever a deprecated member
+    # was hit OR the query states the deprecated intent in words.
+    results = _demote_deprecated_results(results)
+    deprecation_redirects = _deprecation_redirects(query, results)
+
     for r in results:
+        if r.get(KEY_DEPRECATED):
+            continue  # never count a deprecated member as discovered
         entity = r.get(KEY_ENTITY, "")
         method = r.get(KEY_NAME, "")
         if entity and method:
@@ -1457,6 +1569,8 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         "worked_examples": matched_patterns,
         "worked_examples_count": len(matched_patterns),
     }
+    if deprecation_redirects:
+        result[KEY_DEPRECATION_REDIRECTS] = deprecation_redirects
 
     result = build_response_with_context(result, include_session=True)
 
@@ -1504,6 +1618,10 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
                         continue
 
                 if method.get(KEY_EXAMPLE):
+                    # Curated deprecations: never serve a deprecated
+                    # member's docstring example as a pattern to copy.
+                    if _member_deprecation(method, entity_name, source_name) is not None:
+                        continue
                     examples.append({
                         "class": entity_name,
                         KEY_NAMESPACE: entity_namespace,
@@ -1597,6 +1715,11 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         # Closet entries under a separate key so they're clearly distinguished
         # from the standard documented examples and worked_examples.
         response["skeletons_from_your_sessions"] = skeletons_from_sessions
+    # Curated deprecations: asking for examples of a deprecated member (or
+    # its intent) gets the replacement example instead.
+    deprecation_redirects = _deprecation_redirects(method_name, [])
+    if deprecation_redirects:
+        response[KEY_DEPRECATION_REDIRECTS] = deprecation_redirects
     return json_response(response)
 
 
@@ -1744,6 +1867,20 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
                         KEY_MISSING_FROM: [t for t in poly_info.get(KEY_CONCRETE_TYPES, []) if t not in relevant_types],
                         KEY_GUIDANCE: f"'{property_name}' is only available on {', '.join(relevant_types)}. Check the concrete type with obj.ClassName == '{relevant_types[0][1:]}' before accessing."
                     }
+
+    # Curated deprecations / misplaced members.
+    _dep = curated_deprecations.lookup_member(property_name, context_entity) or (
+        curated_deprecations.lookup_member(property_name) if context_entity else None
+    )
+    if _dep is not None:
+        result[KEY_DEPRECATED] = True
+        result[KEY_DEPRECATION] = _dep
+        result[KEY_WARNING] = _dep["note"]
+    if context_entity:
+        _misplaced = curated_deprecations.misplaced_member(context_entity, property_name)
+        if _misplaced is not None:
+            result["misplaced_member"] = _misplaced
+            result[KEY_WARNING] = _misplaced["hint"]
 
     result = build_response_with_context(result, include_session=True)
 

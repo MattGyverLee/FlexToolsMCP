@@ -29,6 +29,7 @@ not apply here. What DOES apply, and is checked:
     (``detect_undefined_variables``)
   - every ``project.<X>`` accessor chain resolves against the real
     FLExProject property list (``detect_invalid_project_chains``)
+  - no curated-deprecated member is used (``detect_deprecated_members``)
 """
 
 import ast
@@ -42,6 +43,7 @@ if __package__:
         detect_wrong_library_imports,
         detect_undefined_variables,
         detect_invalid_project_chains,
+        detect_deprecated_members,
     )
 else:
     from server.validators import (
@@ -51,6 +53,7 @@ else:
         detect_wrong_library_imports,
         detect_undefined_variables,
         detect_invalid_project_chains,
+        detect_deprecated_members,
     )
 
 
@@ -113,6 +116,10 @@ def validate_recipe(recipe: Dict[str, Any], api_index: Any = None) -> Dict[str, 
     undefined = detect_undefined_variables(code, tree)
     if undefined["has_undefined"]:
         issues.append(f"undefined variables: {undefined['undefined_vars']}")
+
+    deprecated = detect_deprecated_members(code, tree)
+    if deprecated["has_deprecated"]:
+        issues.append(f"deprecated member(s): {[f['expr'] for f in deprecated['findings']]}")
 
     chain_check = detect_invalid_project_chains(tree, api_index)
     if chain_check["has_invalid"]:

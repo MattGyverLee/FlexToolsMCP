@@ -3192,6 +3192,37 @@
         "verified_by": "eval-corpus"
       }
     },
+    "hide-entry-from-parser": {
+      "code": "# Hide an entry from the parser: mark every one of its FORMS abstract.\n# IsAbstract is on IMoForm (entry.LexemeFormOA and each item of\n# entry.AlternateFormsOS), not on the entry -- entry.IsAbstract does not exist.\nTARGET = \"example-headword\"  # the entry to hide\nfor entry in project.LexEntry.GetAll():\n    if project.LexEntry.GetHeadword(entry) != TARGET:\n        continue\n    forms = []\n    if entry.LexemeFormOA is not None:  # an entry can lack a lexeme form\n        forms.append(entry.LexemeFormOA)\n    forms.extend(entry.AlternateFormsOS)  # allomorphs, already IMoForm\n    if modifyAllowed:\n        for form in forms:\n            form.IsAbstract = True\n    report.Info(f\"{TARGET}: {len(forms)} form(s) marked abstract\")\n",
+      "entities": [
+        "LexEntry",
+        "MoForm"
+      ],
+      "intent": "Hide an entry from the parser (mark its forms abstract)",
+      "match_terms": [
+        "hide from parser",
+        "hide entry from parser",
+        "exclude from parser",
+        "exclude from parsing",
+        "do not use for parsing",
+        "not used for parsing",
+        "skip parsing",
+        "abstract form",
+        "mark form abstract"
+      ],
+      "notes": "WARNING: this recipe writes to the database. IsAbstract is on IMoForm (entry.LexemeFormOA and each entry.AlternateFormsOS item), NOT on ILexEntry. The entry is hidden from the parser only when every form is abstract. Do not use DoNotUseForParsing: no FLEx parser reads it (HCLoader.cs:543/585 check only IsAbstract).",
+      "operations": [
+        "update",
+        "write",
+        "iterate"
+      ],
+      "requires_write": true,
+      "source": "curated",
+      "verified_against": {
+        "flexicon": "4.2.1",
+        "verified_by": "preflight"
+      }
+    },
     "list-entries-with-glosses": {
       "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        gloss = project.Senses.GetGloss(sense)\n        report.Info(f\"{headword}: {gloss}\")\n",
       "entities": [

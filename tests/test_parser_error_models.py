@@ -468,15 +468,16 @@ class TestCP3IsPurelyAdditive:
             "would make it a breaking change, which it is not."
         )
 
-    def test_union_carries_all_thirty_nine_codes(self):
+    def test_union_carries_all_forty_codes(self):
         import typing
         members = typing.get_args(AnyDetail)
-        assert len(members) == 39, (
-            "expected 39 detail models: CP3's five additions on top of main's "
+        assert len(members) == 40, (
+            "expected 40 detail models: CP3's five additions on top of main's "
             "26 (incl. invalid_api_mode), internal_error (#89), CP4's two "
             "(parser_filing_in_progress, grammar_load_unclean), CP5's two "
             "(parser_config_failed, parse_sandbox_refused), and #243's three "
-            "(session_not_initialized, unknown_tool, invalid_input); found "
+            "(session_not_initialized, unknown_tool, invalid_input), and "
+            "deprecated_member (curated_deprecations.py); found "
             + str(len(members))
         )
         for model in CP3_MODELS.values():

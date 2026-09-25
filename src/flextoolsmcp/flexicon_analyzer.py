@@ -20,8 +20,10 @@ from typing import Dict, List, Any, Optional, Tuple
 
 if __package__:
     from .json_utils import sort_json_arrays
+    from .curated_deprecations import apply_to_api_index, apply_to_bridge
 else:
     from json_utils import sort_json_arrays
+    from curated_deprecations import apply_to_api_index, apply_to_bridge
 
 
 # ---- Module-Level Constants (for efficient membership testing) ---------------
@@ -2520,6 +2522,10 @@ def _analyze_and_save(analyze_func, library_path: str, output_file: str, version
         # Split LCM bridge data out before writing (metadata.mapping_types already
         # populated upstream, so popping is safe).
         bridge_data = _split_lcm_bridge(api_data)
+        # Curated deprecations (curated_deprecations.py) survive regeneration.
+        library_key = "flexlibs_stable" if version_name == "stable" else "flexicon"
+        apply_to_api_index(api_data, library_key)
+        apply_to_bridge(bridge_data, library_key)
         print(f"[INFO] Writing results to: {output_file}")
         api_data = sort_json_arrays(api_data)
         with open(output_file, 'w', encoding='utf-8') as f:

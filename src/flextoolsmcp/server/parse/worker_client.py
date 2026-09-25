@@ -699,6 +699,16 @@ class ParseWorkerClient:
         """
         await self._send({"type": "cancel", "run_id": run_id})
 
+    async def run_end(self, run_id: str) -> None:
+        """Tell the worker a run finished on the server side (#235).
+
+        The runner sends one parse at a time and awaits each result, so the
+        worker's queue is empty between words of a batch. Without this
+        message the worker would treat each gap as idle and reopen the
+        project for the next word.
+        """
+        await self._send({"type": "run_end", "run_id": run_id})
+
     async def resolve_morphs(
         self,
         *,

@@ -2018,6 +2018,12 @@ class ParseWorker:
         #: and the same baseline (FR-027).
         self._load_baseline: Optional[dict[str, Any]] = None
         self._baseline_sent: set[str] = set()
+        #: Run ids the server has opened on the wire but not yet closed with
+        #: `run_end`. The runner sends one word at a time and awaits each
+        #: result (#235); without this the worker queue is empty between
+        #: words of the same run and `_release_if_idle` would drop the
+        #: project and reload the grammar for every word.
+        self._open_runs: set[str] = set()
 
     # -- inbound ----------------------------------------------------------
 
@@ -2070,6 +2076,10 @@ class ParseWorker:
             # of the process that did the parsing; asked from the server
             # process the answer would be about the wrong process.
             self._emit({"type": "assemblies", "names": loaded_assembly_names()})
+        elif kind == "run_end":
+            run_id = message.get("run_id")
+            if run_id:
+                self._open_runs.discard(str(run_id))
         elif kind == "shutdown":
             self._exit_reason = "shutdown"
             self._draining.set()
@@ -2129,6 +2139,8 @@ class ParseWorker:
             "vernacular_ws": message.get("vernacular_ws"),
             "engine_at_submission": message.get("engine_at_submission"),
         }
+        if word.run_id:
+            self._open_runs.add(word.run_id)
         self._queue.enqueue(word)
 
     # -- the main loop ----------------------------------------------------
@@ -2188,8 +2200,10 @@ class ParseWorker:
                 continue
 
             # Queue empty and nothing else pending (both drains above are
-            # no-ops when they have nothing to answer): nothing is in
-            # flight, so the lock has no reason to still be held (#223).
+            # no-ops when they have nothing to answer). Release only when
+            # no run is still open on the wire (#235) -- the server sends
+            # one word at a time, so the queue is empty between words of a
+            # batch even while the run continues.
             self._release_if_idle()
 
             # Now -- and only now -- is it safe to stop the PROCESS.
@@ -2243,8 +2257,10 @@ class ParseWorker:
         A no-op when the backend is already closed (checked here rather
         than relying solely on `_RealBackend.release()`'s own idempotence,
         so the common already-idle poll tick does not even call into the
-        backend).
+        backend), or when the server still has a run open (#235).
         """
+        if self._open_runs:
+            return
         if self._backend.is_open():
             self._backend.release()
 

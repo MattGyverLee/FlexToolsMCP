@@ -221,6 +221,12 @@ sorted position, not the top). Changes without an issue go under Other.
     release, and the lock is observably dropped in between. See
     `specs/parser-check-cp2/spec.md`'s FR-042/043 amendment and
     `specs/parser-check-cp2/evidence/issue223-live.md`.
+- **Parse worker reopened the project for every word of a server-paced batch**
+  ([#235](https://github.com/MattGyverLee/FlexToolsMCP/issues/235), regression
+  from #223). `ParseRunner` sends one word at a time and awaits each result,
+  so the worker queue was empty between words and `_release_if_idle` dropped
+  the lock after every word. The runner now sends `run_end` when a run
+  finishes; the worker holds the project until then.
 
 ### Added
 

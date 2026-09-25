@@ -84,6 +84,7 @@ def test_the_project_is_released_the_moment_the_queue_goes_idle():
     worker = ParseWorker("Idle223 Project", backend=backend, idle_timeout=600, emit=collector)
 
     worker.handle_message(_parse_message("first", "kata", Priority.TRY_A_WORD, 0))
+    worker.handle_message({"type": "run_end", "run_id": "first"})
     worker.handle_message({"type": "shutdown"})
     worker.run()
 
@@ -108,6 +109,7 @@ def test_holding_the_lock_while_a_parse_runs_is_unaffected():
             _parse_message("batch", f"w{index}", Priority.MEDIUM, index,
                             level="batch", engine_at_submission="HC")
         )
+    worker.handle_message({"type": "run_end", "run_id": "batch"})
     worker.handle_message({"type": "shutdown"})
     worker.run()
 
@@ -139,17 +141,20 @@ def test_a_follow_up_request_after_idle_release_still_works():
     original = worker._release_if_idle
 
     def hook():
-        original()
         calls["n"] += 1
         if calls["n"] == 1:
-            # The one assertion that matters: by the time anything ELSE
-            # happens, the project is already closed -- release, not just
-            # "eventually released".
+            # #235: the first run is still open on the wire, so no release
+            # yet even though the queue is empty.
+            assert backend.is_open() is True
+            worker.handle_message({"type": "run_end", "run_id": "first"})
+        original()
+        if calls["n"] == 1:
             assert backend.is_open() is False
             assert backend.release_count == 1
-            assert backend.open_count == 0
             worker.handle_message(_parse_message("second", "lagi", Priority.TRY_A_WORD, 0))
-        else:
+        elif calls["n"] == 2:
+            worker.handle_message({"type": "run_end", "run_id": "second"})
+            original()
             worker.handle_message({"type": "shutdown"})
 
     worker._release_if_idle = hook
@@ -178,15 +183,18 @@ def test_a_follow_up_resolve_request_also_reopens():
     original = worker._release_if_idle
 
     def hook():
-        original()
         calls["n"] += 1
+        if calls["n"] == 1:
+            assert backend.is_open() is True
+            worker.handle_message({"type": "run_end", "run_id": "first"})
+        original()
         if calls["n"] == 1:
             assert backend.is_open() is False
             worker.handle_message({
                 "type": "resolve", "request_id": "r1", "run_id": "first",
                 "morphs": [], "only_if_indexed": True,
             })
-        else:
+        elif calls["n"] == 2:
             worker.handle_message({"type": "shutdown"})
 
     worker._release_if_idle = hook

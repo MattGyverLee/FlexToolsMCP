@@ -6,6 +6,12 @@ Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
+- **`undiscovered_entity` rejected facade-only Operations (e.g. `project.Variants`)**
+  ([#162](https://github.com/MattGyverLee/FlexToolsMCP/issues/162)). Using
+  ``project.Variants`` / ``project.Allomorphs`` (and other index-mapped facade
+  accessors whose class name is not ``{Accessor}Operations``) now satisfies the
+  discovery gate the same way an explicit ``flextools_get_object_api`` call would,
+  parallel to import-based implicit discovery (issue #31).
 - **`flextools_find_wrappers_for_lcm` downgraded `Entity.Property` to misleading entity hits**
   ([#87](https://github.com/MattGyverLee/FlexToolsMCP/issues/87)). Dotted
   LCM names now resolve as property lookups; when a property has no wrapper

@@ -1882,6 +1882,14 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
             result["misplaced_member"] = _misplaced
             result[KEY_WARNING] = _misplaced["hint"]
 
+    # Issue #101: same curated warning as get_object_api -- resolve_property is
+    # the path callers use when exploring ".Name" on morphology list objects.
+    if context_entity:
+        not_cmpossibility_warning = _not_cmpossibility_warning(context_entity)
+        if not_cmpossibility_warning:
+            result[KEY_NOT_CMPOSSIBILITY_WARNING] = not_cmpossibility_warning
+
+
     result = build_response_with_context(result, include_session=True)
 
     return json_response(result)

@@ -6,6 +6,13 @@ Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
+- **Non-`ICmPossibility` morphology list types warned in `resolve_property`**
+  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
+  curated `not_cmpossibility_warning` (already on `get_object_api` for
+  `IMoInflAffixSlot` / `IMoInflAffixTemplate` / `IMoInflClass`) now also
+  appears when callers resolve properties with those types as
+  `context_entity`, so exploring `.Name` is answerable before a runtime
+  `ICmPossibility` cast fails.
 - **`undiscovered_entity` rejected facade-only Operations (e.g. `project.Variants`)**
   ([#162](https://github.com/MattGyverLee/FlexToolsMCP/issues/162)). Using
   ``project.Variants`` / ``project.Allomorphs`` (and other index-mapped facade

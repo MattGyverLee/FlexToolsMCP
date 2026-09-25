@@ -56061,6 +56061,10 @@
             "methods": []
           },
           {
+            "class": "NoteOperations",
+            "methods": []
+          },
+          {
             "class": "WfiAnalysisOperations",
             "methods": []
           }
@@ -57660,10 +57664,16 @@
         }
       ],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "NoteOperations",
-          "methods": []
-        },
+        "flexlibs_2": [
+          {
+            "class": "Annotation",
+            "methods": []
+          },
+          {
+            "class": "NoteOperations",
+            "methods": []
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": {
@@ -57767,6 +57777,13 @@
       "name": "ICmBaseAnnotationRepository",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "NoteOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for CmBaseAnnotationRepository operations",
       "tags": [
@@ -58350,6 +58367,13 @@
           "type": "IMultiUnicode"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "SemanticDomainOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [
@@ -58386,6 +58410,13 @@
       "name": "ICmDomainQFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "SemanticDomainOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for CmDomainQFactory operations",
       "tags": [
@@ -59287,10 +59318,6 @@
           {
             "class": "MediaType",
             "methods": []
-          },
-          {
-            "class": "TextOperations",
-            "methods": []
           }
         ],
         "flexlibs_stable": null
@@ -59987,13 +60014,6 @@
           "type": "ICmFile"
         }
       ],
-      "python_wrappers": {
-        "flexlibs_2": {
-          "class": "TextOperations",
-          "methods": []
-        },
-        "flexlibs_stable": null
-      },
       "relationships": {
         "children": [],
         "parents": [
@@ -60239,13 +60259,6 @@
       "name": "ICmMediaFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
-      "python_wrappers": {
-        "flexlibs_2": {
-          "class": "TextOperations",
-          "methods": []
-        },
-        "flexlibs_stable": null
-      },
       "relationships": [],
       "summary": "Interface for CmMediaFactory operations",
       "tags": [
@@ -64853,6 +64866,13 @@
           "type": "ICmPossibilityList"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "OverlayOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [
@@ -64904,6 +64924,13 @@
       "name": "ICmOverlayFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "OverlayOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for CmOverlayFactory operations",
       "tags": [
@@ -70732,6 +70759,10 @@
             "methods": []
           },
           {
+            "class": "ConstChartMovedTextOperations",
+            "methods": []
+          },
+          {
             "class": "ConstChartOperations",
             "methods": []
           },
@@ -75218,6 +75249,14 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
+            "class": "BaseOperations",
+            "methods": []
+          },
+          {
+            "class": "EnumerableWrapper",
+            "methods": []
+          },
+          {
             "class": "FilterOperations",
             "methods": []
           },
@@ -75230,11 +75269,19 @@
             "methods": []
           },
           {
+            "class": "OperationsMethod",
+            "methods": []
+          },
+          {
             "class": "PhonFeatureOperations",
             "methods": []
           },
           {
             "class": "PhonemeOperations",
+            "methods": []
+          },
+          {
+            "class": "wrap_enumerable",
             "methods": []
           }
         ],
@@ -76224,10 +76271,28 @@
         }
       ],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "InflectionFeatureOperations",
-          "methods": []
-        },
+        "flexlibs_2": [
+          {
+            "class": "BaseOperations",
+            "methods": []
+          },
+          {
+            "class": "EnumerableWrapper",
+            "methods": []
+          },
+          {
+            "class": "InflectionFeatureOperations",
+            "methods": []
+          },
+          {
+            "class": "OperationsMethod",
+            "methods": []
+          },
+          {
+            "class": "wrap_enumerable",
+            "methods": []
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": {
@@ -89217,6 +89282,10 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
+            "class": "AllomorphOperations",
+            "methods": []
+          },
+          {
             "class": "FLExProject",
             "methods": []
           },
@@ -98827,6 +98896,13 @@
       "name": "IMoInflAffixSlotFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "POSOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for MoInflAffixSlotFactory operations",
       "tags": [
@@ -109120,10 +109196,16 @@
         }
       ],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "NaturalClassOperations",
-          "methods": []
-        },
+        "flexlibs_2": [
+          {
+            "class": "NaturalClassOperations",
+            "methods": []
+          },
+          {
+            "class": "PhonologicalContext",
+            "methods": []
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": {
@@ -109919,6 +110001,10 @@
           },
           {
             "class": "PhonemeOperations",
+            "methods": []
+          },
+          {
+            "class": "PhonologicalContext",
             "methods": []
           }
         ],
@@ -117918,13 +118004,6 @@
           "type": "IRnResearchNbk"
         }
       ],
-      "python_wrappers": {
-        "flexlibs_2": {
-          "class": "DataNotebookOperations",
-          "methods": []
-        },
-        "flexlibs_stable": null
-      },
       "relationships": [],
       "summary": "Interface for RnResearchNbkRepository operations",
       "tags": [
@@ -124789,6 +124868,10 @@
       ],
       "python_wrappers": {
         "flexlibs_2": [
+          {
+            "class": "Annotation",
+            "methods": []
+          },
           {
             "class": "NoteOperations",
             "methods": []
@@ -135716,6 +135799,10 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
+            "class": "DataNotebookOperations",
+            "methods": []
+          },
+          {
             "class": "ScrNoteOperations",
             "methods": []
           },
@@ -136485,6 +136572,10 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
+            "class": "DataNotebookOperations",
+            "methods": []
+          },
+          {
             "class": "FLExProject",
             "methods": []
           },
@@ -136638,6 +136729,10 @@
       "properties": [],
       "python_wrappers": {
         "flexlibs_2": [
+          {
+            "class": "DataNotebookOperations",
+            "methods": []
+          },
           {
             "class": "ParagraphOperations",
             "methods": []
@@ -138048,6 +138143,13 @@
           "type": "Boolean"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "HeadlessLcmUI",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for ThreadedProgress operations",
       "tags": [
@@ -141115,10 +141217,6 @@
           },
           {
             "class": "ScrBookOperations",
-            "methods": []
-          },
-          {
-            "class": "ScrDraftOperations",
             "methods": []
           },
           {
@@ -145883,10 +145981,6 @@
             "methods": []
           },
           {
-            "class": "ConfidenceOperations",
-            "methods": []
-          },
-          {
             "class": "FLExProject",
             "methods": []
           },
@@ -146179,13 +146273,6 @@
       "name": "IWfiGlossRepository",
       "namespace": "SIL.LCModel",
       "properties": [],
-      "python_wrappers": {
-        "flexlibs_2": {
-          "class": "ConfidenceOperations",
-          "methods": []
-        },
-        "flexlibs_stable": null
-      },
       "relationships": [],
       "summary": "Interface for WfiGlossRepository operations",
       "tags": [

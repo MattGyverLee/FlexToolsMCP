@@ -76,10 +76,10 @@ except (ImportError, ValueError):
     from server.project_access import probe_project_access
 
 try:
-    from ..parser_probe import ParserDetector
+    from ..parser_probe import ParserDetector, ADVISORY_HC_ENGINE_VERSION_SKEW
     from ..project_discovery import sweep_stale_locks
 except (ImportError, ValueError):
-    from server.parser_probe import ParserDetector
+    from server.parser_probe import ParserDetector, ADVISORY_HC_ENGINE_VERSION_SKEW
     from server.project_discovery import sweep_stale_locks
 
 try:
@@ -262,7 +262,20 @@ def _build_parser_block() -> Dict[str, Any]:
 
     hc = detector.sandbox_probe.hc
     generate_config = detector.sandbox_probe.generate_config
-    sandbox_ready = hc.ok and generate_config.ok
+    hc_component = _build_hc_component(hc)
+    generate_component = _build_generate_config_component(generate_config)
+    # FR-004: ready only if hc is found AND answered its `-h` probe AND
+    # GenerateHCConfig.exe is present. A `dotnet tool list`-only hit
+    # (starts None) was never probed, so it is not a start.
+    sandbox_ready = (
+        hc_component["found"] is True
+        and hc_component["starts"] is True
+        and generate_component["found"] is True
+    )
+    # FR-005: a version skew warns, never refuses -- it never enters status.
+    advisories: List[str] = []
+    if getattr(detector.versions, "hc_engine_version_skew", False):
+        advisories.append(ADVISORY_HC_ENGINE_VERSION_SKEW)
 
     return {
         "read": {
@@ -275,14 +288,8 @@ def _build_parser_block() -> Dict[str, Any]:
         },
         "sandbox": {
             "status": "ready" if sandbox_ready else "unavailable",
-            "components": [
-                {"component": "hc", "found": hc.ok, "expected_path": hc.expected_path},
-                {
-                    "component": "GenerateHCConfig.exe",
-                    "found": generate_config.ok,
-                    "expected_path": generate_config.expected_path,
-                },
-            ],
+            "components": [hc_component, generate_component],
+            "advisories": advisories,
         },
         # Informational only -- never a status input (D8).
         "active_engine": detector.active_engine,
@@ -292,7 +299,51 @@ def _build_parser_block() -> Dict[str, Any]:
             "hc_tool_version": detector.versions.hc_tool_version,
             "hc_path": hc.expected_path if hc.ok else None,
             "generate_hc_config_path": generate_config.expected_path if generate_config.ok else None,
+            # CP5 (FR-005): reported verbatim, never compared to a floor.
+            "fieldworks_hermitcrab_version": getattr(
+                detector.versions, "fieldworks_hermitcrab_version", None
+            ),
+            "generate_hc_config_version": getattr(
+                detector.versions, "generate_hc_config_version", None
+            ),
+            "hc_source": hc_component["source"],
         },
+    }
+
+
+def _build_hc_component(hc: Any) -> Dict[str, Any]:
+    """The `hc` entry of parser.sandbox.components (data-model section 7).
+
+    Copies the discovery fields verbatim. `getattr` with defaults because
+    `ParserDetector._safe_probe` may hand back a plain ProbeResult (a probe
+    that raised) rather than an HcToolDiscovery; then `found` falls back to
+    `ok` and the discovery-only fields are null."""
+    return {
+        "component": "hc",
+        "found": bool(getattr(hc, "found", hc.ok)),
+        "expected_path": hc.expected_path,
+        "starts": getattr(hc, "starts", None),
+        "signal": hc.signal,
+        "source": getattr(hc, "source", None),
+        "reason": getattr(hc, "reason", None),
+    }
+
+
+def _build_generate_config_component(generate_config: Any) -> Dict[str, Any]:
+    """The GenerateHCConfig.exe entry. Health never executes it (that would
+    be new detection work), so `starts` is always null; when found it lives
+    under the FieldWorks install."""
+    found = bool(generate_config.ok)
+    return {
+        "component": "GenerateHCConfig.exe",
+        "found": found,
+        "expected_path": generate_config.expected_path,
+        "starts": None,
+        "signal": generate_config.signal,
+        "source": "fieldworks_dir" if found else None,
+        "reason": None if found else (
+            "GenerateHCConfig.exe was not found in the FieldWorks install"
+        ),
     }
 
 
@@ -300,6 +351,16 @@ def _build_parser_block() -> Dict[str, Any]:
 # dotnet GLOBAL tool, located via PATH / `dotnet tool list -g`, not a file under
 # %LOCALAPPDATA%. Never reword this command; a caller pastes it.
 _HC_INSTALL_HINT = "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool"
+
+# The full hint the "install the hc dotnet tool" rung carries (FR-004): the
+# command above plus what it needs to install and to run afterwards.
+_HC_INSTALL_FULL_HINT = (
+    _HC_INSTALL_HINT + " Installing it needs a .NET SDK, and hc 3.8 and later "
+    "need the .NET 10 runtime to run."
+)
+
+#: The one tool the sandbox spine proposes -- only when it is ready (FR-006).
+_SANDBOX_TOOL = "flextools_parse_sandbox"
 
 # CP1 replacement action text for the `write: unavailable` / `read: ready` row.
 # The contract's own wording ("use read-only Try A Word; filing unavailable")
@@ -363,10 +424,11 @@ def _build_parser_next_steps(parser: Dict[str, Any]) -> List[Dict[str, Any]]:
     forbids proposing a tool that does not exist, and the CP1 caveat said
     they would land in full "at CP2, when the tool they name is real".
 
-    `flextools_parse_sandbox` is still never named: sandbox is the one
-    spine whose tool the contract proposes by name, and only when both
-    components are found -- and that tool does not exist yet. The same rule
-    that released the two rows above keeps this one held.
+    `flextools_parse_sandbox` is named only when the sandbox spine is
+    `ready` (FR-006): then exactly one rung proposes it, with usable args.
+    When the spine is `unavailable` it is never named -- not in `tool`, not
+    in any prose -- and each cause gets its own tool-less repair rung (hc
+    not found, hc found but cannot start, GenerateHCConfig.exe missing).
 
     A registry sweep in `tests/test_parser_health_block.py` asserts that
     every tool named anywhere in the emitted guidance is a registered tool,
@@ -425,22 +487,61 @@ def _build_parser_next_steps(parser: Dict[str, Any]) -> List[Dict[str, Any]]:
                 est_cost="inline",
             ))
 
-    # sandbox: only the hc row carries an action (the contract's
-    # GenerateHCConfig.exe state is the negative rule "never propose the
-    # sandbox tool", already honoured by emitting no rung that names it).
-    hc = next(
-        (c for c in parser["sandbox"]["components"] if c["component"] == "hc"),
-        None,
-    )
-    if hc is not None and not hc["found"]:
+    # sandbox (contracts/tools.md section 6): one rung per cause while
+    # unavailable, never naming the sandbox tool; exactly one rung naming it
+    # when ready. Keyed on found/starts, not on the signal.
+    sandbox = parser["sandbox"]
+    components = {c["component"]: c for c in sandbox["components"]}
+    hc = components.get("hc")
+    generate = components.get("GenerateHCConfig.exe")
+
+    if sandbox["status"] == "ready":
         steps.append(_parser_next_step(
-            action="install the hc dotnet tool",
+            action="rehearse a grammar change on an exported copy",
+            tool=_SANDBOX_TOOL,
+            args={"action": "parse", "words": []},
             rationale=(
-                "hc is a dotnet global tool, located via PATH / "
-                "`dotnet tool list -g`; install it with `{}`.".format(_HC_INSTALL_HINT)
+                "hc starts and GenerateHCConfig.exe is present, so a grammar "
+                "change can be rehearsed on an exported copy of the project "
+                "without touching the project itself."
             ),
-            est_cost="n/a",
+            est_cost="minutes",
         ))
+    else:
+        if hc is not None and not hc["found"]:
+            steps.append(_parser_next_step(
+                action="install the hc dotnet tool",
+                rationale=(
+                    "hc is a dotnet global tool, located via PATH / "
+                    "`dotnet tool list -g`. Install it with: {}".format(
+                        _HC_INSTALL_FULL_HINT
+                    )
+                ),
+                est_cost="n/a",
+            ))
+        elif hc is not None and hc["starts"] is False:
+            reason = (hc.get("reason") or "no reason was reported").rstrip(".")
+            if hc.get("signal") == "timeout":
+                lead = (
+                    "hc was found but did not answer `-h` within the probe "
+                    "bound, which usually means it cannot start"
+                )
+            else:
+                lead = "hc was found but cannot start"
+            steps.append(_parser_next_step(
+                action="install the .NET runtime hc needs",
+                rationale="{} ({}).".format(lead, reason),
+                est_cost="n/a",
+            ))
+        if generate is not None and not generate["found"]:
+            steps.append(_parser_next_step(
+                action="repair or reinstall FieldWorks (GenerateHCConfig.exe missing)",
+                rationale=(
+                    "GenerateHCConfig.exe ships with FieldWorks and exports the "
+                    "grammar hc loads; it was not found in the FieldWorks install."
+                ),
+                est_cost="n/a",
+            ))
 
     return steps
 

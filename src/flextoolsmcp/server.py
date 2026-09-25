@@ -794,11 +794,15 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         _log_info(
             f"Auto-refreshing API indexes (triggered by missing {library_name})..."
         )
+        # Explicit codec on both ends (CP5 pattern audit, sweep 4).
         result = subprocess.run(
             cmd,
             cwd=project_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=dict(os.environ, PYTHONIOENCODING="utf-8"),
             timeout=300
         )
 

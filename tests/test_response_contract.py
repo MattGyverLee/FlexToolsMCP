@@ -177,6 +177,15 @@ GOLDEN_REQUIRED_KEYS = {
         "signal", "new_error_count", "baseline_error_count", "baseline_source", "log_path",
         "new_errors", "dropped_entries", "baseline_eligible_count", "eligible_count",
     },
+    # Parser-check CP5 (contracts/tools.md section 4): same top-level mirror.
+    "parser_config_failed": {
+        "_contract", "status", "error_code", "message", "error",
+        "exit_code", "stderr_tail", "log_path", "run_id",
+    },
+    "parse_sandbox_refused": {
+        "_contract", "status", "error_code", "message", "error",
+        "reason", "name", "path", "hint", "needed_bytes", "free_bytes",
+    },
 }
 
 
@@ -430,7 +439,7 @@ class TestParserCheckCP2bCodes:
         with pytest.raises(pydantic.ValidationError):
             models[code].model_validate(payload)
 
-    def test_the_documented_error_code_count_is_thirty_four(self):
+    def test_the_documented_error_code_count_is_thirty_six(self):
         """FR-037: the hand-maintained count in the contract doc tracks reality.
 
         Hand-maintained counts drift silently, which is why this compares
@@ -444,8 +453,9 @@ class TestParserCheckCP2bCodes:
 
         union_size = len(typing.get_args(AnyDetail))
         # 31 through CP3; #89 adds internal_error -> 32; CP4 adds
-        # parser_filing_in_progress and grammar_load_unclean -> 34.
-        assert union_size == 34, f"the detail union holds {union_size} models"
+        # parser_filing_in_progress and grammar_load_unclean -> 34; CP5 adds
+        # parser_config_failed and parse_sandbox_refused (M-2) -> 36.
+        assert union_size == 36, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"
@@ -481,6 +491,9 @@ class TestParserCheckCP2bCodes:
             # CP4 (FR-035): same transcription check for the two new rows.
             ("parser_filing_in_progress", "ParserFilingInProgressDetail"),
             ("grammar_load_unclean", "GrammarLoadUncleanDetail"),
+            # CP5 (contracts/tools.md section 4): the two new rows.
+            ("parser_config_failed", "ParserConfigFailedDetail"),
+            ("parse_sandbox_refused", "ParseSandboxRefusedDetail"),
         ],
     )
     def test_each_cp3_row_lists_its_fields_in_the_models_order(self, code, model_name):

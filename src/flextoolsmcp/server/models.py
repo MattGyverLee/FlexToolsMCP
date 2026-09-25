@@ -8,7 +8,7 @@ They replace raw JSON Schema dicts and provide automatic validation, type coerci
 and IDE autocomplete support.
 """
 
-from typing import Optional, Literal, Any, List
+from typing import Optional, Literal, Any, List, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from .constants import API_MODES, API_MODES_DEFAULT, normalize_api_mode
 
@@ -1051,6 +1051,99 @@ class ParseDiffInput(BaseModel):
         description="Compare even though the two runs' scopes differ. The comparison "
                     "then covers only the words both runs share, and says so."
     )
+
+
+# ============================================================
+# Sandbox spine (parser-check CP5; contracts/tools.md section 2)
+# ============================================================
+
+class ParseSandboxInput(BaseModel):
+    """Parse against an exported or copied grammar with the stand-alone `hc`
+    tool (parser-check CP5, FR-034). The live project is never opened for
+    writing.
+
+    One tool, five actions. `words` / `word_file` belong to `parse` alone,
+    and exactly one of them is required there; on any other action they are
+    refused rather than ignored, so a caller who thinks they are parsing
+    while creating a sandbox finds out. `extra="forbid"` refuses guessed
+    arguments the same way. Name, existence, corpus and disk-space checks are
+    NOT done here -- they are `parse_sandbox_refused` refusals from the
+    handler (contracts/tools.md section 3), because they depend on the disk.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["parse", "create_sandbox", "seed_corpus", "run_corpus", "list"] = Field(
+        default="parse",
+        description="parse: parse words against a sandbox or the project's cached config. "
+                    "create_sandbox: export the project's grammar into a new named sandbox. "
+                    "seed_corpus: save a completed sandbox parse run's words as a named "
+                    "corpus. run_corpus: parse a saved corpus. list: list sandboxes and "
+                    "corpora."
+    )
+    project_name: Optional[str] = Field(
+        default=None,
+        description="Name of the FieldWorks project. Uses the session value if set "
+                    "by start()."
+    )
+    words: Optional[Union[List[str], str]] = Field(
+        default=None,
+        description="The words to parse (action='parse' only). A string is split on "
+                    "commas and whitespace; a list is taken item by item. Give this or "
+                    "word_file, not both."
+    )
+    word_file: Optional[str] = Field(
+        default=None,
+        description="Path to a UTF-8 file, one word per line (action='parse' only). "
+                    "Refused if it is inside a project folder. Give this or words, not both."
+    )
+    sandbox: Optional[str] = Field(
+        default=None,
+        description="The sandbox to parse against (parse, run_corpus). Omit to use the "
+                    "project's cached config. For create_sandbox, the NEW sandbox's name."
+    )
+    corpus: Optional[str] = Field(
+        default=None,
+        description="The corpus name: the new one for seed_corpus, the one to parse for "
+                    "run_corpus."
+    )
+    from_run_id: Optional[str] = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{32}$",
+        description="seed_corpus only: the completed sandbox parse run (32 lowercase hex) "
+                    "whose words become the corpus."
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Parse at most this many words (action='parse'), applied after "
+                    "ordering."
+    )
+    timeout_seconds: int = Field(
+        default=600,
+        ge=10,
+        le=86400,
+        description="Wall-clock bound on the hc run, in seconds (parse, run_corpus). "
+                    "10 to 86400."
+    )
+
+    @model_validator(mode="after")
+    def _words_match_action(self) -> "ParseSandboxInput":
+        """`parse` takes exactly one of words / word_file; nothing else takes either."""
+        given = [n for n in ("words", "word_file") if getattr(self, n) is not None]
+        if self.action == "parse":
+            if len(given) != 1:
+                raise ValueError(
+                    "action='parse' needs exactly one of `words` or `word_file`; you "
+                    "passed " + ("both" if given else "neither") + "."
+                )
+        elif given:
+            raise ValueError(
+                "`" + "` and `".join(given) + "` " + ("is" if len(given) == 1 else "are")
+                + " meaningful only with action='parse'; you passed action="
+                + repr(self.action) + ". Accepting it here would discard your words "
+                "without parsing them."
+            )
+        return self
 
 
 class ResolvedScope(BaseModel):

@@ -576,12 +576,15 @@ remain, at most three cached configurations per project remain, and run retentio
   verbatim (FR-014).
 - **Sandbox and corpus files live under `~/.flextoolsmcp`,** beside the existing run records, cache
   and backups. They are never under a project folder.
-- **The engine check reads the copy.** Reading `ActiveParser` from the copied project avoids opening
-  the live project. On non-shared projects, a live open takes the lock, and FLEx may hold it.
-  `ActiveParser` is not an element of its own in the `.fwdata` file. It sits inside the XML text of
-  the `MoMorphData` object's `ParserParameters` string. It can therefore be read from a copy in two
-  steps, or by opening the copy through LCM; planning chooses. An absent or unreadable value counts
-  as XAmple, so the check fails safe (CP2 domain review).
+- **The engine check reads the live file as a stream, before any copy, never through LCM.** It
+  reads `ActiveParser` from the live `.fwdata` as a plain read-only file stream (shared
+  read/write), so it runs before any copy, as FR-036 requires, and never opens the project. On
+  non-shared projects an LCM open takes the lock, and FLEx may hold it; a plain file read takes no
+  lock and works while FLEx has the project open (research R-02). `ActiveParser` is not an element
+  of its own in the `.fwdata` file. It sits inside the XML text of the `MoMorphData` object's
+  `ParserParameters` string, so it is read in two steps: stream to the first `MoMorphData` object,
+  then parse that string's inner XML. An absent or unreadable value (including a read error that
+  persists after one retry) counts as XAmple, so the check fails safe (CP2 domain review).
 - **Console output survives a kill; file output does not.** `hc` writes results to its console
   writer, which flushes as it goes, unless an output file is given; that file's writer does not
   flush until closed. This is why FR-020 needs partial results to come from the console stream or

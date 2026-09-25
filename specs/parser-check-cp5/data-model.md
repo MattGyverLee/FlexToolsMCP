@@ -242,6 +242,14 @@ This is CP3's line shape with additive keys. `parsed` and `analysis_count` keep 
 keeps both raw lines in `raw`; `morphs` and `rendered_morphs` are then null (FR-019). **`flags`**
 may contain `leading_dash_unverified` (R-09).
 
+Two further additive details (T047):
+- **`analyses` is a list only for `parsed` and `not_parsed`.** For `invalid_segment`,
+  `not_expressible`, `error_no_output` and `not_reached` it is `null`, with `analysis_count: 0`.
+  CP3's `HostCounters` reads `analyses: []` as a zero-parse word, so a word hc produced nothing
+  for must not carry an empty list (FR-018).
+- **`parse_time_ms`** (CP3's existing key) follows `flags`: hc's `Parse time: <n>ms` when it
+  printed one, else `null`. hc prints no time line for an invalid segment.
+
 ### 6.5 `results.jsonl`: the assertion line (test mode)
 
 ```json

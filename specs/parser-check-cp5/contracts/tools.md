@@ -78,7 +78,7 @@ Seeding is synchronous and creates no run. `list` is synchronous and read-only.
 | Code | Status | Fields, **in this order** |
 |---|---|---|
 | **`parser_tool_missing`** | existing, first emitter | `component` (`"hc"` \| `"GenerateHCConfig.exe"`), `expected_path` (str), `install_hint` (str) |
-| **`parser_config_failed`** | **new** | `exit_code` (int \| null), `stderr_tail` (str), `log_path` (str), `run_id` (str) |
+| **`parser_config_failed`** | **new** | `exit_code` (int \| null), `stderr_tail` (str), `log_path` (str), `run_id` (str \| null) |
 | **`parser_timeout`** | existing, first emitter | `timeout_seconds` (int), `words_completed` (int), `run_id` (str), `hint` (str) |
 | **`parser_engine_mismatch`** | existing, unchanged | `configured_engine`, `supported_engines`, `hint` |
 | `parse_sandbox_refused` | **new, pending M-2** | `reason` (see below), `name` (str \| null), `path` (str \| null), `hint` (str), `needed_bytes` (int \| null), `free_bytes` (int \| null) |
@@ -156,10 +156,12 @@ the summary, and `project_state`. They add:
  "path": "C:\\Users\\u\\.flextoolsmcp\\parse\\sandboxes\\<project>\\tighten-env\\hc-config.xml",
  "origin": {"from_cache_key": "...", "created_at": "..."},
  "generation": {"reused_cache": false, "load_error_count": 0},
- "next_step": {"action": "edit the XML, then run words against the sandbox",
-               "tool": "flextools_parse_sandbox", "args": {"action": "parse", "sandbox": "tighten-env"},
-               "rationale": "...", "est_cost": "minutes"}}
+ "next_step": [{"action": "edit the XML, then run words against the sandbox",
+                "tool": "flextools_parse_sandbox", "args": {"action": "parse", "sandbox": "tighten-env"},
+                "rationale": "...", "est_cost": "minutes"}]}
 ```
+
+`next_step` is a **list** of rungs, as on every response; here it holds one.
 
 If no cache entry is usable, `create_sandbox` builds one first. It runs synchronously, because
 generation takes seconds to a minute; no run id exists. A generation failure there returns

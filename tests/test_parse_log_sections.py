@@ -598,7 +598,10 @@ def _golden_not_applicable(run_id, section):
 @pytest.mark.parametrize("section", list(_SANDBOX_SECTION_FILES))
 @pytest.mark.parametrize("spine", [None, "in_process"])
 async def test_in_process_sandbox_sections_are_unchanged(record_dir, quiet_context,
+                                                         reset_session_state,
                                                          section, spine):
+    # Golden equality is order-sensitive: a prior test that left session_state
+    # initialized would inject session_context into the envelope.
     record = RunRecord.create(
         project_name="P", words_total=1, record_dir=record_dir, words=["a"],
         scope_fingerprint={"scope_kind": "words"}, engine_at_submission="HC",

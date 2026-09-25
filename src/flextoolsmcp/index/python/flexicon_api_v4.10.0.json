@@ -30519,7 +30519,25 @@
         "general"
       ],
       "type": "class",
-      "usage_hint": "Class for working with general data in FieldWorks"
+      "usage_hint": "Class for working with general data in FieldWorks",
+      "instance_attributes": [
+        {
+          "access_path": "project.lexDB",
+          "defined_in": "OpenProject",
+          "description": "Lexical database (ILexDb). Most lexicon structure and entries are reachable from here.",
+          "kind": "instance_attr",
+          "name": "lexDB",
+          "type": "ILexDb"
+        },
+        {
+          "access_path": "project.lp",
+          "defined_in": "OpenProject",
+          "description": "Language project root (LCM LangProject). Primary low-level LCM access when Operations wrappers do not cover a property.",
+          "kind": "instance_attr",
+          "name": "lp",
+          "type": "LangProject"
+        }
+      ]
     },
     "FP_ConflictingSaveError": {
       "base_classes": [

@@ -7,6 +7,12 @@ sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
 
+- **Preflight rejects `ICmPossibility` casts on morphology lists that are not possibilities**
+  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
+  run_module casting validator now errors on `ICmPossibility(...)` when the
+  argument is known to be `IMoInflAffixSlot`, `IMoInflAffixTemplate`, or
+  `IMoInflClass`, including `ICmPossibility(x).Name` chains that previously
+  passed at `injection_tier=none` and failed at runtime.
 - **Curated recipe `audit-repair-infl-aff-msa-slots`**
   ([#102](https://github.com/MattGyverLee/FlexToolsMCP/issues/102)). Search and
   `find_examples` now surface a discoverable audit/repair snippet for

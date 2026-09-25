@@ -132,28 +132,12 @@ SUFFIX_KIND_GUIDE = {
 # IMoMorphType is the explicit contrast case: it DOES inherit
 # base="CmPossibility" (interfaces includes "ICmPossibility"), so
 # ICmPossibility(morphType).Name is correct there and it must stay out of
-# this set. Same curated-exception-list pattern as
-# constants.PROJECT_ACCESSOR_ALIASES.
-NOT_CMPOSSIBILITY_NAME_COLLISION = frozenset({
-    "IMoInflAffixSlot", "MoInflAffixSlot",
-    "IMoInflAffixTemplate", "MoInflAffixTemplate",
-    "IMoInflClass", "MoInflClass",
-})
+# this set. Shared definition lives in constants (issue #101 preflight).
+from ..constants import NOT_CMPOSSIBILITY_NAME_COLLISION, not_cmpossibility_warning
 
 
 def _not_cmpossibility_warning(object_type: str) -> str | None:
-    """Warning string for issue #101's 3 name-collision types, else None."""
-    if object_type not in NOT_CMPOSSIBILITY_NAME_COLLISION:
-        return None
-    return (
-        f"{object_type} is NOT ICmPossibility (base=CmObject in "
-        f"MasterLCModel.xml). Its `Name` is its own MultiUnicode attribute, "
-        f"not an inherited ICmPossibility.Name -- do NOT cast via "
-        f"ICmPossibility(obj).Name. Access .Name directly on the object "
-        f"(cast to {object_type} itself if you need the interface). "
-        f"Contrast: IMoMorphType genuinely IS ICmPossibility, so that cast "
-        f"is correct there."
-    )
+    return not_cmpossibility_warning(object_type)
 
 
 # API mode configuration

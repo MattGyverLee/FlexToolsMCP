@@ -23,6 +23,12 @@ class TestInferGetallCollectionContract(unittest.TestCase):
         self.assertTrue(c["behavioral"])
         self.assertTrue(c["yields_lcm_objects"])
 
+    def test_typing_list_alias(self):
+        c = infer_getall_collection_contract("List[Any]")
+        self.assertEqual(c["shape"], "python_list")
+        self.assertEqual(c["element_type"], "Any")
+        self.assertFalse(c["yields_lcm_objects"])
+
     def test_allomorph_collection_is_wrapper_not_lcm(self):
         c = infer_getall_collection_contract("AllomorphCollection[Allomorph]")
         self.assertEqual(c["shape"], "allomorph_collection")

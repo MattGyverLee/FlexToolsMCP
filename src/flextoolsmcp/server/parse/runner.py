@@ -1055,9 +1055,35 @@ class ParseRunner:
                     handle.stage, interleaved_by=handle.interleaved_by
                 )
         elif kind == "cancelled":
-            handle.words_completed = int(
-                message.get("words_completed", handle.words_completed)
-            )
+            # #223 follow-up (scenario 6 regression): this used to trust the
+            # worker's own `words_completed` counter verbatim. That counter
+            # and this run's `handle.results` list are filled from two
+            # different code paths over the SAME stream -- a word's
+            # `result` message resolves a per-request future (whose
+            # `_execute_run` continuation, which appends to
+            # `handle.results`/`handle.record` and increments
+            # `words_completed`, only *runs* on a later event-loop tick),
+            # while `cancelled` is a run-listener message `_dispatch`
+            # invokes synchronously, in-line, the moment it is read.
+            # `ParseWorkerClient._read_loop` does not force a real
+            # scheduler yield between reading two already-buffered lines,
+            # so a `result` for the last word and the `cancelled` right
+            # behind it can be *read* in order but *applied* out of
+            # order: this branch used to run first and stamp
+            # `words_completed` with a count that already includes that
+            # last word, and then the delayed continuation added 1 more
+            # on top -- one word double-counted, so `words_completed`
+            # read N+1 while only N results ever reached `handle.record`
+            # (live scenario 6: "10 words completed but 9 readable on
+            # disk"). `len(handle.results)` is filled by that same
+            # continuation, in the same statement group as the record
+            # write and the increment this replaces, so it can never
+            # race ahead of what is actually on disk: if the last word's
+            # continuation has not run yet, this reads one short (correct
+            # for what has landed so far) and the continuation's own `+=
+            # 1` catches it up when it runs; if it already ran, this
+            # matches. Either scheduling order is now correct.
+            handle.words_completed = len(handle.results)
         elif kind == "engine_changed":
             # A warning, never a refusal (FR-024). The run carries on and
             # its results stay labelled with the submission engine.
@@ -1153,6 +1179,27 @@ class ParseRunner:
         """End one of a project's workers. The measurement's cleanup."""
         with contextlib.suppress(Exception):
             await self._pool.release(project_name, role=role)
+
+    async def release_worker_if_idle(self, project_name: str, *, role: str) -> bool:
+        """Release this project's `role` worker, but only if idle, atomically
+        (#223 QC P1). See `WorkerPool.release_if_idle` for why the
+        check-then-release used to race a run starting in between.
+
+        Returns `False` for a genuine busy refusal (the caller should
+        report it); `True` otherwise (released, or nothing was there).
+        """
+        try:
+            return await self._pool.release_if_idle(
+                project_name,
+                role=role,
+                is_busy=lambda: self.worker_busy(project_name, role=role),
+            )
+        except Exception:
+            # Same fail-open-to-"nothing to release" posture as
+            # `release_worker`'s `contextlib.suppress(Exception)`: a
+            # release that could not complete must not be mistaken for a
+            # busy refusal by its caller.
+            return True
 
     async def worker(self, project_name: str, *, role: str = SHARED_ROLE):
         """The worker for a project and role, started if necessary."""

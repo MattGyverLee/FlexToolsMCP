@@ -324,6 +324,75 @@ async def test_pool_aclose_reaps_every_worker():
 
 
 # ---------------------------------------------------------------------------
+# release_if_idle -- the atomic check-and-release (#223 QC P1)
+# ---------------------------------------------------------------------------
+
+
+async def test_release_if_idle_declines_and_leaves_the_worker_alone_when_busy():
+    """`is_busy() -> True` must not pop or close anything."""
+    pool = WorkerPool(stub=True)
+    try:
+        worker = await pool.get("Busy Project")
+
+        released = await pool.release_if_idle(
+            "Busy Project", role="shared", is_busy=lambda: True
+        )
+
+        assert released is False
+        assert worker.is_running(), "a busy worker must not be torn down"
+        assert pool.active_projects() == ["Busy Project"]
+    finally:
+        await pool.aclose()
+
+
+async def test_release_if_idle_pops_and_closes_when_not_busy():
+    pool = WorkerPool(stub=True)
+    try:
+        worker = await pool.get("Idle Project")
+
+        released = await pool.release_if_idle(
+            "Idle Project", role="shared", is_busy=lambda: False
+        )
+
+        assert released is True
+        assert not worker.is_running()
+        assert pool.active_projects() == []
+    finally:
+        await pool.aclose()
+
+
+async def test_release_if_idle_evaluates_is_busy_under_the_pool_lock():
+    """#223 QC P1's actual claim: the busy check and the pop are ONE atomic
+    step under `WorkerPool._lock` -- the same lock `get()`/`release()` use
+    -- not two steps with a gap a concurrent `get()` could land in. Proven
+    directly here (rather than by racing real tasks, which cannot force a
+    particular interleaving deterministically): `is_busy` asserts the lock
+    is already held at the instant it is called.
+    """
+    pool = WorkerPool(stub=True)
+    try:
+        await pool.get("Locked Project")
+        observed_locked = []
+
+        def is_busy():
+            observed_locked.append(pool._lock.locked())
+            return False
+
+        released = await pool.release_if_idle(
+            "Locked Project", role="shared", is_busy=is_busy
+        )
+
+        assert released is True
+        assert observed_locked == [True], (
+            "is_busy() must run while release_if_idle still holds the "
+            "lock, otherwise a run registering itself between the check "
+            "and the pop is exactly the race this method exists to close"
+        )
+    finally:
+        await pool.aclose()
+
+
+# ---------------------------------------------------------------------------
 # The channel itself
 # ---------------------------------------------------------------------------
 

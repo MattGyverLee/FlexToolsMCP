@@ -2756,11 +2756,29 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
       * own worker, idle   -> `(None, new_decision)`, released and
         re-probed. Any holder remaining in `new_decision` is genuine.
       * not our worker     -> `(None, decision)`, unchanged.
+
+    THE CHECK AND THE RELEASE ARE NOW ONE ATOMIC CALL (#223 QC P1): a
+    separate `worker_busy()` check followed by a separate `release_worker()`
+    left a real `await` gap (worker teardown) between "found idle" and
+    "popped from the pool", long enough for a run that had just registered
+    itself to grab this same worker and have it torn down mid-parse.
+    `release_worker_if_idle` re-checks busyness under the pool's own lock
+    at the moment of the pop, closing that gap (see
+    `WorkerPool.release_if_idle`'s docstring for why registration order
+    makes that sufficient rather than just narrower).
     """
     try:
-        from ..parse.own_worker import own_worker_role
+        from ..parse.own_worker import (
+            own_worker_role,
+            busy_own_worker_guidance,
+            busy_own_worker_run_note,
+        )
     except (ImportError, ValueError):
-        from server.parse.own_worker import own_worker_role
+        from server.parse.own_worker import (
+            own_worker_role,
+            busy_own_worker_guidance,
+            busy_own_worker_run_note,
+        )
     try:
         from .parse import peek_runner
     except (ImportError, ValueError):
@@ -2774,42 +2792,33 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     if role is None:
         return None, decision
 
-    if runner.worker_busy(project_name, role=role):
-        run_ids = runner.active_run_ids(project_name, role=role)
-        run_note = f" (run {run_ids[0]})" if run_ids else ""
-        refusal = error_response(
-            "project_locked",
-            f"Project '{project_name}' is held by this server's own parse "
-            f"worker, which is busy running a parse{run_note}. This is NOT "
-            "a foreign process -- do not end it. Wait for the run to "
-            "finish, or cancel it, then resubmit the write.",
-            guidance=(
-                "Wait for the run to finish (flextools_parse_status), or "
-                "cancel it with flextools_parse_cancel(run_id=...), then "
-                "resubmit the write."
-            ),
-            remedy=(
-                "Wait for the run to finish (flextools_parse_status), or "
-                "cancel it with flextools_parse_cancel(run_id=...), then "
-                "resubmit the write."
-            ),
-            lock_file_path=decision.refusal.get("lock_file_path"),
-            verdict=decision.verdict,
-            sharing_enabled=decision.refusal.get("sharing_enabled"),
-            holder_pid=decision.refusal.get("holder_pid"),
-            holder_process="this server's own parse worker",
-            op_id=op_id,
-        )
-        return refusal, decision
+    if await runner.release_worker_if_idle(project_name, role=role):
+        try:
+            return None, write_ladder.probe_write_access(project_name)
+        except Exception:
+            # A re-probe failure here should read as "still refused with
+            # the original detail", not crash the write gate: fall back
+            # to the decision as it stood before the release attempt.
+            return None, decision
 
-    await runner.release_worker(project_name, role=role)
-    try:
-        return None, write_ladder.probe_write_access(project_name)
-    except Exception:
-        # A re-probe failure here should read as "still refused with the
-        # original detail", not crash the write gate: fall back to the
-        # decision as it stood before the release attempt.
-        return None, decision
+    run_ids = runner.active_run_ids(project_name, role=role)
+    run_note = busy_own_worker_run_note(run_ids)
+    guidance = busy_own_worker_guidance("resubmit the write")
+    refusal = error_response(
+        "project_locked",
+        f"Project '{project_name}' is held by this server's own parse "
+        f"worker, which is busy running a parse{run_note}. This is NOT "
+        f"a foreign process -- do not end it. {guidance}",
+        guidance=guidance,
+        remedy=guidance,
+        lock_file_path=decision.refusal.get("lock_file_path"),
+        verdict=decision.verdict,
+        sharing_enabled=decision.refusal.get("sharing_enabled"),
+        holder_pid=decision.refusal.get("holder_pid"),
+        holder_process="this server's own parse worker",
+        op_id=op_id,
+    )
+    return refusal, decision
 
 
 async def handle_run_module(args: dict) -> list[TextContent]:

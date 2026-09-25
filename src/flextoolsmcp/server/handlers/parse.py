@@ -1394,7 +1394,12 @@ def _filing_needs_write_session() -> List[TextContent]:
 #: `run_module` share so the two write gates cannot answer "is this ours?"
 #: differently (#223). Kept as a module attribute here too since existing
 #: imports and tests read it from `handlers.parse`.
-from ..parse.own_worker import HELD_BY_OWN_READ_WORKER, own_worker_role  # noqa: E402
+from ..parse.own_worker import (  # noqa: E402
+    HELD_BY_OWN_READ_WORKER,
+    own_worker_role,
+    busy_own_worker_guidance,
+    busy_own_worker_run_note,
+)
 
 
 def _held_by_own_read_worker(runner, project_name: str, decision) -> bool:
@@ -2593,41 +2598,56 @@ async def handle_flextools_parse_release(args: dict) -> List[TextContent]:
     if busy_roles:
         role = busy_roles[0]
         run_ids = runner.active_run_ids(project_name, role=role)
-        run_note = f" (run {run_ids[0]})" if run_ids else ""
+        run_note = busy_own_worker_run_note(run_ids)
+        guidance = busy_own_worker_guidance("retry flextools_parse_release")
         return error_response(
             "project_locked",
             f"Project '{project_name}' has a live parse run on this "
             f"server's own worker{run_note}. Releasing now would end work "
-            "in progress, so this refuses. Wait for the run to finish, or "
-            "cancel it first, then retry.",
-            guidance=(
-                "Wait for the run to finish (flextools_parse_status), or "
-                "cancel it with flextools_parse_cancel(run_id=...), then "
-                "retry flextools_parse_release."
-            ),
-            remedy=(
-                "Wait for the run to finish (flextools_parse_status), or "
-                "cancel it with flextools_parse_cancel(run_id=...), then "
-                "retry flextools_parse_release."
-            ),
+            f"in progress, so this refuses. {guidance}",
+            guidance=guidance,
+            remedy=guidance,
             verdict="held_by_mcp_read_worker",
             sharing_enabled=None,
             holder_pid=None,
             holder_process="this server's own parse worker",
         )
 
-    released = sorted(workers.keys())
-    for role in released:
-        await runner.release_worker(project_name, role=role)
+    # THE PER-ROLE RELEASE IS ATOMIC, CHECK-AND-POP UNDER ONE LOCK (#223 QC
+    # P1). `busy_roles` above is a point-in-time snapshot, taken purely so
+    # the common case can be refused in one clear message rather than one
+    # role at a time; the loop below is what actually tears a worker down,
+    # and it re-checks busyness (via `release_worker_if_idle`) at the
+    # instant of the pop, so a run that starts using one of these roles
+    # between the snapshot above and this loop reaching it is never torn
+    # down out from under it -- it is left running, and reported as such
+    # rather than silently counted as released.
+    released = []
+    raced_busy = []
+    for role in sorted(workers.keys()):
+        if await runner.release_worker_if_idle(project_name, role=role):
+            released.append(role)
+        else:
+            raced_busy.append(role)
+
+    note = (
+        f"Released this server's parse worker(s) for '{project_name}' "
+        f"({', '.join(released)}). Any lock this worker held on the "
+        "project's .fwdata is now dropped."
+    ) if released else (
+        f"No idle parse worker for '{project_name}' was found to release."
+    )
+    if raced_busy:
+        note += (
+            f" {', '.join(raced_busy)} started a new run just as this "
+            "call reached it and was left running rather than torn down "
+            "mid-parse; retry flextools_parse_release once it finishes."
+        )
     return json_response(build_response_with_context({
         "status": "ok",
         "project": project_name,
         "released": released,
-        "note": (
-            f"Released this server's parse worker(s) for '{project_name}' "
-            f"({', '.join(released)}). Any lock this worker held on the "
-            "project's .fwdata is now dropped."
-        ),
+        "note": note,
     }))
 
 

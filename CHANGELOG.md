@@ -152,6 +152,63 @@ sorted position, not the top). Changes without an issue go under Other.
   `OpenProject()` and the first grammar load -- `run_module`'s own-worker
   release (above) stays in place as a safety net for a write landing during
   a live parse or in that ~50ms race, rather than as the primary fix.
+- **Follow-up fixes to the idle-release fix above, found by a live-FieldWorks
+  verification pass** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)):
+  - **`_segment_occurrence`'s FR-043 join survived a release/reopen**
+    (`_RealBackend._occurrence`, `parse/worker_main.py`). Same shape of bug
+    as `_wordforms_by_ws` above -- built from live LCM segment/analysis
+    objects bound to the cache open when it was built, its own docstring
+    said "held for the worker's life", which stopped being true the moment
+    the worker could release and reopen mid-life. Now cleared in
+    `_RealBackend.release()` alongside the other per-cache state.
+  - **Live regression: a cooperative cancel could report one more word
+    "completed" than was actually readable on disk** (scenario 6,
+    `tests/test_parse_live.py`). Root cause was a client-side message race
+    that predates this fix but was newly exposed by it: the worker's
+    `result` message for the last word in flight resolves a request future
+    (whose `_execute_run` continuation -- which appends to
+    `handle.results`/`handle.record` and increments `words_completed` --
+    only runs on a later event-loop tick), while the `cancelled` message
+    right behind it on the same stream is applied synchronously, in-line,
+    the moment `ParseWorkerClient._read_loop` reads it. When both are
+    already buffered, `_read_loop`'s next `await` does not force a real
+    scheduler yield, so `cancelled` can be *applied* before the *last*
+    `result`'s continuation runs, double-counting that word: the
+    `cancelled` handler used to trust the worker's own `words_completed`
+    counter, which already included it, and then the delayed continuation
+    added 1 more on top. `ParseRunner._on_run_message`'s `cancelled` branch
+    now derives `words_completed` from `len(handle.results)` -- the same
+    append-only list the record write comes from -- instead of the
+    worker's echoed counter, so it can no longer race ahead of what
+    actually reached disk, whichever order the two messages are applied in.
+  - **QC P1: a TOCTOU between checking whether this server's own parse
+    worker is idle and actually releasing it** (`handlers/execution.py`'s
+    `_release_own_worker_or_refuse`, `handlers/parse.py`'s
+    `handle_flextools_parse_release`). The check and the release used to be
+    two separate calls with a real `await` (worker teardown) in between --
+    long enough for a run that had just registered itself to grab the same
+    worker and have it torn down mid-parse. `WorkerPool.release_if_idle`
+    (new) and `ParseRunner.release_worker_if_idle` (new) make the
+    busy-check and the pop atomic under the pool's own lock, closing the
+    gap rather than narrowing it; both write gates now call it instead of
+    `worker_busy()` + `release_worker()`.
+  - **QC P2: the busy-own-worker refusal text was duplicated** between
+    `handlers/execution.py` and `handlers/parse.py`. Moved into
+    `parse/own_worker.py`'s new `busy_own_worker_guidance()` /
+    `busy_own_worker_run_note()`, shared by both call sites.
+  - **FR-042/043's live tests amended, not weakened**
+    (`tests/test_parse_live.py`): "held between calls" now means "for as
+    long as the project stays open" -- guaranteed within one run whose
+    queue never goes idle (a batch or an interleave), not across two
+    separate calls, which now always observe an idle gap and a reload.
+    `test_scenario_1_a_second_call_does_not_reload_the_grammar` and
+    `test_fr043_currency_is_confirmed_before_every_reuse` now assert the
+    no-reload guarantee within one multi-word run; a new
+    `test_a_call_after_an_idle_release_reloads_the_grammar_and_the_lock_is_released_between_calls`
+    asserts the complementary claim: a reload IS expected after an idle
+    release, and the lock is observably dropped in between. See
+    `specs/parser-check-cp2/spec.md`'s FR-042/043 amendment and
+    `specs/parser-check-cp2/evidence/issue223-live.md`.
 
 ### Added
 

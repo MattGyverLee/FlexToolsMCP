@@ -44,6 +44,13 @@ sorted position, not the top). Changes without an issue go under Other.
   For-loop targets with a non-polymorphic flexicon ``element_type`` (e.g.
   ``GetSenses`` → ``ILexSense``) are now checked for high-confidence attribute
   typos the same way as explicit cast aliases.
+- **SpecKit Companion ignored nine feature specs stored as `SPEC.md` on
+  case-sensitive filesystems** ([#128](https://github.com/MattGyverLee/FlexToolsMCP/issues/128)).
+  Companion scripts only looked for lowercase `spec.md`, so Linux/macOS
+  case-sensitive checkouts saw empty feature state and could mint duplicate
+  spec directories. Renamed the nine legacy files to `spec.md` and taught
+  `derive-from-files`, `doctor_bleed`, `living_spec_fold`, and `spec_context`
+  to resolve either spelling via `resolve_feature_spec_md()`.
 - **Flexicon template pre-flight ignored non-``ImportError`` load failures**
   ([#132](https://github.com/MattGyverLee/FlexToolsMCP/issues/132)). When
   ``pyflexicon`` is installed but FieldWorks is absent, ``import flexicon``

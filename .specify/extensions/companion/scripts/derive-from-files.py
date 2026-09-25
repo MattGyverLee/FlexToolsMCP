@@ -25,13 +25,14 @@ import _console  # noqa: F401  (ASCII-safe stdout/stderr on non-UTF-8 consoles)
 # The sibling module's filename has a hyphen, so it can't be a normal import.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 wc = importlib.import_module("write-context")
+sc = importlib.import_module("spec_context")
 
 
 def _infer(feature_dir: Path) -> tuple[str, str] | None:
     """Map artifact presence to (step, status); None when nothing is present."""
     tasks_md = feature_dir / "tasks.md"
     plan_md = feature_dir / "plan.md"
-    spec_md = feature_dir / "spec.md"
+    spec_md = sc.resolve_feature_spec_md(feature_dir)
 
     if tasks_md.is_file():
         all_ids, done_ids = wc.parse_task_markers(tasks_md)
@@ -43,7 +44,7 @@ def _infer(feature_dir: Path) -> tuple[str, str] | None:
         return "tasks", "ready-to-implement"
     if plan_md.is_file():
         return "plan", "planned"
-    if spec_md.is_file():
+    if spec_md is not None:
         return "specify", "specified"
     return None
 

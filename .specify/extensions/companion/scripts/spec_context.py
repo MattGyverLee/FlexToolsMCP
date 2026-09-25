@@ -41,6 +41,20 @@ CROSS_STEP_TERMINAL = {"completed", "archived"}
 
 PREFIX_RE = re.compile(r"^(\d+)-")
 
+# Legacy feature dirs used uppercase SPEC.md; Companion scripts looked only for
+# lowercase spec.md (issue #128). Accept either spelling on case-sensitive FS.
+_FEATURE_SPEC_CANDIDATES = ("spec.md", "SPEC.md")
+
+
+def resolve_feature_spec_md(feature_dir: Path) -> Path | None:
+    """Return the feature's spec markdown file, if present."""
+    feature_dir = Path(feature_dir)
+    for name in _FEATURE_SPEC_CANDIDATES:
+        candidate = feature_dir / name
+        if candidate.is_file():
+            return candidate
+    return None
+
 
 def _now_iso() -> str:
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -181,8 +195,8 @@ def resolve_feature_dir(root: Path, explicit: str | None) -> Path | None:
 
 
 def _spec_name(feature_dir: Path) -> str:
-    spec_md = feature_dir / "spec.md"
-    if spec_md.is_file():
+    spec_md = resolve_feature_spec_md(feature_dir)
+    if spec_md is not None:
         try:
             for line in spec_md.read_text(encoding="utf-8").splitlines():
                 line = line.strip()

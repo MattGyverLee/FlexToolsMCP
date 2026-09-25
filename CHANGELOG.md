@@ -138,6 +138,12 @@ sorted position, not the top). Changes without an issue go under Other.
   `OpenProject()` and the first grammar load -- `run_module`'s own-worker
   release (above) stays in place as a safety net for a write landing during
   a live parse or in that ~50ms race, rather than as the primary fix.
+- **Parse worker reopened the project for every word of a server-paced batch**
+  ([#235](https://github.com/MattGyverLee/FlexToolsMCP/issues/235), regression
+  from #223). `ParseRunner` sends one word at a time and awaits each result,
+  so the worker queue was empty between words and `_release_if_idle` dropped
+  the lock after every word. The runner now sends `run_end` when a run
+  finishes; the worker holds the project until then.
 
 ### Added
 

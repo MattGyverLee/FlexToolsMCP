@@ -20,7 +20,9 @@ explicit ask to share detection rather than duplicate it.
 
 #223's follow-up made the worker release the project as soon as its queue
 goes idle (`parse/worker_main.py`'s `ParseWorker._release_if_idle`), instead
-of holding it for the rest of the idle timeout. That shrank the window this
+of holding it for the rest of the idle timeout. #235 adds a `run_end`
+wire message so a server-paced batch (one word at a time) does not look
+idle between words. That shrank the window this
 module exists to cover -- a foreign-looking `held_by_other` that is
 actually us -- from up to 600s down to a live-parse collision or a ~50ms
 race, but did not remove it; see `handlers/execution.py`'s

@@ -898,6 +898,7 @@ class ParseRunner:
             with contextlib.suppress(Exception):
                 existing = self._peek_worker(handle)
                 if existing is not None:
+                    await existing.run_end(handle.run_id)
                     existing.stop_listening(handle.run_id)
             if handle.is_filing:
                 # The filing worker is spawned for one run and released with

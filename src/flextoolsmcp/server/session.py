@@ -47,6 +47,11 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "Call flextools_get_object_api on the entity (e.g. LexEntry, "
         "POS) before referencing it again."
     ),
+    "raw_addcustomfield_write_risk": (
+        "do not bypass flexicon with raw AddCustomField. Create the field "
+        "in FLEx UI or use project.CustomFields.CreateField; see next_steps "
+        "in the rejection (issue #70 hang + ghost-field corruption)."
+    ),
     "api_discovery_required": (
         "read-only auto-discovery does not satisfy the write gate. "
         "Call flextools_get_object_api for each Operations entity before "

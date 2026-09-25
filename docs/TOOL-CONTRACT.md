@@ -128,6 +128,7 @@ authoritative. All detail fields are optional unless noted.
 | `nested_unit_of_work` | `constructs` (list), `guidance` |
 | `hvo_literal_write_risk` | `findings` (list), `next_steps` (list) -- issue #103; write-enabled runs only, a bare integer literal reached an `*_or_hvo` parameter (see `validators.detect_hvo_literal_args`) |
 | `deprecated_member` | `findings` (list of `{member, deprecation_id, access, expr, line, col_offset}`), `deprecations` (list of `{id, note, replacement_paths, replacement_owner, example, evidence}`), `replacement_example` (string), `next_steps` (list) -- read-only AND write-enabled runs: the code reads, writes or calls a member listed in `curated_deprecations.CURATED_DEPRECATIONS` (see `validators.detect_deprecated_members`). Today: `ILexEntry.DoNotUseForParsing` and flexicon `LexEntryOperations.Get/SetDoNotUseForParsing`, which no FLEx parser reads; the redirect is `IsAbstract` on the entry's forms (`LexemeFormOA`, each `AlternateFormsOS` item -- IMoForm, not ILexEntry). Not bypassable by `skip_module_check` or `source='existing'`. |
+| `raw_addcustomfield_write_risk` | `findings` (list), `next_steps` (list) -- issue #70; write-enabled runs only, raw `AddCustomField` on the LCM metadata cache (see `validators.detect_raw_addcustomfield_risk`) |
 | `project_locked` | `guidance` (required string), `lock_file_path`, `verdict`, `sharing_enabled`, `holder_pid`, `holder_process`, `remedy` |
 | `project_drive_unavailable` | `attempted_path`, `hint` |
 | `project_path_mismatch` | `attempted_path`, `discovered_at`, `hint` |

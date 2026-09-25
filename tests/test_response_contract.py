@@ -49,6 +49,7 @@ from flextoolsmcp.server.response_models import (
     RuntimeErrorDetail,
     HvoLiteralWriteRiskDetail,
     DeprecatedMemberDetail,
+    RawAddCustomFieldWriteRiskDetail,
 )
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "responses"
@@ -259,6 +260,10 @@ ALL_ERROR_CODES = [
         replacement_example="entry.LexemeFormOA.IsAbstract = True",
         next_steps=["Set IsAbstract on the entry's forms"],
     )),
+    ("raw_addcustomfield_write_risk", dict(
+        findings=[{"line": 2, "detail": "mdc.AddCustomField(...)"}],
+        next_steps=["Use project.CustomFields.CreateField or FLEx UI"],
+    )),
     # parser-check CP2b
     ("parse_morph_unresolved", dict(
         morph="kirim",
@@ -329,6 +334,7 @@ DETAIL_MODEL_MAP = {
     "runtime_error": RuntimeErrorDetail,
     "hvo_literal_write_risk": HvoLiteralWriteRiskDetail,
     "deprecated_member": DeprecatedMemberDetail,
+    "raw_addcustomfield_write_risk": RawAddCustomFieldWriteRiskDetail,
 }
 
 #: CP2b's three. Separate from the map above because two of them have

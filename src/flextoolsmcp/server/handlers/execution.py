@@ -91,6 +91,7 @@ try:
         compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
         detect_deprecated_members, build_deprecated_member_rejection,
+        detect_raw_addcustomfield_risk,
     )
 except ImportError:
     from server.validators import (
@@ -109,6 +110,7 @@ except ImportError:
         compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
         detect_deprecated_members, build_deprecated_member_rejection,
+        detect_raw_addcustomfield_risk,
     )
 
 # The write ladder's shared rungs (parser-check CP4, R-07): the access gate,
@@ -3400,6 +3402,39 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # missing modifyAllowed guard would. Blocking here is consistent with
     # that existing posture rather than a new architecture.
     hvo_literal_check = detect_hvo_literal_args(code, code_tree, get_api_index())
+    addcustomfield_check = detect_raw_addcustomfield_risk(code, code_tree)
+    if addcustomfield_check["has_raw_addcustomfield_risk"] and write_enabled:
+        findings = addcustomfield_check["findings"]
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "raw_addcustomfield_write_risk",
+            f"findings={[f.get('detail') for f in findings[:5]]}",
+        log_dir_fn=get_log_dir,
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "raw_addcustomfield_write_risk",
+                "Raw IFwMetaDataCacheManaged.AddCustomField bypasses flexicon's "
+                "schema guards. Fields created this way may never persist correctly "
+                "and can corrupt the project on the next FLEx UI open; the "
+                "fieldWs=0 + IUndoStackManager.Save() pattern can hang until the "
+                "run_module timeout (issue #70).",
+                findings=findings,
+                next_steps=[
+                    "1. Create the custom field in FLEx (Tools > Configure > "
+                    "Custom Fields) before running population scripts.",
+                    "2. Or use project.CustomFields.CreateField(...) when your "
+                    "runner transaction mode allows schema mutations.",
+                    "3. Do not call raw AddCustomField on IFwMetaDataCacheManaged "
+                    "or usm.Save() to flush schema experiments.",
+                    "4. Re-run flextools_run_module() with the supported path.",
+                ],
+                op_id=op_id,
+            ),
+            error_code="raw_addcustomfield_write_risk",
+            code_size_bytes=_code_size_bytes,
+        )
+
     if hvo_literal_check["has_hvo_literal_risk"] and write_enabled:
         findings = hvo_literal_check["findings"]
         _log_preflight_reject(
@@ -4081,6 +4116,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "project.Object(guid_str)."
         )
         for finding in hvo_literal_check["findings"]:
+            warnings.append(f"  line {finding['line']}: {finding['detail']}")
+        warnings.append("")
+
+    if addcustomfield_check["has_raw_addcustomfield_risk"]:
+        warnings.append(
+            "[raw AddCustomField] Raw IFwMetaDataCacheManaged.AddCustomField "
+            "bypasses flexicon schema guards (issue #70). WRITE-enabled runs "
+            "with this pattern are rejected at preflight."
+        )
+        for finding in addcustomfield_check["findings"]:
             warnings.append(f"  line {finding['line']}: {finding['detail']}")
         warnings.append("")
 

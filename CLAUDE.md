@@ -339,6 +339,25 @@ Users won't see an error—the code will "work" but with incorrect behavior/sign
 4. **Catch and report errors** - FLExTools captures exceptions, make them visible via report
 5. **Comment non-obvious code** - users will read and maintain this
 
+## Context Hygiene
+
+A user-level `read_guard.py` PreToolUse hook blocks unbounded dumps of large
+files (>48 KB) and of `user-logs/` in the main thread. Work with it, not
+around it:
+
+- **Logs**: never `cat`/`sed`/Read a `user-logs/` session log in the main
+  thread. Delegate: `lex-logscan` for triage and issue filing, a
+  general-purpose subagent for "what happened in this session?". Grep for a
+  signature and read <= 200 lines around the hit only if you need one detail.
+- **Large files** (`parse/worker_main.py`, `handlers/parse.py`,
+  `parse/runner.py`, `specs/*/spec.md|plan.md|tasks.md`, index JSONs): Grep
+  for the symbol or heading, then Read with offset/limit. For "how does X
+  work across the parse stack" questions, dispatch an Explore agent and keep
+  its summary instead of re-reading the files.
+- **Don't re-read** a file already read this session unless it changed.
+- **pytest** is already lean; keep it that way:
+  `python -m pytest -q -m "not requires_flex" <path> | tail -20`.
+
 ## Don'ts:
 - This is a Windows system; don't use emojis in console messages.
 - Call Python with `python` instead of `python3`.

@@ -25,6 +25,13 @@ sorted position, not the top). Changes without an issue go under Other.
   (session, project), not only when ``needs_lock`` is true, and every
   ``write_enabled`` ``run_module`` response includes an explicit ``backup``
   object (including ``skipped_reason`` when no new copy was taken).
+- **`get_object_api` advertised a top-level flexicon import for facade-first
+  Operations classes** ([#100](https://github.com/MattGyverLee/FlexToolsMCP/issues/100)).
+  ``paginate_entity`` now builds ``import_statement`` via
+  ``_build_entity_import`` (same as search/resolve), preferring
+  ``access_path`` such as ``project.LexEntry`` over
+  ``from flexicon import LexEntryOperations`` when the index carries a facade
+  route. Closes the cycle-7 deferred gap in the ``is_operations_class`` branch.
 - **Redundant ``project.project.Cache`` hop on LcmCache** ([#108](https://github.com/MattGyverLee/FlexToolsMCP/issues/108)).
   Preflight and runtime polymorphic hints now detect the common mistake of
   chaining ``.Cache`` after ``project.project`` (which is already the

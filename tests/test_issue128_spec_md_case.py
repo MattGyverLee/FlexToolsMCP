@@ -32,13 +32,18 @@ class TestIssue128SpecMdCase(unittest.TestCase):
         specs = _REPO_ROOT / "specs"
         for slug in _ISSUE_128_SPEC_DIRS:
             feature_dir = specs / slug
-            spec_md = feature_dir / "spec.md"
-            self.assertTrue(
-                spec_md.is_file(),
-                f"expected {spec_md} after rename (issue #128)",
+            # Use directory listing for exact case — Path.exists() is
+            # case-insensitive on Windows NTFS, so SPEC.md.exists() is True
+            # even when only lowercase spec.md is present.
+            names = {p.name for p in feature_dir.iterdir()}
+            self.assertIn(
+                "spec.md",
+                names,
+                f"expected lowercase spec.md after rename in {slug} (issue #128)",
             )
-            self.assertFalse(
-                (feature_dir / "SPEC.md").exists(),
+            self.assertNotIn(
+                "SPEC.md",
+                names,
                 f"uppercase SPEC.md should not remain alongside spec.md in {slug}",
             )
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -211,7 +212,9 @@ def test_hc_sleep_on_word_leaves_header_in_flight(hc_env, fake_hc):
     with pytest.raises(subprocess.TimeoutExpired) as info:
         hc_env(['parse "membaca"', 'parse "xyz"', 'parse "baca"'], timeout=5)
     out = (info.value.stdout or info.value.output or b"").decode("utf-16-le")
-    assert 'Parsing "membaca"' in out and "Parse time: 0ms" in out
+    # First word must finish (Parse time is wall-clock -- don't pin to 0ms).
+    assert 'Parsing "membaca"' in out
+    assert re.search(r"Parse time: \d+ms", out)
     assert out.endswith('Parsing "xyz"\r\n')
 
 

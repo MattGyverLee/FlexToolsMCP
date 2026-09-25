@@ -1,5 +1,5 @@
 {
-  "_schema": "navigation-graph/1.0",
+  "_schema": "navigation-graph/1.1",
   "common_paths": {
     "ICmPossibilityList -> ICmPossibility": {
       "code_pattern": "for cmpossibility in cmpossibilitylist.PossibilitiesOS:\n    # work with cmpossibility",
@@ -117,6 +117,47 @@
         }
       ]
     },
+    "ILexSense -> IFsSymFeatVal": {
+      "code_pattern": "momorphsynanalysis = lexsense.MorphoSyntaxAnalysisRA\nfor moglossitem in momorphsynanalysis.GlossBundleRS:\n    fsfeatstruc = moglossitem.FeatStructFragOA\n    for fsfeaturespecification in fsfeatstruc.FeatureSpecsOC:\n        fsclosedvalue = fsfeaturespecification.cast_to_concrete\n        fssymfeatval = fsclosedvalue.ValueRA\n        # work with fssymfeatval",
+      "steps": [
+        {
+          "from": "ILexSense",
+          "to": "IMoMorphSynAnalysis",
+          "type": "references",
+          "via": "MorphoSyntaxAnalysisRA"
+        },
+        {
+          "from": "IMoMorphSynAnalysis",
+          "to": "IMoGlossItem",
+          "type": "references",
+          "via": "GlossBundleRS"
+        },
+        {
+          "from": "IMoGlossItem",
+          "to": "IFsFeatStruc",
+          "type": "owns",
+          "via": "FeatStructFragOA"
+        },
+        {
+          "from": "IFsFeatStruc",
+          "to": "IFsFeatureSpecification",
+          "type": "owns",
+          "via": "FeatureSpecsOC"
+        },
+        {
+          "from": "IFsFeatureSpecification",
+          "to": "FsClosedValue",
+          "type": "required_cast",
+          "via": "cast_to_concrete"
+        },
+        {
+          "from": "FsClosedValue",
+          "to": "IFsSymFeatVal",
+          "type": "references",
+          "via": "ValueRA"
+        }
+      ]
+    },
     "ILexSense -> ILexExampleSentence": {
       "code_pattern": "for lexexamplesentence in lexsense.ExamplesOS:\n    # work with lexexamplesentence",
       "steps": [
@@ -147,6 +188,47 @@
           "to": "IPartOfSpeech",
           "type": "references",
           "via": "PartOfSpeechRA"
+        }
+      ]
+    },
+    "IMoMorphData -> IMoMorphType": {
+      "code_pattern": "for wfiwordset in momorphdata.TestSetsOC:\n    for wfiwordform in wfiwordset.CasesRC:\n        for wfianalysis in wfiwordform.AnalysesOC:\n            for wfimorphbundle in wfianalysis.MorphBundlesOS:\n                moform = wfimorphbundle.MorphRA\n                momorphtype = moform.MorphTypeRA\n                # work with momorphtype",
+      "steps": [
+        {
+          "from": "IMoMorphData",
+          "to": "IWfiWordSet",
+          "type": "owns",
+          "via": "TestSetsOC"
+        },
+        {
+          "from": "IWfiWordSet",
+          "to": "IWfiWordform",
+          "type": "references",
+          "via": "CasesRC"
+        },
+        {
+          "from": "IWfiWordform",
+          "to": "IWfiAnalysis",
+          "type": "owns",
+          "via": "AnalysesOC"
+        },
+        {
+          "from": "IWfiAnalysis",
+          "to": "IWfiMorphBundle",
+          "type": "owns",
+          "via": "MorphBundlesOS"
+        },
+        {
+          "from": "IWfiMorphBundle",
+          "to": "IMoForm",
+          "type": "references",
+          "via": "MorphRA"
+        },
+        {
+          "from": "IMoForm",
+          "to": "IMoMorphType",
+          "type": "references",
+          "via": "MorphTypeRA"
         }
       ]
     },
@@ -25037,6 +25119,11 @@
         "IFsFeatDefn",
         "FeatureRA",
         "references"
+      ],
+      [
+        "FsClosedValue",
+        "cast_to_concrete",
+        "required_cast"
       ]
     ],
     "IFsFeatureSystem": [
@@ -26077,6 +26164,11 @@
         "IMoGlossItem",
         "GlossBundleRS",
         "references"
+      ],
+      [
+        "IMoStemMsa",
+        "cast_to_concrete",
+        "required_cast"
       ]
     ],
     "IMoPhonolRuleApp": [
@@ -29296,7 +29388,7 @@
     ]
   },
   "statistics": {
-    "common_paths_computed": 28,
+    "common_paths_computed": 30,
     "entities_with_children": 168,
     "entities_with_parents": 118,
     "total_relationships": 909

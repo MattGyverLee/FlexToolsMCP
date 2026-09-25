@@ -9,8 +9,11 @@ Provides read-only API discovery tools:
 """
 
 import heapq
+import importlib.util
 import re
 from collections import deque
+from functools import lru_cache
+from pathlib import Path
 from mcp.types import TextContent
 from typing import List, Dict, Any
 
@@ -40,7 +43,7 @@ try:
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
         KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
-        KEY_ERROR, KEY_HINT,
+        KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -69,7 +72,7 @@ except ImportError:
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
         KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
-        KEY_ERROR, KEY_HINT,
+        KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -391,6 +394,42 @@ def build_response_with_context(data: dict, include_session: bool = True) -> dic
     return data
 
 
+@lru_cache(maxsize=1)
+def _flexicon_top_level_exports() -> frozenset[str] | None:
+    """Parse flexicon/__init__.py for re-exported names (no flexicon import)."""
+    try:
+        from flextoolsmcp.flexicon_analyzer import extract_flexicon_top_level_exports_from_init
+
+        spec = importlib.util.find_spec("flexicon")
+        if spec and spec.origin:
+            exports = extract_flexicon_top_level_exports_from_init(Path(spec.origin))
+            if exports:
+                return exports
+    except Exception:
+        pass
+    return None
+
+
+def _flexicon_deep_import_line(namespace: str, entity_name: str) -> str:
+    """Import line using the indexed flexicon.code.* module path."""
+    if namespace.startswith("flexicon."):
+        return f"from {namespace} import {entity_name}"
+    return f"from flexicon import {entity_name}"
+
+
+def _entity_top_level_importable(
+    entity_name: str,
+    entity: dict | None,
+    exports: frozenset[str] | None,
+) -> bool | None:
+    """True/False when known; None when the export surface is unavailable."""
+    if entity and "top_level_importable" in entity:
+        return bool(entity["top_level_importable"])
+    if exports is not None:
+        return entity_name in exports
+    return None
+
+
 def _build_entity_import(library: str, entity_name: str, namespace: str = "",
                           entity: dict | None = None) -> str:
     """Ready-to-paste access line for a result row.
@@ -418,6 +457,20 @@ def _build_entity_import(library: str, entity_name: str, namespace: str = "",
             return access_path
     if library == "liblcm":
         return f"from {namespace} import {entity_name}" if namespace else ""
+
+    if library in ("flexicon", "flexlibs_stable"):
+        exports = _flexicon_top_level_exports() if library == "flexicon" else None
+        top_level = _entity_top_level_importable(entity_name, entity, exports)
+        ns = (entity or {}).get(KEY_NAMESPACE) or namespace
+        if top_level is False or (
+            top_level is None
+            and exports is not None
+            and entity_name not in exports
+            and ns.startswith("flexicon.code.")
+        ):
+            if ns:
+                return _flexicon_deep_import_line(ns, entity_name)
+
     return f"from {library} import {entity_name}"
 
 
@@ -737,8 +790,19 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     # specs/swahili-audit-2026-09/reviews/cycle7-programmer-p2.md).
     is_operations_class = object_type in OPERATIONS_CLASSES
     if is_operations_class:
-        result[KEY_IMPORT_STATEMENT] = f"from {library} import {object_type}"
-        result[KEY_IMPORT_REQUIRED] = True
+        # Issue #100 (deferred cycle-7): honor facade `access_path` the same way
+        # search/resolve paths do via `_build_entity_import`, so a class that is
+        # only reachable as `project.MSA` never gets a broken
+        # `from flexicon import MSAOperations` line if it ever lands in
+        # KNOWN_OPERATIONS. For the 42 dual-access classes, `access_path` is
+        # the runtime idiom flexicon's own docs teach (`project.LexEntry.*`).
+        namespace = entity.get(KEY_NAMESPACE, "") or ""
+        import_line = _build_entity_import(
+            library, object_type, namespace, entity
+        )
+        if import_line:
+            result[KEY_IMPORT_STATEMENT] = import_line
+            result[KEY_IMPORT_REQUIRED] = True
 
     inherited_methods: list = []
     inherited_properties: list = []
@@ -787,6 +851,10 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
             }
             if KEY_INHERITED_FROM in m:
                 row[KEY_INHERITED_FROM] = m[KEY_INHERITED_FROM]
+            # Issue #124: surface per-GetAll collection contract in the thin
+            # index so models see it without opening the wrap_enumerable doc blob.
+            if m.get(KEY_NAME) == "GetAll" and m.get(KEY_COLLECTION_CONTRACT):
+                row[KEY_COLLECTION_CONTRACT] = m[KEY_COLLECTION_CONTRACT]
             thin_methods.append(row)
         result[KEY_METHODS] = thin_methods
         if force_thin:

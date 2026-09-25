@@ -86,6 +86,9 @@ _READ_ONLY_MESSAGE_TYPES = {
     # sent only to the filing worker, from server/filing/client.py, never
     # from this module.
     "agent_probe", "filing_gate", "filing_preview",
+    # #235: runner closes a server-paced batch; worker only drops run_id from
+    # `_open_runs` so `_release_if_idle` may run. No project write.
+    "run_end",
 }
 
 

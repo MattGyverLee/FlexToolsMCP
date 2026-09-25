@@ -22,11 +22,9 @@ This file covers:
        - IFsFeatStruc -> IFsFeatDefn: a real 2-hop path exists in the graph
          data (IFsFeatStruc --FeatureSpecsOC--> IFsFeatureSpecification
          --FeatureRA--> IFsFeatDefn) and now RESOLVES correctly.
-       - ILexSense -> IFsSymFeatVal: no edge exists in the graph at all.
-         MsFeaturesOA lives on the concrete IMoStemMsa, not the base
-         IMoMorphSynAnalysis that the graph walks through, so there is no
-         edge to follow -- this needs a downcast edge (CP3 scope, issue
-         #86), not a BFS fix. found:false here is CORRECT, not a bug.
+       - ILexSense -> IFsSymFeatVal: requires curated required_cast downcast
+         edges (issue #91) because MsFeaturesOA and ValueRA targets live on
+         concrete subtypes, not the base interfaces the graph declares.
   4. A minimal unit test isolating find_path_bfs() itself, showing it now
      correctly reconstructs both a direct edge and a two-hop path.
 """
@@ -176,20 +174,17 @@ class TestNavigationGraphSmoke:
         assert steps[1]["to"] == "IFsFeatDefn"
         assert steps[1]["via"] == "FeatureRA"
 
-    def test_missing_downcast_edge_still_not_found(self, srv):
-        """ILexSense -> IFsSymFeatVal is NOT reachable in the current graph,
-        and this is CORRECT -- not a symptom of the D2 BFS bug. MsFeaturesOA
-        lives on the concrete IMoStemMsa, not the base IMoMorphSynAnalysis
-        that the graph walks through, so there genuinely is no edge to
-        follow. Reaching it requires a downcast/`required_cast` labeled
-        edge, which is explicitly CP3 scope (issue #86, DEC-4) -- not
-        something find_path_bfs() can produce today. This test pins the
-        CURRENT (pre-CP3) behaviour so it doesn't regress silently and so
-        it gets revisited once CP3 lands.
-        """
+    def test_downcast_edges_resolve_lexsense_to_symfeatval(self, srv):
+        """Issue #91: ILexSense -> IFsSymFeatVal resolves once the navigation
+        graph includes curated primary-subtype required_cast edges."""
         result = _call(srv, {"from_object": "ILexSense", "to_object": "IFsSymFeatVal"})
         parsed = _parse(result)
-        assert parsed["found"] is False, parsed
+        assert parsed["found"] is True, parsed
+        assert parsed["source"] in ("computed", "precomputed")
+        assert len(parsed["steps"]) >= 1
+        assert any(
+            step.get("type") == "required_cast" for step in parsed["steps"]
+        ), parsed["steps"]
 
 
 # ---------------------------------------------------------------------------

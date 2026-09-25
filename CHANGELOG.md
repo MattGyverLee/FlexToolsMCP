@@ -75,11 +75,33 @@ flexlibs stays at `v1.2.8`.
   work. When no candidate clears the 0.6 floor, `did_you_mean` is now `[]` and
   `help` carries an explicit pointer to `flextools_get_object_api` /
   `flextools_search_by_capability` rather than an empty or misleading hint.
+- **`flextools_find_wrappers_for_lcm` downgraded `Entity.Property` to misleading entity hits**
+  ([#87](https://github.com/MattGyverLee/FlexToolsMCP/issues/87)). Dotted
+  LCM names now resolve as property lookups; when a property has no wrapper
+  method the tool returns ``found: false`` with ``kind: property`` instead of
+  ``found: true`` for the bare entity with an empty method list.
 - **Unhandled tool handler exceptions bypassed the structured error envelope**
   ([#89](https://github.com/MattGyverLee/FlexToolsMCP/issues/89)). `call_tool`
   now catches handler failures and returns `internal_error` with
   `error_type` / `traceback` / `tool` detail; the traceback is also logged via
   `operations_logger`.
+- **`flextools_get_navigation_path` could not reach concrete-only properties**
+  ([#91](https://github.com/MattGyverLee/FlexToolsMCP/issues/91)). The
+  navigation graph now includes curated `required_cast` downcast edges (primary
+  concrete subtype per base type) so paths such as `ILexSense` →
+  `IFsSymFeatVal` resolve instead of returning `found: false`.
+- **Unguarded `project.LexEntry.Create(...)` calls (bare snippet and Main-shaped
+  module) raised `AttributeError` instead of returning `unprotected_writes`**
+  ([#95](https://github.com/MattGyverLee/FlexToolsMCP/issues/95)). The fix
+  landed in PR #200 / commit 7851a9b; regression tests were added in
+  fix/issue-95-regression-shapes to pin both call shapes (bare snippet and
+  `Main`-wrapped module) and confirm `status=error`, `error_code=unprotected_writes`,
+  non-empty `next_steps`, and `modifyAllowed` in the `why` field.
+- **Mutations factored into helpers invoked only from `if modifyAllowed:` were
+  flagged as unprotected** ([#97](https://github.com/MattGyverLee/FlexToolsMCP/issues/97)).
+  ``certify_script_readonly`` now extends guard protection into callee function
+  bodies when every call site is already inside a protected range (including
+  helper chains). Mixed guarded/unguarded call sites stay conservative.
 - **Stale worked example `analysis-subtype-disambiguation`** ([#98](https://github.com/MattGyverLee/FlexToolsMCP/issues/98)).
   Replaced removed liblcm 11 `LangProject.WordformInventoryOA` access with
   `project.Wordforms.GetAll()` / `GetForm()` so the example runs on current
@@ -89,6 +111,13 @@ flexlibs stays at `v1.2.8`.
   (session, project), not only when ``needs_lock`` is true, and every
   ``write_enabled`` ``run_module`` response includes an explicit ``backup``
   object (including ``skipped_reason`` when no new copy was taken).
+- **`get_object_api` advertised a top-level flexicon import for facade-first
+  Operations classes** ([#100](https://github.com/MattGyverLee/FlexToolsMCP/issues/100)).
+  ``paginate_entity`` now builds ``import_statement`` via
+  ``_build_entity_import`` (same as search/resolve), preferring
+  ``access_path`` such as ``project.LexEntry`` over
+  ``from flexicon import LexEntryOperations`` when the index carries a facade
+  route. Closes the cycle-7 deferred gap in the ``is_operations_class`` branch.
 - **Redundant ``project.project.Cache`` hop on LcmCache** ([#108](https://github.com/MattGyverLee/FlexToolsMCP/issues/108)).
   Preflight and runtime polymorphic hints now detect the common mistake of
   chaining ``.Cache`` after ``project.project`` (which is already the
@@ -109,20 +138,44 @@ flexlibs stays at `v1.2.8`.
   innermost traceback frame is inside the flexicon package, `run_module` now
   reports `WrapperInternalError` with upstream-oriented guidance instead of
   advising a cast/resubmit loop the user cannot satisfy.
+- **GetAll collection contract surfaced per method in the flexicon index** ([#124](https://github.com/MattGyverLee/FlexToolsMCP/issues/124)).
+  Post-process step ``build_getall_contract.py`` annotates every shipped
+  ``GetAll`` with a structured ``collection_contract`` (shape, element type,
+  whether elements are raw LCM objects vs flexicon wrapper collections).
+  ``get_object_api`` includes that field on GetAll rows in the thin method
+  index so callers see the contract where they look up methods, not only in
+  the ``wrap_enumerable`` doc blob.
 - **`detect_interface_attribute_typos` ignored loop variables** ([#127](https://github.com/MattGyverLee/FlexToolsMCP/issues/127)).
   For-loop targets with a non-polymorphic flexicon ``element_type`` (e.g.
   ``GetSenses`` → ``ILexSense``) are now checked for high-confidence attribute
   typos the same way as explicit cast aliases.
+- **SpecKit Companion ignored nine feature specs stored as `SPEC.md` on
+  case-sensitive filesystems** ([#128](https://github.com/MattGyverLee/FlexToolsMCP/issues/128)).
+  Companion scripts only looked for lowercase `spec.md`, so Linux/macOS
+  case-sensitive checkouts saw empty feature state and could mint duplicate
+  spec directories. Renamed the nine legacy files to `spec.md` and taught
+  `derive-from-files`, `doctor_bleed`, `living_spec_fold`, and `spec_context`
+  to resolve either spelling via `resolve_feature_spec_md()`.
 - **Flexicon template pre-flight ignored non-``ImportError`` load failures**
   ([#132](https://github.com/MattGyverLee/FlexToolsMCP/issues/132)). When
   ``pyflexicon`` is installed but FieldWorks is absent, ``import flexicon``
   raises a bare ``Exception``; the template now captures that separately from a
   missing package and reports a FieldWorks-oriented message instead of
   ``pip install pyflexicon``.
+- **Runtime ``PolymorphicAttributeError`` on indexed LCM types had no did-you-mean**
+  ([#137](https://github.com/MattGyverLee/FlexToolsMCP/issues/137)). When a
+  script hits a missing member on an interface the liblcm index knows (e.g.
+  ``ITsString.get_WritingSystem``), ``run_module`` now surfaces index-backed
+  name suggestions instead of a bare polymorphic hint.
 - **`unprotected_writes` rejected the early-return guard idiom** ([#139](https://github.com/MattGyverLee/FlexToolsMCP/issues/139)).
   ``if not modifyAllowed: ...; return`` followed by writes is now treated as
   equivalent to ``if modifyAllowed: ... else: ...`` for line-level protection
   in ``find_protected_ranges`` / ``certify_script_readonly``.
+- **Obsolete `FLEXLIBS2_PATH` in `.env` looked like active configuration but was
+  silently ignored** ([#141](https://github.com/MattGyverLee/FlexToolsMCP/issues/141)).
+  The MCP server now loads repo-root `.env` on startup (matching
+  `flextoolsmcp.refresh`), skips applying obsolete keys, and logs a clear warning
+  pointing at `FLEXICON_PATH` / `pip install pyflexicon`.
 - **Ephemeral MCP clients blocked by `api_discovery_required` every turn**
   ([#142](https://github.com/MattGyverLee/FlexToolsMCP/issues/142)). Set
   ``FLEXTOOLS_STATELESS=1`` in the server environment to skip API discovery gates
@@ -164,6 +217,13 @@ flexlibs stays at `v1.2.8`.
   shared `reset_session_state` pytest fixture imports the canonical kernel helper
   (`flextoolsmcp.server.kernel`) instead of the legacy top-level `server` alias,
   which loaded a duplicate kernel module.
+- **Duplicate kernel module objects under pytest / script imports**
+  ([#172](https://github.com/MattGyverLee/FlexToolsMCP/issues/172)). Register
+  ``server.kernel`` / ``flextoolsmcp.server.kernel`` (and the matching
+  ``session`` spellings) as aliases in ``sys.modules``, bind them on the parent
+  package for attribute / ``patch`` resolution on Python 3.10, and stop
+  recreating ``session_state`` in ``admin.py`` on a failed ``isinstance`` check
+  so ``SessionState`` class identity cannot reintroduce the #10 split-brain.
 - **Issue #173:** Pytest no longer writes into the real `~/.flextoolsmcp/logs`
   tree. `get_log_dir()` honors `FLEXTOOLSMCP_LOG_DIR`; the suite sets it via
   `pytest_configure`, with a regression test guarding against silent lapse.
@@ -202,6 +262,99 @@ flexlibs stays at `v1.2.8`.
   `OpenProject()` and the first grammar load -- `run_module`'s own-worker
   release (above) stays in place as a safety net for a write landing during
   a live parse or in that ~50ms race, rather than as the primary fix.
+- **Follow-up fixes to the idle-release fix above, found by a live-FieldWorks
+  verification pass** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)):
+  - **`_segment_occurrence`'s FR-043 join survived a release/reopen**
+    (`_RealBackend._occurrence`, `parse/worker_main.py`). Same shape of bug
+    as `_wordforms_by_ws` above -- built from live LCM segment/analysis
+    objects bound to the cache open when it was built, its own docstring
+    said "held for the worker's life", which stopped being true the moment
+    the worker could release and reopen mid-life. Now cleared in
+    `_RealBackend.release()` alongside the other per-cache state.
+  - **Live regression: a cooperative cancel could report one more word
+    "completed" than was actually readable on disk** (scenario 6,
+    `tests/test_parse_live.py`). Root cause was a client-side message race
+    that predates this fix but was newly exposed by it: the worker's
+    `result` message for the last word in flight resolves a request future
+    (whose `_execute_run` continuation -- which appends to
+    `handle.results`/`handle.record` and increments `words_completed` --
+    only runs on a later event-loop tick), while the `cancelled` message
+    right behind it on the same stream is applied synchronously, in-line,
+    the moment `ParseWorkerClient._read_loop` reads it. When both are
+    already buffered, `_read_loop`'s next `await` does not force a real
+    scheduler yield, so `cancelled` can be *applied* before the *last*
+    `result`'s continuation runs, double-counting that word: the
+    `cancelled` handler used to trust the worker's own `words_completed`
+    counter, which already included it, and then the delayed continuation
+    added 1 more on top. `ParseRunner._on_run_message`'s `cancelled` branch
+    now derives `words_completed` from `len(handle.results)` -- the same
+    append-only list the record write comes from -- instead of the
+    worker's echoed counter, so it can no longer race ahead of what
+    actually reached disk, whichever order the two messages are applied in.
+  - **QC P1: a TOCTOU between checking whether this server's own parse
+    worker is idle and actually releasing it** (`handlers/execution.py`'s
+    `_release_own_worker_or_refuse`, `handlers/parse.py`'s
+    `handle_flextools_parse_release`). The check and the release used to be
+    two separate calls with a real `await` (worker teardown) in between --
+    long enough for a run that had just registered itself to grab the same
+    worker and have it torn down mid-parse. `WorkerPool.release_if_idle`
+    (new) and `ParseRunner.release_worker_if_idle` (new) make the
+    busy-check and the pop atomic under the pool's own lock, closing the
+    gap rather than narrowing it; both write gates now call it instead of
+    `worker_busy()` + `release_worker()`.
+  - **QC P2: the busy-own-worker refusal text was duplicated** between
+    `handlers/execution.py` and `handlers/parse.py`. Moved into
+    `parse/own_worker.py`'s new `busy_own_worker_guidance()` /
+    `busy_own_worker_run_note()`, shared by both call sites.
+  - **FR-042/043's live tests amended, not weakened**
+    (`tests/test_parse_live.py`): "held between calls" now means "for as
+    long as the project stays open" -- guaranteed within one run whose
+    queue never goes idle (a batch or an interleave), not across two
+    separate calls, which now always observe an idle gap and a reload.
+    `test_scenario_1_a_second_call_does_not_reload_the_grammar` and
+    `test_fr043_currency_is_confirmed_before_every_reuse` now assert the
+    no-reload guarantee within one multi-word run; a new
+    `test_a_call_after_an_idle_release_reloads_the_grammar_and_the_lock_is_released_between_calls`
+    asserts the complementary claim: a reload IS expected after an idle
+    release, and the lock is observably dropped in between. See
+    `specs/parser-check-cp2/spec.md`'s FR-042/043 amendment and
+    `specs/parser-check-cp2/evidence/issue223-live.md`.
+  - **Shared projects: `run_module` coexists with an idle own read worker**
+    (issue #223 second repro). Filing already persisted while the parse
+    worker stayed open on a shared project; the write gate now mirrors that
+    L-0 coexistence -- clearing the probe refusal without releasing the warm
+    worker -- instead of treating the lock as a foreign collision.
+- **Parse worker reopened the project for every word of a server-paced batch**
+  ([#235](https://github.com/MattGyverLee/FlexToolsMCP/issues/235), regression
+  from #223). `ParseRunner` sends one word at a time and awaits each result,
+  so the worker queue was empty between words and `_release_if_idle` dropped
+  the lock after every word. The runner now sends `run_end` when a run
+  finishes; the worker holds the project until then.
+- **Filing always failed at `starting` with `'NoneType' object has no attribute
+  'ObjectRepository'`** ([#239](https://github.com/MattGyverLee/FlexToolsMCP/issues/239),
+  regression from #223). The filing worker idle-released its one writable open
+  on its first empty-queue tick, before `filing_setup` arrived, so no
+  `flextools_parse_text(apply=true)` run could file a word. `FilingWorker` now
+  never idle-releases; `final_commit` closes the project. `FilingBackend.setup`
+  refuses by name (`runtime_error` / `ProjectNotOpen`) if the project is closed.
+- **Pre-handler dispatch failures bypassed the structured error envelope**
+  ([#243](https://github.com/MattGyverLee/FlexToolsMCP/issues/243)). Session
+  gate, unknown-tool, and Pydantic validation failures in `call_tool` now return
+  `session_not_initialized`, `unknown_tool`, and `invalid_input` via
+  `error_response()` instead of legacy plain-text or non-contract JSON shapes.
+- **Misleading `api_discovery_required` after read-only auto-discovery**
+  ([#244](https://github.com/MattGyverLee/FlexToolsMCP/issues/244)). The
+  write gate still requires explicit `get_object_api` validation, but rejections
+  now name entities that were auto-discovered on earlier read-only runs and
+  expose them as `auto_discovered_pending_validation` instead of claiming no
+  APIs were discovered.
+- **Search/API rows advertised broken `from flexicon import` lines for
+  internal classes** ([#245](https://github.com/MattGyverLee/FlexToolsMCP/issues/245)).
+  ``_build_entity_import`` now AST-parses flexicon's ``__init__.py`` re-exports
+  (and records ``top_level_importable`` at index refresh) so non-exported types
+  such as ``MSACollection`` and ``BaseOperations`` get a deep
+  ``flexicon.code.*`` import instead of a top-level name that raises
+  ``ImportError``.
 
 ### Added
 
@@ -363,6 +516,16 @@ could not be applied safely); its field order is unchanged. Additive:
 `tool-responses/1.0` is unchanged, no existing code changes shape, and the
 hand-maintained count in `docs/TOOL-CONTRACT.md` goes from 34 to 36. `flextools_health` gains a `parser.sandbox` block
 reporting whether the sandbox spine is ready.
+
+### Other
+
+- **The `flextools_parse_text` filing preview was megabytes on a large scope.**
+  An `all_texts` preview listed every projected analysis GUID inline: 24k GUIDs,
+  3.4 MB for a 26k-word project. Clients could not keep that in context, and no
+  one reviews it. Past 200 GUIDs (or 50 unreadable words), the preview now shows
+  a 20-wordform sample and counts, and writes the full plan to
+  `<record dir>/plans/<plan_id>.json` (`plan.detail.full_plan_path`). The stored
+  plan, `plan_id` and the confirmation binding are unchanged.
 
 ## [2.12.0] - 2026-09-10
 

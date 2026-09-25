@@ -439,7 +439,7 @@ class TestParserCheckCP2bCodes:
         with pytest.raises(pydantic.ValidationError):
             models[code].model_validate(payload)
 
-    def test_the_documented_error_code_count_is_thirty_six(self):
+    def test_the_documented_error_code_count_is_thirty_nine(self):
         """FR-037: the hand-maintained count in the contract doc tracks reality.
 
         Hand-maintained counts drift silently, which is why this compares
@@ -454,8 +454,9 @@ class TestParserCheckCP2bCodes:
         union_size = len(typing.get_args(AnyDetail))
         # 31 through CP3; #89 adds internal_error -> 32; CP4 adds
         # parser_filing_in_progress and grammar_load_unclean -> 34; CP5 adds
-        # parser_config_failed and parse_sandbox_refused (M-2) -> 36.
-        assert union_size == 36, f"the detail union holds {union_size} models"
+        # parser_config_failed and parse_sandbox_refused (M-2) -> 36;
+        # #243 adds session_not_initialized, unknown_tool, invalid_input -> 39.
+        assert union_size == 39, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

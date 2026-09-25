@@ -38,7 +38,7 @@ COLLECTION_SUFFIXES = ("OS", "OC", "RC", "RS")
 MAX_SUGGESTED_ENTITIES = 5
 
 
-def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 5) -> list:
+def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 8) -> list:
     """Find path between two entities using BFS.
 
     Args:
@@ -80,11 +80,22 @@ def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 5) -> list
                 # in `visited` with a different (shorter) parent from an earlier edge, and
                 # overwriting it would corrupt that entry. Instead, seed the path with the final
                 # edge (current -> target) directly, then walk backwards from `current`.
-                path = [{KEY_FROM: current, KEY_TO: target, KEY_VIA: via, KEY_TYPE: rel_type}]
+                def _step(from_node, to_node, via_prop, rel_t):
+                    step = {
+                        KEY_FROM: from_node,
+                        KEY_TO: to_node,
+                        KEY_VIA: via_prop,
+                        KEY_TYPE: rel_t,
+                    }
+                    if rel_t == "required_cast":
+                        step["required_cast"] = to_node
+                    return step
+
+                path = [_step(current, target, via, rel_type)]
                 node = current
                 while node in parent:
                     parent_node, via_prop, rel_t = parent[node]
-                    path.append({KEY_FROM: parent_node, KEY_TO: node, KEY_VIA: via_prop, KEY_TYPE: rel_t})
+                    path.append(_step(parent_node, node, via_prop, rel_t))
                     node = parent_node
                 return list(reversed(path))
 
@@ -116,7 +127,18 @@ def generate_code_from_path(steps: list) -> str:
     indent = ""
     current_var = entity_to_var(steps[0][KEY_FROM])
 
+    cast_import_emitted = False
+
     for step in steps:
+        if step.get(KEY_TYPE) == "required_cast":
+            if not cast_import_emitted:
+                lines.append(f"{indent}from flexicon import cast_to_concrete")
+                cast_import_emitted = True
+            new_var = entity_to_var(step[KEY_TO])
+            lines.append(f"{indent}{new_var} = cast_to_concrete({current_var})")
+            current_var = new_var
+            continue
+
         prop = step[KEY_VIA]
         is_collection = prop.endswith(COLLECTION_SUFFIXES)
 

@@ -954,25 +954,33 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             if operations_logger:
                 operations_logger.warning(f"[BLOCKED] {name}: {err_msg}")
                 operations_logger.warning(f"[BLOCKED-DIAG] {name}: {json.dumps(diag, default=str)}")
-            return [TextContent(type="text", text=json.dumps({
-                "error": "Session not initialized",
-                "message": "You must call flextools_start() first to initialize the session and set the API mode.",
-                "hint": "Call flextools_start(task='your task description') to begin. This will discover relevant APIs and configure the session.",
-                "_diagnostic": diag,  # See #10 -- helps trace stale-ref / restart cases
-                "available_task_examples": [
+            return error_response(
+                "session_not_initialized",
+                "You must call flextools_start() first to initialize the session and set the API mode.",
+                hint=(
+                    "Call flextools_start(task='your task description') to begin. "
+                    "This will discover relevant APIs and configure the session."
+                ),
+                tool=name,
+                _diagnostic=diag,  # See #10 -- helps trace stale-ref / restart cases
+                available_task_examples=[
                     "Add gloss to sense definitions",
                     "Delete senses with test in gloss",
                     "Count entries by part of speech",
-                    "Create new lexical entries"
-                ]
-            }, indent=2))]
+                    "Create new lexical entries",
+                ],
+            )
 
     # Look up handler and input model from dispatch router
     route = get_tool_handler(name)
     if route is None:
         if operations_logger:
             operations_logger.error(f"[ERROR] Unknown tool: {name}")
-        return [TextContent(type="text", text=f"Unknown tool: {name}")]
+        return error_response(
+            "unknown_tool",
+            f"Unknown tool: {name}",
+            tool=name,
+        )
 
     handler, input_model = route
 
@@ -982,12 +990,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     except Exception as e:
         if operations_logger:
             operations_logger.error(f"[VALIDATION ERROR] {name}: {str(e)}")
-        return [TextContent(type="text", text=json.dumps({
-            "error": "Input validation failed",
-            "message": str(e),
-            "tool": name,
-            "received_arguments": arguments,
-        }, indent=2))]
+        return error_response(
+            "invalid_input",
+            str(e),
+            tool=name,
+            received_arguments=arguments,
+        )
 
     # Dispatch to handler with validated input (convert to dict for backward compatibility)
     if operations_logger:
@@ -1062,6 +1070,23 @@ async def main():
 
     _main_start = _time_module.time()
     _module_init_elapsed = _main_start - _startup_begin
+
+    # Issue #141: load repo-root .env on server startup (refresh.py already
+    # did this for CLI refresh, but MCP entry points did not) and warn on
+    # obsolete keys such as FLEXLIBS2_PATH that look active but are ignored.
+    try:
+        if __package__:
+            from .env_config import emit_obsolete_env_warnings, load_project_env
+            from .file_utils import get_project_root
+        else:
+            from env_config import emit_obsolete_env_warnings, load_project_env
+            from file_utils import get_project_root
+        _env_file = load_project_env(get_project_root())
+        if _env_file is not None:
+            _log_info(f"Loaded configuration from {_env_file}")
+        emit_obsolete_env_warnings(print_fn=_log_warning)
+    except Exception as _env_exc:  # noqa: BLE001 -- env load must never block startup
+        _log_warning(f"Project .env load skipped: {_env_exc}")
 
     # Pre-load indexes
     _log_info("Loading API indexes...")

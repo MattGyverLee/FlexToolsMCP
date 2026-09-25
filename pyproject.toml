@@ -132,6 +132,9 @@ extend-exclude = [
     # CI `ruff check .` step, which nothing noticed because the test step ahead
     # of it failed first.
     ".specify",
+    # Rejected-design prototypes kept for the record (e.g. the CP5 `hc`
+    # stand-in); spec evidence, not shipped or maintained code.
+    "specs/*/reference",
 ]
 
 # Lint-widening step 1 (issue #67): full F (pyflakes) + E4/E7 on top of the

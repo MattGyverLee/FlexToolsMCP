@@ -15,6 +15,8 @@ from dataclasses import dataclass, field, fields
 from datetime import datetime
 from typing import Optional, Dict, List, Any, Deque, Tuple
 
+from ._dual_path import alias_dual_path_modules as _alias_dual_path_modules
+
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -45,6 +47,12 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "Call flextools_get_object_api on the entity (e.g. LexEntry, "
         "POS) before referencing it again."
     ),
+    "api_discovery_required": (
+        "read-only auto-discovery does not satisfy the write gate. "
+        "Call flextools_get_object_api for each Operations entity before "
+        "submitting WRITE code — see auto_discovered_pending_validation "
+        "when present."
+    ),
     "project_not_open": (
         # Issue #53: the rejection payload now inlines available_projects
         # (from the same safe enumeration flextools_list_projects uses) --
@@ -72,6 +80,18 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "the server didn't initialize cleanly. Call flextools_health "
         "(verbose=True for project-lock/pythonnet detail) for a diagnostic "
         "snapshot instead of reading server logs -- retrying won't help."
+    ),
+    "session_not_initialized": (
+        "call flextools_start first to initialize the session and set "
+        "api_mode/write_enabled before using project-scoped tools."
+    ),
+    "unknown_tool": (
+        "the tool name isn't registered -- check the flextools_ prefix and "
+        "the MCP tools list; old unprefixed names no longer work."
+    ),
+    "invalid_input": (
+        "the tool arguments didn't match the schema -- read the validation "
+        "message and fix the offending field before retrying."
     ),
     "partial_module_structure": (
         "call flextools_get_module_template to get the full "
@@ -640,3 +660,12 @@ class SessionState:
             }
             for op in self.operations_history
         ]
+
+
+# Collapse legacy/packaged spellings as soon as this module finishes loading,
+# so a later ``server.session`` import cannot create a second SessionState class
+# before kernel's registrar runs (#172 / #10).
+_alias_dual_path_modules(
+    ("flextoolsmcp.server.session", "server.session"),
+    ("flextoolsmcp.server._dual_path", "server._dual_path"),
+)

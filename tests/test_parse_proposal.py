@@ -583,6 +583,7 @@ async def _terminated_measurement(tmp_path):
         return await call(word="pukul", level="plain", bound_seconds=1.0)
     finally:
         await runner.aclose()
+        parse_handler.set_runner(None)
 
 
 def _args_problem(rung):
@@ -678,5 +679,6 @@ async def test_a_measurement_inside_its_bound_proposes_nothing(make_runner, tmp_
         payload = await call(word="pukul", level="plain", bound_seconds=30)
     finally:
         await runner.aclose()
+        parse_handler.set_runner(None)
     assert payload["measurement"]["outcome"] == "completed"
     assert payload["next_step"] is None

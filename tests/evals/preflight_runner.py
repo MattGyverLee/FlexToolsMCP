@@ -92,6 +92,12 @@ class _FakeAPIIndex:
                         # reads it (cycle-4 reversal: the detector is now
                         # flexlibs_stable-only and index-independent).
                         {"name": "GetAll", "is_mutating": False, "return_type": "EnumerableWrapper[ILexEntry]"},
+                        {
+                            "name": "GetSenses",
+                            "is_mutating": False,
+                            "element_type": "ILexSense",
+                            "polymorphic": False,
+                        },
                         {"name": "GetLexemeForm", "is_mutating": False},
                         {"name": "Create", "is_mutating": True},
                         {"name": "SetLexemeForm", "is_mutating": True},
@@ -173,6 +179,11 @@ class _FakeAPIIndex:
                 },
                 "IWfiAnalysis": {
                     "properties": [{"name": "CategoryRA"}],
+                    "methods": [],
+                    "interfaces": [],
+                },
+                "ILexSense": {
+                    "properties": [{"name": "Gloss"}],
                     "methods": [],
                     "interfaces": [],
                 },

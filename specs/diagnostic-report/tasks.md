@@ -1,7 +1,7 @@
 # Diagnostic-report feature: checkpoint plan
 
 Durable spurt plan for the "send this to the maintainer" flow. Spec:
-[`SPEC.md`](SPEC.md) (status APPROVED-WITH-EDITS). Each checkpoint is a
+[`spec.md`](spec.md) (status APPROVED-WITH-EDITS). Each checkpoint is a
 bounded spurt; check off tasks as they land and update the "Checkpoint:"
 line with the commit/PR that closed it.
 

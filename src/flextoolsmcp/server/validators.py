@@ -783,6 +783,10 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
     Targets the common "namespace thrash" pattern where users guess at accessor or
     method names (project.LexEntries -> project.LexEntry, GetPOS -> GetPartOfSpeech).
 
+    Also covers indexed LCM/flexicon interface members (issue #137): runtime
+    ``PolymorphicAttributeError`` paths previously had no ``did_you_mean`` when
+    the bad name was a plain typo on a concrete interface like ``ITsString``.
+
     Returns dict with:
       - has_suggestion: bool
       - object_type, attribute_name: parsed from the error
@@ -804,6 +808,13 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
     elif object_type in KNOWN_OPERATIONS:
         candidates = _operation_method_names(api_index, object_type)
         scope = object_type
+    else:
+        # Issue #137: liblcm/flexicon index member lookup (post-#135 ITsString
+        # family). Reuses the same member harvest as preflight typo detection.
+        indexed = sorted(_interface_member_names(object_type, api_index))
+        if indexed:
+            candidates = indexed
+            scope = object_type
 
     # Issue #84: the name that just raised can never be its own fix. Suggesting
     # it back ("project.LexSense is not an accessor -- did you mean
@@ -887,10 +898,29 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
             ),
         }
 
+    # Issue #69 / #137: suppress low-confidence acronym-fallback matches.
+    # Project scope already cleared the 0.6 floor above; Operations-method and
+    # interface-member names use the lower member floor (GetPOS ->
+    # GetPartOfSpeech ~0.57, get_WritingSystem -> get_Properties ~0.52).
+    import difflib as _dl
+
+    _filtered: List[str] = []
+    for cand in matches:
+        if _dl.SequenceMatcher(None, attr_name.lower(), cand.lower()).ratio() >= _MIN_MEMBER_SUGGESTION_RATIO:
+            _filtered.append(cand)
+    matches = _filtered
+    if not matches:
+        return {"has_suggestion": False, "object_type": object_type, "attribute_name": attr_name}
+
     if scope == "project":
         suggestion = f"'{attr_name}' is not a project accessor. Did you mean: {', '.join('project.' + m for m in matches)}?"
-    else:
+    elif scope.endswith("Operations"):
         suggestion = f"'{scope}.{attr_name}' is not a method on {scope}. Did you mean: {', '.join(scope + '.' + m for m in matches)}?"
+    else:
+        suggestion = (
+            f"'{attr_name}' is not a member of {scope}. "
+            f"Did you mean: {', '.join(f'{scope}.{m}' for m in matches)}?"
+        )
 
     return {
         "has_suggestion": True,
@@ -917,6 +947,11 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
 # promoted to a shared constant so both surfaces enforce the same floor.
 _MIN_SUGGESTION_RATIO = 0.6
 _MIN_CHAIN_MATCH_RATIO = _MIN_SUGGESTION_RATIO  # backwards-compat alias
+# Floor for runtime Operations-method / interface-member suggestions (#137).
+# Lower than the project-accessor floor: an abbreviation against a long member
+# name is a legitimately low ratio, and the acronym fallback that caused #69
+# is already restricted to camelCase initials.
+_MIN_MEMBER_SUGGESTION_RATIO = 0.5
 
 # PATTERN AUDIT (issue #69) — every fuzzy-match surface in src/flextoolsmcp/server
 # that can name a "did you mean" candidate to the user:
@@ -924,7 +959,7 @@ _MIN_CHAIN_MATCH_RATIO = _MIN_SUGGESTION_RATIO  # backwards-compat alias
 # | Caller                                      | Location                 | Floor / guard                          |
 # |---------------------------------------------|--------------------------|----------------------------------------|
 # | detect_unknown_attribute_error (project)    | this file (alias+fuzzy)  | _MIN_SUGGESTION_RATIO (project scope)  |
-# | detect_unknown_attribute_error (Ops method) | this file                | no ratio floor — acronym path intentional (GetPOS~0.57) |
+# | detect_unknown_attribute_error (Ops method) | this file                | _MIN_MEMBER_SUGGESTION_RATIO (0.5; GetPOS~0.57 passes) |
 # | detect_invalid_project_chains (accessor)    | this file                | _MIN_CHAIN_MATCH_RATIO                 |
 # | detect_invalid_project_chains (method)      | this file                | _MIN_CHAIN_MATCH_RATIO                 |
 # | detect_interface_attribute_typos            | this file                | _INTERFACE_TYPO_MIN_RATIO (= 0.6)      |
@@ -3372,6 +3407,17 @@ def _resolve_alias_maps(
                 ops_class = accessors.get(rhs.attr)
                 if ops_class:
                     operations[target_name] = ops_class
+            elif (
+                isinstance(rhs, ast.Attribute)
+                and isinstance(rhs.value, ast.Name)
+                and rhs.value.id in casts
+            ):
+                parent_iface = casts[rhs.value.id]
+                inferred = _CAST_ALIAS_FROM_TYPED_PROPERTY.get(
+                    (parent_iface, rhs.attr)
+                )
+                if inferred:
+                    casts[target_name] = inferred
             elif isinstance(rhs, ast.Name):
                 # Chained rebind: propagate both alias kinds symmetrically so
                 #     a = ILexEntry(x)
@@ -3664,6 +3710,27 @@ def _scan_backward_for_cast(
                 return direct
             if isinstance(stmt.value, ast.Name):
                 return _resolve_cast_type_at(stmt, parents, stmt.value.id)
+            if (
+                isinstance(stmt.value, ast.Attribute)
+                and isinstance(stmt.value.value, ast.Name)
+            ):
+                # Issue #40: `lexdb = lp.LexDbOA` after a typed `lp` is as
+                # safe as an explicit ILexDb(...) cast for downstream reads.
+                parent_var = stmt.value.value.id
+                parent_iface = _resolve_cast_type_at(
+                    stmt.value, parents, parent_var
+                )
+                if parent_iface is None:
+                    parent_idx = stmt_list.index(stmt)
+                    parent_iface = _scan_backward_for_cast(
+                        stmt_list, parent_idx, parent_var, parents
+                    )
+                if parent_iface:
+                    inferred = _CAST_ALIAS_FROM_TYPED_PROPERTY.get(
+                        (parent_iface, stmt.value.attr)
+                    )
+                    if inferred:
+                        return inferred
             return None
         if isinstance(stmt, _CAST_SCAN_RECURSE_INTO):
             for field in ("body", "orelse", "finalbody"):
@@ -4449,6 +4516,59 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
     return protected
 
 
+def extend_protected_ranges_for_guarded_helper_calls(
+    tree: ast.AST | None,
+    protected_ranges: List[tuple],
+) -> List[tuple]:
+    """Extend guard protection into helpers only called from guarded sites (#97).
+
+    FLExTools scripts often factor mutations into a module-level helper invoked
+    from ``if modifyAllowed:`` inside ``Main``. ``find_protected_ranges`` only
+    marks the guard block itself, so mutations on lines inside the helper were
+    misclassified as unprotected even though every call site was guarded.
+
+    Conservative rules:
+    - The helper must have at least one call site (uncalled helpers stay unprotected).
+    - Every call site must fall inside the current protected ranges.
+    - Fixed-point iteration covers helper chains (``a`` -> ``b`` -> mutation).
+    """
+    if tree is None:
+        return protected_ranges
+
+    func_defs: Dict[str, ast.FunctionDef] = {}
+    call_sites: Dict[str, List[int]] = {}
+
+    class _HelperCallVisitor(ast.NodeVisitor):
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+            func_defs[node.name] = node
+            self.generic_visit(node)
+
+        def visit_Call(self, node: ast.Call) -> None:
+            if isinstance(node.func, ast.Name):
+                call_sites.setdefault(node.func.id, []).append(node.lineno)
+            self.generic_visit(node)
+
+    _HelperCallVisitor().visit(tree)
+
+    ranges = list(protected_ranges)
+    changed = True
+    while changed:
+        changed = False
+        for name, fdef in func_defs.items():
+            sites = call_sites.get(name)
+            if not sites:
+                continue
+            if not all(_is_line_protected(ln, ranges) for ln in sites):
+                continue
+            start_line = fdef.lineno
+            end_line = fdef.end_lineno or start_line
+            if _is_line_protected(start_line, ranges) and _is_line_protected(end_line, ranges):
+                continue
+            ranges.append((start_line, end_line))
+            changed = True
+    return ranges
+
+
 def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -> dict:
     """Certify whether a script makes any Flexicon mutating calls using API index.
 
@@ -4495,10 +4615,6 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     protected_liblcm_calls = []
     confidence_sources = {"index": 0, "regex": 0, "unknown": 0}
 
-    # Get protected ranges once for both Flexicon and LibLCM checks
-    # Pass pre-parsed tree if available to avoid re-parsing
-    protected_ranges = find_protected_ranges(code, tree)
-
     # Ensure tree is available for AST-based detection (#8 alias/cast tracking).
     # If parsing fails we silently skip AST-based detection -- the regex pass
     # below still runs.
@@ -4507,6 +4623,12 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
             tree = ast.parse(code)
         except SyntaxError:
             tree = None
+
+    # Get protected ranges once for both Flexicon and LibLCM checks
+    protected_ranges = find_protected_ranges(code, tree)
+    protected_ranges = extend_protected_ranges_for_guarded_helper_calls(
+        tree, protected_ranges
+    )
 
     # Step 1: Extract Flexicon Operations method calls with line numbers
     # Use pre-compiled pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)
@@ -5184,6 +5306,14 @@ _CASTING_CONDITIONAL_SAFE = {
     "Form": {"IMoForm", "IMoStemAllomorph", "IMoAffixAllomorph",
              "IMoAffixProcess", "IMoStemName"},
     "FreeTranslation": {"ISegment"},
+}
+
+# Issue #40: when a variable is assigned from a typed parent property whose
+# LCM return type is unambiguous, treat the target as that interface for
+# cast-alias purposes (same effect as an explicit ILexDb(...) cast).
+# Deliberately curated -- not a general return-type inference engine.
+_CAST_ALIAS_FROM_TYPED_PROPERTY: Dict[Tuple[str, str], str] = {
+    ("ILangProject", "LexDbOA"): "ILexDb",
 }
 
 

@@ -1,0 +1,16 @@
+intent: "Issue #127 repro: loop variable from GetSenses inherits ILexSense element_type so s.Glosss is caught preflight"
+api_mode: flexicon
+write_enabled: false
+code: |
+  for s in project.LexEntry.GetSenses(entry):
+      report.Info(s.Glosss)
+expect:
+  outcome: preflight_reject
+  error_code: casting_issues_detected
+  auto_fixes: 0
+notes: >
+  Verbatim shape from issue #127: no explicit ILexSense cast, but flexicon
+  index element_type on GetSenses binds the loop target. Tier-1 eval uses
+  FAKE_API_INDEX LexEntryOperations.GetSenses + liblcm ILexSense.Gloss so
+  detect_interface_attribute_typos fires via _compute_casting_decision.
+issue: 127

@@ -363,5 +363,67 @@ class TestShippedLiblcmTemplateCastingArity(unittest.TestCase):
         )
 
 
+def _python_fenced_blocks(markdown_text: str) -> list[str]:
+    """Return bodies of ```python (or unlabeled ```) fences in a markdown file."""
+    blocks: list[str] = []
+    in_fence = False
+    lang: str | None = None
+    buf: list[str] = []
+    for line in markdown_text.splitlines():
+        if line.startswith("```"):
+            if not in_fence:
+                in_fence = True
+                lang = line[3:].strip().lower()
+                buf = []
+            else:
+                in_fence = False
+                if lang in ("", "python", "py"):
+                    blocks.append("\n".join(buf))
+                lang = None
+            continue
+        if in_fence:
+            buf.append(line)
+    return blocks
+
+
+class TestShippedLiblcmMarkdownCastingArity(unittest.TestCase):
+    """Issue #113 also listed copy-paste examples in shipped template docs
+    (00-FLAVOR-GUIDE.md, README.md). Those prose blocks are served alongside
+    the liblcm module template and must obey the same unary cast_to_concrete
+    contract and ILexEntry import rules as 3-liblcm-template.py."""
+
+    _DOC_PATHS = (
+        _TEMPLATES_DIR / "00-FLAVOR-GUIDE.md",
+        _TEMPLATES_DIR / "README.md",
+    )
+
+    def test_markdown_examples_use_unary_cast_to_concrete(self):
+        bad: list[tuple[str, str, int]] = []
+        for path in self._DOC_PATHS:
+            self.assertTrue(path.exists(), f"missing shipped doc: {path}")
+            text = path.read_text(encoding="utf-8")
+            for block in _python_fenced_blocks(text):
+                for raw_args in TestShippedLiblcmTemplateCastingArity._CAST_CALL_RE.findall(block):
+                    args = [a for a in (p.strip() for p in raw_args.split(",")) if a]
+                    if len(args) != 1:
+                        bad.append((path.name, raw_args, len(args)))
+        self.assertEqual(bad, [], f"markdown cast_to_concrete arity violations: {bad}")
+
+    def test_markdown_examples_do_not_import_ilexentry_from_flexicon_casting(self):
+        bad: list[tuple[str, str]] = []
+        for path in self._DOC_PATHS:
+            text = path.read_text(encoding="utf-8")
+            for block in _python_fenced_blocks(text):
+                for match in TestShippedLiblcmTemplateCastingArity._BAD_IMPORT_RE.finditer(block):
+                    module_path = match.group(1)
+                    imported_names = [n.strip() for n in match.group(2).split(",")]
+                    if "ILexEntry" in imported_names:
+                        bad.append((path.name, match.group(0)))
+        self.assertEqual(
+            bad, [],
+            "markdown must import ILexEntry from SIL.LCModel, not flexicon casting modules",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -142,18 +142,16 @@ class TestRunModuleOwnWorkerGate:
         assert data.get("error_code") is None, data
         assert runner.released == [("TestProj_ownidle", "shared")]
 
-    def test_own_idle_worker_is_released_even_on_a_shared_project(
+    def test_own_idle_worker_on_shared_project_proceeds_without_release(
         self, monkeypatch, tmp_path
     ):
-        """The issue's second finding: sharing_enabled=True did not save the
-        write either, because the probe's `held_by_other` verdict does not
-        vary with the project's sharing setting for a Python holder. The
-        fix releases regardless of the sharing flag."""
+        """Issue #223 second repro: filing wrote while the read worker stayed
+        open on a shared project. run_module must mirror that coexistence --
+        clear the probe refusal without tearing down the warm worker."""
         swg._stub_env(monkeypatch, tmp_path)
         _probe_sequence(
             monkeypatch,
             swg._access("held_by_other", pid=33452, process="python", sharing=True),
-            swg._access("free", holder=False),
         )
         swg._allow_execution(monkeypatch)
         runner = _FakeOwnWorkerRunner({"shared": 33452})
@@ -162,7 +160,7 @@ class TestRunModuleOwnWorkerGate:
         data = swg._run("TestProj_ownidle_shared")
 
         assert data.get("error_code") is None, data
-        assert runner.released == [("TestProj_ownidle_shared", "shared")]
+        assert runner.released == []
 
     def test_own_busy_worker_refuses_naming_the_run_with_no_kill_remedy(
         self, monkeypatch, tmp_path

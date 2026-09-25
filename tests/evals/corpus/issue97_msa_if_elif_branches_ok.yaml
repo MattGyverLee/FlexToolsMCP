@@ -1,0 +1,28 @@
+intent: "Issue #97 Bug 2: mutually exclusive if/elif arms casting the same name must not conflate types"
+api_mode: flexicon
+write_enabled: false
+code: |
+  def describe_msa(msa, cn):
+      if cn == "MoStemMsa":
+          m = IMoStemMsa(msa)
+          return m.InflectionClassRA
+      elif cn == "MoInflAffMsa":
+          m = IMoInflAffMsa(msa)
+          return m.SlotsRC
+      elif cn == "MoDerivAffMsa":
+          m = IMoDerivAffMsa(msa)
+          return m.FromPartOfSpeechRA
+      elif cn == "MoUnclassifiedAffixMsa":
+          m = IMoUnclassifiedAffixMsa(msa)
+          return m
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Verbatim shape from issue #97 Bug 2 (Swahili audit op #9). Before branch-aware
+  cast tracking, all four property reads were mis-attributed to the last arm's
+  interface and hard-rejected. Unit coverage lives in
+  tests/test_issue40_casting_severity.py; this corpus entry pins the same
+  invariant on the shared preflight gate chain.
+issue: 97

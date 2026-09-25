@@ -39,9 +39,11 @@ Coverage:
     genuinely has it -- locking in the premise this fix depends on.
 """
 
+import asyncio
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +151,42 @@ class TestPaginateEntityNotCmPossibilityWarning(unittest.TestCase):
         result = paginate_entity(
             self._entity(), summary_only=False, method_filter="", limit=50, offset=0,
             object_type="ILexEntry", library="liblcm",
+        )
+        self.assertNotIn("not_cmpossibility_warning", result)
+
+
+# ---------------------------------------------------------------------------
+# resolve_property wiring (exploring Name on morphology list objects)
+# ---------------------------------------------------------------------------
+
+class TestResolvePropertyNotCmPossibilityWarning(unittest.TestCase):
+    def _resolve(self, **kwargs):
+        from flextoolsmcp.server.handlers.api import handle_resolve_property
+
+        with patch(
+            "flextoolsmcp.server.handlers.api.get_api_index",
+        ) as mock_index:
+            from flextoolsmcp.server import APIIndex
+            from flextoolsmcp.server.kernel import get_index_dir
+
+            mock_index.return_value = APIIndex.load(get_index_dir())
+            payload = asyncio.run(handle_resolve_property(kwargs))
+        return json.loads(payload[0].text)
+
+    def test_curated_context_includes_warning(self):
+        result = self._resolve(
+            property_name="Name",
+            context_entity="IMoInflAffixSlot",
+            include_casting_info=True,
+        )
+        self.assertIn("not_cmpossibility_warning", result)
+        self.assertIn("NOT ICmPossibility", result["not_cmpossibility_warning"])
+
+    def test_immo_morph_type_context_omits_warning(self):
+        result = self._resolve(
+            property_name="Name",
+            context_entity="IMoMorphType",
+            include_casting_info=True,
         )
         self.assertNotIn("not_cmpossibility_warning", result)
 

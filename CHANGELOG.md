@@ -12,6 +12,13 @@ sorted position, not the top). Changes without an issue go under Other.
   can corrupt projects and, with ``fieldWs=0`` followed by ``IUndoStackManager.Save()``,
   hung ``run_module`` until timeout. Write-enabled runs now return
   ``raw_addcustomfield_write_risk``; read-only runs surface an advisory.
+- **Non-`ICmPossibility` morphology list types warned in `resolve_property`**
+  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
+  curated `not_cmpossibility_warning` (already on `get_object_api` for
+  `IMoInflAffixSlot` / `IMoInflAffixTemplate` / `IMoInflClass`) now also
+  appears when callers resolve properties with those types as
+  `context_entity`, so exploring `.Name` is answerable before a runtime
+  `ICmPossibility` cast fails.
 - **`undiscovered_entity` rejected facade-only Operations (e.g. `project.Variants`)**
   ([#162](https://github.com/MattGyverLee/FlexToolsMCP/issues/162)). Using
   ``project.Variants`` / ``project.Allomorphs`` (and other index-mapped facade
@@ -305,6 +312,12 @@ sorted position, not the top). Changes without an issue go under Other.
 
 ### Added
 
+- **Curated recipe `create-interlinear-text`**
+  ([#138](https://github.com/MattGyverLee/FlexToolsMCP/issues/138)). Search and
+  capability discovery now ship a write-guarded pattern for creating a text
+  whose paragraphs combine multiple writing-system runs in one `ITsString`,
+  so callers are not forced to hand-roll `TsStrFactory` / `TsIncStrBldr` interop
+  for paradigm or reference texts.
 - **`flextools_parse_release`** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)).
   Releases this server's own idle parse worker(s) for a project, dropping the
   fwdata lock without killing anything. Takes an optional `project_name`

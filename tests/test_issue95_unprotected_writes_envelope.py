@@ -101,15 +101,8 @@ class TestUnprotectedWritesEnvelope:
         code = 'entry = project.LexEntry.Create("probe")\n'
 
         # Pre-flight: confirm which branch this code exercises.
-        # Note: project.LexEntry.Create() fires BOTH unprotected_liblcm_calls
-        # (the _LIBLCM_MUTABLE_PATTERNS `project.*.Create` regex) AND
-        # mutating_calls via the `unresolved_receiver` heuristic (CUD method
-        # name on an untyped receiver -- a different code path from the
-        # Flexicon-index lookup used by the original test).  We assert the
-        # liblcm branch fires specifically (method label `project.*.Create`)
-        # so the test pins the exact pattern rather than just checking rejection.
         cert = certify_script_readonly(code, _FakeIndex(), None)
-        liblcm_calls = cert.get("unprotected_liblcm_calls") or []
+        liblcm_calls = cert.get("unprotected_liblcm_calls", [])
         assert liblcm_calls, (
             "precondition: project.LexEntry.Create() must populate "
             "unprotected_liblcm_calls (the _LIBLCM_MUTABLE_PATTERNS branch)"
@@ -135,6 +128,11 @@ class TestUnprotectedWritesEnvelope:
         assert "modifyAllowed" in data["message"] or "modifyAllowed" in data.get("why", "")
         assert data.get("next_steps")
         assert data["error"]["code"] == "unprotected_writes"
+        mutations_found = data.get("mutations_found", [])
+        assert mutations_found, "mutations_found must be non-empty for liblcm-branch rejection"
+        assert any("project.*.Create" in m for m in mutations_found), (
+            "mutations_found must name the project.*.Create pattern that triggered rejection"
+        )
 
     def test_main_shaped_project_create_returns_structured_rejection(
         self, monkeypatch, tmp_path
@@ -156,12 +154,8 @@ class TestUnprotectedWritesEnvelope:
         )
 
         # Pre-flight: confirm which branch this code exercises.
-        # Same dual-fire behaviour as the bare-snippet case: both
-        # unprotected_liblcm_calls (_LIBLCM_MUTABLE_PATTERNS) and mutating_calls
-        # (unresolved_receiver heuristic) fire for this pattern.  We assert the
-        # liblcm branch fires with its specific label.
         cert = certify_script_readonly(code, _FakeIndex(), None)
-        liblcm_calls = cert.get("unprotected_liblcm_calls") or []
+        liblcm_calls = cert.get("unprotected_liblcm_calls", [])
         assert liblcm_calls, (
             "precondition: project.LexEntry.Create() inside Main (unguarded) "
             "must populate unprotected_liblcm_calls"
@@ -187,3 +181,8 @@ class TestUnprotectedWritesEnvelope:
         assert "modifyAllowed" in data["message"] or "modifyAllowed" in data.get("why", "")
         assert data.get("next_steps")
         assert data["error"]["code"] == "unprotected_writes"
+        mutations_found = data.get("mutations_found", [])
+        assert mutations_found, "mutations_found must be non-empty for liblcm-branch rejection"
+        assert any("project.*.Create" in m for m in mutations_found), (
+            "mutations_found must name the project.*.Create pattern that triggered rejection"
+        )

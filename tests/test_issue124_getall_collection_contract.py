@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 """Issue #124: GetAll methods carry a structured collection_contract in the index."""
 
-import json
 import unittest
-from pathlib import Path
 
 from flextoolsmcp.build_getall_contract import (
     KEY_COLLECTION_CONTRACT,

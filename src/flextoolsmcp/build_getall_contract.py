@@ -12,7 +12,6 @@ step adds a structured ``collection_contract`` beside each ``GetAll`` so
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 if __package__:

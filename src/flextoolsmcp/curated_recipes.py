@@ -181,6 +181,61 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
         "source": "curated",
         "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "eval-corpus"},
     },
+    "create-interlinear-text": {
+        "intent": "Create a text whose paragraphs combine multiple writing-system runs in one ITsString",
+        "match_terms": [
+            "create interlinear text",
+            "create text with tagged runs",
+            "multi-run paragraph text",
+            "create text with multiple writing systems",
+            "TsIncStrBldr paragraph",
+            "create paradigm text",
+        ],
+        "entities": ["Text", "IStTxtPara", "ITsString"],
+        "operations": ["create", "write"],
+        "requires_write": True,
+        "code": (
+            "from SIL.LCModel.Core.KernelInterfaces import TsStrFactory\n\n"
+            "def _build_paragraph_contents(run_specs):\n"
+            "    \"\"\"Build one ITsString from (text, ws_tag) pairs.\"\"\"\n"
+            "    tsf = TsStrFactory()\n"
+            "    bldr = tsf.GetIncBldr()\n"
+            "    for text, ws_tag in run_specs:\n"
+            "        ws = project.WSHandle(ws_tag)\n"
+            "        bldr.AppendTsString(tsf.MakeString(text, ws))\n"
+            "    return bldr.GetString()\n\n"
+            "# Vernacular + gloss-style runs in one paragraph (reference / paradigm text).\n"
+            "# For interlinear glossing in analyzed texts, prefer ISegment.FreeTranslation.\n"
+            "TEXT_NAME = \"Paradigm sample\"\n"
+            "PARAGRAPHS = [\n"
+            "    [(\"mtu / watu   \", \"sw\"), (\"Class 1/2 (person)\", \"en\")],\n"
+            "]\n\n"
+            "if modifyAllowed:\n"
+            "    text = project.Texts.Create(TEXT_NAME)\n"
+            "    contents = project.Texts.GetContents(text)\n"
+            "    for run_specs in PARAGRAPHS:\n"
+            "        para = contents.ParagraphsOS.Create()\n"
+            "        para.Contents = _build_paragraph_contents(run_specs)\n"
+            "    report.Info(\n"
+            "        f\"Created text '{TEXT_NAME}' with {len(PARAGRAPHS)} paragraph(s) \"\n"
+            "        f\"({project.Texts.GetParagraphCount(text)} total)\"\n"
+            "    )\n"
+            "else:\n"
+            "    report.Info(\n"
+            "        f\"(Would create text '{TEXT_NAME}' with {len(PARAGRAPHS)} \"\n"
+            "        \"multi-run paragraph(s))\"\n"
+            "    )\n"
+        ),
+        "notes": (
+            "WARNING: writes to the database. Adjust TEXT_NAME, PARAGRAPHS, and ws tags "
+            "('sw' / 'en' are examples) before running with write enabled. Multiple "
+            "vernacular+gloss runs in one paragraph are valid ITsString but not "
+            "FLEx-idiomatic for analyzed interlinear data -- use segment free translations "
+            "when the text will be parsed in the Interlinearizer."
+        ),
+        "source": "curated",
+        "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "preflight"},
+    },
     "list-wordforms": {
         "intent": "List all wordforms in the project",
         "match_terms": ["list wordforms", "dump wordforms", "show all wordforms", "iterate wordforms"],

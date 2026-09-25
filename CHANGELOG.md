@@ -306,6 +306,12 @@ sorted position, not the top). Changes without an issue go under Other.
 
 ### Added
 
+- **Curated recipe `create-interlinear-text`**
+  ([#138](https://github.com/MattGyverLee/FlexToolsMCP/issues/138)). Search and
+  capability discovery now ship a write-guarded pattern for creating a text
+  whose paragraphs combine multiple writing-system runs in one `ITsString`,
+  so callers are not forced to hand-roll `TsStrFactory` / `TsIncStrBldr` interop
+  for paradigm or reference texts.
 - **`flextools_parse_release`** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)).
   Releases this server's own idle parse worker(s) for a project, dropping the
   fwdata lock without killing anything. Takes an optional `project_name`

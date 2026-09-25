@@ -43,6 +43,7 @@ try:
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
         KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
+        KEY_INSTANCE_ATTRIBUTES,
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         # Operation types
@@ -73,6 +74,7 @@ except ImportError:
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
         KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
+        KEY_INSTANCE_ATTRIBUTES,
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         # Operation types
@@ -1054,6 +1056,25 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
                     row = _flag_deprecated_row(dict(row), dep)
                 rows.append(row)
             result[kind_key] = rows
+
+    # Issue #256: lifecycle-assigned instance attrs (e.g. FLExProject.lp /
+    # lexDB set in OpenProject()) are indexed separately from @property
+    # Operations facades and must be copied through explicitly here.
+    instance_attributes = list(entity.get(KEY_INSTANCE_ATTRIBUTES) or [])
+    if instance_attributes:
+        if summary_only:
+            result[KEY_INSTANCE_ATTRIBUTES] = [
+                {
+                    KEY_NAME: row.get(KEY_NAME),
+                    KEY_TYPE: row.get(KEY_TYPE),
+                    KEY_KIND: row.get(KEY_KIND, "instance_attr"),
+                    KEY_DESCRIPTION: (row.get(KEY_DESCRIPTION, "") or "")[:120],
+                    KEY_ACCESS_PATH: row.get(KEY_ACCESS_PATH),
+                }
+                for row in instance_attributes
+            ]
+        else:
+            result[KEY_INSTANCE_ATTRIBUTES] = instance_attributes
 
     return result
 

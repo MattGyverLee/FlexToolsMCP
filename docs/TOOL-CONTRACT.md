@@ -343,6 +343,28 @@ it answers neither question.
 
 ---
 
+## Instance attributes (`get_object_api`, issue #256)
+
+Flexicon entities may carry **`instance_attributes`**: fields assigned on
+``self`` during lifecycle methods (for ``FLExProject``, ``lp`` and ``lexDB``
+are set in ``OpenProject()``, not via ``@property`` Operations facades).
+These appear as an **additive optional** top-level array on successful
+``flextools_get_object_api`` responses when the indexed entity defines them.
+
+| Key | Location | Type | Description |
+|---|---|---|---|
+| `instance_attributes` | top-level | array | Lifecycle-assigned handles on the project instance (distinct from Operations `@property` shorthands in `properties`). |
+| `name` | per item | string | Attribute name on the live instance (e.g. `lp`, `lexDB`). |
+| `type` | per item | string | Best-effort LCM/Python type label (curated where needed, e.g. `ILexDb`). |
+| `kind` | per item | string | Always `instance_attr` for this array. |
+| `access_path` | per item | string | Runtime access path (e.g. `project.lp`). |
+| `defined_in` | per item | string | Method where the assignment occurs (e.g. `OpenProject`). |
+
+Like `access_path` and `inherited_from`, these fields did **not** bump the
+contract version.
+
+---
+
 ## Inherited member fields (`get_object_api`, `resolve_property`)
 
 `get_object_api` and `resolve_property` responses may carry additional

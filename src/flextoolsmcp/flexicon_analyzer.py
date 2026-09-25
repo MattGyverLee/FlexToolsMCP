@@ -1814,6 +1814,103 @@ def extract_flexicon_top_level_exports_from_init(init_path: Path) -> frozenset[s
 # ---- Facade access-path detection (issue #100) --------------------------------
 #
 # Some Operations classes (e.g. MSAOperations) are reachable only via a
+# Issue #256: instance attributes assigned on `self` inside lifecycle methods
+# (for FLExProject, `OpenProject()` sets `lp` / `lexDB` -- there is no
+# `__init__`). These are distinct from `@property` Operations facades.
+_INSTANCE_ATTRIBUTE_SOURCE_METHODS: Dict[str, Tuple[str, ...]] = {
+    "FLExProject": ("OpenProject",),
+}
+
+_INSTANCE_ATTRIBUTE_TYPE_HINTS: Dict[Tuple[str, str], str] = {
+    ("FLExProject", "lp"): "LangProject",
+    ("FLExProject", "lexDB"): "ILexDb",
+}
+
+_INSTANCE_ATTRIBUTE_ALLOWLIST: Dict[str, frozenset] = {
+    # Issue #256 acceptance: surface the two primary LCM handles only.
+    "FLExProject": frozenset({"lp", "lexDB"}),
+}
+
+_INSTANCE_ATTRIBUTE_DESCRIPTIONS: Dict[Tuple[str, str], str] = {
+    ("FLExProject", "lp"): (
+        "Language project root (LCM LangProject). Primary low-level LCM access "
+        "when Operations wrappers do not cover a property."
+    ),
+    ("FLExProject", "lexDB"): (
+        "Lexical database (ILexDb). Most lexicon structure and entries are "
+        "reachable from here."
+    ),
+}
+
+
+def _infer_simple_assign_type(value: ast.AST) -> str:
+    """Best-effort type name from a simple `self.x = <expr>` RHS."""
+    if isinstance(value, ast.Attribute):
+        return value.attr
+    if isinstance(value, ast.Name):
+        return value.id
+    if isinstance(value, ast.Call):
+        func = value.func
+        if isinstance(func, ast.Attribute):
+            return func.attr
+        if isinstance(func, ast.Name):
+            return func.id
+    return ""
+
+
+def _extract_instance_attributes(class_node: ast.ClassDef, class_name: str) -> List[Dict[str, Any]]:
+    """Return instance attributes assigned on ``self`` in curated lifecycle methods."""
+    method_names = _INSTANCE_ATTRIBUTE_SOURCE_METHODS.get(class_name, ("__init__",))
+    found: Dict[str, Dict[str, Any]] = {}
+
+    for item in class_node.body:
+        if not isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if item.name not in method_names:
+            continue
+
+        for stmt in item.body:
+            pairs: List[Tuple[ast.AST, ast.AST]] = []
+            if isinstance(stmt, ast.Assign):
+                for target in stmt.targets:
+                    pairs.append((target, stmt.value))
+            elif isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+                pairs.append((stmt.target, stmt.value))
+
+            for target, value in pairs:
+                if not (
+                    isinstance(target, ast.Attribute)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == "self"
+                ):
+                    continue
+                attr_name = target.attr
+                if attr_name.startswith("_"):
+                    continue
+                allow = _INSTANCE_ATTRIBUTE_ALLOWLIST.get(class_name)
+                if allow is not None and attr_name not in allow:
+                    continue
+
+                inferred = _infer_simple_assign_type(value)
+                type_hint = _INSTANCE_ATTRIBUTE_TYPE_HINTS.get(
+                    (class_name, attr_name), inferred,
+                )
+                description = _INSTANCE_ATTRIBUTE_DESCRIPTIONS.get(
+                    (class_name, attr_name),
+                    f"Instance attribute set during {item.name}().",
+                )
+                found[attr_name] = {
+                    "name": attr_name,
+                    "type": type_hint,
+                    "kind": "instance_attr",
+                    "description": description,
+                    "access_path": f"project.{attr_name}",
+                    "defined_in": item.name,
+                }
+
+    return [found[name] for name in sorted(found)]
+
+
 # `FLExProject` facade property (`project.MSA`) and are NOT re-exported at
 # flexicon's package top level, so `from flexicon import MSAOperations` raises
 # ImportError even though the class exists and is fully documented. Nothing in
@@ -1988,6 +2085,10 @@ def analyze_class(node, module_path: str, lcm_imports: List[Dict],
     # Issue #245: record whether `from flexicon import {name}` is valid.
     if top_level_exports is not None:
         entity["top_level_importable"] = node.name in top_level_exports
+
+    instance_attributes = _extract_instance_attributes(node, node.name)
+    if instance_attributes:
+        entity["instance_attributes"] = instance_attributes
 
     return entity
 

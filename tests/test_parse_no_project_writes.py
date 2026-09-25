@@ -138,6 +138,21 @@ def test_no_cp3_module_calls_a_write_api(path):
     assert hits == [], f"{len(hits)} write call(s) in CP3 code: {hits}"
 
 
+#: .NET events a module may subscribe to with `+=` -- a handler added to a
+#: process-wide event, never a write to an LCM object. CP5 re-plan (T096):
+#: the sandbox worker resolves the bundled HermitCrab's dependencies by
+#: simple name from the FieldWorks folder (`AppDomain.AssemblyResolve`).
+_ALLOWED_EVENT_SUBSCRIPTIONS = frozenset({"AssemblyResolve"})
+
+
+def _is_event_subscription(node: ast.AugAssign) -> bool:
+    return (
+        isinstance(node.op, ast.Add)
+        and isinstance(node.target, ast.Attribute)
+        and node.target.attr in _ALLOWED_EVENT_SUBSCRIPTIONS
+    )
+
+
 @pytest.mark.parametrize("path", CP3_MODULES, ids=lambda p: p.name)
 def test_no_cp3_module_assigns_an_lcm_property(path):
     hits = []
@@ -145,6 +160,8 @@ def test_no_cp3_module_assigns_an_lcm_property(path):
         targets = []
         if isinstance(node, ast.Assign):
             targets = node.targets
+        elif isinstance(node, ast.AugAssign) and _is_event_subscription(node):
+            continue
         elif isinstance(node, (ast.AugAssign, ast.AnnAssign)):
             targets = [node.target]
         for target in targets:

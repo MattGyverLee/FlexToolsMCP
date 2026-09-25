@@ -193,6 +193,18 @@ def test_a_shared_project_proceeds_with_the_verbatim_advisory(filing_env):
     assert started["shared_mode_advisory"] == wording.SHARED_MODE_ADVISORY
 
 
+def test_sharing_enabled_without_fieldworks_does_not_claim_flex_has_it_open(filing_env):
+    """Sharing on, nobody holding the project: still shared, but FLEx is not named as open."""
+    from flextoolsmcp.server.filing import wording
+
+    filing_env.install(_worker())
+    filing_env.set_access("free", sharing=True)
+    _, started = _preview_then_confirm()
+    assert started["filing"] == "started", started
+    assert started["shared_mode_advisory"] == wording.SHARING_ENABLED_ADVISORY
+    assert "has this project open" not in started["shared_mode_advisory"]
+
+
 # ---------------------------------------------------------------------------
 # FR-003 -- the run exists only after every rung
 # ---------------------------------------------------------------------------

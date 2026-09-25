@@ -1,0 +1,75 @@
+{
+  "scenario": "S3",
+  "project": null,
+  "source_project": null,
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [],
+  "responses": {
+    "health_parser": {
+      "read": {
+        "status": "ready",
+        "reason": null
+      },
+      "write": {
+        "status": "ready",
+        "reason": {
+          "signal": null,
+          "expected_path": "C:\\Program Files\\SIL\\FieldWorks 9\\ParserCore.dll",
+          "detected_version": "9.3.11",
+          "missing_members": [],
+          "lcmodel_install_path": "C:\\Program Files\\SIL\\FieldWorks 9",
+          "agent_probe": "skipped"
+        }
+      },
+      "sandbox": {
+        "status": "ready",
+        "components": [
+          {
+            "component": "fieldworks_hermitcrab",
+            "found": true,
+            "expected_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll",
+            "file_version": "3.8.2.0",
+            "signal": null,
+            "reason": null
+          },
+          {
+            "component": "GenerateHCConfig.exe",
+            "found": true,
+            "expected_path": "C:\\Program Files\\SIL\\FieldWorks 9\\GenerateHCConfig.exe",
+            "signal": null,
+            "reason": null
+          }
+        ],
+        "advisories": []
+      },
+      "active_engine": null,
+      "detected": {
+        "parser_core_version": "9.3.11",
+        "lcmodel_install_path": "C:\\Program Files\\SIL\\FieldWorks 9",
+        "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll",
+        "generate_hc_config_path": "C:\\Program Files\\SIL\\FieldWorks 9\\GenerateHCConfig.exe",
+        "fieldworks_hermitcrab_version": "3.8.2.0",
+        "generate_hc_config_version": "9.3.11.2703"
+      }
+    },
+    "health_parser_next_steps": [
+      {
+        "action": "rehearse a grammar change on an exported copy",
+        "tool": "flextools_parse_sandbox",
+        "args": {
+          "action": "parse",
+          "words": []
+        },
+        "rationale": "FieldWorks' HermitCrab engine and GenerateHCConfig.exe are present, so a grammar change can be rehearsed on an exported copy of the project without touching the project itself.",
+        "est_cost": "minutes"
+      }
+    ]
+  },
+  "observations": {},
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:10:59.037413+00:00"
+}

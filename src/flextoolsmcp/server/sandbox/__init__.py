@@ -5,9 +5,11 @@ Home for the parser-check sandbox spine (parser-check CP5,
 specs/parser-check-cp5/plan.md).
 
 The sandbox spine runs HermitCrab outside FieldWorks: it builds an HC config
-from a COPY of the project, then drives `hc` over that config through the
-packaged `scripts/hcparse.ps1`. This package holds the spine's policy; the
-script holds the mechanics (contracts/hcparse.md).
+from a COPY of the project (the packaged `scripts/hcparse.ps1`, Generate
+mode, contracts/hcparse.md), then parses words against that config in the
+parse worker's `--sandbox` mode, which calls FieldWorks' own bundled
+HermitCrab engine in-process (contracts/sandbox-worker.md). This package
+holds the spine's policy; the script and the worker hold the mechanics.
 
 THE READ-ONLY BOUNDARY. Everything in this package is written to one rule,
 and that rule is the thing to understand before editing anything here:
@@ -30,7 +32,7 @@ Four lifecycles live under the sandbox root, each owned by one module:
   corpus    the assertion corpus a sandbox is tested with (store.py)
 
 Submodules (see plan.md "Source Code"): paths, engine, workdir, cache, script,
-hc_output, classify, store, client.
+lcm_ids, classify, store, client.
 
 This module exports nothing and imports nothing from its own submodules.
 Consumers import the submodule they actually need, by name.

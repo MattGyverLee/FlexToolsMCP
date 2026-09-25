@@ -1,0 +1,618 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 3f4fa6c..0e37035 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -107,9 +107,10 @@ where = ["src"]
+ # separate download. (Templates back flextools_get_module_template; without this
+ # they are absent from the wheel and the tool 500s -- see issue #77.) The
+ # packaged hcparse.ps1 (parser-check CP5, FR-022) is launched from the installed
+-# package by the sandbox spine, so it must ship in the wheel too.
++# package by the sandbox spine, so it must ship in the wheel too -- as must
++# hc_fw.py, the hc host it runs on FieldWorks' own HermitCrab engine.
+ [tool.setuptools.package-data]
+-flextoolsmcp = ["index/**/*", "templates/**/*", "scripts/*.ps1", "VERSION", "py.typed"]
++flextoolsmcp = ["index/**/*", "templates/**/*", "scripts/*.ps1", "scripts/*.py", "VERSION", "py.typed"]
+ 
+ # Archived old index versions are kept in the repo for local diffing but must
+ # not bloat the installed wheel. The `index/**/*` glob above would otherwise
+diff --git a/src/flextoolsmcp/scripts/hcparse.ps1 b/src/flextoolsmcp/scripts/hcparse.ps1
+index 63b10c4..aa011b4 100644
+--- a/src/flextoolsmcp/scripts/hcparse.ps1
++++ b/src/flextoolsmcp/scripts/hcparse.ps1
+@@ -58,9 +58,14 @@ param(
+     # timeouts below.
+     [string]$Mode,
+ 
+-    # Parse, Test: an hc.exe, or an hc.dll run as `dotnet <dll>`.
++    # Parse, Test: an hc.exe, an hc.dll run as `dotnet <dll>`, or the
++    # packaged FieldWorks host hc_fw.py run as `<PythonPath> <hc_fw.py>`.
+     [string]$HcPath,
+ 
++    # Parse, Test: the Python interpreter for an -HcPath that is a .py host.
++    # Required then (exit 2 without it); ignored otherwise.
++    [string]$PythonPath,
++
+     # Generate: the GenerateHCConfig executable.
+     [string]$GenerateHCConfigPath,
+ 
+@@ -95,7 +100,7 @@ param(
+     [string]$GenerateTimeoutSeconds = '600'
+ )
+ 
+-$script:HCPARSE_VERSION = '5.0.0'
++$script:HCPARSE_VERSION = '5.1.0'
+ 
+ Set-StrictMode -Version 3.0
+ $ErrorActionPreference = 'Stop'
+@@ -262,6 +267,14 @@ function ConvertTo-PositiveSeconds {
+     return $parsed
+ }
+ 
++function Assert-HostPython {
++    # A .py -HcPath is the FieldWorks host; it needs -PythonPath.
++    if ($HcPath -match '\.py$') {
++        Assert-Required -Name 'PythonPath' -Value $PythonPath
++        Assert-FileExists -Name 'PythonPath' -Path $PythonPath
++    }
++}
++
+ function Assert-Parameters {
+     if ([string]::IsNullOrWhiteSpace($Mode)) {
+         Stop-Hcparse -Code 2 -Message '-Mode is required: Generate, Parse or Test.'
+@@ -298,6 +311,7 @@ function Assert-Parameters {
+             }
+             $script:HcTimeout = ConvertTo-PositiveSeconds -Name 'TimeoutSeconds' -Value $TimeoutSeconds
+             Assert-FileExists -Name 'HcPath' -Path $HcPath
++            Assert-HostPython
+             Assert-FileExists -Name 'Config' -Path $Config
+             if (-not [string]::IsNullOrWhiteSpace($WordFile)) {
+                 Assert-FileExists -Name 'WordFile' -Path $WordFile
+@@ -309,6 +323,7 @@ function Assert-Parameters {
+             Assert-Required -Name 'AssertionFile' -Value $AssertionFile
+             $script:HcTimeout = ConvertTo-PositiveSeconds -Name 'TimeoutSeconds' -Value $TimeoutSeconds
+             Assert-FileExists -Name 'HcPath' -Path $HcPath
++            Assert-HostPython
+             Assert-FileExists -Name 'Config' -Path $Config
+             Assert-FileExists -Name 'AssertionFile' -Path $AssertionFile
+             $script:Corpus = Read-Corpus
+@@ -404,14 +419,18 @@ function ConvertTo-ProcessArgument {
+ 
+ function New-ToolProcess {
+     # A System.Diagnostics.Process for a tool path passed in by the MCP. An
+-    # .dll is run as `dotnet <dll>` (research R-03). stdin is redirected so
+-    # it can be closed at once: a tool never waits on the console.
++    # .dll is run as `dotnet <dll>` (research R-03), a .py (the FieldWorks
++    # host) as `<PythonPath> <py>`. stdin is redirected so it can be closed
++    # at once: a tool never waits on the console.
+     param([string]$ToolPath, [string[]]$Arguments, [string]$WorkingDirectory)
+     $argv = @()
+     $file = [System.IO.Path]::GetFullPath($ToolPath)
+     if ($file -match '\.dll$') {
+         $argv += $file
+         $file = 'dotnet'
++    } elseif ($file -match '\.py$') {
++        $argv += $file
++        $file = [System.IO.Path]::GetFullPath($PythonPath)
+     }
+     $argv += $Arguments
+     $psi = New-Object System.Diagnostics.ProcessStartInfo
+diff --git a/src/flextoolsmcp/server/handlers/diagnostic_health.py b/src/flextoolsmcp/server/handlers/diagnostic_health.py
+index 0a4978c..32c1f22 100644
+--- a/src/flextoolsmcp/server/handlers/diagnostic_health.py
++++ b/src/flextoolsmcp/server/handlers/diagnostic_health.py
+@@ -347,18 +347,26 @@ def _build_generate_config_component(generate_config: Any) -> Dict[str, Any]:
+     }
+ 
+ 
+-# The `hc` install hint is a literal, quoted verbatim from SPEC H1 -- `hc` is a
+-# dotnet GLOBAL tool, located via PATH / `dotnet tool list -g`, not a file under
+-# %LOCALAPPDATA%. Never reword this command; a caller pastes it.
++# The stand-alone `hc` install command is a literal, quoted verbatim from SPEC
++# H1 -- that `hc` is a dotnet GLOBAL tool, located via PATH / `dotnet tool list
++# -g`, not a file under %LOCALAPPDATA%. Never reword this command; a caller
++# pastes it.
+ _HC_INSTALL_HINT = "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool"
+ 
+-# The full hint the "install the hc dotnet tool" rung carries (FR-004): the
+-# command above plus what it needs to install and to run afterwards.
++# The full hint the "hc not found" rung carries (FR-004). The primary route is
++# FieldWorks itself: the MCP runs hc on the HermitCrab engine FieldWorks ships
++# (parser_probe HC_SOURCE_FIELDWORKS), so a FieldWorks 9 install is enough. The
++# stand-alone tool is the alternative, with what it needs to install and run.
+ _HC_INSTALL_FULL_HINT = (
+-    _HC_INSTALL_HINT + " Installing it needs a .NET SDK, and hc 3.8 and later "
+-    "need the .NET 10 runtime to run."
++    "Install or repair FieldWorks 9: the MCP runs hc on the HermitCrab engine "
++    "FieldWorks ships, with nothing else to install. Alternatively install the "
++    "stand-alone tool: " + _HC_INSTALL_HINT + " Installing it needs a .NET SDK, "
++    "and hc 3.8 and later need the .NET 10 runtime to run."
+ )
+ 
++#: The "hc not found" rung's action.
++_HC_NOT_FOUND_ACTION = "install FieldWorks 9 (hc runs on its HermitCrab engine) or the hc dotnet tool"
++
+ #: The one tool the sandbox spine proposes -- only when it is ready (FR-006).
+ _SANDBOX_TOOL = "flextools_parse_sandbox"
+ 
+@@ -395,7 +403,8 @@ def _parser_next_step(
+     rationale, est_cost}).
+ 
+     ``tool`` still defaults to None, because most rungs here ARE external --
+-    "install/repair FieldWorks", "install the hc dotnet tool". The two rows
++    "install/repair FieldWorks", "install FieldWorks 9 ... or the hc dotnet
++    tool". The two rows
+     that name ``flextools_try_word`` pass it explicitly from CP2b on; before
+     that they could not, since the tool did not exist."""
+     return {
+@@ -510,12 +519,23 @@ def _build_parser_next_steps(parser: Dict[str, Any]) -> List[Dict[str, Any]]:
+     else:
+         if hc is not None and not hc["found"]:
+             steps.append(_parser_next_step(
+-                action="install the hc dotnet tool",
++                action=_HC_NOT_FOUND_ACTION,
++                rationale=(
++                    "No HermitCrab engine was found: neither FieldWorks' own "
++                    "engine nor a stand-alone hc (PATH / `dotnet tool list -g`). "
++                    + _HC_INSTALL_FULL_HINT
++                ),
++                est_cost="n/a",
++            ))
++        elif hc is not None and hc["starts"] is False and hc.get("source") == "fieldworks":
++            reason = (hc.get("reason") or "no reason was reported").rstrip(".")
++            steps.append(_parser_next_step(
++                action="repair FieldWorks so its HermitCrab engine loads",
+                 rationale=(
+-                    "hc is a dotnet global tool, located via PATH / "
+-                    "`dotnet tool list -g`. Install it with: {}".format(
+-                        _HC_INSTALL_FULL_HINT
+-                    )
++                    "hc runs on the HermitCrab engine FieldWorks ships, through "
++                    "pythonnet in the MCP's own Python, and it could not start "
++                    "({}). Repair or reinstall FieldWorks 9, and check that "
++                    "pythonnet is installed in the MCP's environment.".format(reason)
+                 ),
+                 est_cost="n/a",
+             ))
+diff --git a/src/flextoolsmcp/server/handlers/parse.py b/src/flextoolsmcp/server/handlers/parse.py
+index 80e4ac0..6e89ea1 100644
+--- a/src/flextoolsmcp/server/handlers/parse.py
++++ b/src/flextoolsmcp/server/handlers/parse.py
+@@ -2712,10 +2712,14 @@ from ..response_models import (  # noqa: E402
+ )
+ from ..sandbox import paths as sandbox_paths  # noqa: E402
+ 
+-#: contracts/tools.md section 4, verbatim: the command, one space, one sentence.
++#: contracts/tools.md section 4: FieldWorks first (hc runs on its engine), then
++#: the stand-alone tool's command, one space, one sentence.
+ HC_INSTALL_HINT = (
+-    "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool Installing it "
+-    "needs a .NET SDK, and hc 3.8 and later need the .NET 10 runtime to run."
++    "Install or repair FieldWorks 9: the MCP runs hc on the HermitCrab engine "
++    "FieldWorks ships, with nothing else to install. Alternatively install the "
++    "stand-alone tool: dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool "
++    "Installing it needs a .NET SDK, and hc 3.8 and later need the .NET 10 "
++    "runtime to run."
+ )
+ GENERATE_HC_CONFIG_INSTALL_HINT = (
+     "GenerateHCConfig.exe ships with FieldWorks 9; repair or reinstall FieldWorks."
+diff --git a/src/flextoolsmcp/server/parser_probe.py b/src/flextoolsmcp/server/parser_probe.py
+index e25c569..2454536 100644
+--- a/src/flextoolsmcp/server/parser_probe.py
++++ b/src/flextoolsmcp/server/parser_probe.py
+@@ -65,7 +65,7 @@ import subprocess
+ import sys
+ from dataclasses import dataclass, field
+ from pathlib import Path
+-from typing import FrozenSet, Iterable, List, Literal, Optional, Tuple, Union
++from typing import Dict, FrozenSet, Iterable, List, Literal, Optional, Tuple, Union
+ 
+ try:
+     from .versioning import get_resolved_fieldworks_dir, locate_liblcm_dll
+@@ -460,14 +460,36 @@ HermitCrab's usage text. Counts as not found."""
+ #: Where a hit came from (CP5 FR-001) -- `HcToolDiscovery.source`, and the
+ #: health block's `detected.hc_source`. Closed, in discovery order.
+ HC_SOURCE_OVERRIDE = "override"
++HC_SOURCE_FIELDWORKS = "fieldworks"
+ HC_SOURCE_PATH = "path"
+ HC_SOURCE_DOTNET_TOOLS_DIR = "dotnet_tools_dir"
+ HC_SOURCE_DOTNET_TOOL_LIST = "dotnet_tool_list"
+ 
+ HC_SOURCES: FrozenSet[str] = frozenset(
+-    {HC_SOURCE_OVERRIDE, HC_SOURCE_PATH, HC_SOURCE_DOTNET_TOOLS_DIR, HC_SOURCE_DOTNET_TOOL_LIST}
++    {
++        HC_SOURCE_OVERRIDE,
++        HC_SOURCE_FIELDWORKS,
++        HC_SOURCE_PATH,
++        HC_SOURCE_DOTNET_TOOLS_DIR,
++        HC_SOURCE_DOTNET_TOOL_LIST,
++    }
+ )
+ 
++#: The packaged `hc` host (``flextoolsmcp/scripts/hc_fw.py``): hc's own
++#: console program, run through pythonnet on FieldWorks' bundled HermitCrab
++#: engine. FieldWorks ships the engine but not the `hc` tool, so this is how
++#: a machine with FieldWorks alone gets a working, version-matched `hc`.
++HC_HOST_SCRIPT_NAME = "hc_fw.py"
++
++#: Env var naming the engine directory for the host -- set on every host
++#: run (probe and sandbox) to the FieldWorks install discovery bound to.
++HC_HOST_ENGINE_DIR_ENV_VAR = "FLEXTOOLSMCP_HC_ENGINE_DIR"
++
++#: The host's `-h` exit code when the usage printed but the engine did not
++#: load (hc_fw.ENGINE_UNAVAILABLE_EXIT), and the prefix of its one stderr line.
++HC_HOST_ENGINE_UNAVAILABLE_EXIT = 3
++HC_HOST_ENGINE_UNAVAILABLE_PREFIX = "hc: engine unavailable: "
++
+ #: The NuGet package id of the `hc` global tool, as `dotnet tool list -g`
+ #: prints it and as the tool store's folder is named (lower-case).
+ HC_TOOL_PACKAGE_ID = "sil.machine.morphology.hermitcrab.tool"
+@@ -488,6 +510,11 @@ HC_DISCOVERY_TIMEOUT_SECONDS = 5.0
+ #: Bound on the `hc -h` identity/startability probe (CP5 R-03).
+ HC_PROBE_TIMEOUT_SECONDS = 5.0
+ 
++#: The same bound for the FieldWorks host, whose `-h` also starts the .NET
++#: Framework runtime under pythonnet and loads the engine assembly (about a
++#: second warm, several on a cold machine).
++HC_HOST_PROBE_TIMEOUT_SECONDS = 30.0
++
+ #: The two usage lines that identify HermitCrab's `hc` (research F-3,
+ #: Program.cs:164-167). `hc` has no version option; identity is these lines.
+ _HC_USAGE_LINES: Tuple[str, str] = (
+@@ -508,6 +535,40 @@ def _hc_override_from_env() -> Optional[str]:
+     return os.environ.get(HC_PATH_ENV_VAR)
+ 
+ 
++def hc_host_script_path() -> Path:
++    """The packaged host, ``flextoolsmcp/scripts/hc_fw.py`` (resolved from
++    ``__file__``, the ``sandbox/script.py`` convention)."""
++    return Path(__file__).resolve().parent.parent / "scripts" / HC_HOST_SCRIPT_NAME
++
++
++def _find_hc_fieldworks(search_paths: Optional[List[Path]] = None) -> Optional[Path]:
++    """CP5 FR-001 source 2: the packaged host, when the FieldWorks install
++    discovery binds to holds ``FIELDWORKS_HERMITCRAB_DLL``. A filesystem
++    check only; ``probe_hc`` then proves the engine loads."""
++    fieldworks_dir = get_resolved_fieldworks_dir(search_paths=search_paths)
++    if fieldworks_dir is None:
++        return None
++    if not (Path(fieldworks_dir) / FIELDWORKS_HERMITCRAB_DLL).is_file():
++        return None
++    host = hc_host_script_path()
++    return host if host.is_file() else None
++
++
++def is_hc_host(path: Union[str, Path, None]) -> bool:
++    """True when ``path`` is the FieldWorks host rather than an hc binary."""
++    return path is not None and Path(path).name.lower() == HC_HOST_SCRIPT_NAME
++
++
++def hc_host_env(search_paths: Optional[List[Path]] = None) -> Dict[str, str]:
++    """The env additions a host run needs: the engine directory, i.e. the
++    FieldWorks install discovery bound to. Empty when none resolves (the
++    host then searches the standard locations itself)."""
++    fieldworks_dir = get_resolved_fieldworks_dir(search_paths=search_paths)
++    if fieldworks_dir is None:
++        return {}
++    return {HC_HOST_ENGINE_DIR_ENV_VAR: str(fieldworks_dir)}
++
++
+ def _find_hc_via_path() -> Optional[Path]:
+     """Look for the ``hc`` dotnet global tool shim on PATH.
+ 
+@@ -642,10 +703,14 @@ def hc_invoke_argv(path: Union[str, Path]) -> Optional[List[str]]:
+ 
+     ``[str(path)]`` for an ``hc.exe`` shim (or any other executable); for
+     an ``hc.dll``, ``[<dotnet>, str(path)]`` -- the form the maintainer's
+-    original script used and the one R-15's no-SDK route produces. Returns
+-    ``None`` for a ``.dll`` when there is no ``dotnet`` host on PATH.
++    original script used and the one R-15's no-SDK route produces; for the
++    FieldWorks host (``hc_fw.py``), ``[sys.executable, str(path)]`` -- the
++    MCP's own interpreter, which has pythonnet. Returns ``None`` for a
++    ``.dll`` when there is no ``dotnet`` host on PATH.
+     """
+     path = Path(path)
++    if is_hc_host(path):
++        return [sys.executable, str(path)]
+     if path.suffix.lower() == ".dll":
+         dotnet = shutil.which("dotnet")
+         if dotnet is None:
+@@ -693,6 +758,23 @@ def classify_hc_help(exit_code: Optional[int], stdout, stderr) -> HcProbe:
+ 
+     lines = {line.strip() for line in out.splitlines()}
+     if all(usage in lines for usage in _HC_USAGE_LINES):
++        unavailable = next(
++            (
++                line.strip()[len(HC_HOST_ENGINE_UNAVAILABLE_PREFIX):]
++                for line in err.splitlines()
++                if line.strip().startswith(HC_HOST_ENGINE_UNAVAILABLE_PREFIX)
++            ),
++            None,
++        )
++        if exit_code == HC_HOST_ENGINE_UNAVAILABLE_EXIT and unavailable is not None:
++            # The FieldWorks host: it is hc, but its engine will not load.
++            return HcProbe(
++                found=True,
++                starts=False,
++                signal=SANDBOX_SIGNAL_RUNTIME_MISSING,
++                reason=f"hc could not start: the FieldWorks HermitCrab engine is unavailable ({unavailable})",
++                exit_code=exit_code,
++            )
+         return HcProbe(found=True, starts=True, exit_code=exit_code)
+ 
+     if _is_host_failure(exit_code, err):
+@@ -728,7 +810,12 @@ def classify_hc_help(exit_code: Optional[int], stdout, stderr) -> HcProbe:
+     )
+ 
+ 
+-def probe_hc(path: Union[str, Path], *, timeout: float = HC_PROBE_TIMEOUT_SECONDS) -> HcProbe:
++def probe_hc(
++    path: Union[str, Path],
++    *,
++    timeout: Optional[float] = None,
++    search_paths: Optional[List[Path]] = None,
++) -> HcProbe:
+     """Run ``hc -h`` once -- identity (FR-003) and startability (FR-004).
+ 
+     ``hc -h`` prints usage and exits before any ``-i`` is read (research
+@@ -740,11 +827,28 @@ def probe_hc(path: Union[str, Path], *, timeout: float = HC_PROBE_TIMEOUT_SECOND
+     Memoised for the process on ``(path, size, mtime_ns)``, so a reinstall
+     is re-probed. A timeout or a missing ``dotnet`` host is not memoised
+     (both are about the machine, not the file).
++
++    The FieldWorks host (``hc_fw.py``) is run with ``hc_host_env`` added to
++    the environment and, by default, the longer
++    ``HC_HOST_PROBE_TIMEOUT_SECONDS``; its memo key also carries the engine
++    directory, so a different FieldWorks install is re-probed.
+     """
+     path = Path(path)
++    host = is_hc_host(path)
++    if timeout is None:
++        timeout = HC_HOST_PROBE_TIMEOUT_SECONDS if host else HC_PROBE_TIMEOUT_SECONDS
++    env: Optional[Dict[str, str]] = None
++    if host:
++        env = dict(os.environ)
++        env.update(hc_host_env(search_paths))
+     try:
+         st = path.stat()
+-        key: Optional[tuple] = (str(path), st.st_size, st.st_mtime_ns)
++        key: Optional[tuple] = (
++            str(path),
++            st.st_size,
++            st.st_mtime_ns,
++            env.get(HC_HOST_ENGINE_DIR_ENV_VAR) if env is not None else None,
++        )
+     except OSError:
+         key = None
+     if key is not None and key in _HC_PROBE_CACHE:
+@@ -765,6 +869,7 @@ def probe_hc(path: Union[str, Path], *, timeout: float = HC_PROBE_TIMEOUT_SECOND
+             stdin=subprocess.DEVNULL,
+             capture_output=True,
+             timeout=timeout,
++            env=env,
+         )
+     except subprocess.TimeoutExpired:
+         return HcProbe(
+@@ -823,9 +928,11 @@ class HcToolDiscovery(ProbeResult):
+     invoke_argv: Optional[List[str]] = None
+ 
+ 
+-def _discovery_from_file(path: Path, source: str) -> HcToolDiscovery:
++def _discovery_from_file(
++    path: Path, source: str, search_paths: Optional[List[Path]] = None
++) -> HcToolDiscovery:
+     """Probe one file hit and shape it into an ``HcToolDiscovery``."""
+-    probe = probe_hc(path)
++    probe = probe_hc(path, search_paths=search_paths)
+     if not probe.found:
+         return HcToolDiscovery(
+             ok=False,
+@@ -842,7 +949,7 @@ def _discovery_from_file(path: Path, source: str) -> HcToolDiscovery:
+         ok=probe.starts is True,
+         signal=probe.signal,
+         expected_path=str(path),
+-        detected_version=_hc_tool_version(path),
++        detected_version=_hc_tool_version(path, search_paths=search_paths),
+         load_error=probe.reason,
+         found=True,
+         starts=probe.starts,
+@@ -857,33 +964,44 @@ def discover_hc_tool(
+     *,
+     override_path: Optional[Path] = None,
+     timeout: float = HC_DISCOVERY_TIMEOUT_SECONDS,
++    search_paths: Optional[List[Path]] = None,
+ ) -> HcToolDiscovery:
+     """Locate, identify and start-check the ``hc`` tool (SPEC 13 H1, CP5 FR-001..FR-005).
+ 
+-    ``hc`` is a **dotnet global tool** (``PackAsTool=true``,
+-    ``ToolCommandName=hc``, on nuget.org), installed by
+-    ``dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool`` into
++    The primary ``hc`` is the one FieldWorks makes possible: FieldWorks
++    ships the HermitCrab engine (``FIELDWORKS_HERMITCRAB_DLL``, the engine
++    behind Try A Word) but not the console tool, so the MCP packages the
++    tool's program itself (``hc_fw.py``, a line-for-line port of
++    SIL.Machine's ``Program.cs`` and commands) and runs it on that engine.
++    Its HermitCrab is therefore always FieldWorks' own version.
++
++    The stand-alone tool is still accepted: a **dotnet global tool**
++    (``PackAsTool=true``, ``ToolCommandName=hc``, on nuget.org), installed
++    by ``dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool`` into
+     the user's dotnet tools shim directory. It is emphatically **not** at
+     ``%LOCALAPPDATA%\\HermitCrabTool\\hc.dll`` -- an earlier, wrong draft of
+     the spec assumed that path; do not reintroduce it.
+ 
+-    Four sources, in order (FR-001); the one that succeeded is ``source``:
++    Five sources, in order (FR-001); the one that succeeded is ``source``:
+ 
+     1. ``"override"`` -- ``override_path``, else the ``HC_TOOL_PATH`` env
+        var. Final: a missing file, or one that is not HermitCrab, never
+        falls through to the other sources.
+-    2. ``"path"`` -- ``shutil.which("hc")``.
+-    3. ``"dotnet_tools_dir"`` -- ``<USERPROFILE>\\.dotnet\\tools\\hc.exe``,
++    2. ``"fieldworks"`` -- the packaged host, when the FieldWorks install
++       (``search_paths``, as everywhere else) holds the engine.
++    3. ``"path"`` -- ``shutil.which("hc")``.
++    4. ``"dotnet_tools_dir"`` -- ``<USERPROFILE>\\.dotnet\\tools\\hc.exe``,
+        checked directly (a server whose PATH predates the install).
+-    4. ``"dotnet_tool_list"`` -- ``dotnet tool list -g``, bounded by
+-       ``timeout``; it runs only when 1-3 found nothing HermitCrab. Its
++    5. ``"dotnet_tool_list"`` -- ``dotnet tool list -g``, bounded by
++       ``timeout``; it runs only when 1-4 found nothing HermitCrab. Its
+        timeout is ``signal="timeout"``, never folded into "not found".
+ 
+-    A file hit (1-3) is accepted as ``hc.exe`` or as ``hc.dll`` (run as
+-    ``dotnet hc.dll``) and is checked by one bounded ``hc -h`` run
+-    (``probe_hc``). A ``not_hermitcrab`` hit at 2 or 3 falls through; if
+-    nothing later finds hc, the first such rejection is returned. A
+-    listing hit (4) names the HermitCrab package, which is its identity
++    A file hit (1-4) is accepted as ``hc.exe``, as ``hc.dll`` (run as
++    ``dotnet hc.dll``) or as the host (run as ``python hc_fw.py``) and is
++    checked by one bounded ``hc -h`` run (``probe_hc``). A hit at 2-4 that
++    is not HermitCrab, or whose engine cannot start, falls through; if
++    nothing later finds a ready hc, the first such rejection is returned. A
++    listing hit (5) names the HermitCrab package, which is its identity
+     check, but has no file to run: ``found=True``, ``starts=None``, so it
+     never reads as ready.
+     """
+@@ -901,19 +1019,22 @@ def discover_hc_tool(
+                 source=HC_SOURCE_OVERRIDE,
+                 reason=reason,
+             )
+-        return _discovery_from_file(override, HC_SOURCE_OVERRIDE)
++        return _discovery_from_file(override, HC_SOURCE_OVERRIDE, search_paths)
+ 
+     first_rejected: Optional[HcToolDiscovery] = None
+     for source, find in (
++        (HC_SOURCE_FIELDWORKS, lambda: _find_hc_fieldworks(search_paths)),
+         (HC_SOURCE_PATH, _find_hc_via_path),
+         (HC_SOURCE_DOTNET_TOOLS_DIR, _find_hc_in_dotnet_tools_dir),
+     ):
+         candidate = find()
+         if candidate is None:
+             continue
+-        result = _discovery_from_file(candidate, source)
+-        if result.found:
++        result = _discovery_from_file(candidate, source, search_paths)
++        if result.found and (result.starts is True or source != HC_SOURCE_FIELDWORKS):
+             return result
++        # A host whose engine will not start falls through: a stand-alone hc
++        # later in the order may still run.
+         if first_rejected is None:
+             first_rejected = result
+ 
+@@ -1062,9 +1183,13 @@ def _version_sort_key(name: str) -> Tuple[int, Tuple[int, ...], str]:
+     return (1, numeric, name) if numeric is not None else (0, (), name)
+ 
+ 
+-def _hc_tool_version(path: Union[str, Path]) -> Optional[str]:
++def _hc_tool_version(
++    path: Union[str, Path], *, search_paths: Optional[List[Path]] = None
++) -> Optional[str]:
+     """The hc tool's version, for a file hit (R-03). Reported, never compared.
+ 
++    0. For the FieldWorks host, the ``FileVersion`` of the engine it runs:
++       FieldWorks' own ``FIELDWORKS_HERMITCRAB_DLL``.
+     1. The ``<ver>`` segment right after ``.store\\<HC_TOOL_PACKAGE_ID>\\``
+        when ``path`` lies inside the tool store (a ``.dll`` hit there).
+     2. A shim's sibling store: ``<shim dir>\\.store\\<package>\\<ver>\\``
+@@ -1076,6 +1201,11 @@ def _hc_tool_version(path: Union[str, Path]) -> Optional[str]:
+     ``discover_hc_tool``.)
+     """
+     path = Path(path)
++    if is_hc_host(path):
++        fieldworks_dir = get_resolved_fieldworks_dir(search_paths=search_paths)
++        if fieldworks_dir is None:
++            return None
++        return _safe_file_version(Path(fieldworks_dir) / FIELDWORKS_HERMITCRAB_DLL)
+     parts = path.parts
+     lowered = [part.lower() for part in parts]
+     for index in range(len(lowered) - 2):
+@@ -1535,7 +1665,8 @@ class ParserDetector:
+         )
+ 
+         hc_probe: ProbeResult = _safe_probe(
+-            discover_hc_tool, expected_path=HC_EXPECTED_PATH_DESCRIPTION
++            lambda: discover_hc_tool(search_paths=search_paths),
++            expected_path=HC_EXPECTED_PATH_DESCRIPTION,
+         )
+         generate_config_probe: ProbeResult = _safe_probe(
+             lambda: discover_generate_hc_config(search_paths=search_paths)
+diff --git a/src/flextoolsmcp/server/sandbox/client.py b/src/flextoolsmcp/server/sandbox/client.py
+index a779b97..428ed23 100644
+--- a/src/flextoolsmcp/server/sandbox/client.py
++++ b/src/flextoolsmcp/server/sandbox/client.py
+@@ -63,6 +63,7 @@ import asyncio
+ import codecs
+ import contextlib
+ import logging
++import os
+ import sys
+ import time
+ import unicodedata
+@@ -70,6 +71,7 @@ from dataclasses import dataclass, fields
+ from pathlib import Path
+ from typing import Any, Callable, Dict, List, Mapping, Optional, Union
+ 
++from .. import parser_probe
+ from ..parse.worker_client import WorkerError
+ from . import cache, classify, engine, hc_output, script, workdir
+ 
+@@ -146,7 +148,8 @@ class SandboxLaunch:
+     `config_path` None means the project cache (engine check, generation on
+     a miss); a path is a named sandbox's `hc-config.xml`, used as it is.
+     `hc_invoke_argv` is accepted for the record only: the script itself
+-    runs a `.dll` through `dotnet` (contracts/hcparse.md section 2).
++    runs a `.dll` through `dotnet` and the FieldWorks host `.py` through
++    `-PythonPath` (contracts/hcparse.md section 2).
+     """
+ 
+     fwdata_path: str
+@@ -223,11 +226,15 @@ class SandboxRunError(WorkerError):
+ def _parse_argv(launch: SandboxLaunch, *, config: PathLike, word_file: PathLike,
+                 run_dir: PathLike) -> List[str]:
+     """The script's argv (FR-022: a list, never a command string):
+-    `-Mode Test -AssertionFile` for a corpus run, else `-Mode Parse -WordFile`."""
++    `-Mode Test -AssertionFile` for a corpus run, else `-Mode Parse -WordFile`.
++    The FieldWorks host (`hc_fw.py`) also gets `-PythonPath`: this
++    interpreter, which has pythonnet."""
++    python = sys.executable if parser_probe.is_hc_host(launch.hc_path) else None
+     if launch.mode == MODE_TEST:
+         return script.build_argv(
+             "Test",
+             HcPath=str(launch.hc_path),
++            PythonPath=python,
+             Config=str(config),
+             AssertionFile=str(launch.assertion_file),
+             RunDir=str(run_dir),
+@@ -236,6 +243,7 @@ def _parse_argv(launch: SandboxLaunch, *, config: PathLike, word_file: PathLike,
+     return script.build_argv(
+         "Parse",
+         HcPath=str(launch.hc_path),
++        PythonPath=python,
+         Config=str(config),
+         WordFile=str(word_file),
+         RunDir=str(run_dir),
+@@ -243,6 +251,16 @@ def _parse_argv(launch: SandboxLaunch, *, config: PathLike, word_file: PathLike,
+     )
+ 
+ 
++def _script_env(launch: SandboxLaunch) -> Optional[Dict[str, str]]:
++    """The script's environment: inherited, plus the engine directory when
++    hc is the FieldWorks host (`hcparse.ps1` passes it on to the host)."""
++    if not parser_probe.is_hc_host(launch.hc_path):
++        return None
++    env = dict(os.environ)
++    env.update(parser_probe.hc_host_env())
++    return env
++
++
+ def _same_word(hc_word: Optional[str], sent_word: str) -> bool:
+     """hc echoes its argument verbatim, unquoted (ParseCommand.cs /
+     TestCommand.cs: `Parsing "{0}"` / `Testing "{0}"` after SplitCommandLine
+@@ -378,6 +396,7 @@ class SandboxClient:
+             stdin=asyncio.subprocess.DEVNULL,
+             stdout=asyncio.subprocess.DEVNULL,
+             stderr=asyncio.subprocess.DEVNULL,
++            env=_script_env(self._launch),
+             **extra,
+         )
+         self._launched_at = time.monotonic()

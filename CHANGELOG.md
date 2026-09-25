@@ -187,8 +187,8 @@ resolved, resolved from a foreign install, is missing an expected member, or
 threw while loading), `parser_agent_missing` (the HermitCrab agent record
 could not be resolved off the active `LangProject`, in place of letting a
 `KeyNotFoundException` propagate out of a handler), and `parser_tool_missing`
-(an external HC tool -- the `hc` CLI or `GenerateHCConfig.exe` -- is not on
-the expected path). All four are purely additive: `tool-responses/1.0` does
+(a HermitCrab component FieldWorks should supply -- its bundled HermitCrab
+engine or `GenerateHCConfig.exe` -- is not on the expected path). All four are purely additive: `tool-responses/1.0` does
 not move, and no existing response shape changes. The hand-maintained error
 code count in `docs/TOOL-CONTRACT.md` moves from 18 to 22 accordingly.
 
@@ -286,8 +286,10 @@ an empty one.
 Parser-check CP5 adds the sandbox spine: a new read-only tool,
 `flextools_parse_sandbox` (`action`: `parse`, `create_sandbox`,
 `seed_corpus`, `run_corpus`, `list`), parses words against an exported copy
-of the grammar with the stand-alone `hc` tool and never opens or writes the
-live project. It writes only under `~/.flextoolsmcp/parse/` and the run-record
+of the grammar with FieldWorks' own bundled HermitCrab engine (the one Try A
+Word uses), loaded in a separate parse worker with no project open, so it
+never opens or writes the live project. No separate `hc` console tool is
+needed. It writes only under `~/.flextoolsmcp/parse/` and the run-record
 directory. Two new error codes come with it: `parser_config_failed`
 (`exit_code`, `stderr_tail`, `log_path`, `run_id` -- `GenerateHCConfig.exe`
 did not produce a config, judged from its output rather than its exit code;

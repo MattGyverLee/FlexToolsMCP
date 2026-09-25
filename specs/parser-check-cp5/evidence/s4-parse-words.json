@@ -1,0 +1,449 @@
+{
+  "scenario": "S4",
+  "project": "CP5-Scratch-IndonesianHC-Complete-20260925T063100",
+  "source_project": "IndonesianHC-Complete",
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP5-Scratch-IndonesianHC-Complete-20260925T063100",
+      "before": {
+        "sha256": "6b653ff5d357dedce4022faa2bf66dd995a2de90f0b84261c5828c487fca060d",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      },
+      "after": {
+        "sha256": "6b653ff5d357dedce4022faa2bf66dd995a2de90f0b84261c5828c487fca060d",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      }
+    }
+  ],
+  "responses": {
+    "parse": {
+      "status": "ok",
+      "run_id": "d2a0c6fef1355359713e6f514803787f",
+      "project": "CP5-Scratch-IndonesianHC-Complete-20260925T063100",
+      "stage": "completed",
+      "words_completed": 8,
+      "words_total": 8,
+      "interleaved_by": null,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "dɑlɑm",
+          "ma'af",
+          "memukul",
+          "mɑnis",
+          "pukul",
+          "wɑkil",
+          "xqzvbw",
+          "ɑnɑk"
+        ],
+        "text_ids": [],
+        "word_count": 8,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": ""
+      },
+      "engine_at_submission": "HC",
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 8,
+        "NumParseErrors": 0,
+        "NumZeroParses": 0,
+        "TotalParseTime": 186,
+        "TotalAnalyses": 6,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 6
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "result_summary": {
+        "words": 8,
+        "parsed": 6,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\d2a0c6fef1355359713e6f514803787f",
+        "outcomes": {
+          "parsed": 6,
+          "not_parsed": 0,
+          "invalid_segment": 2,
+          "not_expressible": 0,
+          "error_no_output": 0,
+          "not_reached": 0
+        },
+        "counters": "ok"
+      },
+      "spine": "sandbox",
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "d2a0c6fef1355359713e6f514803787f",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ],
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\d2a0c6fef1355359713e6f514803787f",
+      "_submitted": {
+        "status": "ok",
+        "action": "parse",
+        "project": "CP5-Scratch-IndonesianHC-Complete-20260925T063100",
+        "run_id": "d2a0c6fef1355359713e6f514803787f",
+        "run_started": true,
+        "stage": "parsing",
+        "words_completed": 2,
+        "words_total": 8,
+        "truncated_by_limit": false,
+        "scope_fingerprint": {
+          "scope_kind": "words",
+          "scope_value": [
+            "dɑlɑm",
+            "ma'af",
+            "memukul",
+            "mɑnis",
+            "pukul",
+            "wɑkil",
+            "xqzvbw",
+            "ɑnɑk"
+          ],
+          "text_ids": [],
+          "word_count": 8,
+          "limit": null,
+          "truncated": false,
+          "engine": "HC",
+          "vernacular_ws": ""
+        },
+        "engine_at_submission": "HC",
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\d2a0c6fef1355359713e6f514803787f",
+        "project_state": {
+          "access": "free"
+        },
+        "spine": "sandbox",
+        "config_source": {
+          "kind": "project_cache",
+          "cache_key": "4a19c38373c9a439"
+        },
+        "versions": {
+          "fieldworks_hermitcrab": "3.8.2.0",
+          "generate_hc_config": "9.3.11.2703",
+          "hcparse": "6.0.0"
+        },
+        "advisories": [],
+        "generation": {
+          "reused_cache": false,
+          "cache_key": "4a19c38373c9a439",
+          "load_error_count": 0,
+          "load_errors": []
+        },
+        "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results.",
+        "note": "The run is going in the background and was not slowed or limited by this call returning. Poll the run for progress.",
+        "next_step": [
+          {
+            "action": "Poll again for this run.",
+            "tool": "flextools_parse_status",
+            "args": {
+              "run_id": "d2a0c6fef1355359713e6f514803787f"
+            },
+            "rationale": "The run is in 'parsing' and is still going. It was not slowed or throttled by being polled.",
+            "est_cost": "instant"
+          }
+        ],
+        "_contract": "tool-responses/1.0",
+        "workspace_notice": {
+          "detected_repo": "flextools-mcp",
+          "repo_root": "C:\\Github\\FlexToolsMCP",
+          "cwd": "C:\\Github\\FlexToolsMCP",
+          "running_from_this_checkout": true,
+          "message": "Working directory is inside a FlexToolsMCP source checkout (C:\\Github\\FlexToolsMCP). This is not a good place to write FLEx scripts: the assistant tends to grep the bundled API index, templates, and specs/ instead of calling the flextools_* tools that serve the same data already parsed. This is also the copy of the server that is running (source or editable install). That is normal for maintainers of FlexToolsMCP; if that is you, set FLEXTOOLSMCP_NO_WORKSPACE_CHECK=1 to silence this notice.\n\nRecommended: open an empty folder for this work instead -- e.g. `mkdir \"C:\\Users\\thoua\\flex-scripts\"` then reopen the assistant there. Your scripts live in your folder; the MCP keeps serving the API from wherever it is installed.",
+          "suggested_workspace": "C:\\Users\\thoua\\flex-scripts",
+          "assistant_directive": [
+            "Do NOT answer FLEx API questions by reading, grepping, or globbing files in this checkout. Use flextools_search_by_capability, flextools_get_object_api, flextools_resolve_property, and flextools_find_examples -- they serve the same data, already parsed.",
+            "Do NOT parse LCM model XML, .fwdata, or C#/Python library source to infer behaviour. Query the API index, and run code through flextools_run_module.",
+            "Do NOT hand-copy a template out of the repo. Call flextools_get_module_template(flavor='flexicon').",
+            "Relay this notice to the user and offer to move to an empty folder before continuing."
+          ],
+          "opt_out_env_var": "FLEXTOOLSMCP_NO_WORKSPACE_CHECK"
+        }
+      }
+    }
+  },
+  "observations": {
+    "words": [
+      "pukul",
+      "memukul",
+      "dɑlɑm",
+      "mɑnis",
+      "ɑnɑk",
+      "wɑkil",
+      "ma'af",
+      "xqzvbw"
+    ],
+    "results": [
+      {
+        "index": 0,
+        "wordform": "dɑlɑm",
+        "parse": {
+          "parsed": true,
+          "analysis_count": 1,
+          "outcome": "parsed",
+          "analyses": [
+            {
+              "signature": null,
+              "rendered_morphs": [
+                "dɑlɑm"
+              ],
+              "morphs": [
+                {
+                  "form": "dɑlɑm",
+                  "gloss": "within",
+                  "guessed": false,
+                  "is_circumfix": false,
+                  "user_added": false
+                }
+              ],
+              "guessed": false,
+              "readable": true,
+              "raw": null
+            }
+          ],
+          "position": null,
+          "flags": [],
+          "parse_time_ms": 142
+        }
+      },
+      {
+        "index": 1,
+        "wordform": "ma'af",
+        "parse": {
+          "parsed": false,
+          "analysis_count": 0,
+          "outcome": "invalid_segment",
+          "analyses": null,
+          "position": 2,
+          "flags": [],
+          "parse_time_ms": null
+        }
+      },
+      {
+        "index": 2,
+        "wordform": "memukul",
+        "parse": {
+          "parsed": true,
+          "analysis_count": 1,
+          "outcome": "parsed",
+          "analyses": [
+            {
+              "signature": null,
+              "rendered_morphs": [
+                "meŋ",
+                "pukul"
+              ],
+              "morphs": [
+                {
+                  "form": "meŋ",
+                  "gloss": "VBL",
+                  "guessed": false,
+                  "is_circumfix": false,
+                  "user_added": false
+                },
+                {
+                  "form": "pukul",
+                  "gloss": "hit",
+                  "guessed": false,
+                  "is_circumfix": false,
+                  "user_added": false
+                }
+              ],
+              "guessed": false,
+              "readable": true,
+              "raw": null
+            }
+          ],
+          "position": null,
+          "flags": [],
+          "parse_time_ms": 24
+        }
+      },
+      {
+        "index": 3,
+        "wordform": "mɑnis",
+        "parse": {
+          "parsed": true,
+          "analysis_count": 1,
+          "outcome": "parsed",
+          "analyses": [
+            {
+              "signature": null,
+              "rendered_morphs": [
+                "mɑnis"
+              ],
+              "morphs": [
+                {
+                  "form": "mɑnis",
+                  "gloss": "sweet",
+                  "guessed": false,
+                  "is_circumfix": false,
+                  "user_added": false
+                }
+              ],
+              "guessed": false,
+              "readable": true,
+              "raw": null
+            }
+          ],
+          "position": null,
+          "flags": [],
+          "parse_time_ms": 1
+        }
+      },
+      {
+        "index": 4,
+        "wordform": "pukul",
+        "parse": {
+          "parsed": true,
+          "analysis_count": 1,
+          "outcome": "parsed",
+          "analyses": [
+            {
+              "signature": null,
+              "rendered_morphs": [
+                "pukul"
+              ],
+              "morphs": [
+                {
+                  "form": "pukul",
+                  "gloss": "hit",
+                  "guessed": false,
+                  "is_circumfix": false,
+                  "user_added": false
+                }
+              ],
+              "guessed": false,
+              "readable": true,
+              "raw": null
+            }
+          ],
+          "position": null,
+          "flags": [],
+          "parse_time_ms": 2
+        }
+      },
+      {
+        "index": 5,
+        "wordform": "wɑkil",
+        "parse": {
+          "parsed": true,
+          "analysis_count": 1,
+          "outcome": "parsed",
+          "analyses": [
+            {
+              "signature": null,
+              "rendered_morphs": [
+                "wɑkil"
+              ],
+              "morphs": [
+                {
+                  "form": "wɑkil",
+                  "gloss": "represent",
+                  "guessed": false,
+                  "is_circumfix": false,
+                  "user_added": false
+                }
+              ],
+              "guessed": false,
+              "readable": true,
+              "raw": null
+            }
+          ],
+          "position": null,
+          "flags": [],
+          "parse_time_ms": 2
+        }
+      },
+      {
+        "index": 6,
+        "wordform": "xqzvbw",
+        "parse": {
+          "parsed": false,
+          "analysis_count": 0,
+          "outcome": "invalid_segment",
+          "analyses": null,
+          "position": 1,
+          "flags": [],
+          "parse_time_ms": null
+        }
+      },
+      {
+        "index": 7,
+        "wordform": "ɑnɑk",
+        "parse": {
+          "parsed": true,
+          "analysis_count": 1,
+          "outcome": "parsed",
+          "analyses": [
+            {
+              "signature": null,
+              "rendered_morphs": [
+                "ɑnɑk"
+              ],
+              "morphs": [
+                {
+                  "form": "ɑnɑk",
+                  "gloss": "child",
+                  "guessed": false,
+                  "is_circumfix": false,
+                  "user_added": false
+                }
+              ],
+              "guessed": false,
+              "readable": true,
+              "raw": null
+            }
+          ],
+          "position": null,
+          "flags": [],
+          "parse_time_ms": 15
+        }
+      }
+    ],
+    "wall_seconds": 7.105506400010199,
+    "parameters_source": "cache",
+    "project_parameters": {
+      "del_reapps": 0,
+      "max_roots": 2,
+      "merge_analyses": true,
+      "guess_roots": true,
+      "max_alternatives": 0
+    },
+    "applied_parameters": {
+      "del_reapps": 0,
+      "guess_roots": true,
+      "max_alternatives": 0,
+      "max_roots": 2,
+      "merge_analyses": true
+    },
+    "parameters_applied": [
+      "del_reapps",
+      "max_roots",
+      "merge_analyses",
+      "guess_roots"
+    ],
+    "engine_version": "3.8.2.0"
+  },
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:31:09.649804+00:00"
+}

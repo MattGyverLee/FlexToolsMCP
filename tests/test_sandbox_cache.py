@@ -146,6 +146,7 @@ TEMPLATE_KINDS = [
 KEY_JSON_KEYS = {
     "schema", "cache_key", "inputs", "active_parser", "created_at",
     "last_used_at", "invalidated_at", "generation", "versions",
+    "hc_parameters", "lcm_ids_path",
 }
 INPUT_KEYS = [
     "fwdata_path", "fwdata_size", "fwdata_mtime_ns",
@@ -482,6 +483,18 @@ async def test_cold_build_writes_entry_and_key_json(
                                 "fieldworks_hermitcrab": "3.8.2.0"}
     assert entry.meta == meta
     assert _partials(fake_project) == []
+    # T099: the sidecar and the Morpher settings, neither in the key.
+    assert meta["lcm_ids_path"] == "lcm-ids.json"
+    assert entry.lcm_ids_path == entry.path / "lcm-ids.json"
+    sidecar = json.loads(entry.lcm_ids_path.read_text(encoding="utf-8"))
+    assert sidecar == {"schema": "flextoolsmcp.hc-lcm-ids/1", "valid": True,
+                       "ids": {}, "invalid_ids": [], "error": None,
+                       "vernacular_ws": None}
+    # conftest's fake project stores <HC><GuessRoots>false</GuessRoots>.
+    assert meta["hc_parameters"] == {"del_reapps": 0, "max_roots": 2,
+                                     "merge_analyses": True, "guess_roots": False,
+                                     "max_alternatives": 0}
+    assert entry.hc_parameters == meta["hc_parameters"]
 
 
 async def test_build_argv_generate_params(sandbox_root, fake_project, fake_generator):
@@ -1148,3 +1161,253 @@ async def test_real_script_sc006_warm_skips_generation(
     assert cold.built is True and warm.built is False
     assert len(fake_generator.invocations()) == 1
     assert warm_s * 2 < cold_s
+
+
+# --------------------------------------------------------------------------
+# T099: lcm-ids.json (FR-050, D4 reversed) and key.json hc_parameters (D3)
+# --------------------------------------------------------------------------
+
+_CIRCUMFIX = "d7f713df-e8cf-11d3-9764-00c04f186933"
+
+
+def _fwdata_with(rts, params="<ParserParameters><ActiveParser>HC</ActiveParser>"
+                 "<HC><MaxRoots>3</MaxRoots></HC></ParserParameters>"):
+    """A .fwdata whose n-th <rt> (1-based) is rts[n-1] = (class, morph_type_guid)."""
+    from xml.sax.saxutils import escape
+
+    body = []
+    for n, (cls, morph_type) in enumerate(rts, start=1):
+        inner = ""
+        if morph_type:
+            inner = '<MorphType><objsur guid="%s" t="r" /></MorphType>' % morph_type
+        if cls == "MoMorphData":
+            inner = "<ParserParameters><Uni>%s</Uni></ParserParameters>" % escape(params)
+        body.append('<rt class="%s" guid="00000000-0000-0000-0000-%012d">%s</rt>'
+                    % (cls, n, inner))
+    return ('<?xml version="1.0" encoding="utf-8"?>\n<languageproject version="7000072">\n'
+            + "\n".join(body) + "\n</languageproject>\n")
+
+
+def _props(**named):
+    return "<Properties>%s</Properties>" % "".join(
+        '<Property name="%s">%s</Property>' % (k, v) for k, v in named.items())
+
+
+def _config_with(entries):
+    """entries: [(allomorph_props, morpheme_props, tag)] -> an HC config."""
+    parts = []
+    for i, (allo, morph, tag) in enumerate(entries):
+        if tag == "LexicalEntry":
+            parts.append('<LexicalEntry id="e%d"><Allomorphs><Allomorph id="a%d">'
+                         "<PhoneticShape>x</PhoneticShape>%s</Allomorph></Allomorphs>"
+                         "<Gloss>g</Gloss>%s</LexicalEntry>"
+                         % (i, i, _props(**allo), _props(**morph)))
+        else:
+            parts.append('<MorphologicalRule id="r%d"><MorphologicalSubrules>'
+                         '<MorphologicalSubrule id="s%d">%s</MorphologicalSubrule>'
+                         "</MorphologicalSubrules><Gloss>g</Gloss>%s</MorphologicalRule>"
+                         % (i, i, _props(**allo), _props(**morph)))
+    stratum_props = _props(ID=999)
+    return ('<?xml version="1.0" encoding="utf-8"?><HermitCrabInput><Language>'
+            "<Strata><Stratum>%s%s</Stratum></Strata></Language></HermitCrabInput>"
+            % ("".join(parts), stratum_props))
+
+
+def _lcm_ids():
+    return importlib.import_module("flextoolsmcp.server.sandbox.lcm_ids")
+
+
+def _build(tmp_path, rts, entries, **kw):
+    fw = tmp_path / "P.fwdata"
+    fw.write_text(_fwdata_with(rts), encoding="utf-8")
+    cfg = tmp_path / "hc-config.xml"
+    cfg.write_text(_config_with(entries), encoding="utf-8")
+    return _lcm_ids().build(cfg, fw, **kw)
+
+
+_RTS = [
+    ("LangProject", None),                                          # 1
+    ("MoStemAllomorph", "d7f713e5-e8cf-11d3-9764-00c04f186933"),    # 2
+    ("MoStemMsa", None),                                            # 3
+    ("MoAffixProcess", _CIRCUMFIX),                                 # 4
+    ("MoDerivAffMsa", None),                                        # 5
+    ("LexEntryInflType", None),                                     # 6
+    ("MoMorphData", None),                                          # 7
+    ("MoAffixAllomorph", "d7f713dd-e8cf-11d3-9764-00c04f186933"),   # 8
+]
+
+
+def test_sidecar_maps_each_role_by_rt_document_order(tmp_path):
+    from flextoolsmcp.server.sandbox import engine
+
+    doc, params = _build(tmp_path, _RTS, [
+        ({"ID": 2}, {"ID": 3, "InflTypeID": 6}, "LexicalEntry"),
+        ({"ID": 4, "ID2": 8}, {"ID": 5}, "MorphologicalRule"),
+    ])
+    assert doc["schema"] == "flextoolsmcp.hc-lcm-ids/1"
+    assert doc["valid"] is True and doc["invalid_ids"] == [] and doc["error"] is None
+    ids = doc["ids"]
+    assert set(ids) == {"2", "3", "4", "5", "6", "8"}
+    assert ids["2"] == {"class": "MoStemAllomorph", "role": "form",
+                        "guid": "00000000-0000-0000-0000-000000000002",
+                        "morph_type_guid": "d7f713e5-e8cf-11d3-9764-00c04f186933"}
+    assert ids["4"]["morph_type_guid"] == _CIRCUMFIX and ids["4"]["role"] == "form"
+    assert ids["8"]["role"] == "form"
+    assert ids["3"] == {"class": "MoStemMsa", "role": "msa",
+                        "guid": "00000000-0000-0000-0000-000000000003"}
+    assert ids["6"]["role"] == "infl_type" and "morph_type_guid" not in ids["6"]
+    # A Stratum's Properties are not read by GetMorphs: id 999 is ignored.
+    assert "999" not in ids and doc["valid"]
+    # The same pass yields the ParserParameters text.
+    assert engine.hc_parameters_from_text(params)["max_roots"] == 3
+
+
+def test_form_ids_carry_their_default_vernacular_form_text(tmp_path):
+    """FLEx shows a morph's allomorph form, so the map records each form
+    id's `Form` in the first `CurVernWss` writing system (FR-050)."""
+    fw = tmp_path / "P.fwdata"
+    rts = (
+        '<rt class="LangProject" guid="00000000-0000-0000-0000-000000000001">'
+        "<CurVernWss><Uni>id-fonipa id</Uni></CurVernWss></rt>"
+        '<rt class="MoAffixAllomorph" guid="00000000-0000-0000-0000-000000000002">'
+        '<Form><AUni ws="id">meng</AUni><AUni ws="id-fonipa">meŋ</AUni></Form>'
+        '<MorphType><objsur guid="d7f713db-e8cf-11d3-9764-00c04f186933" t="r" /></MorphType></rt>'
+        '<rt class="MoStemMsa" guid="00000000-0000-0000-0000-000000000003"></rt>'
+        '<rt class="MoStemAllomorph" guid="00000000-0000-0000-0000-000000000004">'
+        '<Form><AUni ws="id">pukul</AUni></Form></rt>'
+    )
+    fw.write_text('<?xml version="1.0" encoding="utf-8"?>\n<languageproject version="7000072">'
+                  + rts + "</languageproject>\n", encoding="utf-8")
+    cfg = tmp_path / "hc-config.xml"
+    cfg.write_text(_config_with([({"ID": 2}, {"ID": 3}, "LexicalEntry"),
+                                 ({"ID": 4}, {"ID": 3}, "LexicalEntry")]), encoding="utf-8")
+    doc, _ = _lcm_ids().build(cfg, fw)
+    assert doc["valid"] is True and doc["vernacular_ws"] == "id-fonipa"
+    assert doc["ids"]["2"]["form"] == "meŋ"
+    # No text in the default vernacular: no `form`, so the worker keeps the surface.
+    assert "form" not in doc["ids"]["4"]
+    assert "form" not in doc["ids"]["3"] and "forms" not in doc["ids"]["2"]
+
+
+def test_zero_form_ids_and_infl_type_are_not_looked_up(tmp_path):
+    doc, _ = _build(tmp_path, _RTS, [
+        ({"ID": 0}, {"ID": 3, "InflTypeID": 0}, "LexicalEntry"),
+        ({"ID": 4, "ID2": 0}, {"ID": 5}, "MorphologicalRule"),
+    ])
+    assert doc["valid"] is True and set(doc["ids"]) == {"3", "4", "5"}
+
+
+@pytest.mark.parametrize("entries, bad", [
+    ([({"ID": 3}, {"ID": 5}, "LexicalEntry")], "3"),                    # an MSA as a form
+    ([({"ID": 2}, {"ID": 2}, "LexicalEntry")], "2"),                    # one id, two roles
+    ([({"ID": 2}, {"ID": 40}, "LexicalEntry")], "40"),                  # past the last rt
+    ([({"ID": 2}, {"ID": 3, "InflTypeID": 5}, "LexicalEntry")], "5"),   # not an infl type
+    ([({"ID": "x7"}, {"ID": 3}, "LexicalEntry")], "x7"),                # not an integer
+    ([({"ID": 2}, {"ID": 0}, "LexicalEntry")], "0"),                    # a 0 MSA
+])
+def test_any_unresolved_id_marks_the_whole_map_invalid(tmp_path, entries, bad):
+    doc, _ = _build(tmp_path, _RTS, entries)
+    assert doc["valid"] is False
+    assert bad in doc["invalid_ids"]
+    assert bad not in doc["ids"]
+
+
+def test_source_that_moved_is_invalid(tmp_path):
+    lcm_ids = _lcm_ids()
+    fw = tmp_path / "P.fwdata"
+    fw.write_text(_fwdata_with(_RTS), encoding="utf-8")
+    st = fw.stat()
+    cfg = tmp_path / "hc-config.xml"
+    cfg.write_text(_config_with([({"ID": 2}, {"ID": 3}, "LexicalEntry")]), encoding="utf-8")
+    doc, params = lcm_ids.build(cfg, fw, expected_key=(str(fw), st.st_size + 1, st.st_mtime_ns))
+    assert doc["valid"] is False and doc["error"] == "source_changed" and params is None
+    doc, _ = lcm_ids.build(cfg, fw, expected_key=(str(fw), st.st_size, st.st_mtime_ns))
+    assert doc["valid"] is True
+
+
+def test_unreadable_inputs_are_invalid_never_raise(tmp_path):
+    lcm_ids = _lcm_ids()
+    cfg = tmp_path / "hc-config.xml"
+    cfg.write_text(_config_with([({"ID": 2}, {"ID": 3}, "LexicalEntry")]), encoding="utf-8")
+    doc, params = lcm_ids.build(cfg, tmp_path / "missing.fwdata")
+    assert doc["valid"] is False and doc["error"] == "read_error" and params is None
+    (tmp_path / "bad.xml").write_text("<HermitCrabInput>", encoding="utf-8")
+    doc, _ = lcm_ids.build(tmp_path / "bad.xml", tmp_path / "missing.fwdata")
+    assert doc["valid"] is False and doc["error"] == "config_unparseable"
+
+
+def test_read_returns_none_for_absent_or_foreign(tmp_path):
+    lcm_ids = _lcm_ids()
+    assert lcm_ids.read(tmp_path / "none.json") is None
+    (tmp_path / "x.json").write_text('{"schema": "other"}', encoding="utf-8")
+    assert lcm_ids.read(tmp_path / "x.json") is None
+    (tmp_path / "y.json").write_text("{not json", encoding="utf-8")
+    assert lcm_ids.read(tmp_path / "y.json") is None
+    good = {"schema": lcm_ids.SCHEMA, "valid": True, "ids": {}, "invalid_ids": [],
+            "error": None}
+    (tmp_path / "z.json").write_text(json.dumps(good), encoding="utf-8")
+    assert lcm_ids.read(tmp_path / "z.json") == good
+
+
+def test_sidecar_module_imports_no_lcm():
+    code = ("import sys; import flextoolsmcp.server.sandbox.lcm_ids; "
+            "bad=[m for m in sys.modules if m.split('.')[0] in "
+            "('flexicon','flexlibs','clr','pythonnet','SIL')]; print(bad)")
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                         check=True).stdout.strip()
+    assert out == "[]"
+
+
+class _IdConfigScript(EmulatedScript):
+    """Generates, then replaces the config with one that references ids."""
+
+    def __init__(self, config_text, touch=None):
+        super().__init__()
+        self.config_text = config_text
+        self.touch = touch
+
+    async def __call__(self, argv):
+        code = await super().__call__(argv)
+        _mode, params = _argv_params(argv)
+        Path(params["ConfigOut"]).write_text(self.config_text, encoding="utf-8")
+        if self.touch is not None:
+            self.touch()
+        return code
+
+
+async def test_build_reads_an_explicit_id_source(
+        sandbox_root, fake_project, fake_generator, tmp_path):
+    cache = _cache()
+    copy = tmp_path / "copy.fwdata"
+    copy.write_text(_fwdata_with(_RTS), encoding="utf-8")
+    runner = _IdConfigScript(_config_with([({"ID": 2}, {"ID": 3}, "LexicalEntry")]))
+    entry = await _ensure(cache, fake_project, fake_generator, runner=runner,
+                          id_source=copy)
+    sidecar = json.loads(entry.lcm_ids_path.read_text(encoding="utf-8"))
+    assert sidecar["valid"] is True and set(sidecar["ids"]) == {"2", "3"}
+    # The copy's parameters, not the live file's.
+    assert entry.hc_parameters["max_roots"] == 3
+    inputs = cache.key_inputs(fake_project.fwdata, fake_generator.path)
+    assert entry.key == cache.compute_key(inputs)  # neither addition is in the key
+
+
+async def test_live_source_moving_during_build_gives_invalid_map(
+        sandbox_root, fake_project, fake_generator):
+    cache = _cache()
+
+    def touch():
+        text = fake_project.fwdata.read_text(encoding="utf-8")
+        fake_project.fwdata.write_text(text + "\n", encoding="utf-8")
+
+    runner = _IdConfigScript(_config_with([({"ID": 2}, {"ID": 3}, "LexicalEntry")]),
+                             touch=touch)
+    entry = await _ensure(cache, fake_project, fake_generator, runner=runner)
+    sidecar = json.loads(entry.lcm_ids_path.read_text(encoding="utf-8"))
+    assert sidecar["valid"] is False and sidecar["error"] == "source_changed"
+    assert entry.hc_parameters is None and entry.meta["hc_parameters"] is None
+
+
+def test_entry_predating_the_keys_reads_none(tmp_path):
+    cache = _cache()
+    entry = cache.CacheEntry(project="P", key="0" * 16, path=tmp_path, meta={"schema": "x"})
+    assert entry.lcm_ids_path is None and entry.hc_parameters is None

@@ -291,8 +291,25 @@ def _tolerate_sandbox_ws(
 
 
 def _engine_version(meta: Optional[RunMeta]) -> Optional[str]:
+    """The HermitCrab version a sandbox run parsed with.
+
+    CP5 re-plan: the worker reports the bundled engine's `FileVersion` per
+    run (`engine_version`, else `versions.fieldworks_hermitcrab`). A record
+    from the retired `hc` CLI era carries `versions.hc_tool` instead.
+    """
+    sandbox = _sandbox(meta)
+    versions = sandbox.get("versions") or {}
+    versions = versions if isinstance(versions, dict) else {}
+    if versions.get("hc_tool"):
+        return versions["hc_tool"]
+    return sandbox.get("engine_version") or versions.get("fieldworks_hermitcrab")
+
+
+def _ran_bundled_engine(meta: Optional[RunMeta]) -> bool:
+    """A sandbox run on FieldWorks' own HermitCrab (the in-process worker
+    design), rather than on a separately installed `hc` tool."""
     versions = _sandbox(meta).get("versions") or {}
-    return versions.get("hc_tool") if isinstance(versions, dict) else None
+    return not (isinstance(versions, dict) and versions.get("hc_tool"))
 
 
 def _comparison_block(
@@ -316,13 +333,17 @@ def _comparison_block(
             same_engine_version = None
     else:
         # In-process reads the live project; the sandbox reads a generated
-        # configuration. The sandbox side's recorded skew between hc and the
-        # FieldWorks HermitCrab is the only engine-version evidence there is.
+        # configuration. Since the CP5 re-plan the sandbox runs FieldWorks'
+        # own bundled HermitCrab, the engine the in-process spine uses, so a
+        # sandbox run that recorded that engine's version is the same engine.
+        # An `hc`-era record keeps its recorded skew as the only evidence.
         same_config_source = False
-        skew = _sandbox(before if before_spine == SPINE_SANDBOX else after).get(
-            "version_skew"
-        )
-        same_engine_version = (not skew) if isinstance(skew, bool) else None
+        sandbox_meta = before if before_spine == SPINE_SANDBOX else after
+        if _ran_bundled_engine(sandbox_meta):
+            same_engine_version = True if _engine_version(sandbox_meta) else None
+        else:
+            skew = _sandbox(sandbox_meta).get("version_skew")
+            same_engine_version = (not skew) if isinstance(skew, bool) else None
 
     sentences = []
     if not same_spine:

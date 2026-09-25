@@ -28,6 +28,7 @@ __all__ = [
     "NO_RECOVERY_WARNING",
     "SEND_RECEIVE_ROUTE",
     "SHARED_MODE_ADVISORY",
+    "SHARING_ENABLED_ADVISORY",
     "ERRORED_WORD_RULE",
     "IN_USE_APPROVALS",
     "HYPOTHESIS_NOTE",
@@ -64,6 +65,16 @@ SHARED_MODE_ADVISORY = (
     "non-master peer. Make sure FLEx's own parser is not running on this "
     "project. The MCP cannot detect whether it is, and filing by both at once "
     "is not prevented."
+)
+
+#: FR-030, when project sharing is enabled but FieldWorks does not have the
+#: project open: LCM still opens it through the shared backend, so filing runs
+#: as a peer, but no other program is holding it.
+SHARING_ENABLED_ADVISORY = (
+    "Project sharing is enabled for this project, so filing opens it through "
+    "FieldWorks' shared backend. FieldWorks does not have the project open now; "
+    "if FLEx is started while the run goes, make sure its parser is not run on "
+    "this project, because filing by both at once is not prevented."
 )
 
 #: FR-017.

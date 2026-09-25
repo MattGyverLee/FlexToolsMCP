@@ -2,67 +2,71 @@
 # -*- coding: utf-8 -*-
 """
 Sandbox result lines, assertion classification and counter reconciliation
-(parser-check CP5, T047 and T070; data-model 6.4-6.6, research F-8, R-06,
-R-08, R-10, R-14; FR-017..FR-019, FR-031..FR-033, SC-005).
+(parser-check CP5; re-plan T102/T103; data-model 6.4-6.6, R-10, R-14;
+FR-017..FR-019, FR-031..FR-033, SC-005).
 
-Parse mode: an `hc_output.WordResult` becomes the `results.jsonl` sandbox
-line -- CP3's line shape with additive keys -- and the per-word tally is
-compared with hc's `stats -p` counters.
+The sandbox worker (`parse/worker_main.py --sandbox`) returns each word as a
+structured `parse` dict (contracts/sandbox-worker.md section 4): an outcome
+and, for a parse, analyses whose morphs are already shaped the way Try A
+Word shapes them. Nothing here reads printed text any more.
 
-Line decisions:
-  * `parsed` is true ONLY for outcome `parsed`; an unreadable analysis still
-    counts (R-08).
+Parse mode: a worker parse becomes the `results.jsonl` sandbox line -- CP3's
+line shape with additive keys.
+  * `parsed` is true ONLY for outcome `parsed`.
   * `analyses` is a list only for `parsed` / `not_parsed`. For every other
-    outcome it is null, so `record.HostCounters` never counts a word hc
-    produced nothing for as a zero-parse word (FR-018).
+    outcome it is null, so `record.HostCounters` never counts a word the
+    engine produced nothing for as a zero-parse word (FR-018).
   * Each analysis has `signature: null` and `rendered_morphs` = its FORMS
-    (R-14); `morphs` carries (form, gloss) for sandbox-to-sandbox diffs.
-    Unreadable: `morphs` and `rendered_morphs` null, `raw` the two lines.
-  * `parse_time_ms` is CP3's key, from hc's `Parse time:` line when printed.
+    (R-14); `morphs` carries the worker's morph dicts (form, gloss and the
+    shaping flags) for sandbox-to-sandbox diffs.
+  * The worker's `error` outcome (the engine threw) is recorded as
+    `error_no_output`, the closed enum's member for "nothing came back",
+    with the exception text kept as `error_message`.
+  * `position` is 1-based, as it was when hc printed it; the worker's is
+    0-based (`InvalidShapeException.Position`).
 
-Test mode: an `hc_output.TestResult` plus the corpus assertion's expected
-parses becomes an assertion classification (R-10's four-way table, read from
-hc's Expected/Actual sections, never from its pass/fail line) and the
-assertion line of data-model 6.5. A word expected to give no parse that now
-parses is `new_ambiguity` labelled `now_parses` (FR-033); this module never
-calls a word repaired or anything like it. Classifications map onto the diff
-buckets (FR-032): regression -> broken, new_ambiguity and changed ->
-changed, pass -> unchanged, error -> not_compared.
+Test mode: a worker parse plus the corpus assertion's expected parses
+becomes R-10's four-way classification, comparing the two as SETS of
+ordered `(form, gloss)` sequences (FR-031..FR-033): an expected parse the
+engine did not return is missing, a returned parse no assertion expected is
+unexpected. A word expected to give no parse that now parses is
+`new_ambiguity` labelled `now_parses` (FR-033); this module never calls a
+word repaired. Classifications map onto the diff buckets (FR-032):
+regression -> broken, new_ambiguity and changed -> changed, pass ->
+unchanged, error -> not_compared.
 
-Counter reconciliation never corrects either side: a mismatch becomes a
+Counters (data-model 6.6, `engine_counters`): with no hc process left to
+print an independent count, the client keeps a running tally as it
+classifies and reconciles it against the recorded lines at the end. A
+mismatch is never corrected on either side; it becomes a
 `CounterDivergence` whose `text` goes into the run's `counter_divergences`.
 """
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple
 
-from . import hc_output
-from .hc_output import (
-    OUTCOME_ERROR_NO_OUTPUT,
-    OUTCOME_INVALID_SEGMENT,
-    OUTCOME_NOT_EXPRESSIBLE,
-    OUTCOME_NOT_PARSED,
-    OUTCOME_NOT_REACHED,
-    OUTCOME_PARSED,
-    OUTCOMES,
-    TEST_FAILED,
-    TEST_PASSED,
-    Analysis,
-    ParseCounters,
-    TestCounters,
-    TestResult,
-    WordResult,
-)
-
 __all__ = [
+    "OUTCOME_PARSED",
+    "OUTCOME_NOT_PARSED",
+    "OUTCOME_INVALID_SEGMENT",
+    "OUTCOME_NOT_EXPRESSIBLE",
+    "OUTCOME_ERROR_NO_OUTPUT",
+    "OUTCOME_NOT_REACHED",
+    "OUTCOMES",
+    "ParseCounters",
+    "TestCounters",
     "PARSE_COUNTER_RECONCILIATION",
     "TEST_COUNTER_RECONCILIATION",
     "CounterDivergence",
     "analysis_to_dict",
-    "word_result_to_line",
+    "worker_parse_to_line",
+    "placeholder_line",
+    "outcome_of_worker_parse",
     "tally_outcomes",
+    "parse_counters_from",
     "reconcile_parse_counters",
     "CLASS_PASS",
     "CLASS_REGRESSION",
@@ -83,14 +87,75 @@ __all__ = [
     "classify_assertion",
     "assertion_to_line",
     "tally_classifications",
+    "test_counters_from",
     "reconcile_test_counters",
 ]
+
+# ---------------------------------------------------------------------------
+# Outcomes (data-model 6.4, the closed enum, in its order)
+# ---------------------------------------------------------------------------
+
+OUTCOME_PARSED = "parsed"
+OUTCOME_NOT_PARSED = "not_parsed"
+OUTCOME_INVALID_SEGMENT = "invalid_segment"
+OUTCOME_NOT_EXPRESSIBLE = "not_expressible"
+OUTCOME_ERROR_NO_OUTPUT = "error_no_output"
+OUTCOME_NOT_REACHED = "not_reached"
+OUTCOMES: Tuple[str, ...] = (
+    OUTCOME_PARSED,
+    OUTCOME_NOT_PARSED,
+    OUTCOME_INVALID_SEGMENT,
+    OUTCOME_NOT_EXPRESSIBLE,
+    OUTCOME_ERROR_NO_OUTPUT,
+    OUTCOME_NOT_REACHED,
+)
+
+#: The worker's own outcome vocabulary -> the line's (section 4 -> 6.4).
+_WORKER_OUTCOMES = {
+    "parsed": OUTCOME_PARSED,
+    "not_parsed": OUTCOME_NOT_PARSED,
+    "invalid_segment": OUTCOME_INVALID_SEGMENT,
+    "error": OUTCOME_ERROR_NO_OUTPUT,
+}
+
+_LISTED_OUTCOMES = (OUTCOME_PARSED, OUTCOME_NOT_PARSED)
+
+
+@dataclass(frozen=True)
+class ParseCounters:
+    """The client's running parse tally (data-model 6.6 `engine_counters`)."""
+
+    parses: int = 0
+    successful: int = 0
+    failed: int = 0
+    error: int = 0
+
+    def to_dict(self) -> dict:
+        return {"parses": self.parses, "successful": self.successful,
+                "failed": self.failed, "error": self.error}
+
+
+@dataclass(frozen=True)
+class TestCounters:
+    """The client's running test tally (data-model 6.6 `engine_counters`)."""
+
+    __test__ = False  # not a pytest class
+
+    tests: int = 0
+    passed: int = 0
+    failed: int = 0
+    error: int = 0
+
+    def to_dict(self) -> dict:
+        return {"tests": self.tests, "passed": self.passed,
+                "failed": self.failed, "error": self.error}
+
 
 # ---------------------------------------------------------------------------
 # Parse mode
 # ---------------------------------------------------------------------------
 
-# hc's `stats -p` counter -> the per-word outcomes whose total it must equal.
+# Each counter -> the per-word outcomes whose total it must equal.
 PARSE_COUNTER_RECONCILIATION: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     ("parses", (OUTCOME_PARSED, OUTCOME_NOT_PARSED, OUTCOME_INVALID_SEGMENT)),
     ("successful", (OUTCOME_PARSED,)),
@@ -98,33 +163,44 @@ PARSE_COUNTER_RECONCILIATION: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     ("error", (OUTCOME_INVALID_SEGMENT,)),
 )
 
-_LISTED_OUTCOMES = (OUTCOME_PARSED, OUTCOME_NOT_PARSED)
+
+def _nfc(text: Any) -> str:
+    return unicodedata.normalize("NFC", str(text))
 
 
-def _pairs_to_dicts(pairs: Sequence[Tuple[str, str]]) -> List[dict]:
-    return [{"form": f, "gloss": g} for f, g in pairs]
+def _morph_dict(morph: Mapping[str, Any]) -> dict:
+    return {
+        "form": morph.get("form"),
+        "gloss": morph.get("gloss"),
+        "guessed": bool(morph.get("guessed", False)),
+        "is_circumfix": bool(morph.get("is_circumfix", False)),
+        "user_added": bool(morph.get("user_added", False)),
+    }
 
 
-def analysis_to_dict(analysis: Analysis) -> dict:
-    morphs = analysis.morphs
+def analysis_to_dict(analysis: Mapping[str, Any]) -> dict:
+    """One worker analysis as the line's analysis (data-model 6.4)."""
+    morphs = [_morph_dict(m) for m in analysis.get("morphs") or []]
     return {
         "signature": None,
-        "rendered_morphs": None if morphs is None else [f for f, _ in morphs],
-        "morphs": None if morphs is None else _pairs_to_dicts(morphs),
-        "readable": analysis.readable,
-        "raw": None if analysis.raw is None else list(analysis.raw),
+        "rendered_morphs": [m["form"] for m in morphs],
+        "morphs": morphs,
+        "guessed": any(m["guessed"] for m in morphs),
+        "readable": True,
+        "raw": None,
     }
 
 
 def _parse_section(
     outcome: str,
-    analyses: Optional[Sequence[Analysis]],
+    analyses: Optional[Sequence[Mapping[str, Any]]],
     analysis_count: int,
     position: Optional[int],
     flags: Optional[Sequence[str]],
     parse_time_ms: Optional[int],
+    error_message: Optional[str] = None,
 ) -> dict:
-    return {
+    section = {
         "parsed": outcome == OUTCOME_PARSED,
         "analysis_count": analysis_count,
         "outcome": outcome,
@@ -135,28 +211,58 @@ def _parse_section(
         "flags": list(flags or []),
         "parse_time_ms": parse_time_ms,
     }
+    if error_message is not None:
+        section["error_message"] = error_message
+    return section
 
 
-def word_result_to_line(
+def outcome_of_worker_parse(parse: Optional[Mapping[str, Any]]) -> str:
+    """The line outcome for a worker parse; `error_no_output` when absent."""
+    if not isinstance(parse, Mapping):
+        return OUTCOME_ERROR_NO_OUTPUT
+    return _WORKER_OUTCOMES.get(str(parse.get("outcome")), OUTCOME_ERROR_NO_OUTPUT)
+
+
+def _position_1_based(parse: Mapping[str, Any]) -> Optional[int]:
+    position = parse.get("position")
+    if isinstance(position, int) and not isinstance(position, bool):
+        return position + 1
+    return None
+
+
+def worker_parse_to_line(
     index: int,
     wordform: str,
-    result: WordResult,
+    parse: Optional[Mapping[str, Any]],
     flags: Optional[Sequence[str]] = None,
 ) -> dict:
-    """The data-model 6.4 line. `wordform` is the SENT word."""
-    listed = result.outcome in _LISTED_OUTCOMES
+    """The data-model 6.4 line for one worker parse. `wordform` is the SENT word."""
+    outcome = outcome_of_worker_parse(parse)
+    parse = parse if isinstance(parse, Mapping) else {}
+    analyses = list(parse.get("analyses") or [])
+    listed = outcome in _LISTED_OUTCOMES
     return {
         "index": index,
         "wordform": wordform,
         "parse": _parse_section(
-            result.outcome,
-            result.analyses if listed else None,
-            len(result.analyses),
-            result.position,
+            outcome,
+            analyses if listed else None,
+            len(analyses) if listed else 0,
+            _position_1_based(parse) if outcome == OUTCOME_INVALID_SEGMENT else None,
             flags,
-            result.parse_time_ms,
+            parse.get("parse_time_ms") if outcome != OUTCOME_INVALID_SEGMENT else None,
+            parse.get("error_message") if outcome == OUTCOME_ERROR_NO_OUTPUT else None,
         ),
     }
+
+
+def placeholder_line(index: int, wordform: str, outcome: str,
+                     flags: Optional[Sequence[str]] = None) -> dict:
+    """A line for a word the engine never answered (timeout, crash, cancel)."""
+    if outcome not in OUTCOMES or outcome in _LISTED_OUTCOMES:
+        raise ValueError("not a placeholder outcome: %r" % (outcome,))
+    return {"index": index, "wordform": wordform,
+            "parse": _parse_section(outcome, None, 0, None, flags, None)}
 
 
 def _outcome_of(item: Any) -> str:
@@ -173,25 +279,36 @@ def tally_outcomes(results: Iterable[Any]) -> dict:
     return tally
 
 
+def parse_counters_from(tally: Mapping[str, int]) -> ParseCounters:
+    """The counters a parse-outcome tally implies (the running tally's shape)."""
+    return ParseCounters(
+        parses=tally.get(OUTCOME_PARSED, 0) + tally.get(OUTCOME_NOT_PARSED, 0)
+        + tally.get(OUTCOME_INVALID_SEGMENT, 0),
+        successful=tally.get(OUTCOME_PARSED, 0),
+        failed=tally.get(OUTCOME_NOT_PARSED, 0),
+        error=tally.get(OUTCOME_INVALID_SEGMENT, 0),
+    )
+
+
 @dataclass(frozen=True)
 class CounterDivergence:
-    """hc's counter and the per-word tally disagree; both values kept."""
+    """A counter and the per-word tally disagree; both values kept."""
 
     counter: str
-    hc: int
+    reported: int
     per_word: int
     outcomes: Tuple[str, ...]
-    command: str = "stats -p"
+    command: str = "the running parse tally"
 
     @property
     def text(self) -> str:
         return (
-            "hc %s reports %s=%d but the per-word results give %s=%d; "
+            "%s reports %s=%d but the per-word results give %s=%d; "
             "neither is preferred"
             % (
                 self.command,
                 self.counter,
-                self.hc,
+                self.reported,
                 "+".join(self.outcomes),
                 self.per_word,
             )
@@ -218,9 +335,10 @@ def _reconcile(
 def reconcile_parse_counters(
     results: Iterable[Any], counters: ParseCounters
 ) -> List[CounterDivergence]:
-    """Divergences in table order; [] means hc and the per-word results agree."""
+    """Divergences in table order; [] means the tally and the lines agree."""
     return _reconcile(
-        tally_outcomes(results), counters, PARSE_COUNTER_RECONCILIATION, "stats -p"
+        tally_outcomes(results), counters, PARSE_COUNTER_RECONCILIATION,
+        "the running parse tally",
     )
 
 
@@ -251,12 +369,6 @@ ERROR_REASONS: Tuple[str, ...] = (
     OUTCOME_NOT_REACHED,
     ERROR_REASON_TIMEOUT,
 )
-_ERROR_STATUSES = (
-    OUTCOME_INVALID_SEGMENT,
-    OUTCOME_NOT_EXPRESSIBLE,
-    OUTCOME_ERROR_NO_OUTPUT,
-    OUTCOME_NOT_REACHED,
-)
 
 BUCKET_BROKEN = "broken"
 BUCKET_CHANGED = "changed"
@@ -281,75 +393,70 @@ Pairs = Tuple[Tuple[str, str], ...]
 
 @dataclass(frozen=True)
 class AssertionResult:
-    """One corpus word's classification with its missing and unexpected parses."""
+    """One corpus word's classification with its missing and unexpected parses.
+
+    `missing` holds expected parses as pairs, in corpus order; `unexpected`
+    holds the worker's own analysis dicts, in the order it returned them.
+    """
 
     classification: str
     label: Optional[str]
-    missing: Tuple[Optional[Pairs], ...]
-    unexpected: Tuple[Analysis, ...]
+    missing: Tuple[Pairs, ...]
+    unexpected: Tuple[Mapping[str, Any], ...]
     error_reason: Optional[str]
 
 
 def _as_pairs(parse: Iterable[Any]) -> Pairs:
-    """A corpus parse ({form, gloss} dicts or (form, gloss) pairs) as pairs."""
+    """A parse ({form, gloss} dicts or (form, gloss) pairs) as NFC pairs."""
     pairs = []
     for morph in parse:
         if isinstance(morph, Mapping):
-            pairs.append((morph["form"], morph["gloss"]))
+            pairs.append((_nfc(morph["form"]), _nfc(morph["gloss"])))
         else:
-            pairs.append((morph[0], morph[1]))
+            pairs.append((_nfc(morph[0]), _nfc(morph[1])))
     return tuple(pairs)
 
 
-def _printed_as(analysis: Analysis, pairs: Pairs) -> bool:
-    """Would hc print this corpus parse as `analysis`? (WriteParse, F-7)."""
-    if analysis.readable:
-        kept = tuple(
-            p for p in pairs if max(hc_output.u16len(p[0]), hc_output.u16len(p[1])) > 0
-        )
-        return analysis.morphs == kept
-    rendered = hc_output.render_parse(pairs)
-    return tuple(line.rstrip(" ") for line in rendered) == tuple(
-        line.rstrip(" ") for line in analysis.raw
-    )
-
-
-def _match_missing(
-    printed: Sequence[Analysis], expected: Sequence[Pairs]
-) -> Tuple[Optional[Pairs], ...]:
-    """Each printed unmatched expected parse as the corpus parse it is."""
-    pool = list(expected)
-    missing: List[Optional[Pairs]] = []
-    for analysis in printed:
-        for i, pairs in enumerate(pool):
-            if _printed_as(analysis, pairs):
-                missing.append(pairs)
-                del pool[i]
-                break
-        else:
-            missing.append(analysis.morphs)  # None when unreadable
-    return tuple(missing)
+def _pairs_to_dicts(pairs: Sequence[Tuple[str, str]]) -> List[dict]:
+    return [{"form": f, "gloss": g} for f, g in pairs]
 
 
 def classify_assertion(
     expected: Sequence[Iterable[Any]],
-    result: TestResult,
+    parse: Optional[Mapping[str, Any]],
     timed_out: bool = False,
+    outcome: Optional[str] = None,
 ) -> AssertionResult:
-    """R-10's four-way table from hc's sections (F-8), or error with a reason."""
-    if result.status in _ERROR_STATUSES:
-        reason = result.status
+    """R-10's four-way table from the returned analyses, or error with a reason.
+
+    `outcome` overrides the worker's (a placeholder: not reached, timed out).
+    """
+    outcome = outcome or outcome_of_worker_parse(parse)
+    if outcome not in _LISTED_OUTCOMES:
+        reason = outcome
         if timed_out and reason == OUTCOME_ERROR_NO_OUTPUT:
             reason = ERROR_REASON_TIMEOUT
         return AssertionResult(CLASS_ERROR, None, (), (), reason)
-    if result.status == TEST_PASSED:
-        return AssertionResult(CLASS_PASS, None, (), (), None)
-    if result.status != TEST_FAILED:
-        raise ValueError("unknown test status: %r" % (result.status,))
 
-    expected_pairs = [_as_pairs(p) for p in expected]
-    missing = _match_missing(result.expected, expected_pairs)
-    unexpected = tuple(result.actual)
+    expected_pairs: List[Pairs] = []
+    for item in expected:
+        pairs = _as_pairs(item)
+        if pairs not in expected_pairs:
+            expected_pairs.append(pairs)
+
+    actual: List[Tuple[Pairs, Mapping[str, Any]]] = []
+    seen: set = set()
+    for analysis in (parse or {}).get("analyses") or []:
+        pairs = _as_pairs(analysis.get("morphs") or [])
+        if pairs not in seen:
+            seen.add(pairs)
+            actual.append((pairs, analysis))
+
+    expected_set = set(expected_pairs)
+    missing = tuple(p for p in expected_pairs if p not in seen)
+    unexpected = tuple(a for pairs, a in actual if pairs not in expected_set)
+    if not missing and not unexpected:
+        return AssertionResult(CLASS_PASS, None, (), (), None)
     if missing and unexpected:
         classification = CLASS_CHANGED
     elif missing:
@@ -368,31 +475,43 @@ def assertion_to_line(
     index: int,
     wordform: str,
     expected: Sequence[Iterable[Any]],
-    result: TestResult,
+    parse: Optional[Mapping[str, Any]],
     flags: Optional[Sequence[str]] = None,
     timed_out: bool = False,
+    outcome: Optional[str] = None,
 ) -> dict:
-    """The data-model 6.5 assertion line. `wordform` is the SENT word."""
-    assertion = classify_assertion(expected, result, timed_out=timed_out)
+    """The data-model 6.5 assertion line. `wordform` is the SENT word.
+
+    `parse.analyses` holds the UNMATCHED actual parses (`[]` on a pass), and
+    `analysis_count` the number of distinct parses the engine returned.
+    """
+    assertion = classify_assertion(expected, parse, timed_out=timed_out, outcome=outcome)
     if assertion.classification == CLASS_ERROR:
-        parse = _parse_section(result.status, None, 0, result.position, flags, None)
+        worker = parse if isinstance(parse, Mapping) else {}
+        position = (_position_1_based(worker)
+                    if assertion.error_reason == OUTCOME_INVALID_SEGMENT else None)
+        section = _parse_section(assertion.error_reason if assertion.error_reason
+                                 in OUTCOMES else OUTCOME_ERROR_NO_OUTPUT,
+                                 None, 0, position, flags, None)
     else:
-        # hc's actual parse count: the matched expectations plus the extras.
-        count = len(expected) - len(assertion.missing) + len(assertion.unexpected)
-        outcome = OUTCOME_PARSED if count > 0 else OUTCOME_NOT_PARSED
-        parse = _parse_section(outcome, assertion.unexpected, count, None, flags, None)
+        distinct = {_as_pairs(a.get("morphs") or [])
+                    for a in (parse or {}).get("analyses") or []}
+        count = len(distinct)
+        section = _parse_section(
+            OUTCOME_PARSED if count else OUTCOME_NOT_PARSED,
+            assertion.unexpected, count, None, flags,
+            (parse or {}).get("parse_time_ms"),
+        )
     return {
         "index": index,
         "wordform": wordform,
-        "parse": parse,
+        "parse": section,
         "assertion": {
             "classification": assertion.classification,
             "label": assertion.label,
-            "missing": [
-                None if p is None else _pairs_to_dicts(p) for p in assertion.missing
-            ],
+            "missing": [_pairs_to_dicts(p) for p in assertion.missing],
             "unexpected": [
-                None if a.morphs is None else _pairs_to_dicts(a.morphs)
+                _pairs_to_dicts(_as_pairs(a.get("morphs") or []))
                 for a in assertion.unexpected
             ],
             "error_reason": assertion.error_reason,
@@ -401,12 +520,12 @@ def assertion_to_line(
 
 
 # ---------------------------------------------------------------------------
-# Test mode: tallies and `stats -t` reconciliation (data-model 6.6)
+# Test mode: tallies and reconciliation (data-model 6.6)
 # ---------------------------------------------------------------------------
 
-# hc's `stats -t` counter -> the classifications whose total it must equal.
-# "invalid_segment" means an error whose reason is invalid_segment: hc counts
-# only those as errors, since it never sees a not-expressible word.
+# Each counter -> the classifications whose total it must equal. "error"
+# counts only the invalid-segment errors: a not-expressible word is decided
+# before dispatch, and the engine never sees it.
 TEST_COUNTER_RECONCILIATION: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     (
         "tests",
@@ -439,15 +558,32 @@ def tally_classifications(assertions: Iterable[Any]) -> dict:
     return tally
 
 
-def reconcile_test_counters(
-    assertions: Iterable[Any], counters: TestCounters
-) -> List[CounterDivergence]:
-    """Divergences in table order; [] means hc and the assertions agree."""
-    items = list(assertions)
+def _test_tally(items: Sequence[Any]) -> dict:
     tally = dict(tally_classifications(items))
     tally[OUTCOME_INVALID_SEGMENT] = sum(
         1
         for item in items
         if _classification_of(item) == (CLASS_ERROR, OUTCOME_INVALID_SEGMENT)
     )
-    return _reconcile(tally, counters, TEST_COUNTER_RECONCILIATION, "stats -t")
+    return tally
+
+
+def test_counters_from(tally: Mapping[str, int]) -> TestCounters:
+    """The counters a classification tally implies (the running tally's shape)."""
+    failed = (tally.get(CLASS_REGRESSION, 0) + tally.get(CLASS_NEW_AMBIGUITY, 0)
+              + tally.get(CLASS_CHANGED, 0))
+    error = tally.get(OUTCOME_INVALID_SEGMENT, 0)
+    passed = tally.get(CLASS_PASS, 0)
+    return TestCounters(tests=passed + failed + error, passed=passed, failed=failed, error=error)
+
+
+test_counters_from.__test__ = False  # not a pytest function
+
+
+def reconcile_test_counters(
+    assertions: Iterable[Any], counters: TestCounters
+) -> List[CounterDivergence]:
+    """Divergences in table order; [] means the tally and the assertions agree."""
+    items = list(assertions)
+    return _reconcile(_test_tally(items), counters, TEST_COUNTER_RECONCILIATION,
+                      "the running test tally")

@@ -443,10 +443,14 @@ class ParserToolMissingDetail(BaseModel):
     ``component`` is a closed enum shared with flextools_health's
     ``sandbox.components[].component`` -- the two components fail
     independently, which is why health reports an array while this names one.
+
+    CP5 re-plan (contracts/tools.md section 4): ``"hc"`` is retired with the
+    `hc` console tool; ``"fieldworks_hermitcrab"`` (FieldWorks' bundled
+    ``SIL.Machine.Morphology.HermitCrab.dll``) replaces it.
     """
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["parser_tool_missing"] = "parser_tool_missing"
-    component: Literal["hc", "GenerateHCConfig.exe"]
+    component: Literal["fieldworks_hermitcrab", "GenerateHCConfig.exe"]
     expected_path: str
     install_hint: str
 
@@ -648,10 +652,14 @@ class ParserTimeoutDetail(BaseModel):
 class ParserJobFailedDetail(BaseModel):
     """Detail payload for parser_job_failed rejections (parser-check CP3).
 
-    ``failure`` is a CLOSED enum -- ``out_of_memory | crashed | cancelled`` --
-    and its members are kept distinct because the remedies differ: out of
-    memory means cut the scope, crashed means look at the log, cancelled
-    means it was asked to stop and nothing is wrong.
+    ``failure`` is a CLOSED enum -- ``out_of_memory | crashed | cancelled |
+    engine_unavailable | id_map_invalid`` -- and its members are kept
+    distinct because the remedies differ: out of memory means cut the scope,
+    crashed means look at the log, cancelled means it was asked to stop and
+    nothing is wrong. CP5 (additive) adds the sandbox worker's two:
+    engine_unavailable means the config never loaded into a usable Morpher,
+    and id_map_invalid means the config source's ``lcm-ids.json`` sidecar
+    failed validation, so Try A Word's shaping could not be applied safely.
 
     ``words_completed`` against ``words_total`` is the pair that says how much
     of the work survived; either number alone is not interpretable.
@@ -661,7 +669,9 @@ class ParserJobFailedDetail(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["parser_job_failed"] = "parser_job_failed"
     state_at_failure: str
-    failure: Literal["out_of_memory", "crashed", "cancelled"]
+    failure: Literal[
+        "out_of_memory", "crashed", "cancelled", "engine_unavailable", "id_map_invalid"
+    ]
     words_completed: int
     words_total: int
     run_id: str

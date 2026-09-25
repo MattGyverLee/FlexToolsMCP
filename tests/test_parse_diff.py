@@ -519,6 +519,43 @@ def test_cross_spine_version_skew_and_unknown_are_disclosed(tmp_path):
     assert diff_mod.ENGINE_VERSION_UNKNOWN_NOTE in comparison["note"]
 
 
+def _bundled_engine_meta(engine_version="3.8.2.0", **extra):
+    """A CP5 re-plan sandbox record: FieldWorks' own engine, no `hc_tool`."""
+    meta = {
+        "mode": "parse",
+        "config_source": {"kind": "project_cache", "cache_key": "k1"},
+        "versions": {"fieldworks_hermitcrab": engine_version,
+                     "generate_hc_config": "9.3.11", "hcparse": "6.0.0"},
+        "engine_version": engine_version,
+    }
+    meta.update(extra)
+    return meta
+
+
+def test_cross_spine_with_the_bundled_engine_is_the_same_engine(tmp_path):
+    """CP5 re-plan: the sandbox runs FieldWorks' own HermitCrab, the engine the
+    in-process spine uses, so a recorded engine version means the same engine."""
+    before = _in_process_run(tmp_path, {"membaca": [], "baca": []})
+    after = _sandbox_run(tmp_path, {"membaca": [], "baca": []})
+    after.set_section(sandbox=_bundled_engine_meta())
+    comparison = compare_runs(before, after).to_dict()["comparison"]
+    assert comparison["same_engine_version"] is True
+    assert diff_mod.ENGINE_VERSION_NOTE not in (comparison["note"] or "")
+    after.set_section(sandbox=_bundled_engine_meta(engine_version=None))
+    comparison = compare_runs(before, after).to_dict()["comparison"]
+    assert comparison["same_engine_version"] is None
+
+
+def test_bundled_engine_sandbox_pairs_compare_engine_versions(tmp_path):
+    before = _sandbox_run(tmp_path, {"membaca": [], "baca": []})
+    after = _sandbox_run(tmp_path, {"membaca": [], "baca": []})
+    before.set_section(sandbox=_bundled_engine_meta("3.8.2.0"))
+    after.set_section(sandbox=_bundled_engine_meta("3.9.0.0"))
+    assert compare_runs(before, after).to_dict()["comparison"]["same_engine_version"] is False
+    after.set_section(sandbox=_bundled_engine_meta("3.8.2.0"))
+    assert compare_runs(before, after).to_dict()["comparison"]["same_engine_version"] is True
+
+
 def test_unreadable_sandbox_analysis_never_matches_across_spines(tmp_path):
     before = _in_process_run(tmp_path, {"membaca": [_ip_analysis(["mem", "baca"])],
                                         "baca": []})

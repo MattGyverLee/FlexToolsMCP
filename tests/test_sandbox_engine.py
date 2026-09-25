@@ -422,6 +422,69 @@ def test_remember_under_a_stale_key_is_ignored(engine, fake_project, monkeypatch
 
 
 # ---------------------------------------------------------------------------
+# HC parameters (T100, D3/FR-047): read from the same stream, each defaulted
+# ---------------------------------------------------------------------------
+
+_DEFAULTS = {"del_reapps": 0, "max_roots": 2, "merge_analyses": True,
+             "guess_roots": True, "max_alternatives": 0}
+
+
+def test_hc_parameter_defaults_are_flex_defaults(engine):
+    assert engine.HC_PARAMETER_DEFAULTS == _DEFAULTS
+    assert list(engine.HC_PARAMETER_DEFAULTS) == list(_DEFAULTS)
+
+
+@pytest.mark.parametrize("raw", [None, "", "   ", "<not xml", "<ParserParameters/>",
+                                 "<ParserParameters><XAmple/></ParserParameters>"])
+def test_hc_parameters_default_when_absent(engine, raw):
+    assert engine.hc_parameters_from_text(raw) == _DEFAULTS
+
+
+def test_hc_parameters_read_like_hcparser(engine):
+    raw = ("<ParserParameters><HC><DelReapps>3</DelReapps><MaxRoots> 4 </MaxRoots>"
+           "<MergeAnalyses>False</MergeAnalyses><GuessRoots>0</GuessRoots>"
+           "<MaxAlternatives>7</MaxAlternatives></HC></ParserParameters>")
+    assert engine.hc_parameters_from_text(raw) == {
+        "del_reapps": 3, "max_roots": 4, "merge_analyses": False,
+        "guess_roots": False, "max_alternatives": 7}
+
+
+def test_unreadable_hc_value_falls_back_to_its_default(engine):
+    raw = ("<ParserParameters><HC><MaxRoots>many</MaxRoots>"
+           "<GuessRoots>maybe</GuessRoots><DelReapps>1</DelReapps></HC></ParserParameters>")
+    assert engine.hc_parameters_from_text(raw) == dict(_DEFAULTS, del_reapps=1)
+
+
+def test_reading_carries_hc_parameters(engine, fake_project):
+    # conftest's fake stores <HC><GuessRoots>false</GuessRoots>...</HC>.
+    reading = engine.read_engine(fake_project.fwdata)
+    assert reading.readable
+    assert reading.hc_parameters == dict(_DEFAULTS, guess_roots=False)
+
+
+def test_unreadable_reading_has_no_hc_parameters(engine, tmp_path):
+    reading = engine.read_engine(tmp_path / "missing.fwdata")
+    assert not reading.readable and reading.hc_parameters is None
+
+
+def test_remember_carries_hc_parameters(engine, fake_project, monkeypatch):
+    key = engine.file_key(fake_project.fwdata)
+    monkeypatch.setattr(engine, "_open_fwdata",
+                        lambda path: (_ for _ in ()).throw(AssertionError("re-scan")))
+    params = dict(_DEFAULTS, max_roots=5)
+    engine.remember(key, "HC", params)
+    reading = engine.read_engine(fake_project.fwdata)
+    assert reading.hc_parameters == params
+    params["max_roots"] = 9  # a copy is held, not the caller's dict
+    assert engine.read_engine(fake_project.fwdata).hc_parameters["max_roots"] == 5
+
+
+def test_remember_without_hc_parameters_is_none(engine, fake_project):
+    engine.remember(engine.file_key(fake_project.fwdata), "HC")
+    assert engine.read_engine(fake_project.fwdata).hc_parameters is None
+
+
+# ---------------------------------------------------------------------------
 # Never opens the project: no lock, no write, no LCM import
 # ---------------------------------------------------------------------------
 

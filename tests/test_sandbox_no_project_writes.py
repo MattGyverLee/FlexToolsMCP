@@ -17,13 +17,16 @@ What this file pins
 
 2. SC-001 end to end (Windows only): `handle_flextools_parse_sandbox` ->
    the real `ParseRunner` -> the real per-run `SandboxClient` -> the real
-   packaged `hcparse.ps1` -> the fake GenerateHCConfig and fake `hc`, on the
-   project's cached-config source (so the copy and generation happen). Only
-   project resolution and tool discovery are stubbed. For every terminal
-   path -- success, generator failure, hc load failure, timeout, cancel
-   during generation, cancel during the hc run -- the fake project folder
-   hashes identically before and after (every path, every file's bytes,
-   size and mtime; no new file, no new `*.lock`), and `work/` is empty.
+   packaged `hcparse.ps1` (Generate) and the fake GenerateHCConfig -> a real
+   `--stub --sandbox` parse worker (re-plan T108), on the project's
+   cached-config source (so the copy and generation happen). Only project
+   resolution, tool discovery and the worker's engine are stubbed; the stub
+   engine takes its script from the fake config's payload (`stub` key). For
+   every terminal path -- success, generator failure, engine load failure,
+   timeout, cancel during generation, cancel during parsing -- the fake
+   project folder hashes identically before and after (every path, every
+   file's bytes, size and mtime; no new file, no new `*.lock`), and `work/`
+   is empty.
 """
 
 from __future__ import annotations
@@ -151,30 +154,36 @@ def _fresh_module_state():
 
 
 @pytest.fixture
-def e2e(tmp_path, sandbox_root, fake_project, fake_hc, fake_generator, monkeypatch):
-    """The real handler, runner, client and script; fake tools and project."""
+def e2e(tmp_path, sandbox_root, fake_project, fake_generator, monkeypatch):
+    """The real handler, runner, client, script and worker process; a fake
+    generator, project and engine."""
     monkeypatch.setenv("FAKE_PYTHON", sys.executable)
     monkeypatch.setattr(filing_paths, "projects_directory", lambda: fake_project.dir.parent)
     monkeypatch.setattr(parse_handler, "_resolve_project", lambda name: (name or PROJECT, None))
 
-    hc = SimpleNamespace(
-        ok=True, found=True, starts=True, signal=None, reason=None, source="path",
-        path=str(fake_hc.path), expected_path=str(fake_hc.path),
-        invoke_argv=[str(fake_hc.path)], detected_version=None, load_error=None,
-        missing_members=[],
-    )
+    dll = tmp_path / "fw" / parser_probe.FIELDWORKS_HERMITCRAB_DLL
+    engine_probe = parser_probe.EngineDiscovery(
+        ok=True, signal=None, expected_path=str(dll), found=True, file_version="3.8.2.0")
     ghc = SimpleNamespace(
         ok=True, signal=None, expected_path=str(fake_generator.path),
         detected_version=None, load_error=None, missing_members=[],
     )
-    monkeypatch.setattr(parser_probe, "discover_hc_tool", lambda *a, **k: hc)
+    monkeypatch.setattr(parser_probe, "discover_fieldworks_hermitcrab",
+                        lambda *a, **k: engine_probe)
     monkeypatch.setattr(parser_probe, "discover_generate_hc_config", lambda *a, **k: ghc)
-    fake_generator.set(grammar=json.dumps(GRAMMAR))
+    # The worker runs as `--stub --sandbox`: everything but the engine calls.
+    real_launch = parse_handler._sandbox_launch
+    monkeypatch.setattr(parse_handler, "_sandbox_launch",
+                        lambda plan: dict(real_launch(plan), worker_stub=True))
 
+    def stub(**script):
+        fake_generator.set(grammar=json.dumps(dict(GRAMMAR, stub=script)))
+
+    stub()
     runner = ParseRunner(record_dir=tmp_path / "parse-runs", grace_window=0.0, stub=True)
     parse_handler.set_runner(runner)
     env = SimpleNamespace(tmp=tmp_path, root=sandbox_root, project=fake_project,
-                          hc=fake_hc, gen=fake_generator, runner=runner)
+                          gen=fake_generator, runner=runner, stub=stub)
     try:
         yield env
     finally:
@@ -238,7 +247,7 @@ async def test_handler_refuses_a_sandbox_root_inside_a_project(e2e, monkeypatch)
         assert handle.stage is RunStage.FAILED, (handle.stage, handle.failure)
     else:
         assert payload.get("status") != "ok", payload
-    assert e2e.gen.invocations() == [] and e2e.hc.invocations() == []
+    assert e2e.gen.invocations() == []
     assert_project_untouched(e2e.project, before)
 
 
@@ -265,10 +274,10 @@ async def test_handler_refuses_a_word_file_inside_a_project(e2e):
 TERMINAL_PATHS = [
     "success",
     "generator_failure",
-    "hc_load_failure",
+    "engine_load_failure",
     "timeout",
     "cancel_during_generation",
-    "cancel_during_hc",
+    "cancel_during_parse",
 ]
 
 
@@ -280,18 +289,18 @@ async def test_project_is_byte_identical_after_every_terminal_path(e2e, path):
     if path == "generator_failure":
         e2e.gen.set(mode="crash")
         expected_stage, expected_code = RunStage.FAILED, "parser_config_failed"
-    elif path == "hc_load_failure":
-        e2e.hc.set(mode="load_error")
+    elif path == "engine_load_failure":
+        e2e.stub(load_fail="The morpher could not be built.")
         expected_stage, expected_code = RunStage.FAILED, "parser_job_failed"
     elif path == "timeout":
-        e2e.hc.set(sleep_on_word=1, sleep_seconds=600)
+        e2e.stub(words={"xyz": {"sleep": 600}})
         extra = {"timeout_seconds": 10}  # the tool's minimum
         expected_stage, expected_code = RunStage.FAILED, "parser_timeout"
     elif path == "cancel_during_generation":
         e2e.gen.set(sleep_seconds=600)
         expected_stage = RunStage.CANCELLED
-    elif path == "cancel_during_hc":
-        e2e.hc.set(sleep_on_word=1, sleep_seconds=600)
+    elif path == "cancel_during_parse":
+        e2e.stub(words={"xyz": {"sleep": 600}})
         expected_stage = RunStage.CANCELLED
     before = project_fingerprint(e2e.project.dir)
 
@@ -299,8 +308,9 @@ async def test_project_is_byte_identical_after_every_terminal_path(e2e, path):
     if path == "cancel_during_generation":
         assert await wait_for(lambda: bool(e2e.gen.invocations())), "generator started"
         await call(parse_handler.handle_flextools_parse_cancel, {"run_id": run_id})
-    elif path == "cancel_during_hc":
-        assert await wait_for(lambda: bool(e2e.hc.invocations())), "hc started"
+    elif path == "cancel_during_parse":
+        handle = e2e.runner.get(run_id)
+        assert await wait_for(lambda: handle.words_completed >= 1), "parsing started"
         await asyncio.sleep(0.5)
         await call(parse_handler.handle_flextools_parse_cancel, {"run_id": run_id})
     handle = await finish(e2e, run_id)

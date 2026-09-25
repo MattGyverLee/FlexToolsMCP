@@ -128,10 +128,13 @@ Spine = Literal["in_process", "sandbox"]
 SANDBOX_DIRNAME = "sandbox"
 SANDBOX_FILES: tuple[str, ...] = (
     "generate-config.log",
-    "hc-script.txt",
-    "dispatch.json",
-    "hc-stdout.txt",
-    "hc-stderr.txt",
+    # CP5 re-plan: the sandbox worker's diagnostics, and the Morpher
+    # parameters the client resolved and handed it (`--hc-params`).
+    "worker-stderr.txt",
+    "hc-params.json",
+    # The worker's results rendered for reading (the `hc_output` section).
+    # The hc-script era's hc-script.txt, dispatch.json, hc-stdout.txt and
+    # hc-stderr.txt are retired with it (T107).
     "hc-output.txt",
     "run.json",
 )

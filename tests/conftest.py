@@ -83,11 +83,13 @@ def reset_session_state():
 # parser-check CP5: the sandbox spine's fakes (tests/fakes/)
 # ---------------------------------------------------------------------------
 #
-# `fake_hc` / `fake_generator` hand out the `.cmd` shims, which run the Python
-# fakes with THIS interpreter (FAKE_PYTHON). Knobs are environment variables
-# (documented at the top of each fake) set through `monkeypatch`, so they are
-# undone after the test and are inherited by any child process -- including
-# hcparse.ps1 and whatever it starts.
+# `fake_generator` hands out the `.cmd` shim, which runs the Python fake with
+# THIS interpreter (FAKE_PYTHON). Knobs are environment variables (documented
+# at the top of the fake) set through `monkeypatch`, so they are undone after
+# the test and are inherited by any child process -- including hcparse.ps1
+# and whatever it starts. (The fake `hc` is retired with the `hc` CLI,
+# re-plan T107: Parse and Test run in the parse worker's `--sandbox` mode,
+# driven in tests by its `--stub --sandbox` engine.)
 
 FAKES_DIR = Path(__file__).parent / "fakes"
 
@@ -140,37 +142,6 @@ class FakeTool:
             for line in self.argv_file.read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
-
-
-def write_fake_hc_config(path, grammar: dict) -> Path:
-    """Write a config `hc_fake.py` loads: a HermitCrabInput with a FakeGrammar."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    body = json.dumps(grammar, ensure_ascii=False, indent=2)
-    path.write_text(
-        '<?xml version="1.0" encoding="utf-8"?>\n<HermitCrabInput>\n'
-        '  <Language name="%s" />\n  <FakeGrammar><![CDATA[%s]]></FakeGrammar>\n'
-        "</HermitCrabInput>\n" % (grammar.get("language", "Language"), body),
-        encoding="utf-8",
-    )
-    return path
-
-
-@pytest.fixture
-def fake_hc(monkeypatch, tmp_path):
-    """The fake `hc` (tests/fakes/hc.cmd); knobs are FAKE_HC_* (see hc_fake.py).
-
-    ``fake_hc.write_config(path, grammar)`` writes a loadable fake config.
-    """
-    tool = FakeTool(
-        monkeypatch,
-        FAKES_DIR / "hc.cmd",
-        FAKES_DIR / "hc_fake.py",
-        "FAKE_HC_",
-        tmp_path,
-    )
-    tool.write_config = write_fake_hc_config
-    return tool
 
 
 @pytest.fixture

@@ -1,0 +1,50 @@
+{
+  "scenario": "L-1",
+  "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+  "source_project": "IndonesianHC-Complete",
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+      "before": {
+        "sha256": "920fc5c90da69d19973e4ce76b1b2a691711d5ece574d5ee989e61f842b8c38f",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      },
+      "after": {
+        "sha256": "920fc5c90da69d19973e4ce76b1b2a691711d5ece574d5ee989e61f842b8c38f",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      }
+    }
+  ],
+  "responses": {},
+  "observations": {
+    "allowlist": [
+      "WritingSystemStore"
+    ],
+    "runs": {
+      "allowlist": {
+        "exit_code": 0,
+        "output": "Loading FieldWorks project...\r\nLoading completed.\r\nWriting HC configuration file...\r\nWriting completed.\r\n",
+        "config_bytes": 62048,
+        "config_sha256": "3e1ae1f735a873203a5f78fda28ea5f585907320623b00eb0e20b70abbe9e2d1"
+      },
+      "full": {
+        "exit_code": 0,
+        "output": "Loading FieldWorks project...\r\nLoading completed.\r\nWriting HC configuration file...\r\nWriting completed.\r\n",
+        "config_bytes": 62048,
+        "config_sha256": "3e1ae1f735a873203a5f78fda28ea5f585907320623b00eb0e20b70abbe9e2d1"
+      }
+    },
+    "identical": true
+  },
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:15:02.315174+00:00"
+}

@@ -8,7 +8,7 @@ Organised by story, one class per story section; later tasks append more
 classes to this file.
 
   * US1 / T029 (FR-007, US1 scenario 5, contracts/tools.md sections 3-4):
-    `TestToolMissingRefusal` -- a missing or non-starting `hc`, or a missing
+    `TestToolMissingRefusal` -- a missing FieldWorks HermitCrab DLL, or a missing
     `GenerateHCConfig.exe` when generation may run, refuses with
     `parser_tool_missing` (fields in contract order) before anything is
     copied or created; steps 1 (project) and 2 (config-source name) come
@@ -25,9 +25,8 @@ classes to this file.
 Seams patched (for the T033 implementer):
   * `handlers.parse._resolve_project` -- project resolution (as
     tests/test_parse_text_handler.py does).
-  * `parser_probe.discover_hc_tool` -> `HcToolDiscovery` (built through a
-    getattr-tolerant factory so an unfinished discovery API fails at an
-    assertion, not at collection).
+  * `parser_probe.discover_fieldworks_hermitcrab` -> `EngineDiscovery`
+    (CP5 re-plan T104: the bundled engine, not an `hc` console tool).
   * `parser_probe.discover_generate_hc_config` -> `ProbeResult`.
   The handler must look both discovery functions up on the `parser_probe`
   module at call time (or through a same-named attribute on
@@ -67,14 +66,13 @@ from flextoolsmcp.server.sandbox import paths as sandbox_paths  # noqa: E402
 # Contract constants (contracts/tools.md section 4, verbatim)
 # ---------------------------------------------------------------------------
 
-HC_INSTALL_COMMAND = "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool"
-HC_INSTALL_HINT = (
-    "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool Installing it "
-    "needs a .NET SDK, and hc 3.8 and later need the .NET 10 runtime to run."
-)
 GENERATE_HC_CONFIG_HINT = (
     "GenerateHCConfig.exe ships with FieldWorks 9; repair or reinstall FieldWorks."
 )
+#: CP5 re-plan (contracts/tools.md section 4): the bundled engine's hint is
+#: GenerateHCConfig's own sentence -- both are repaired by repairing FieldWorks.
+ENGINE_HINT = GENERATE_HC_CONFIG_HINT
+ENGINE = "fieldworks_hermitcrab"
 TOOL_MISSING_FIELDS = ["component", "expected_path", "install_hint"]
 
 #: Envelope keys `error_response` owns, plus the keys every tool may add
@@ -83,7 +81,7 @@ ENVELOPE_KEYS = {"_contract", "status", "error_code", "message", "error"}
 
 PROJECT = "FakeProj"
 GHC_EXPECTED = r"C:\Program Files\SIL\FieldWorks 9\GenerateHCConfig.exe"
-HC_EXPECTED = r"C:\Users\demo\.dotnet\tools\hc.exe"
+ENGINE_EXPECTED = r"C:\Program Files\SIL\FieldWorks 9\SIL.Machine.Morphology.HermitCrab.dll"
 
 
 # ---------------------------------------------------------------------------
@@ -91,52 +89,29 @@ HC_EXPECTED = r"C:\Users\demo\.dotnet\tools\hc.exe"
 # ---------------------------------------------------------------------------
 
 
-def _hc_discovery(*, found, starts, signal=None, reason=None, source=None,
-                  path=None, expected_path=HC_EXPECTED):
-    """An `HcToolDiscovery`, or a look-alike if the class does not exist yet."""
-    ok = bool(found and starts is True)
-    values = dict(
-        ok=ok,
+def _engine_discovery(*, found, signal=None, reason=None, expected_path=ENGINE_EXPECTED):
+    """A `parser_probe.EngineDiscovery` for FieldWorks' bundled HermitCrab."""
+    return parser_probe.EngineDiscovery(
+        ok=found,
         signal=signal,
         expected_path=expected_path,
-        missing_members=[],
-        detected_version="3.9.4" if ok else None,
+        detected_version="3.8.2.0" if found else None,
         load_error=reason,
         found=found,
-        starts=starts,
-        source=source,
-        path=path,
+        file_version="3.8.2.0" if found else None,
         reason=reason,
-        invoke_argv=[path] if path else None,
     )
-    cls = getattr(parser_probe, "HcToolDiscovery", None)
-    if cls is not None and dataclasses.is_dataclass(cls):
-        names = {f.name for f in dataclasses.fields(cls)}
-        obj = cls(**{k: v for k, v in values.items() if k in names})
-        for key, value in values.items():
-            if not hasattr(obj, key):
-                setattr(obj, key, value)
-        return obj
-    return types.SimpleNamespace(**values)
 
 
-def hc_ok():
-    return _hc_discovery(found=True, starts=True, source="path",
-                         path=HC_EXPECTED, expected_path=HC_EXPECTED)
+def engine_ok():
+    return _engine_discovery(found=True)
 
 
-def hc_missing():
-    return _hc_discovery(found=False, starts=None, signal="not_found",
-                         reason="hc not found on PATH, in ~/.dotnet/tools, or by "
-                                "dotnet tool list -g")
-
-
-def hc_cannot_start():
-    return _hc_discovery(
-        found=True, starts=False, signal="runtime_missing", source="path",
-        path=HC_EXPECTED, expected_path=HC_EXPECTED,
-        reason="hc needs the .NET 10 runtime (Microsoft.NETCore.App 10.0), "
-               "which is not installed",
+def engine_missing():
+    return _engine_discovery(
+        found=False, signal="not_found",
+        reason="SIL.Machine.Morphology.HermitCrab.dll is missing from "
+               r"C:\Program Files\SIL\FieldWorks 9",
     )
 
 
@@ -194,19 +169,21 @@ def project_unresolvable(monkeypatch):
 
 @pytest.fixture
 def discovery(monkeypatch):
-    """Install discovery results; `discovery(hc=..., ghc=...)`.
+    """Install discovery results; `discovery(engine=..., ghc=...)`.
 
     Passing `None` for either installs a boom-stub (proves it is not called).
     Returns a dict counting calls to each.
     """
-    counts = {"hc": 0, "ghc": 0}
+    counts = {"engine": 0, "ghc": 0}
 
-    def install(*, hc=None, ghc=None):
-        def fake_hc(*args, **kwargs):
-            if hc is None:
-                pytest.fail("discover_hc_tool was called before an earlier refusal")
-            counts["hc"] += 1
-            return hc
+    def install(*, engine=None, ghc=None):
+        def fake_engine(*args, **kwargs):
+            if engine is None:
+                pytest.fail(
+                    "discover_fieldworks_hermitcrab was called before an earlier refusal"
+                )
+            counts["engine"] += 1
+            return engine
 
         def fake_ghc(*args, **kwargs):
             if ghc is None:
@@ -217,8 +194,10 @@ def discovery(monkeypatch):
             return ghc
 
         for module in (parser_probe, parse_handler):
-            if module is parser_probe or hasattr(module, "discover_hc_tool"):
-                monkeypatch.setattr(module, "discover_hc_tool", fake_hc, raising=False)
+            if module is parser_probe or hasattr(module, "discover_fieldworks_hermitcrab"):
+                monkeypatch.setattr(
+                    module, "discover_fieldworks_hermitcrab", fake_engine, raising=False
+                )
             if module is parser_probe or hasattr(module, "discover_generate_hc_config"):
                 monkeypatch.setattr(
                     module, "discover_generate_hc_config", fake_ghc, raising=False
@@ -349,62 +328,40 @@ PARSE_ARGS = {"action": "parse", "project_name": PROJECT, "words": ["dog"]}
 class TestToolMissingRefusal:
     """FR-007: refuse with `parser_tool_missing` before any copy is made."""
 
-    async def test_hc_not_found_refuses_with_component_hc(
+    async def test_a_missing_engine_refuses_with_component_fieldworks_hermitcrab(
         self, project_resolves, discovery, untouched_root
     ):
-        discovery(hc=hc_missing(), ghc=ghc_ok())
+        discovery(engine=engine_missing(), ghc=ghc_ok())
         payload = await _call(PARSE_ARGS)
-        _assert_tool_missing(payload, "hc")
+        _assert_tool_missing(payload, ENGINE)
+        assert payload["expected_path"] == ENGINE_EXPECTED
 
-    async def test_hc_found_but_unable_to_start_also_refuses_as_hc(
+    async def test_the_engine_hint_is_the_fieldworks_repair_sentence(
         self, project_resolves, discovery, untouched_root
     ):
-        discovery(hc=hc_cannot_start(), ghc=ghc_ok())
+        """contracts/tools.md section 4: no `hc` install command any more."""
+        discovery(engine=engine_missing(), ghc=ghc_ok())
         payload = await _call(PARSE_ARGS)
-        _assert_tool_missing(payload, "hc")
-
-    @pytest.mark.parametrize("make_hc", [hc_missing, hc_cannot_start],
-                             ids=["not_found", "cannot_start"])
-    async def test_hc_install_hint_is_the_command_then_exactly_one_sentence(
-        self, make_hc, project_resolves, discovery, untouched_root
-    ):
-        discovery(hc=make_hc(), ghc=ghc_ok())
-        payload = await _call(PARSE_ARGS)
-        _assert_tool_missing(payload, "hc")
-        hint = payload["install_hint"]
-
-        assert hint.startswith(HC_INSTALL_COMMAND), hint
-        rest = hint[len(HC_INSTALL_COMMAND):]
-        assert rest.startswith(" ") and not rest.startswith("  "), (
-            f"one space must separate the command from the sentence: {hint!r}"
-        )
-        sentence = rest[1:]
-        assert sentence and sentence[0].isupper(), sentence
-        # Exactly one sentence: one terminator, at the very end. ("3.8" is
-        # not a terminator: a sentence end is punctuation then space or end.)
-        assert re.findall(r"[.!?](?=\s|$)", sentence) == ["."], sentence
-        assert sentence.endswith(".")
-        assert ".NET SDK" in sentence and ".NET 10" in sentence
-        # No version is pinned (FR-007).
-        assert "--version" not in hint
-        assert hint == HC_INSTALL_HINT
+        _assert_tool_missing(payload, ENGINE)
+        assert payload["install_hint"] == ENGINE_HINT
+        assert "dotnet" not in payload["install_hint"]
 
     async def test_generate_hc_config_missing_on_the_project_cache_source(
         self, project_resolves, discovery, untouched_root
     ):
-        discovery(hc=hc_ok(), ghc=ghc_missing())
+        discovery(engine=engine_ok(), ghc=ghc_missing())
         payload = await _call(PARSE_ARGS)  # no sandbox -> project's cached config
         _assert_tool_missing(payload, "GenerateHCConfig.exe")
         assert payload["install_hint"] == GENERATE_HC_CONFIG_HINT
         assert "GenerateHCConfig.exe" in payload["expected_path"]
 
-    async def test_hc_is_reported_before_generate_hc_config_when_both_missing(
+    async def test_the_engine_is_reported_before_generate_hc_config_when_both_missing(
         self, project_resolves, discovery, untouched_root
     ):
-        discovery(hc=hc_missing(), ghc=ghc_missing())
+        discovery(engine=engine_missing(), ghc=ghc_missing())
         payload = await _call(PARSE_ARGS)
         assert payload["error_code"] == "parser_tool_missing", payload
-        assert payload["component"] in ("hc", "GenerateHCConfig.exe")
+        assert payload["component"] in (ENGINE, "GenerateHCConfig.exe")
         _assert_tool_missing(payload, payload["component"])
 
     async def test_generate_hc_config_is_not_required_for_a_named_sandbox(
@@ -418,7 +375,7 @@ class TestToolMissingRefusal:
         except a GenerateHCConfig refusal is accepted -- including
         `sandbox_not_found` -- and the root must stay untouched.
         """
-        discovery(hc=hc_ok(), ghc=ghc_missing())
+        discovery(engine=engine_ok(), ghc=ghc_missing())
 
         control = await _call(PARSE_ARGS)
         _assert_tool_missing(control, "GenerateHCConfig.exe")
@@ -434,16 +391,16 @@ class TestToolMissingRefusal:
                 assert payload["reason"] == "sandbox_not_found", payload
             _assert_next_step(payload)
 
-    async def test_a_named_sandbox_with_hc_missing_never_blames_generate_hc_config(
+    async def test_a_named_sandbox_with_the_engine_missing_never_blames_generate_hc_config(
         self, project_resolves, discovery, untouched_root
     ):
-        discovery(hc=hc_missing(), ghc=ghc_missing())
+        discovery(engine=engine_missing(), ghc=ghc_missing())
         payload = await _call({**PARSE_ARGS, "sandbox": "x"})
         assert payload["status"] == "error", payload
         assert payload.get("component") != "GenerateHCConfig.exe", payload
         assert payload["error_code"] in ("parser_tool_missing", "parse_sandbox_refused")
         if payload["error_code"] == "parser_tool_missing":
-            _assert_tool_missing(payload, "hc")
+            _assert_tool_missing(payload, ENGINE)
         else:
             assert payload["reason"] == "sandbox_not_found", payload
             _assert_next_step(payload)
@@ -451,7 +408,7 @@ class TestToolMissingRefusal:
     async def test_create_sandbox_requires_generate_hc_config(
         self, project_resolves, discovery, untouched_root
     ):
-        discovery(hc=hc_ok(), ghc=ghc_missing())
+        discovery(engine=engine_ok(), ghc=ghc_missing())
         payload = await _call(
             {"action": "create_sandbox", "project_name": PROJECT, "sandbox": "new-one"}
         )
@@ -465,7 +422,7 @@ class TestCheckOrderSteps1To3:
     async def test_project_not_found_comes_before_discovery(
         self, project_unresolvable, discovery, untouched_root
     ):
-        discovery(hc=None, ghc=None)  # boom: discovery must not run
+        discovery(engine=None, ghc=None)  # boom: discovery must not run
         payload = await _call(PARSE_ARGS)
         assert payload["status"] == "error", payload
         assert payload["error_code"] == "project_not_found", payload
@@ -474,7 +431,7 @@ class TestCheckOrderSteps1To3:
     async def test_project_not_found_comes_before_the_sandbox_name_check(
         self, project_unresolvable, discovery, untouched_root
     ):
-        discovery(hc=None, ghc=None)
+        discovery(engine=None, ghc=None)
         payload = await _call({**PARSE_ARGS, "sandbox": "../escape"})
         assert payload["error_code"] == "project_not_found", payload
         _assert_next_step(payload)
@@ -483,7 +440,7 @@ class TestCheckOrderSteps1To3:
     async def test_an_invalid_sandbox_name_refuses_before_discovery(
         self, bad_name, project_resolves, discovery, untouched_root
     ):
-        discovery(hc=None, ghc=None)  # boom: discovery must not run
+        discovery(engine=None, ghc=None)  # boom: discovery must not run
         payload = await _call({**PARSE_ARGS, "sandbox": bad_name})
         assert payload["status"] == "error", payload
         assert payload["error_code"] == "parse_sandbox_refused", payload
@@ -495,7 +452,7 @@ class TestCheckOrderSteps1To3:
     async def test_an_invalid_create_sandbox_name_refuses_before_discovery(
         self, project_resolves, discovery, untouched_root
     ):
-        discovery(hc=None, ghc=None)
+        discovery(engine=None, ghc=None)
         payload = await _call(
             {"action": "create_sandbox", "project_name": PROJECT, "sandbox": "../escape"}
         )
@@ -506,11 +463,11 @@ class TestCheckOrderSteps1To3:
     async def test_the_project_is_resolved_first(
         self, project_resolves, discovery, untouched_root
     ):
-        counts = discovery(hc=hc_missing(), ghc=ghc_ok())
+        counts = discovery(engine=engine_missing(), ghc=ghc_ok())
         payload = await _call(PARSE_ARGS)
         assert project_resolves == [PROJECT], "step 1 resolves the named project"
-        assert counts["hc"] >= 1, "step 3 ran discovery"
-        _assert_tool_missing(payload, "hc")
+        assert counts["engine"] >= 1, "step 3 ran discovery"
+        _assert_tool_missing(payload, ENGINE)
 
 
 # ---------------------------------------------------------------------------
@@ -664,10 +621,8 @@ def _meta_sandbox(**overrides):
     data = {
         "mode": "parse",
         "config_source": {"kind": "project_cache", "cache_key": "abcdef0123456789"},
-        "versions": {"hc_tool": "3.9.4", "fieldworks_hermitcrab": "3.9.4.0",
+        "versions": {"fieldworks_hermitcrab": "3.9.4.0",
                      "generate_hc_config": "9.3.11.0", "hcparse": "5.0.0"},
-        "version_skew": False,
-        "hc_source": "path",
         "generation": {"reused_cache": True, "cache_key": "abcdef0123456789",
                        "load_error_count": 0, "load_errors": []},
         "truncated_by_limit": False,
@@ -710,14 +665,14 @@ def parse_ready(project_resolves, discovery, sandbox_root, monkeypatch, tmp_path
     Yields a namespace: .runner (FakeRunner), .engine_calls (project names
     the engine check saw), .access (set .verdict or .raises), .root.
     """
-    discovery(hc=hc_ok(), ghc=ghc_ok())
+    discovery(engine=engine_ok(), ghc=ghc_ok())
     engine_calls = []
 
-    def engine_ok(project_name):
+    def engine_check_ok(project_name):
         engine_calls.append(project_name)
         return None
 
-    monkeypatch.setattr(parse_handler, "_sandbox_engine_check", engine_ok, raising=False)
+    monkeypatch.setattr(parse_handler, "_sandbox_engine_check", engine_check_ok, raising=False)
     monkeypatch.setattr(parse_handler, "_sandbox_space_check",
                         lambda request, project_name: None, raising=False)
 
@@ -789,7 +744,7 @@ class TestParseEngineCheck:
     async def test_engine_mismatch_refuses_before_any_file_or_run(
         self, project_resolves, discovery, untouched_root, monkeypatch
     ):
-        discovery(hc=hc_ok(), ghc=ghc_ok())
+        discovery(engine=engine_ok(), ghc=ghc_ok())
         parse_handler.set_runner(None)  # a real runner; start_run is boom-stubbed
         calls = []
 
@@ -817,12 +772,12 @@ class TestParseEngineCheck:
     async def test_engine_check_runs_after_discovery(
         self, project_resolves, discovery, untouched_root, monkeypatch
     ):
-        """hc missing refuses first: step 3 comes before step 4."""
-        discovery(hc=hc_missing(), ghc=ghc_ok())
+        """A missing engine refuses first: step 3 comes before step 4."""
+        discovery(engine=engine_missing(), ghc=ghc_ok())
         monkeypatch.setattr(parse_handler, "_sandbox_engine_check",
                             _boom("_sandbox_engine_check"), raising=False)
         payload = await _call(PARSE_ARGS)
-        _assert_tool_missing(payload, "hc")
+        _assert_tool_missing(payload, ENGINE)
 
     async def test_project_cache_source_runs_the_engine_check(self, parse_ready):
         payload = await _call(PARSE_ARGS)
@@ -894,6 +849,51 @@ class TestParseWordList:
         words, _ = await self._wordforms(parse_ready, word_file=str(word_file))
         # count first, then code point order (U+014B before U+1D11E)
         assert words == ["membaca", "\u014bu", "\U0001d11e"], words
+
+    # -- T113: FR-014's split lives in Python, not in hcparse.ps1 ----------
+
+    def test_split_words_splits_on_commas_and_whitespace(self):
+        assert parse_handler.split_words("a,b c") == ["a", "b", "c"]
+
+    def test_split_words_drops_leading_and_trailing_separators(self):
+        assert parse_handler.split_words(" ,a\tb, \n") == ["a", "b"]
+
+    def test_split_words_keeps_an_apostrophe_word_whole(self):
+        assert parse_handler.split_words("ng'ombe, a'a") == ["ng'ombe", "a'a"]
+
+    async def test_a_words_string_reaches_the_client_already_split(self, parse_ready):
+        words, _ = await self._wordforms(parse_ready, words="a,b c")
+        assert words == ["a", "b", "c"], words
+
+    async def test_a_non_latin_words_string_round_trips_byte_exactly(self, parse_ready):
+        text = "पानी ماء,မြန်"
+        words, _ = await self._wordforms(parse_ready, words=text)
+        expected = parse_handler.split_words(text)
+        assert sorted(words) == sorted(expected), words
+        assert [w.encode("utf-8") for w in sorted(words)] == [
+            w.encode("utf-8") for w in sorted(expected)
+        ]
+
+    async def test_an_apostrophe_word_stays_one_word(self, parse_ready):
+        words, _ = await self._wordforms(parse_ready, words="ng'ombe kuku")
+        assert sorted(words) == ["kuku", "ng'ombe"], words
+
+    async def test_a_word_file_splits_the_same_way_as_a_string(self, parse_ready, tmp_path):
+        word_file = tmp_path / "input" / "words.txt"
+        word_file.parent.mkdir()
+        # BOM tolerated; commas and blanks inside the file split too.
+        word_file.write_bytes("﻿a,b c\r\n, \r\n".encode("utf-8"))
+        from_file, _ = await self._wordforms(parse_ready, word_file=str(word_file))
+        from_string, _ = await self._wordforms(parse_ready, words="a,b c")
+        assert from_file == from_string == ["a", "b", "c"], from_file
+
+    async def test_a_word_file_of_only_separators_is_refused(self, parse_ready, tmp_path):
+        word_file = tmp_path / "seps.txt"
+        word_file.write_text(" , ,\n\t,", encoding="utf-8")
+        payload = await _call({"action": "parse", "project_name": PROJECT,
+                               "word_file": str(word_file)})
+        _assert_sandbox_refused(payload, "word_file_invalid")
+        assert not parse_ready.runner.calls
 
     async def test_word_file_inside_a_project_folder_is_refused(
         self, parse_ready, fake_project, monkeypatch
@@ -1222,7 +1222,7 @@ def create_ready(project_resolves, discovery, sandbox_root, fake_store,
     .ensure (knobs: .built, .raises), .workdirs (created/deleted),
     .engine_calls, .root.
     """
-    discovery(hc=hc_ok(), ghc=ghc_ok())
+    discovery(engine=engine_ok(), ghc=ghc_ok())
     monkeypatch.setattr(filing_paths, "projects_directory",
                         lambda: fake_project.dir.parent)
     engine_calls = []
@@ -1386,7 +1386,7 @@ class TestCreateSandbox:
         self, project_resolves, discovery, fake_store, planted_sandbox, untouched_root
     ):
         """Step 2 refuses with every copy/create/spawn boom-stubbed."""
-        discovery(hc=None, ghc=None)  # boom: discovery comes after step 2
+        discovery(engine=None, ghc=None)  # boom: discovery comes after step 2
         before = (planted_sandbox / "hc-config.xml").read_bytes()
         payload = await _call(CREATE_ARGS)
         _assert_sandbox_refused(payload, "sandbox_exists")
@@ -1407,7 +1407,7 @@ class TestNamedSandboxRuns:
     ):
         _make_named_sandbox(parse_ready.root, "x")
         fake_store.statuses["x"] = _status("x")
-        discovery(hc=hc_ok(), ghc=None)  # boom: GenerateHCConfig not consulted
+        discovery(engine=engine_ok(), ghc=None)  # boom: GenerateHCConfig not consulted
         monkeypatch.setattr(parse_handler, "_sandbox_engine_check",
                             _boom("_sandbox_engine_check"), raising=False)
         parse_ready.runner.meta_sandbox = _meta_sandbox(config_source=None)
@@ -1489,7 +1489,7 @@ class TestListAction:
     async def test_list_returns_sandboxes_and_corpora(
         self, project_resolves, discovery, fake_store, untouched_root
     ):
-        discovery(hc=None, ghc=None)  # list needs no tools
+        discovery(engine=None, ghc=None)  # list needs no tools
         fake_store.rows = [
             {"name": "tighten-env", "path": "C:\\p\\hc-config.xml",
              "created_at": "2026-09-01T00:00:00Z", "edited": True,
@@ -1507,7 +1507,7 @@ class TestListAction:
     async def test_list_with_nothing_is_two_empty_lists(
         self, project_resolves, discovery, fake_store, untouched_root
     ):
-        discovery(hc=None, ghc=None)
+        discovery(engine=None, ghc=None)
         payload = await _call({"action": "list", "project_name": PROJECT})
         assert payload["status"] == "ok", payload
         assert payload["sandboxes"] == [] and payload["corpora"] == []
@@ -1516,7 +1516,7 @@ class TestListAction:
     async def test_list_needs_the_project(
         self, project_unresolvable, discovery, fake_store, untouched_root
     ):
-        discovery(hc=None, ghc=None)
+        discovery(engine=None, ghc=None)
         payload = await _call({"action": "list", "project_name": PROJECT})
         assert payload["error_code"] == "project_not_found", payload
         _assert_next_step(payload)
@@ -1546,7 +1546,7 @@ class TestListAction:
 #     de-duplicated by the store).
 #   * The completed response's `result_summary` adds data-model 6.6's test
 #     block: `classifications` (every classification, zeros included, from
-#     the assertion lines), `hc_counters` (`meta.sandbox.hc.hc_counters`,
+#     the assertion lines), `engine_counters` (`meta.sandbox.worker.engine_counters`,
 #     None when unavailable) and `counter_agreement` (True/False from
 #     `classify.reconcile_test_counters`, None without counters).
 #   * FR-027: an assertion hc cannot express does not refuse the run; the
@@ -1616,7 +1616,7 @@ SEED_LINES = [
 @pytest.fixture
 def seed_ready(project_resolves, discovery, sandbox_root, record_dir, monkeypatch):
     """seed_corpus needs no tool, no engine check and no run: all boom."""
-    discovery(hc=None, ghc=None)
+    discovery(engine=None, ghc=None)
     monkeypatch.setattr(parse_handler, "_sandbox_engine_check",
                         _boom("_sandbox_engine_check"), raising=False)
     from flextoolsmcp.server.parse.runner import ParseRunner
@@ -1727,7 +1727,7 @@ class TestSeedCorpus:
     async def test_seed_needs_the_project(
         self, project_unresolvable, discovery, record_dir
     ):
-        discovery(hc=None, ghc=None)
+        discovery(engine=None, ghc=None)
         payload = await _call(_seed_args("f" * 32))
         assert payload["error_code"] == "project_not_found", payload
         _assert_next_step(payload)
@@ -1811,9 +1811,9 @@ class TestRunCorpus:
     async def test_tool_discovery_comes_before_the_corpus_load(
         self, parse_ready, discovery
     ):
-        discovery(hc=hc_missing(), ghc=ghc_ok())
+        discovery(engine=engine_missing(), ghc=ghc_ok())
         payload = await _call(_corpus_args("nope"))
-        _assert_tool_missing(payload, "hc")
+        _assert_tool_missing(payload, ENGINE)
 
     async def test_the_engine_check_comes_before_the_corpus_load(
         self, parse_ready, monkeypatch
@@ -1849,7 +1849,7 @@ class TestRunCorpus:
         assert payload["status"] == "ok", payload
         assert parse_ready.runner.last["wordforms"] == ["ok", "pipe", "sp"]
 
-    async def test_summary_counts_by_classification_with_hc_counters(
+    async def test_summary_counts_by_classification_with_engine_counters(
         self, parse_ready, monkeypatch
     ):
         _write_corpus(parse_ready.root, CORPUS_ASSERTIONS)
@@ -1858,7 +1858,7 @@ class TestRunCorpus:
                  _assertion_line(2, "abc", "regression")]
         parse_ready.runner.meta_sandbox = _meta_sandbox(
             mode="test",
-            hc={"counters": "ok", "hc_counters": {"tests": 3, "passed": 1,
+            worker={"counters": "ok", "engine_counters": {"tests": 3, "passed": 1,
                                                   "failed": 2, "error": 0}},
         )
         original = FakeRunner.start_run
@@ -1875,7 +1875,7 @@ class TestRunCorpus:
         assert summary["classifications"] == {
             "pass": 1, "regression": 1, "new_ambiguity": 1, "changed": 0, "error": 0,
         }, summary
-        assert summary["hc_counters"] == {"tests": 3, "passed": 1, "failed": 2, "error": 0}
+        assert summary["engine_counters"] == {"tests": 3, "passed": 1, "failed": 2, "error": 0}
         assert summary["counter_agreement"] is True
 
     async def test_counter_disagreement_is_reported_not_resolved(
@@ -1887,7 +1887,7 @@ class TestRunCorpus:
                  _assertion_line(2, "abc", "regression")]
         parse_ready.runner.meta_sandbox = _meta_sandbox(
             mode="test",
-            hc={"counters": "ok", "hc_counters": {"tests": 3, "passed": 1,
+            worker={"counters": "ok", "engine_counters": {"tests": 3, "passed": 1,
                                                   "failed": 2, "error": 0}},
         )
         original = FakeRunner.start_run
@@ -1902,12 +1902,12 @@ class TestRunCorpus:
         summary = payload["result_summary"]
         assert summary["counter_agreement"] is False
         assert summary["classifications"]["pass"] == 2, "per-word tally kept"
-        assert summary["hc_counters"]["passed"] == 1, "hc's counter kept"
+        assert summary["engine_counters"]["passed"] == 1, "the engine counter kept"
 
     async def test_without_counters_agreement_is_unknown(self, parse_ready, monkeypatch):
         _write_corpus(parse_ready.root, CORPUS_ASSERTIONS)
         parse_ready.runner.meta_sandbox = _meta_sandbox(
-            mode="test", hc={"counters": "unavailable_timeout", "hc_counters": None},
+            mode="test", worker={"counters": "unavailable_timeout", "engine_counters": None},
         )
         original = FakeRunner.start_run
 
@@ -1919,7 +1919,7 @@ class TestRunCorpus:
         monkeypatch.setattr(FakeRunner, "start_run", start_run)
         payload = await _call(_corpus_args())
         summary = payload["result_summary"]
-        assert summary["hc_counters"] is None
+        assert summary["engine_counters"] is None
         assert summary["counter_agreement"] is None
 
 
@@ -1938,7 +1938,7 @@ class TestRunCorpus:
 #     completed words are real -- `result_summary` with data-model 6.6's
 #     block: parse mode `outcomes` (every outcome, zeros included) and
 #     `counters` (meta.sandbox.hc.counters: ok | unavailable_timeout |
-#     unavailable); test mode `classifications`, `hc_counters`,
+#     unavailable); test mode `classifications`, `engine_counters`,
 #     `counter_agreement`.
 # An in-process run's status is unchanged (tests/test_parse_status_handler.py).
 
@@ -1999,10 +1999,10 @@ def _timed_out_handle(tmp_path, word="kata41"):
                for i in range(40)]
     return _status_handle(
         tmp_path, stage=RunStage.FAILED, words_total=100, results=results,
-        sandbox=_meta_sandbox(hc={"timed_out": True, "in_flight_index": 40,
+        sandbox=_meta_sandbox(worker={"timed_out": True, "in_flight_index": 40,
                                   "in_flight_word": word,
                                   "counters": "unavailable_timeout",
-                                  "hc_counters": None}),
+                                  "engine_counters": None}),
         failure=RunFailure(
             message="hc did not finish within 600 seconds.",
             stage_at_failure="parsing", error_code="parser_timeout",
@@ -2045,7 +2045,7 @@ class TestSandboxParseStatus:
                    _outcome_line(2, "c", "invalid_segment")]
         handle = _status_handle(tmp_path, stage=RunStage.COMPLETED, words_total=3,
                                 results=results,
-                                sandbox=_meta_sandbox(hc={"counters": "ok"}))
+                                sandbox=_meta_sandbox(worker={"counters": "ok"}))
         payload = await _poll_status(handle, tmp_path)
         assert payload["spine"] == "sandbox"
         summary = payload["result_summary"]
@@ -2059,15 +2059,15 @@ class TestSandboxParseStatus:
         results = [_assertion_line(0, "a", "pass"), _assertion_line(1, "b", "regression")]
         handle = _status_handle(
             tmp_path, stage=RunStage.COMPLETED, words_total=2, results=results,
-            sandbox=_meta_sandbox(mode="test", hc={
+            sandbox=_meta_sandbox(mode="test", worker={
                 "counters": "ok",
-                "hc_counters": {"tests": 2, "passed": 1, "failed": 1, "error": 0}}),
+                "engine_counters": {"tests": 2, "passed": 1, "failed": 1, "error": 0}}),
         )
         payload = await _poll_status(handle, tmp_path)
         summary = payload["result_summary"]
         assert summary["classifications"]["pass"] == 1
         assert summary["classifications"]["regression"] == 1
-        assert summary["hc_counters"] == {"tests": 2, "passed": 1, "failed": 1, "error": 0}
+        assert summary["engine_counters"] == {"tests": 2, "passed": 1, "failed": 1, "error": 0}
         assert summary["counter_agreement"] is True
 
     async def test_a_running_sandbox_run_is_marked_but_not_summarised(self, tmp_path):
@@ -2263,6 +2263,46 @@ class TestSandboxRootInsideProject:
         monkeypatch.setattr(filing_paths, "projects_directory",
                             lambda: fake_project.dir.parent)
         monkeypatch.setenv("FLEXTOOLSMCP_PARSE_SANDBOX_DIR", str(fake_project.dir / "r"))
-        discovery(hc=None, ghc=None)
+        discovery(engine=None, ghc=None)
         payload = await _call(PARSE_ARGS)
         assert payload["error_code"] == "project_not_found", payload
+
+
+# ---------------------------------------------------------------------------
+# T115: a named sandbox's originating project (FR-047 `live_project`)
+# ---------------------------------------------------------------------------
+
+
+class TestSandboxOrigin:
+    def _origin(self, sandbox_root, name, project):
+        directory = sandbox_paths.sandbox_dir("P", name)
+        directory.mkdir(parents=True, exist_ok=True)
+        from flextoolsmcp.server.sandbox import store
+
+        body = {"schema": store.SANDBOX_SCHEMA, "name": name, "project": project}
+        (directory / store.ORIGIN_JSON).write_text(json.dumps(body), encoding="utf-8")
+
+    def test_a_resolving_origin_gives_its_fwdata(self, sandbox_root, tmp_path, monkeypatch):
+        fwdata = tmp_path / "Origin" / "Origin.fwdata"
+        fwdata.parent.mkdir()
+        fwdata.write_text("<languageproject />", encoding="utf-8")
+        monkeypatch.setattr(parse_handler, "_sandbox_fwdata_path",
+                            lambda project: fwdata if project == "Origin" else None)
+        self._origin(sandbox_root, "x", "Origin")
+        assert parse_handler._sandbox_origin("P", "x") == {
+            "origin_project": "Origin", "origin_fwdata_path": str(fwdata)}
+
+    def test_an_origin_whose_fwdata_is_gone_gives_no_path(
+            self, sandbox_root, tmp_path, monkeypatch):
+        monkeypatch.setattr(parse_handler, "_sandbox_fwdata_path",
+                            lambda project: tmp_path / "missing.fwdata")
+        self._origin(sandbox_root, "x", "Origin")
+        assert parse_handler._sandbox_origin("P", "x") == {
+            "origin_project": "Origin", "origin_fwdata_path": None}
+
+    def test_no_origin_json_gives_neither(self, sandbox_root):
+        assert parse_handler._sandbox_origin("P", "nosuch") == {
+            "origin_project": None, "origin_fwdata_path": None}
+
+    def test_a_project_cache_run_has_no_origin(self):
+        assert parse_handler._sandbox_origin("P", None) == {}

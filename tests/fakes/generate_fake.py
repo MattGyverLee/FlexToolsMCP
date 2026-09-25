@@ -17,7 +17,7 @@ Faithful to `Src/GenerateHCConfig/Program.cs` and `ConsoleLogger.cs`:
   * crash (F-10) -> a .NET `Unhandled exception.` on stderr after
     `Loading FieldWorks project...`, no config, exit 0xE0434352 (signed).
 
-The config it writes is the fake grammar `hc_fake.py` reads:
+The config it writes carries the grammar as a `FakeGrammar` payload:
 
     <?xml version="1.0" encoding="utf-8"?>
     <HermitCrabInput>

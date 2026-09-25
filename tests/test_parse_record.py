@@ -428,7 +428,7 @@ def test_an_in_process_record_has_no_sandbox_dir(record):
 
 
 def test_child_allows_the_sandbox_subdirectory(record):
-    assert record._child("sandbox/hc-stdout.txt") == record.root / "sandbox" / "hc-stdout.txt"
+    assert record._child("sandbox/worker-stderr.txt") == record.root / "sandbox" / "worker-stderr.txt"
 
 
 @pytest.mark.parametrize("bad", ["../x", "sandbox/../../x", "/etc/passwd", "C:/Windows/x"])
@@ -441,20 +441,21 @@ def test_child_refuses_traversal_and_absolute_paths(record, bad):
 
 def test_sandbox_files_round_trip(record):
     text = "line one\nlinie zwei é\n"
-    path = record.write_sandbox_file("hc-script.txt", text)
-    assert path == record.root / "sandbox" / "hc-script.txt"
-    assert record.read_sandbox_file("hc-script.txt") == text
+    path = record.write_sandbox_file("hc-output.txt", text)
+    assert path == record.root / "sandbox" / "hc-output.txt"
+    assert record.read_sandbox_file("hc-output.txt") == text
     assert not path.read_bytes().startswith(b"\xef\xbb\xbf")
 
-    record.append_sandbox_line("hc-stdout.txt", "first")
-    record.append_sandbox_line("hc-stdout.txt", "second\n")
-    assert record.read_sandbox_file("hc-stdout.txt") == "first\nsecond\n"
+    record.append_sandbox_line("worker-stderr.txt", "first")
+    record.append_sandbox_line("worker-stderr.txt", "second\n")
+    assert record.read_sandbox_file("worker-stderr.txt") == "first\nsecond\n"
     assert record.read_sandbox_file("run.json") is None
 
 
 def test_sandbox_file_names_are_a_closed_set(record):
-    assert "hc-stdout.txt" in SANDBOX_FILES
-    for bad in ("other.txt", "../meta.json", "sub/hc-stdout.txt"):
+    assert "worker-stderr.txt" in SANDBOX_FILES
+    for bad in ("other.txt", "../meta.json", "sub/worker-stderr.txt",
+                "hc-script.txt", "dispatch.json", "hc-stdout.txt"):  # retired (T107)
         with pytest.raises(ValueError):
             record.write_sandbox_file(bad, "x")
 
@@ -464,5 +465,5 @@ def test_sandbox_writes_honor_the_guard(record):
         raise PermissionError(str(path))
 
     with pytest.raises(PermissionError):
-        record.write_sandbox_file("hc-stderr.txt", "x", guard=refuse)
-    assert record.read_sandbox_file("hc-stderr.txt") is None
+        record.write_sandbox_file("hc-params.json", "x", guard=refuse)
+    assert record.read_sandbox_file("hc-params.json") is None

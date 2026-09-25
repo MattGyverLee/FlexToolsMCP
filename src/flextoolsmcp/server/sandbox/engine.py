@@ -32,6 +32,17 @@ MEMO. A readable result is memoised by `file_key` = `(abs_path, size,
 mtime_ns)`, the triple the cache entry's `key.json` records beside
 `active_parser`; `remember` primes the memo from key.json so a warm job never
 re-scans. Unreadable results are never memoised.
+
+HC PARAMETERS (CP5 re-plan, D3/FR-047). The same `ParserParameters` document
+carries the project's `HC` Morpher settings, which `GenerateHCConfig` does not
+export. `hc_parameters_from_text` reads them the way `HCParser.LoadParser`
+does (`HCParser.cs:145-182`), each missing or unreadable key falling back to
+FLEx's own default (`HC_PARAMETER_DEFAULTS`). A readable reading carries them
+as `EngineReading.hc_parameters`; `remember` accepts them from key.json.
+`read_parameters` is the parameters-only read (FR-047 source 2 for a named
+sandbox, T115): it is NOT the engine check, so an absent or XAmple
+`ActiveParser` never refuses there; only an unreadable file (after the one
+retry) gives None.
 """
 
 from __future__ import annotations
@@ -42,7 +53,7 @@ import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 __all__ = [
     "HINT_UNREADABLE_PHRASE",
@@ -53,9 +64,12 @@ __all__ = [
     "REASON_NO_MORPH_DATA",
     "REASON_READ_ERROR",
     "FAIL_SAFE_ENGINE",
+    "HC_PARAMETER_DEFAULTS",
     "EngineReading",
+    "hc_parameters_from_text",
     "file_key",
     "read_engine",
+    "read_parameters",
     "check_engine",
     "remember",
     "clear_engine_cache",
@@ -75,6 +89,26 @@ FAIL_SAFE_ENGINE = "XAmple"
 
 _MORPH_DATA_CLASS = "MoMorphData"
 
+#: FLEx's defaults when `ParserParameters/HC` omits a setting
+#: (`HCParser.LoadParser`: delReapps 0, maxStemCount 2, m_guessRoots and
+#: m_mergeAnalyses true, maxAlternatives 0). Keys in data-model order.
+HC_PARAMETER_DEFAULTS: Dict[str, Any] = {
+    "del_reapps": 0,
+    "max_roots": 2,
+    "merge_analyses": True,
+    "guess_roots": True,
+    "max_alternatives": 0,
+}
+
+#: data-model key -> (element under `HC`, kind).
+_HC_ELEMENTS = (
+    ("del_reapps", "DelReapps", int),
+    ("max_roots", "MaxRoots", int),
+    ("merge_analyses", "MergeAnalyses", bool),
+    ("guess_roots", "GuessRoots", bool),
+    ("max_alternatives", "MaxAlternatives", int),
+)
+
 PathLike = Union[str, Path]
 FileKey = Tuple[str, int, int]
 
@@ -89,6 +123,9 @@ class EngineReading:
     configured_engine: str
     reason: Optional[str]
     parameters: Optional[dict]
+    #: The resolved Morpher settings (`hc_parameters_from_text`), or None
+    #: when the file could not be read.
+    hc_parameters: Optional[dict] = None
 
 
 _memo: Dict[FileKey, EngineReading] = {}
@@ -116,8 +153,14 @@ def clear_engine_cache() -> None:
         _memo.clear()
 
 
-def remember(key: FileKey, active_parser: str) -> None:
-    """Prime the memo from a cache entry's key.json (no re-scan while it matches)."""
+def remember(key: FileKey, active_parser: str,
+             hc_parameters: Optional[dict] = None) -> None:
+    """Prime the memo from a cache entry's key.json (no re-scan while it matches).
+
+    `hc_parameters` is key.json's own `hc_parameters`, carried as-is so a
+    warm job's reading records the project's Morpher settings beside
+    `active_parser` (T100). None for an entry that predates the key.
+    """
     key = (str(key[0]), int(key[1]), int(key[2]))
     reading = EngineReading(
         key=key,
@@ -126,9 +169,57 @@ def remember(key: FileKey, active_parser: str) -> None:
         configured_engine=active_parser,
         reason=None,
         parameters=None,
+        hc_parameters=dict(hc_parameters) if isinstance(hc_parameters, dict) else None,
     )
     with _memo_lock:
         _memo[key] = reading
+
+
+def _as_bool(text: str) -> Optional[bool]:
+    # XElement's (bool) cast: "true"/"false" (any case) or "1"/"0".
+    value = text.strip().lower()
+    if value in ("true", "1"):
+        return True
+    if value in ("false", "0"):
+        return False
+    return None
+
+
+def _as_int(text: str) -> Optional[int]:
+    try:
+        return int(text.strip())
+    except ValueError:
+        return None
+
+
+def hc_parameters_from_text(raw: Optional[str]) -> Dict[str, Any]:
+    """The `ParserParameters/HC` Morpher settings, each defaulted (D3/FR-047).
+
+    Always returns all five keys. An absent, empty or unparseable document,
+    and a missing or unreadable element, give FLEx's default for that key --
+    where FLEx itself would throw on an unreadable value, a sandbox run
+    falls back to the default rather than refusing (the value only tunes
+    the parse).
+    """
+    result = dict(HC_PARAMETER_DEFAULTS)
+    text = (raw or "").strip()
+    if not text:
+        return result
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError:
+        return result
+    hc = root.find("HC")
+    if hc is None:
+        return result
+    for key, tag, kind in _HC_ELEMENTS:
+        element = hc.find(tag)
+        if element is None:
+            continue
+        value = (_as_bool if kind is bool else _as_int)(element.text or "")
+        if value is not None:
+            result[key] = value
+    return result
 
 
 class _Unreadable(Exception):
@@ -162,27 +253,30 @@ def _scan(fwdata: PathLike) -> Optional[str]:
     raise _Unreadable(REASON_NO_MORPH_DATA)
 
 
-def _read_once(fwdata: PathLike) -> Tuple[Optional[str], Optional[str], Optional[dict]]:
-    """(active_parser, reason, parameters); exactly one of the first two is None."""
+def _read_once(
+    fwdata: PathLike,
+) -> Tuple[Optional[str], Optional[str], Optional[dict], Optional[dict]]:
+    """(active_parser, reason, parameters, hc_parameters); exactly one of the
+    first two is None."""
     from ..parse import measure  # looked up at call time (patchable)
 
     try:
         raw = _scan(fwdata)
     except OSError:
-        return None, REASON_READ_ERROR, None
+        return None, REASON_READ_ERROR, None, None
     except _Unreadable as exc:
-        return None, exc.reason, None
+        return None, exc.reason, None, None
     if raw is None:
-        return None, REASON_ABSENT, None
+        return None, REASON_ABSENT, None, None
     summary = measure.summarize_parser_parameters(raw)
     if not summary or not summary.get("stored"):
-        return None, REASON_ABSENT, summary
+        return None, REASON_ABSENT, summary, None
     if not summary.get("parseable"):
-        return None, REASON_UNPARSEABLE, summary
+        return None, REASON_UNPARSEABLE, summary, None
     active = summary.get("active_parser")
     if not active:
-        return None, REASON_ABSENT, summary
-    return active, None, summary
+        return None, REASON_ABSENT, summary, None
+    return active, None, summary, hc_parameters_from_text(raw)
 
 
 def read_engine(fwdata: PathLike) -> EngineReading:
@@ -201,7 +295,7 @@ def read_engine(fwdata: PathLike) -> EngineReading:
     for attempt in range(READ_ATTEMPTS):
         if attempt:
             time.sleep(RETRY_DELAY_SECONDS)
-        active, reason, parameters = _read_once(fwdata)
+        active, reason, parameters, hc_parameters = _read_once(fwdata)
         if active is not None:
             try:
                 key = file_key(fwdata)
@@ -214,6 +308,7 @@ def read_engine(fwdata: PathLike) -> EngineReading:
                 configured_engine=active,
                 reason=None,
                 parameters=parameters,
+                hc_parameters=hc_parameters,
             )
             with _memo_lock:
                 _memo[key] = reading
@@ -226,6 +321,27 @@ def read_engine(fwdata: PathLike) -> EngineReading:
         reason=reason,
         parameters=None,
     )
+
+
+def read_parameters(fwdata: PathLike) -> Optional[Dict[str, Any]]:
+    """The project's `ParserParameters/HC` settings, each defaulted, or None.
+
+    A parameters-only read of the live `.fwdata` (FR-047, D3): no LCM, no
+    lock, the same one-retry rule as `read_engine`, and no engine check --
+    whatever `ActiveParser` says is ignored. A MoMorphData object with no
+    stored parameters is a readable answer (all five defaults); None means
+    the file itself could not be read after its retry. Never raises, never
+    memoised.
+    """
+    for attempt in range(READ_ATTEMPTS):
+        if attempt:
+            time.sleep(RETRY_DELAY_SECONDS)
+        try:
+            raw = _scan(fwdata)
+        except (OSError, _Unreadable):
+            continue
+        return hc_parameters_from_text(raw)
+    return None
 
 
 def _hint(reading: EngineReading, supported: list) -> str:

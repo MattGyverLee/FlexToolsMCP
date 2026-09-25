@@ -11,7 +11,19 @@ A sandbox is `sandboxes/<project>/<name>/`:
                   user to edit
   origin.json     written once at creation, never rewritten:
                   {schema, name, project, created_at, from_cache_key,
-                   from_inputs, sha256_at_creation}
+                   from_inputs, sha256_at_creation, hc_parameters,
+                   lcm_ids_path}
+  lcm-ids.json    a verbatim copy of the cache entry's id-map sidecar
+                  (FR-050), when the entry has one; never regenerated or
+                  revalidated -- a hand-added morph with no ID is FR-050's
+                  user_added case, not a reason to re-derive the map
+
+SIDECAR AND PARAMETERS (CP5 re-plan, FR-047, FR-050, data-model section 4).
+`origin.json` records the entry's `hc_parameters` (key.json's, or null) and
+`lcm_ids_path` -- `"lcm-ids.json"` when the sidecar was copied, null when the
+source entry predates it. `sandbox_lcm_ids_path` resolves it: None means
+"absent" (no shaping, the `shaping_not_applied` advisory); a returned path
+whose file is missing or unreadable is invalid, never absent.
 
 USER-OWNED (FR-025). Nothing here overwrites, replaces or deletes a file.
 `create_sandbox` claims the sandbox directory with an exclusive `mkdir` --
@@ -43,6 +55,7 @@ API
       paths.SandboxNameError, ValueError (entry of another project),
       paths.SandboxPathError (entry config not under config-cache/).
   sandbox_config_path(project_name, name) -> Optional[Path]
+  sandbox_lcm_ids_path(project_name, name) -> Optional[Path]
   read_origin(project_name, name) -> Optional[dict]
   current_key(fwdata_path, generator_path, *, hcparse_version=None) -> Optional[str]
   project_current_key(project_name) -> Optional[str]
@@ -69,7 +82,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from . import cache, paths
+from . import cache, lcm_ids, paths
 
 __all__ = [
     "SANDBOX_SCHEMA",
@@ -81,6 +94,7 @@ __all__ = [
     "SandboxExists",
     "create_sandbox",
     "sandbox_config_path",
+    "sandbox_lcm_ids_path",
     "read_origin",
     "current_key",
     "project_current_key",
@@ -96,7 +110,8 @@ SANDBOX_SCHEMA = "flextoolsmcp.hc-sandbox/1"
 SANDBOX_CONFIG_NAME = "hc-config.xml"
 ORIGIN_JSON = "origin.json"
 ORIGIN_KEYS = ("schema", "name", "project", "created_at",
-               "from_cache_key", "from_inputs", "sha256_at_creation")
+               "from_cache_key", "from_inputs", "sha256_at_creation",
+               "hc_parameters", "lcm_ids_path")
 #: One row of `list` (contracts/tools.md section 5.4).
 LIST_ITEM_KEYS = ("name", "path", "created_at", "edited", "predates_project_grammar")
 #: `sandbox_status`: a list row plus the key it was made from.
@@ -157,6 +172,16 @@ def create_sandbox(project_name: str, name: str, entry: "cache.CacheEntry") -> D
     source = paths.assert_under(entry.config_path, paths.config_cache_root())
     data = source.read_bytes()
     inputs = (entry.meta or {}).get("inputs")
+    # The sidecar is read before the claim, so a copy either lands whole or
+    # the create never starts. A recorded-but-missing file is copied as
+    # nothing and recorded as absent below; the entry's own run refuses it.
+    id_map: Optional[bytes] = None
+    id_source = entry.lcm_ids_path
+    if id_source is not None:
+        try:
+            id_map = paths.assert_under(id_source, paths.config_cache_root()).read_bytes()
+        except OSError:
+            id_map = None
 
     # The claim: the directory itself, exclusively.
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -171,6 +196,14 @@ def create_sandbox(project_name: str, name: str, entry: "cache.CacheEntry") -> D
     except FileExistsError:  # a racing hand-made file; still never over it
         raise SandboxExists(name, target) from None
 
+    lcm_ids_path: Optional[str] = None
+    if id_map is not None:
+        try:
+            _write_new(target / lcm_ids.LCM_IDS_NAME, id_map)
+        except FileExistsError:
+            raise SandboxExists(name, target) from None
+        lcm_ids_path = lcm_ids.LCM_IDS_NAME
+
     created_at = _now_iso()
     origin = {
         "schema": SANDBOX_SCHEMA,
@@ -180,6 +213,8 @@ def create_sandbox(project_name: str, name: str, entry: "cache.CacheEntry") -> D
         "from_cache_key": entry.key,
         "from_inputs": dict(inputs) if isinstance(inputs, dict) else None,
         "sha256_at_creation": hashlib.sha256(data).hexdigest(),
+        "hc_parameters": entry.hc_parameters,
+        "lcm_ids_path": lcm_ids_path,
     }
     try:
         _write_new(target / ORIGIN_JSON,
@@ -202,6 +237,26 @@ def sandbox_config_path(project_name: str, name: str) -> Optional[Path]:
     """`<sandbox>/hc-config.xml` if that file exists (origin.json optional)."""
     config = paths.sandbox_dir(project_name, name) / SANDBOX_CONFIG_NAME
     return config if config.is_file() else None
+
+
+def sandbox_lcm_ids_path(project_name: str, name: str) -> Optional[Path]:
+    """The sandbox's id-map sidecar, or None when it has none (FR-050).
+
+    None only when origin.json is readable and records no `lcm_ids_path`
+    (a sandbox made from an entry that predates the sidecar), or when there
+    is no readable origin.json and no `lcm-ids.json` file either. A recorded
+    path is returned even if its file has since gone: the caller treats a
+    missing or unreadable sidecar as invalid, never as absent.
+    """
+    directory = paths.sandbox_dir(project_name, name)
+    origin = _read_origin_at(directory)
+    if origin is None:
+        candidate = directory / lcm_ids.LCM_IDS_NAME
+        return candidate if candidate.exists() else None
+    relative = origin.get("lcm_ids_path")
+    if not isinstance(relative, str) or not relative:
+        return None
+    return directory / relative
 
 
 def _read_origin_at(directory: Path) -> Optional[Dict[str, Any]]:

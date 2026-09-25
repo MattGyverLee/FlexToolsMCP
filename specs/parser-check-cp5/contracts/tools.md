@@ -38,6 +38,15 @@ for `action="parse"`.
 
 ## 3. Check order (every refusal happens before the step after it)
 
+**Revised (CP5 re-plan 2026-09-24).** Step 3 no longer discovers an `hc` console tool — there is
+none to find (`HANDOFF.md`). It is replaced by an **engine check**, and that check now runs
+**before** any copy is made, in every case, not only when generation may run: D6 requires the
+engine be verified server-side before a sandbox worker is ever spawned, and spawning a worker is
+now the thing "the copy" gates (a config is loaded by the worker, in-process, so there is no
+separate hc-launch step after the copy the way there used to be). The engine-check step therefore
+moves earlier and absorbs what used to be two checks (tool discovery, then the engine version
+check). See `contracts/sandbox-worker.md` section 8 for D6's own detail.
+
 For `parse`, `run_corpus` and `create_sandbox`:
 
 1. **Resolve the project.** `project_not_found` if it cannot be resolved.
@@ -45,12 +54,15 @@ For `parse`, `run_corpus` and `create_sandbox`:
    Otherwise `parse_sandbox_refused`, with `name_invalid` or `sandbox_not_found`. For
    `create_sandbox`: validate the name and check it does **not** exist, or refuse with
    `name_invalid` or `sandbox_exists`.
-3. **Tool discovery** (FR-007): `hc` must be `found` and `starts`, and `GenerateHCConfig.exe` must
-   be `found`. Otherwise `parser_tool_missing`. `GenerateHCConfig.exe` is required only when
-   generation may run: the project-cache source, or `create_sandbox`.
-4. **Engine check** (FR-036), only when generation may run. This is the stream read of research
-   R-02, which never opens LCM and so is unaffected by who holds the lock. Refuses with
-   `parser_engine_mismatch`.
+3. **Engine check (D6, revised).** The FieldWorks HermitCrab DLL must be present, at a
+   `FileVersion` the server recognises as HC (`parser_engine_mismatch` if the project's
+   `ActiveParser` is not HC at all, e.g. XAmple, S12), and `GenerateHCConfig.exe` must be `found`
+   when generation may run (the project-cache source, or `create_sandbox`). This check **never
+   spawns a worker and never loads the engine** — it is a DLL-presence-plus-version read only
+   (D7, section 6 below). Otherwise `parser_tool_missing`, naming the missing component.
+4. **Engine version / staleness check** (FR-036), only when generation may run. This is the stream
+   read of research R-02, which never opens LCM and so is unaffected by who holds the lock.
+   Refuses with `parser_engine_mismatch`.
 5. **Access probe**: `probe_project_access`, metadata only. It **never refuses**. It sets
    `staleness: "shared_mode_unverifiable"` for `open_shared`, `open_exclusive` and `held_by_other`
    (FR-040, research R-13).
@@ -58,12 +70,23 @@ For `parse`, `run_corpus` and `create_sandbox`:
    `parse_sandbox_refused` (`corpus_not_found` or `corpus_invalid`).
 7. **Free space** (FR-012), only when a copy will be made, i.e. on a cache miss. Refuses with
    `parse_sandbox_refused` (`insufficient_disk_space`, `needed_bytes`, `free_bytes`).
-8. **The run id exists from here on**, via `ParseRunner.start_run(worker_role=SANDBOX_ROLE)`. Later
-   failures are **terminal run states**, not pre-run refusals:
+8. **The run id exists from here on**, via `ParseRunner.start_run(worker_role=SANDBOX_ROLE)`,
+   which now spawns a `--sandbox` worker (`contracts/sandbox-worker.md`) rather than launching
+   `hcparse.ps1 -Mode Parse`/`Test`. Later failures are **terminal run states**, not pre-run
+   refusals:
    - generation failed gives `parser_config_failed`, carrying `run_id`;
-   - hc could not load the config gives `parser_job_failed` (`failure: "crashed"`), and the
-     `hc_stdout` section holds hc's `Load Error:` line;
-   - a timeout gives **`parser_timeout`**;
+   - the worker could not load the config gives `parser_job_failed` (`failure:
+     "engine_unavailable"`, replacing the retired `"crashed"` value for this path — see section 6);
+     the load exception text is in the run's diagnostics the way `hc_stdout` used to carry hc's
+     `Load Error:` line;
+   - **new (D4 reversed, FR-050)**: an invalid `lcm-ids.json` sidecar for the config source gives
+     `parser_job_failed` (`failure: "id_map_invalid"`) — checked at generation time for a
+     project-cache source, and re-checked by the worker itself before any shaping rule is applied
+     (`contracts/sandbox-worker.md` section 5), so a stale or hand-broken sidecar can never be
+     trusted silently;
+   - a timeout gives **`parser_timeout`** (now the `SandboxClient` watchdog around the worker
+     process, `contracts/sandbox-worker.md` section 7, rather than the script's own
+     `-TimeoutSeconds`);
    - a cancel gives the existing cancelled state.
 
 No step before 8 creates a file. `seed_corpus` runs step 1 and then these checks, in order:
@@ -77,7 +100,7 @@ Seeding is synchronous and creates no run. `list` is synchronous and read-only.
 
 | Code | Status | Fields, **in this order** |
 |---|---|---|
-| **`parser_tool_missing`** | existing, first emitter | `component` (`"hc"` \| `"GenerateHCConfig.exe"`), `expected_path` (str), `install_hint` (str) |
+| **`parser_tool_missing`** | existing, first emitter | `component` (~~`"hc"`~~ **retired (CP5 re-plan 2026-09-24)** \| `"fieldworks_hermitcrab"` **new**, replacing `"hc"` \| `"GenerateHCConfig.exe"`), `expected_path` (str), `install_hint` (str) |
 | **`parser_config_failed`** | **new** | `exit_code` (int \| null), `stderr_tail` (str), `log_path` (str), `run_id` (str \| null) |
 | **`parser_timeout`** | existing, first emitter | `timeout_seconds` (int), `words_completed` (int), `run_id` (str), `hint` (str) |
 | **`parser_engine_mismatch`** | existing, unchanged | `configured_engine`, `supported_engines`, `hint` |
@@ -94,15 +117,37 @@ Seeding is synchronous and creates no run. `list` is synchronous and read-only.
 - `insufficient_disk_space`
 - `word_file_invalid`
 
-**`parser_tool_missing.install_hint` for `hc`** (FR-007, clarified). It is exactly:
+**`parser_tool_missing.install_hint` for `hc`: retired (CP5 re-plan 2026-09-24).** FR-007's
+`dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool` hint, and the whole notion of
+installing a console tool, no longer applies: HANDOFF.md's decision is to call the FieldWorks
+engine directly, and FieldWorks either has it or it does not.
+
+**`parser_tool_missing.install_hint` for `fieldworks_hermitcrab`** (new, replaces the `hc` hint).
+It is exactly:
 
 ```
-dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool Installing it needs a .NET SDK, and hc 3.8 and later need the .NET 10 runtime to run.
+GenerateHCConfig.exe ships with FieldWorks 9; repair or reinstall FieldWorks.
 ```
 
-In other words, the verbatim command, one space, then one sentence. The test asserts `startswith`
-on the command and that exactly one sentence follows. For `GenerateHCConfig.exe` the hint is
-"GenerateHCConfig.exe ships with FieldWorks 9; repair or reinstall FieldWorks."
+i.e. the same repair-FieldWorks hint `GenerateHCConfig.exe`'s own row already used, because both
+components come from the same FieldWorks installation and a missing or unrecognised
+`SIL.Machine.Morphology.HermitCrab.dll` is repaired the same way. `expected_path` is the DLL path
+health also reports (section 6): `C:\Program Files\SIL\FieldWorks 9\SIL.Machine.Morphology.HermitCrab.dll`.
+For `GenerateHCConfig.exe` the hint stays "GenerateHCConfig.exe ships with FieldWorks 9; repair or
+reinstall FieldWorks." (unchanged).
+
+**`parser_job_failed.failure` gains `"engine_unavailable"` and `"id_map_invalid"`** (two new enum
+values, additive to the existing `out_of_memory | crashed | cancelled` from CP3, `response_models.py`
+`ParserJobFailedDetail`). `"engine_unavailable"` is the sandbox spine's replacement for what used to
+surface as `"crashed"` when hc printed a `Load Error:`: the sandbox worker's config failed to load
+into a usable `Morpher` on its first `parse` (`contracts/sandbox-worker.md` section 5).
+`"id_map_invalid"` (**new, D4 reversed, FR-050**) fires when the config source's `lcm-ids.json`
+sidecar failed validation at generation time (or, defensively, at the worker's own first `parse`,
+`contracts/sandbox-worker.md` section 5): an id referenced by the exported grammar did not resolve
+to the expected LCM class, so Try A Word's shaping rules (FR-050) cannot be applied safely, and the
+run fails rather than shaping silently wrong. `"crashed"` itself is not retired — it still covers
+the worker process dying unexpectedly for reasons other than an unloadable config or an invalid id
+map.
 
 **`parser_config_failed.stderr_tail`**: the last 20 lines of the combined generator output, ASCII
 with non-ASCII characters escaped (FR-021), capped at 4 KiB. `log_path` is the run's
@@ -128,14 +173,17 @@ the summary, and `project_state`. They add:
 {
   "spine": "sandbox",
   "config_source": {"kind": "project_cache", "cache_key": "..."},
-  "versions": {"hc_tool": "...", "fieldworks_hermitcrab": "...", "generate_hc_config": "...", "hcparse": "..."},
-  "advisories": [{"code": "hc_engine_version_skew", "note": "..."}],
+  "versions": {"fieldworks_hermitcrab": "...", "generate_hc_config": "...", "hcparse": "..."},
+  "advisories": [{"code": "sandbox_predates_project_grammar", "note": "..."}],
   "generation": {"reused_cache": true, "load_error_count": 0},
   "staleness": "shared_mode_unverifiable",
   "staleness_note": "<diff.SHARED_MODE_NOTE>",
   "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results."
 }
 ```
+
+**Revised (CP5 re-plan 2026-09-24).** `versions.hc_tool` is retired: there is one engine version
+now (`fieldworks_hermitcrab`), not two to compare, so nothing plays the role `hc_tool` played.
 
 - `staleness` and `staleness_note` are present only on the R-13 verdicts.
 - `results_label` is fixed text, always present (US2).
@@ -144,10 +192,11 @@ the summary, and `project_state`. They add:
 
 | Code | Note |
 |---|---|
-| `hc_engine_version_skew` | "hc uses HermitCrab {a}; FieldWorks bundles {b}. Results may differ from FLEx's own parser." |
+| ~~`hc_engine_version_skew`~~ | **Retired (CP5 re-plan 2026-09-24).** "hc uses HermitCrab {a}; FieldWorks bundles {b}." compared two independently-versioned things; the sandbox now calls FieldWorks' own engine directly, so there is nothing left to skew against (section 6 above) |
 | `sandbox_predates_project_grammar` | "This sandbox was made from an earlier state of the project's grammar; it was used exactly as it is." |
 | `grammar_load_errors` | "{n} grammar objects failed to load during export and are missing from this configuration." |
-| `leading_dash_unverified` | Listed per word |
+| `shaping_not_applied` | **New (spec FR-050).** "This sandbox predates the id map, so FLEx's Try A Word display rules were not applied; morphs are shown unshaped. Re-create the sandbox from the current project to restore them." Emitted only when `meta.sandbox.shaping.id_map` is `"absent"` |
+| ~~`leading_dash_unverified`~~ | **Retired (CP5 re-plan 2026-09-24).** Listed per word — this flag existed only for the retired `hc`-script word-quoting rules (`contracts/hcparse.md` section 4); a wordform now travels as a JSON string field to the sandbox worker, with no quoting or leading-dash ambiguity to flag |
 
 ### 5.2 `create_sandbox`
 
@@ -180,15 +229,36 @@ path, assertion_count}]}` for the project.
 
 ## 6. Health (FR-004..FR-006)
 
-The additive keys are in data-model section 7. `_build_parser_next_steps` changes like this:
+**Revised (CP5 re-plan 2026-09-24): the engine vocabulary replaces `hc` discovery.** Health no
+longer asks "is `hc` found, and does it start" (there is no `hc` to find, `HANDOFF.md`). It asks
+"is the FieldWorks HermitCrab DLL present, and at what `FileVersion`" — D7's check, which **never
+spawns a process and never loads the engine**: a DLL-presence-plus-`FileVersion` read only, the
+same cheap read the check-order's step 3 (section 3 above) performs before any copy. The additive
+keys are in data-model section 7. `_build_parser_next_steps` changes like this:
 
 | State | Rung |
 |---|---|
-| hc `found=false` | existing "install the hc dotnet tool", `tool: null`, the rationale carrying the full hint |
-| hc `found=true, starts=false` | **new** "install the .NET runtime hc needs", `tool: null`, `est_cost: "n/a"`, the rationale naming the runtime from `reason` |
-| GenerateHCConfig `found=false` | **new** "repair or reinstall FieldWorks (GenerateHCConfig.exe missing)", `tool: null` |
-| sandbox `ready` | **new** "rehearse a grammar change on an exported copy", `tool: "flextools_parse_sandbox"`, `args: {"action": "parse", "words": []}`, `est_cost: "minutes"` |
-| sandbox `unavailable` | never names `flextools_parse_sandbox` (FR-006) |
+| ~~hc `found=false`~~ | **Retired.** No `hc` component exists to report missing |
+| ~~hc `found=true, starts=false`~~ | **Retired.** D7 never attempts to start/load the engine at health time, so a "found but won't start" state cannot be observed this way any more; an unloadable engine is instead discovered on the sandbox's first `parse`, and surfaces as `parser_job_failed`/`engine_unavailable` (section 4 above), not as a health rung |
+| `fieldworks_hermitcrab` `found=false` | **new**, replacing the retired hc row: "repair or reinstall FieldWorks (SIL.Machine.Morphology.HermitCrab.dll missing)", `tool: null`, the rationale carrying the `fieldworks_hermitcrab` install hint (section 4 above) |
+| GenerateHCConfig `found=false` | "repair or reinstall FieldWorks (GenerateHCConfig.exe missing)", `tool: null` (unchanged) |
+| sandbox `ready` | "rehearse a grammar change on an exported copy", `tool: "flextools_parse_sandbox"`, `args: {"action": "parse", "words": []}`, `est_cost: "minutes"` (unchanged) |
+| sandbox `unavailable` | never names `flextools_parse_sandbox` (FR-006, unchanged) |
+
+**No skew advisory (revised).** `hc_engine_version_skew` compared an independently-versioned `hc`
+tool against FieldWorks' bundled HermitCrab; since the sandbox now calls FieldWorks' own engine
+directly, there is only one version in play and nothing to skew against. The advisory code and
+its note (`contracts/tools.md` section 5.1's table) are retired; `versions.hc_tool` is retired from
+`meta.sandbox.versions` and `versions.fieldworks_hermitcrab` (already present) is the only engine
+version reported. `data-model.md` section 6.2's `version_skew` field is retired to `false` always
+and kept only so old readers that expect the key do not break (additive-only rule, section header
+above); a future CP may remove the key outright once no reader depends on it.
+
+`detected.hc_source` (data-model section 7's existing `dotnet_tools_dir` / `dotnet_tool_list` /
+`override` / `path` vocabulary, all describing where an `hc` binary was found) is retired and
+replaced by the engine's own provenance: the DLL path itself, since there is exactly one place
+FieldWorks installs it, plus its `FileVersion`. See data-model.md section 7 for the revised
+`detected` shape.
 
 The docstring rule at `diagnostic_health.py:366` is replaced with FR-006's rule. The test
 `test_the_sweep_would_catch_a_nonexistent_tool` switches its example to a name that is guaranteed
@@ -199,7 +269,17 @@ not to be registered.
 - **`flextools_parse_log`** (FR-038): applicability is decided from `meta.spine`.
   - For a sandbox run, `config_generation` returns `generate-config.log`, plus the itemised
     `load_errors` and their count.
-  - `hc_stdout` returns `hc-stdout.txt`, and `hc_output` returns `hc-output.txt`.
+  - **Section names are unaffected (CP5 re-plan 2026-09-24, corrected): `hc_stdout` and `hc_output`
+    stay the section names** (spec.md Verbatim Constraints); only their **contents** change, because
+    there is no hc console stream to tail any more (`contracts/sandbox-worker.md` section 1: the
+    worker's own stdout is the JSON protocol channel, never diagnostic prose). `hc_stdout` now
+    returns the sandbox worker's own captured stdout/stderr for the run: its diagnostics, and, on a
+    load failure, the load exception's text (`contracts/sandbox-worker.md` section 5, whether
+    `engine_unavailable` or `id_map_invalid`, D4 reversed/FR-050). `hc_output` now returns the
+    worker's structured per-word or per-assertion results, rendered for reading, rather than hc's
+    printed columns. There is no equivalent of a separate "result blocks only" view (the old
+    `hc_output.txt` existed to separate hc's load banner from its parse output in one text stream;
+    the worker's results are already structured JSON, so there is no banner to strip).
   - An empty file is reported through the existing `_empty_note`, never as an empty section.
   - For in-process runs the typed not-applicable response is byte-identical to today's.
   - `summary.run_spine` is read from the meta instead of being hardcoded.

@@ -67,6 +67,15 @@
       },
       {
         "class": "LexEntryOperations",
+        "code": "cf_type = project.LexEntry.FindComplexFormType(\"Compound\")\nif cf_type:\n    project.LexiconSetComplexFormType(entry_ref, cf_type)\n\n        See Also:\n            GetAllComplexFormTypes, ``PossibilityLists.FindItem``",
+        "description": "Find a complex form type by name (case-insensitive).",
+        "method": "FindComplexFormType",
+        "object_type": "ILexEntry",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "LexEntryOperations",
         "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    senses = project.LexEntry.GetSenseCount(entry)\n    print(f\"{headword} ({senses} senses)\")\n            run (3 senses)\n            walk (2 senses)\n            house (4 senses)",
         "description": "Get all lexical entries in the project.",
         "method": "GetAll",
@@ -79,6 +88,15 @@
         "code": "affixes = project.LexEntry.GetAllByMorphType(['prefix', 'suffix', 'infix'])\nstems = project.LexEntry.GetAllByMorphType('stem')\nenclitics = project.LexEntry.GetAllByMorphType('=enclitic')  # markers OK",
         "description": "Return all entries whose lexeme-form morph type matches the given name(s).",
         "method": "GetAllByMorphType",
+        "object_type": "ILexEntry",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "LexEntryOperations",
+        "code": "for cf_type in project.LexEntry.GetAllComplexFormTypes():\n    name = project.PossibilityLists.GetItemName(cf_type)\n    print(name)\n            Compound\n            Idiom\n\n        See Also:\n            FindComplexFormType, AddComplexFormComponent,\n            ``VariantOperations.GetAllTypes``",
+        "description": "Get all complex form types defined in the project.",
+        "method": "GetAllComplexFormTypes",
         "object_type": "ILexEntry",
         "operation": "read",
         "source": "docstring"
@@ -160,24 +178,6 @@
         "code": "entry = project.LexEntry.Find(\"run\")\nmodified = project.LexEntry.GetDateModified(entry)\nprint(f\"Last modified: {modified}\")\n            Last modified: 2025-01-20 09:15:43\n\n# Check if recently modified\nfrom datetime import datetime, timedelta\nmod_dt = datetime(modified.Year, modified.Month, modified.Day)\nif datetime.now() - mod_dt < timedelta(days=7):\n    print(\"Modified in the last week\")",
         "description": "Get the last modification date of a lexical entry.",
         "method": "GetDateModified",
-        "object_type": "ILexEntry",
-        "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "LexEntryOperations",
-        "code": "entry = project.LexEntry.Find(\"obscure\")\npubs = project.LexEntry.GetDoNotPublishIn(entry)\nprint(pubs)\n            ['Main Dictionary', 'Student Edition']",
-        "description": "Get the publications this entry should not be published in.",
-        "method": "GetDoNotPublishIn",
-        "object_type": "ILexEntry",
-        "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "LexEntryOperations",
-        "code": "entry = project.LexEntry.Find(\"run\")\nguid = project.LexEntry.GetGuid(entry)\nprint(guid)\n            a1b2c3d4-e5f6-7890-abcd-ef1234567890\n\n# Get as string\nguid_str = str(guid)\nprint(guid_str)\n            a1b2c3d4-e5f6-7890-abcd-ef1234567890\n\n# Use GUID to retrieve entry later\nentry2 = project.Object(guid)\nprint(project.LexEntry.GetHeadword(entry2))\n            run",
-        "description": "Get the GUID (Globally Unique Identifier) of a lexical entry.",
-        "method": "GetGuid",
         "object_type": "ILexEntry",
         "operation": "read",
         "source": "docstring"
@@ -305,6 +305,15 @@
         "method": "AddTarget",
         "object_type": "ILexReference",
         "operation": "create",
+        "source": "docstring"
+      },
+      {
+        "class": "LexReferenceOperations",
+        "code": "src_ref = project.LexReferences.GetAll()[0]\nprops = project.LexReferences.GetSyncableProperties(src_ref)\n# Create new reference under same ILexRefType, then:\ntarget_project.LexReferences.ApplySyncableProperties(new_ref, props)",
+        "description": "Apply a syncable-properties dict onto an ILexReference item.",
+        "method": "ApplySyncableProperties",
+        "object_type": "ILexReference",
+        "operation": "general",
         "source": "docstring"
       },
       {
@@ -511,7 +520,7 @@
       },
       {
         "class": "Allomorph",
-        "code": "if allomorph_obj.as_affix_allomorph():\n                concrete = allomorph_obj.as_affix_allomorph()\n                # Can now access IMoAffixAllomorph-specific methods/properties\n                affix_type = concrete.AffixType\n                # Advanced operations...",
+        "code": "if allomorph_obj.as_affix_allomorph():\n                concrete = allomorph_obj.as_affix_allomorph()\n                # Advanced operations...\n                affix_type = concrete.MorphTypeRA",
         "description": "Cast to IMoAffixAllomorph if this is an affix allomorph.",
         "method": "as_affix_allomorph",
         "object_type": "IMoForm",
@@ -520,7 +529,7 @@
       },
       {
         "class": "Allomorph",
-        "code": "if allomorph_obj.as_stem_allomorph():\n                concrete = allomorph_obj.as_stem_allomorph()\n                # Can now access IMoStemAllomorph-specific methods/properties\n                stem_name = concrete.StemName\n                # Advanced operations...",
+        "code": "if allomorph_obj.as_stem_allomorph():\n                concrete = allomorph_obj.as_stem_allomorph()\n                # Can now access IMoStemAllomorph-specific methods/properties\n                stem_name = concrete.StemNameRA\n                # Advanced operations...",
         "description": "Cast to IMoStemAllomorph if this is a stem allomorph.",
         "method": "as_stem_allomorph",
         "object_type": "IMoForm",
@@ -749,6 +758,15 @@
       },
       {
         "class": "TextOperations",
+        "code": "props = source.Texts.GetSyncableProperties(src_text)\ntarget.Texts.ApplySyncableProperties(tgt_text, props)",
+        "description": "Apply a syncable-properties dict onto an IText item.",
+        "method": "ApplySyncableProperties",
+        "object_type": "IText",
+        "operation": "general",
+        "source": "docstring"
+      },
+      {
+        "class": "TextOperations",
         "code": "is_diff, diffs = ops1.CompareTo(text1, text2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
         "description": "Compare two texts for differences.",
         "method": "CompareTo",
@@ -869,15 +887,6 @@
         "code": "text = list(project.Texts.GetAll())[0]\nparas = project.Texts.GetParagraphs(text)\nfor i, para in enumerate(paras, 1):\n    content = para.Contents.Text\n    print(f\"Paragraph {i}: {content}\")\n\n        See Also:\n            GetContents, GetParagraphCount",
         "description": "Get all paragraphs in a text.",
         "method": "GetParagraphs",
-        "object_type": "IText",
-        "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "TextOperations",
-        "code": "props = project.Texts.GetSyncableProperties(text)\nprint(props['Title'])\n            {'en': 'Genesis'}\nprint(props['Description'])\n            {'en': 'First book of the Bible'}",
-        "description": "Get all syncable properties of a text.",
-        "method": "GetSyncableProperties",
         "object_type": "IText",
         "operation": "read",
         "source": "docstring"
@@ -1030,7 +1039,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "# Get all human agents\nhumans = project.Agents.FindByType(True)\nfor agent in humans:\n    name = project.Agents.GetName(agent)\n    person = project.Agents.GetHuman(agent)\n    email = project.Person.GetEmail(person)\n    print(f\"{name}: {email}\")\n\n# Get all parsers\nparsers = project.Agents.FindByType(False)\nfor parser in parsers:\n    name = project.Agents.GetName(parser)\n    version = project.Agents.GetVersion(parser)\n    print(f\"{name} v{version}\")",
+        "code": "# Get all human agents\nhumans = project.Agents.FindByType(True)\nfor agent in humans:\n    name = project.Agents.GetName(agent)\n    person = project.Agents.GetHuman(agent)\n    print(f\"{name}: {project.Person.GetName(person)}\")\n\n# Get all parsers\nparsers = project.Agents.FindByType(False)\nfor parser in parsers:\n    name = project.Agents.GetName(parser)\n    version = project.Agents.GetVersion(parser)\n    print(f\"{name} v{version}\")",
         "description": "Find all agents of a specific type (human or parser).",
         "method": "FindByType",
         "object_type": "general",
@@ -1115,7 +1124,7 @@
       },
       {
         "class": "AnnotationDefOperations",
-        "code": "# Create a top-level annotation definition\ncustom_def = project.AnnotationDef.Create(\n    \"Review Required\",\n    CmAnnotationType.katGeneralNote,\n    \"en\"\n)\nprint(project.AnnotationDef.GetName(custom_def))\n            Review Required\n\n# Create a sub-type under an existing definition\ntodo_def = project.AnnotationDef.Find(\"To Do\")\nurgent_def = project.AnnotationDef.Create(\n    \"Urgent\",\n    CmAnnotationType.katGeneralNote,\n    \"en\",\n    parent=todo_def\n)\n\n# Set properties for new definition\nproject.AnnotationDef.SetUserCanCreate(custom_def, True)\nproject.AnnotationDef.SetHelpString(custom_def,\n    \"Marks entries requiring review\", \"en\")",
+        "code": "# Create a top-level annotation definition\ncustom_def = project.AnnotationDef.Create(\n    \"Review Required\",\n    0,\n    \"en\"\n)\nprint(project.AnnotationDef.GetName(custom_def))\n            Review Required\n\n# Create a sub-type under an existing definition\ntodo_def = project.AnnotationDef.Find(\"To Do\")\nurgent_def = project.AnnotationDef.Create(\n    \"Urgent\",\n    0,\n    \"en\",\n    parent=todo_def\n)\n\n# Set properties for new definition\nproject.AnnotationDef.SetUserCanCreate(custom_def, True)\nproject.AnnotationDef.SetHelpString(custom_def,\n    \"Marks entries requiring review\", \"en\")",
         "description": "Create a new annotation definition.",
         "method": "Create",
         "object_type": "general",
@@ -1413,6 +1422,15 @@
         "source": "docstring"
       },
       {
+        "class": "ConstChartClauseMarkerOperations",
+        "code": "project.ConstChartClauseMarkers.RemoveDependentClause(main, 0)\n\n        See Also:\n            InsertDependentClause, AddDependentClause, GetDependentClauses",
+        "description": "Remove the dependent clause marker at a given index from DependentClausesRS.",
+        "method": "RemoveDependentClause",
+        "object_type": "general",
+        "operation": "delete",
+        "source": "docstring"
+      },
+      {
         "class": "ConstChartMovedTextOperations",
         "code": "marker = project.ConstChartMovedText.Find(wg)\nif marker:\n    project.ConstChartMovedText.Delete(marker)\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - Word group will no longer be marked as moved\n\n        See Also:\n            Create, Find",
         "description": "Delete a moved text marker.",
@@ -1600,15 +1618,6 @@
         "object_type": "general",
         "operation": "delete",
         "source": "docstring"
-      },
-      {
-        "class": "InflectionFeatureOperations",
-        "code": "inflOps = InflectionFeatureOperations(project)\n# Find and delete a test feature\nfor feature in inflOps.FeatureGetAll():\n    ws = project.GetDefaultAnalysisWSHandle()\n    name = ITsString(feature.Name.get_String(ws)).Text\n    if name == \"test_feature\":\n        inflOps.FeatureDelete(feature)\n        break\n\n        Warning:\n            - Cannot delete if used in feature structures\n            - Cannot delete if referenced by entries or morphemes\n            - Check dependencies before deletion\n            - Deletion is permanent and cannot be undone\n\n        See Also:\n            FeatureCreate, FeatureGetAll",
-        "description": "Delete a feature definition.",
-        "method": "FeatureDelete",
-        "object_type": "general",
-        "operation": "delete",
-        "source": "docstring"
       }
     ],
     "general": [
@@ -1767,7 +1776,7 @@
       },
       {
         "class": "Allomorph",
-        "code": "if allomorph_obj.as_affix_allomorph():\n                concrete = allomorph_obj.as_affix_allomorph()\n                # Can now access IMoAffixAllomorph-specific methods/properties\n                affix_type = concrete.AffixType\n                # Advanced operations...",
+        "code": "if allomorph_obj.as_affix_allomorph():\n                concrete = allomorph_obj.as_affix_allomorph()\n                # Advanced operations...\n                affix_type = concrete.MorphTypeRA",
         "description": "Cast to IMoAffixAllomorph if this is an affix allomorph.",
         "method": "as_affix_allomorph",
         "object_type": "IMoForm",
@@ -1776,7 +1785,7 @@
       },
       {
         "class": "Allomorph",
-        "code": "if allomorph_obj.as_stem_allomorph():\n                concrete = allomorph_obj.as_stem_allomorph()\n                # Can now access IMoStemAllomorph-specific methods/properties\n                stem_name = concrete.StemName\n                # Advanced operations...",
+        "code": "if allomorph_obj.as_stem_allomorph():\n                concrete = allomorph_obj.as_stem_allomorph()\n                # Can now access IMoStemAllomorph-specific methods/properties\n                stem_name = concrete.StemNameRA\n                # Advanced operations...",
         "description": "Cast to IMoStemAllomorph if this is a stem allomorph.",
         "method": "as_stem_allomorph",
         "object_type": "IMoForm",
@@ -1886,7 +1895,7 @@
     "iterate": [
       {
         "class": "AgentOperations",
-        "code": "for agent in project.Agents.GetAll():\n    name = project.Agents.GetName(agent)\n    if project.Agents.IsHuman(agent):\n        person = project.Agents.GetHuman(agent)\n        email = project.Person.GetEmail(person)\n        print(f\"Human: {name} ({email})\")\n    else:\n        version = project.Agents.GetVersion(agent)\n        print(f\"Parser: {name} v{version}\")\n            Human: John Smith (john.smith@example.com)\n            Parser: MyParser v1.0.0",
+        "code": "for agent in project.Agents.GetAll():\n    name = project.Agents.GetName(agent)\n    if project.Agents.IsHuman(agent):\n        person = project.Agents.GetHuman(agent)\n        print(f\"Human: {name} ({project.Person.GetName(person)})\")\n    else:\n        version = project.Agents.GetVersion(agent)\n        print(f\"Parser: {name} v{version}\")\n            Human: John Smith (john.smith@example.com)\n            Parser: MyParser v1.0.0",
         "description": "Check if an agent is a human analyst.",
         "method": "IsHuman",
         "object_type": "general",
@@ -2128,6 +2137,15 @@
         "source": "docstring"
       },
       {
+        "class": "NaturalClassOperations",
+        "code": "for nc in project.NaturalClasses.GetAll():\n    if project.NaturalClasses.IsFeatureBased(nc):\n        continue  # skip AddPhoneme; use SetFeatures instead\n    project.NaturalClasses.AddPhoneme(nc, phoneme)\n\n        See Also:\n            IsSegmentBased, GetType, AddPhoneme, SetFeatures",
+        "description": "Return whether a natural class is feature-based (IPhNCFeatures).",
+        "method": "IsFeatureBased",
+        "object_type": "general",
+        "operation": "iterate",
+        "source": "docstring"
+      },
+      {
         "class": "NoteOperations",
         "code": "is_diff, diffs = ops1.CompareTo(note1, note2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
         "description": "Compare two notes and return detailed differences.",
@@ -2140,15 +2158,6 @@
         "class": "POSOperations",
         "code": "pos1 = project1_posOps.Find(\"Noun\")\npos2 = project2_posOps.Find(\"Noun\")\nis_diff, diffs = project1_posOps.CompareTo(\n    pos1, pos2,\n    ops1=project1_posOps,\n    ops2=project2_posOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
         "description": "Compare two parts of speech and return detailed differences.",
-        "method": "CompareTo",
-        "object_type": "general",
-        "operation": "iterate",
-        "source": "docstring"
-      },
-      {
-        "class": "ParagraphOperations",
-        "code": "is_diff, diffs = ops1.CompareTo(para1, para2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
-        "description": "Compare two paragraphs for differences.",
         "method": "CompareTo",
         "object_type": "general",
         "operation": "iterate",
@@ -2187,7 +2196,7 @@
     "read": [
       {
         "class": "AgentOperations",
-        "code": "# Get all human agents\nhumans = project.Agents.FindByType(True)\nfor agent in humans:\n    name = project.Agents.GetName(agent)\n    person = project.Agents.GetHuman(agent)\n    email = project.Person.GetEmail(person)\n    print(f\"{name}: {email}\")\n\n# Get all parsers\nparsers = project.Agents.FindByType(False)\nfor parser in parsers:\n    name = project.Agents.GetName(parser)\n    version = project.Agents.GetVersion(parser)\n    print(f\"{name} v{version}\")",
+        "code": "# Get all human agents\nhumans = project.Agents.FindByType(True)\nfor agent in humans:\n    name = project.Agents.GetName(agent)\n    person = project.Agents.GetHuman(agent)\n    print(f\"{name}: {project.Person.GetName(person)}\")\n\n# Get all parsers\nparsers = project.Agents.FindByType(False)\nfor parser in parsers:\n    name = project.Agents.GetName(parser)\n    version = project.Agents.GetVersion(parser)\n    print(f\"{name} v{version}\")",
         "description": "Find all agents of a specific type (human or parser).",
         "method": "FindByType",
         "object_type": "general",
@@ -2223,7 +2232,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agents.Find(\"John Smith\")\nif project.Agents.IsHuman(agent):\n    person = project.Agents.GetHuman(agent)\n    name = project.Person.GetName(person)\n    email = project.Person.GetEmail(person)\n    print(f\"{name}: {email}\")\n            John Smith: john.smith@example.com\n\n# Parser agents return None\nparser = project.Agents.Find(\"MyParser\")\nperson = project.Agents.GetHuman(parser)\nprint(person)\n            None",
+        "code": "agent = project.Agents.Find(\"John Smith\")\nif project.Agents.IsHuman(agent):\n    person = project.Agents.GetHuman(agent)\n    name = project.Person.GetName(person)\n    print(name)\n            John Smith\n\n# Parser agents return None\nparser = project.Agents.Find(\"MyParser\")\nperson = project.Agents.GetHuman(parser)\nprint(person)\n            None",
         "description": "Get the linked person for a human agent.",
         "method": "GetHuman",
         "object_type": "general",
@@ -2232,7 +2241,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "humans = project.Agents.GetHumanAgents()\nprint(f\"Found {len(humans)} human agents\")\n            Found 3 human agents\n\nfor agent in humans:\n    name = project.Agents.GetName(agent)\n    person = project.Agents.GetHuman(agent)\n    email = project.Person.GetEmail(person)\n    print(f\"Analyst: {name} ({email})\")\n            Analyst: John Smith (john.smith@example.com)\n            Analyst: Maria Garcia (maria.garcia@example.com)\n            Analyst: Ahmed Hassan (ahmed.hassan@example.com)",
+        "code": "humans = project.Agents.GetHumanAgents()\nprint(f\"Found {len(humans)} human agents\")\n            Found 3 human agents\n\nfor agent in humans:\n    name = project.Agents.GetName(agent)\n    person = project.Agents.GetHuman(agent)\n    print(f\"Analyst: {name} ({project.Person.GetName(person)})\")\n            Analyst: John Smith (john.smith@example.com)\n            Analyst: Maria Garcia (maria.garcia@example.com)\n            Analyst: Ahmed Hassan (ahmed.hassan@example.com)",
         "description": "Get all human agents in the project.",
         "method": "GetHumanAgents",
         "object_type": "general",
@@ -2340,7 +2349,7 @@
       },
       {
         "class": "AnnotationDefOperations",
-        "code": "# Find by name\ntodo_def = project.AnnotationDef.Find(\"To Do\")\nif todo_def:\n    print(f\"Found: {project.AnnotationDef.GetName(todo_def)}\")\nelse:\n    print(\"Not found\")\n            Found: To Do\n\n# Use to check if definition exists\nif not project.AnnotationDef.Find(\"Custom Type\"):\n    # Create it\n    custom = project.AnnotationDef.Create(\n        \"Custom Type\",\n        CmAnnotationType.katGeneralNote\n    )",
+        "code": "# Find by name\ntodo_def = project.AnnotationDef.Find(\"To Do\")\nif todo_def:\n    print(f\"Found: {project.AnnotationDef.GetName(todo_def)}\")\nelse:\n    print(\"Not found\")\n            Found: To Do\n\n# Use to check if definition exists\nif not project.AnnotationDef.Find(\"Custom Type\"):\n    # Create it\n    custom = project.AnnotationDef.Create(\n        \"Custom Type\",\n        0\n    )",
         "description": "Find an annotation definition by name.",
         "method": "Find",
         "object_type": "general",
@@ -2349,7 +2358,7 @@
       },
       {
         "class": "AnnotationDefOperations",
-        "code": "from SIL.LCModel import CmAnnotationType\n# Get all general note types\nfor note_def in project.AnnotationDef.FindByType(\n        CmAnnotationType.katGeneralNote):\n    name = project.AnnotationDef.GetName(note_def)\n    print(f\"Note type: {name}\")\n            Note type: To Do\n            Note type: Question\n            Note type: Review Required\n\n# Count question types\nquestion_types = list(project.AnnotationDef.FindByType(\n    CmAnnotationType.katQuestionNote))\nprint(f\"Found {len(question_types)} question types\")",
+        "code": "# Get all general note types (type code 0)\nfor note_def in project.AnnotationDef.FindByType(0):\n    name = project.AnnotationDef.GetName(note_def)\n    print(f\"Note type: {name}\")\n            Note type: To Do\n            Note type: Question\n            Note type: Review Required",
         "description": "Find all annotation definitions of a specific type.",
         "method": "FindByType",
         "object_type": "general",
@@ -2367,7 +2376,7 @@
       },
       {
         "class": "AnnotationDefOperations",
-        "code": "from SIL.LCModel import CmAnnotationType\ntodo_def = project.AnnotationDef.Find(\"To Do\")\nif todo_def:\n    anno_type = project.AnnotationDef.GetAnnotationType(todo_def)\n    if anno_type == int(CmAnnotationType.katGeneralNote):\n        print(\"This is a general note type\")\n            This is a general note type",
+        "code": "todo_def = project.AnnotationDef.Find(\"To Do\")\nif todo_def:\n    anno_type = project.AnnotationDef.GetAnnotationType(todo_def)\n    print(f\"Type code: {anno_type}\")\n            Type code: 0",
         "description": "Get the annotation type of an annotation definition.",
         "method": "GetAnnotationType",
         "object_type": "general",
@@ -2632,7 +2641,7 @@
       },
       {
         "class": "AnnotationDefOperations",
-        "code": "custom_def = project.AnnotationDef.Create(\n    \"Review Required\",\n    CmAnnotationType.katGeneralNote\n)\nproject.AnnotationDef.SetHelpString(\n    custom_def,\n    \"Marks entries that require linguistic review\",\n    \"en\"\n)\nprint(project.AnnotationDef.GetHelpString(custom_def))\n            Marks entries that require linguistic review",
+        "code": "custom_def = project.AnnotationDef.Create(\n    \"Review Required\",\n    0\n)\nproject.AnnotationDef.SetHelpString(\n    custom_def,\n    \"Marks entries that require linguistic review\",\n    \"en\"\n)\nprint(project.AnnotationDef.GetHelpString(custom_def))\n            Marks entries that require linguistic review",
         "description": "Set the help string (description) of an annotation definition.",
         "method": "SetHelpString",
         "object_type": "general",
@@ -2659,7 +2668,7 @@
       },
       {
         "class": "AnnotationDefOperations",
-        "code": "custom_def = project.AnnotationDef.Create(\n    \"Review\",\n    CmAnnotationType.katGeneralNote\n)\nproject.AnnotationDef.SetPrompt(\n    custom_def,\n    \"Describe what needs to be reviewed\",\n    \"en\"\n)",
+        "code": "custom_def = project.AnnotationDef.Create(\n    \"Review\",\n    0\n)\nproject.AnnotationDef.SetPrompt(\n    custom_def,\n    \"Describe what needs to be reviewed\",\n    \"en\"\n)",
         "description": "Set the prompt text for an annotation definition.",
         "method": "SetPrompt",
         "object_type": "general",
@@ -2848,7 +2857,7 @@
       },
       {
         "class": "DataNotebookOperations",
-        "code": "record = project.DataNotebook.Find(\"Interview 1\")\nproject.DataNotebook.SetContent(\n    record,\n    \"Detailed notes from interview about kinship terminology. \"\n    \"Speaker provided examples of terms for siblings and cousins.\"\n)\n\n# Update content incrementally\nexisting = project.DataNotebook.GetContent(record)\nnew_content = existing + \"\\n\\nAdditional observations...\"\nproject.DataNotebook.SetContent(record, new_content)\n\n# Set in multiple languages\nproject.DataNotebook.SetContent(record, \"English notes\", \"en\")\nproject.DataNotebook.SetContent(record, \"Notas en español\", \"es\")",
+        "code": "record = project.DataNotebook.Find(\"Interview 1\")\nproject.DataNotebook.SetContent(\n    record,\n    \"Detailed notes from interview about kinship terminology. \"\n    \"Speaker provided examples of terms for siblings and cousins.\"\n)\n\n# Update content incrementally\nexisting = project.DataNotebook.GetContent(record)\nnew_content = existing + \"\\n\\nAdditional observations...\"\nproject.DataNotebook.SetContent(record, new_content)",
         "description": "Set the content/body text of a notebook record.",
         "method": "SetContent",
         "object_type": "general",
@@ -3395,7 +3404,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1177,
-    "unique_patterns": 116
+    "total_patterns": 1191,
+    "unique_patterns": 117
   }
 }

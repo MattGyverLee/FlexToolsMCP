@@ -24,7 +24,7 @@
     },
     "AgentOperations": {
       "category": "lists",
-      "method_count": 19,
+      "method_count": 22,
       "methods": {},
       "wraps_interfaces": [
         "ICmAgent",
@@ -50,10 +50,11 @@
     },
     "AllomorphOperations": {
       "category": "lexicon",
-      "method_count": 18,
+      "method_count": 19,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
+        "ILexEntryRepository",
         "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory",
         "IMoStemAllomorph",
@@ -67,6 +68,8 @@
       "method_count": 1,
       "methods": {},
       "wraps_interfaces": [
+        "ICmBaseAnnotation",
+        "IScrScriptureNote",
         "ITsString"
       ]
     },
@@ -125,10 +128,12 @@
       "method_count": 11,
       "methods": {},
       "wraps_interfaces": [
+        "IFsClosedFeature",
         "IFsClosedValue",
         "IFsClosedValueFactory",
         "IFsComplexValue",
         "IFsComplexValueFactory",
+        "IFsFeatDefn",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "ITsString"
@@ -199,10 +204,7 @@
       "category": "lists",
       "method_count": 4,
       "methods": {},
-      "wraps_interfaces": [
-        "IWfiAnalysisRepository",
-        "IWfiGlossRepository"
-      ]
+      "wraps_interfaces": []
     },
     "ConstChartCellTagOperations": {
       "category": "discourse",
@@ -217,7 +219,7 @@
     },
     "ConstChartClauseMarkerOperations": {
       "category": "discourse",
-      "method_count": 8,
+      "method_count": 10,
       "methods": {},
       "wraps_interfaces": [
         "IConstChartClauseMarker",
@@ -247,6 +249,7 @@
       "wraps_interfaces": [
         "IConstChartMovedTextMarker",
         "IConstChartMovedTextMarkerFactory",
+        "IConstChartRow",
         "IConstChartWordGroup",
         "IDsConstChart"
       ]
@@ -322,7 +325,9 @@
         "ICmPossibilityRepository",
         "IRnGenericRec",
         "IRnGenericRecFactory",
-        "IRnResearchNbkRepository",
+        "IStTextFactory",
+        "IStTxtPara",
+        "IStTxtParaFactory",
         "IText",
         "ITsString"
       ]
@@ -355,10 +360,12 @@
       "method_count": 1,
       "methods": {},
       "wraps_interfaces": [
+        "IFsClosedFeature",
         "IFsClosedValue",
         "IFsClosedValueFactory",
         "IFsComplexValue",
         "IFsComplexValueFactory",
+        "IFsFeatDefn",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "ITsString"
@@ -377,7 +384,7 @@
     },
     "EtymologyOperations": {
       "category": "lexicon",
-      "method_count": 23,
+      "method_count": 25,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
@@ -401,7 +408,7 @@
     },
     "FLExProject": {
       "category": "general",
-      "method_count": 107,
+      "method_count": 109,
       "methods": {},
       "wraps_interfaces": [
         "ICmObjectRepository",
@@ -469,7 +476,8 @@
       "method_count": 14,
       "methods": {},
       "wraps_interfaces": [
-        "ILcmUI"
+        "ILcmUI",
+        "IThreadedProgress"
       ]
     },
     "InflectionFeatureOperations": {
@@ -505,7 +513,7 @@
     },
     "LexEntryOperations": {
       "category": "lexicon",
-      "method_count": 63,
+      "method_count": 65,
       "methods": {},
       "wraps_interfaces": [
         "ICmFileFactory",
@@ -543,7 +551,7 @@
     },
     "LexReferenceOperations": {
       "category": "lexicon",
-      "method_count": 23,
+      "method_count": 24,
       "methods": {},
       "wraps_interfaces": [
         "ICmPossibilityListFactory",
@@ -559,7 +567,7 @@
     },
     "LexSenseOperations": {
       "category": "lexicon",
-      "method_count": 87,
+      "method_count": 88,
       "methods": {},
       "wraps_interfaces": [
         "ICmPicture",
@@ -599,7 +607,7 @@
     },
     "MSAOperations": {
       "category": "lexicon",
-      "method_count": 12,
+      "method_count": 13,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
@@ -644,7 +652,7 @@
     },
     "MorphRuleOperations": {
       "category": "grammar",
-      "method_count": 21,
+      "method_count": 22,
       "methods": {},
       "wraps_interfaces": [
         "IMoEndoCompoundFactory",
@@ -668,7 +676,7 @@
     },
     "NaturalClassOperations": {
       "category": "grammar",
-      "method_count": 20,
+      "method_count": 22,
       "methods": {},
       "wraps_interfaces": [
         "IFsClosedValue",
@@ -689,9 +697,11 @@
       "method_count": 19,
       "methods": {},
       "wraps_interfaces": [
+        "ICmAgent",
         "ICmAnnotationDefn",
         "ICmBaseAnnotation",
         "ICmBaseAnnotationFactory",
+        "ICmBaseAnnotationRepository",
         "ICmPossibility",
         "IScrScriptureNote",
         "IScrScriptureNoteFactory",
@@ -703,10 +713,12 @@
       "method_count": 1,
       "methods": {},
       "wraps_interfaces": [
+        "IFsClosedFeature",
         "IFsClosedValue",
         "IFsClosedValueFactory",
         "IFsComplexValue",
         "IFsComplexValueFactory",
+        "IFsFeatDefn",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "ITsString"
@@ -714,9 +726,11 @@
     },
     "OverlayOperations": {
       "category": "lists",
-      "method_count": 12,
+      "method_count": 25,
       "methods": {},
       "wraps_interfaces": [
+        "ICmOverlay",
+        "ICmOverlayFactory",
         "ICmPossibility",
         "ICmPossibilityFactory",
         "IDsConstChart",
@@ -726,10 +740,11 @@
     },
     "POSOperations": {
       "category": "grammar",
-      "method_count": 22,
+      "method_count": 27,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntryRepository",
+        "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
         "ITsString"
@@ -791,7 +806,7 @@
     },
     "PhonemeOperations": {
       "category": "grammar",
-      "method_count": 25,
+      "method_count": 26,
       "methods": {},
       "wraps_interfaces": [
         "ICmObjectRepository",
@@ -811,7 +826,10 @@
       "category": "system",
       "method_count": 6,
       "methods": {},
-      "wraps_interfaces": []
+      "wraps_interfaces": [
+        "IPhNaturalClass",
+        "IPhPhoneme"
+      ]
     },
     "PhonologicalRule": {
       "category": "grammar",
@@ -853,7 +871,7 @@
     },
     "PossibilityListOperations": {
       "category": "lists",
-      "method_count": 28,
+      "method_count": 29,
       "methods": {},
       "wraps_interfaces": [
         "ICmPossibility",
@@ -970,8 +988,7 @@
       "wraps_interfaces": [
         "IScrDraft",
         "IScrDraftFactory",
-        "IScripture",
-        "ITsString"
+        "IScripture"
       ]
     },
     "ScrNoteOperations": {
@@ -1046,6 +1063,8 @@
       "method_count": 24,
       "methods": {},
       "wraps_interfaces": [
+        "ICmDomainQ",
+        "ICmDomainQFactory",
         "ICmSemanticDomain",
         "ICmSemanticDomainFactory",
         "ILexSenseRepository",
@@ -1084,12 +1103,9 @@
     },
     "TextOperations": {
       "category": "texts",
-      "method_count": 24,
+      "method_count": 25,
       "methods": {},
       "wraps_interfaces": [
-        "ICmFolderFactory",
-        "ICmMedia",
-        "ICmMediaFactory",
         "ICmPossibility",
         "IStTextFactory",
         "IStTxtPara",
@@ -1227,10 +1243,12 @@
       "method_count": 1,
       "methods": {},
       "wraps_interfaces": [
+        "IFsClosedFeature",
         "IFsClosedValue",
         "IFsClosedValueFactory",
         "IFsComplexValue",
         "IFsComplexValueFactory",
+        "IFsFeatDefn",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "ITsString"
@@ -1414,6 +1432,10 @@
           "methods": []
         },
         {
+          "class": "NoteOperations",
+          "methods": []
+        },
+        {
           "class": "WfiAnalysisOperations",
           "methods": []
         }
@@ -1486,15 +1508,42 @@
       "flexlibs_stable": null
     },
     "ICmBaseAnnotation": {
+      "flexlibs_2": [
+        {
+          "class": "Annotation",
+          "methods": []
+        },
+        {
+          "class": "NoteOperations",
+          "methods": []
+        }
+      ],
+      "flexlibs_stable": null
+    },
+    "ICmBaseAnnotationFactory": {
       "flexlibs_2": {
         "class": "NoteOperations",
         "methods": []
       },
       "flexlibs_stable": null
     },
-    "ICmBaseAnnotationFactory": {
+    "ICmBaseAnnotationRepository": {
       "flexlibs_2": {
         "class": "NoteOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "ICmDomainQ": {
+      "flexlibs_2": {
+        "class": "SemanticDomainOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "ICmDomainQFactory": {
+      "flexlibs_2": {
+        "class": "SemanticDomainOperations",
         "methods": []
       },
       "flexlibs_stable": null
@@ -1606,10 +1655,6 @@
         {
           "class": "MediaType",
           "methods": []
-        },
-        {
-          "class": "TextOperations",
-          "methods": []
         }
       ],
       "flexlibs_stable": null
@@ -1630,20 +1675,6 @@
     "ICmLocationFactory": {
       "flexlibs_2": {
         "class": "LocationOperations",
-        "methods": []
-      },
-      "flexlibs_stable": null
-    },
-    "ICmMedia": {
-      "flexlibs_2": {
-        "class": "TextOperations",
-        "methods": []
-      },
-      "flexlibs_stable": null
-    },
-    "ICmMediaFactory": {
-      "flexlibs_2": {
-        "class": "TextOperations",
         "methods": []
       },
       "flexlibs_stable": null
@@ -1762,6 +1793,20 @@
           "WSUIName"
         ]
       }
+    },
+    "ICmOverlay": {
+      "flexlibs_2": {
+        "class": "OverlayOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "ICmOverlayFactory": {
+      "flexlibs_2": {
+        "class": "OverlayOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
     },
     "ICmPerson": {
       "flexlibs_2": [
@@ -2321,6 +2366,10 @@
           "methods": []
         },
         {
+          "class": "ConstChartMovedTextOperations",
+          "methods": []
+        },
+        {
           "class": "ConstChartOperations",
           "methods": []
         },
@@ -2499,6 +2548,14 @@
     "IFsClosedFeature": {
       "flexlibs_2": [
         {
+          "class": "BaseOperations",
+          "methods": []
+        },
+        {
+          "class": "EnumerableWrapper",
+          "methods": []
+        },
+        {
           "class": "FilterOperations",
           "methods": []
         },
@@ -2511,11 +2568,19 @@
           "methods": []
         },
         {
+          "class": "OperationsMethod",
+          "methods": []
+        },
+        {
           "class": "PhonFeatureOperations",
           "methods": []
         },
         {
           "class": "PhonemeOperations",
+          "methods": []
+        },
+        {
+          "class": "wrap_enumerable",
           "methods": []
         }
       ],
@@ -2665,10 +2730,28 @@
       "flexlibs_stable": null
     },
     "IFsFeatDefn": {
-      "flexlibs_2": {
-        "class": "InflectionFeatureOperations",
-        "methods": []
-      },
+      "flexlibs_2": [
+        {
+          "class": "BaseOperations",
+          "methods": []
+        },
+        {
+          "class": "EnumerableWrapper",
+          "methods": []
+        },
+        {
+          "class": "InflectionFeatureOperations",
+          "methods": []
+        },
+        {
+          "class": "OperationsMethod",
+          "methods": []
+        },
+        {
+          "class": "wrap_enumerable",
+          "methods": []
+        }
+      ],
       "flexlibs_stable": null
     },
     "IFsFeatStruc": {
@@ -3072,6 +3155,10 @@
     },
     "ILexEntryRepository": {
       "flexlibs_2": [
+        {
+          "class": "AllomorphOperations",
+          "methods": []
+        },
         {
           "class": "FLExProject",
           "methods": []
@@ -3609,6 +3696,13 @@
       },
       "flexlibs_stable": null
     },
+    "IMoInflAffixSlotFactory": {
+      "flexlibs_2": {
+        "class": "POSOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
     "IMoInflAffixTemplateFactory": {
       "flexlibs_2": {
         "class": "MorphRuleOperations",
@@ -4073,10 +4167,16 @@
       "flexlibs_stable": null
     },
     "IPhNaturalClass": {
-      "flexlibs_2": {
-        "class": "NaturalClassOperations",
-        "methods": []
-      },
+      "flexlibs_2": [
+        {
+          "class": "NaturalClassOperations",
+          "methods": []
+        },
+        {
+          "class": "PhonologicalContext",
+          "methods": []
+        }
+      ],
       "flexlibs_stable": null
     },
     "IPhPhoneme": {
@@ -4087,6 +4187,10 @@
         },
         {
           "class": "PhonemeOperations",
+          "methods": []
+        },
+        {
+          "class": "PhonologicalContext",
           "methods": []
         }
       ],
@@ -4381,13 +4485,6 @@
       },
       "flexlibs_stable": null
     },
-    "IRnResearchNbkRepository": {
-      "flexlibs_2": {
-        "class": "DataNotebookOperations",
-        "methods": []
-      },
-      "flexlibs_stable": null
-    },
     "IScrBook": {
       "flexlibs_2": [
         {
@@ -4465,6 +4562,10 @@
     },
     "IScrScriptureNote": {
       "flexlibs_2": [
+        {
+          "class": "Annotation",
+          "methods": []
+        },
         {
           "class": "NoteOperations",
           "methods": []
@@ -4673,6 +4774,10 @@
     "IStTextFactory": {
       "flexlibs_2": [
         {
+          "class": "DataNotebookOperations",
+          "methods": []
+        },
+        {
           "class": "ScrNoteOperations",
           "methods": []
         },
@@ -4693,6 +4798,10 @@
     },
     "IStTxtPara": {
       "flexlibs_2": [
+        {
+          "class": "DataNotebookOperations",
+          "methods": []
+        },
         {
           "class": "FLExProject",
           "methods": []
@@ -4789,6 +4898,10 @@
     },
     "IStTxtParaFactory": {
       "flexlibs_2": [
+        {
+          "class": "DataNotebookOperations",
+          "methods": []
+        },
         {
           "class": "ParagraphOperations",
           "methods": []
@@ -4943,6 +5056,13 @@
           "WSUIName"
         ]
       }
+    },
+    "IThreadedProgress": {
+      "flexlibs_2": {
+        "class": "HeadlessLcmUI",
+        "methods": []
+      },
+      "flexlibs_stable": null
     },
     "ITsStrBldr": {
       "flexlibs_2": {
@@ -5234,10 +5354,6 @@
         },
         {
           "class": "ScrBookOperations",
-          "methods": []
-        },
-        {
-          "class": "ScrDraftOperations",
           "methods": []
         },
         {
@@ -5603,10 +5719,6 @@
           "methods": []
         },
         {
-          "class": "ConfidenceOperations",
-          "methods": []
-        },
-        {
           "class": "FLExProject",
           "methods": []
         },
@@ -5722,13 +5834,6 @@
           "methods": []
         }
       ],
-      "flexlibs_stable": null
-    },
-    "IWfiGlossRepository": {
-      "flexlibs_2": {
-        "class": "ConfidenceOperations",
-        "methods": []
-      },
       "flexlibs_stable": null
     },
     "IWfiMorphBundle": {

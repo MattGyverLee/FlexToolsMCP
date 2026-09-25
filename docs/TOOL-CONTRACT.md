@@ -79,7 +79,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 36 codes below |
+| `error_code` | string | one of the 39 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -112,6 +112,9 @@ authoritative. All detail fields are optional unless noted.
 | `syntax_error` | `line`, `col`, `offending_token`, `parser_message` |
 | `server_state_error` | `server_state`, `component`, `state_description` |
 | `internal_error` | `error_type`, `traceback`, `tool` -- unhandled exception in a tool handler (issue #89); traceback is for operator triage, not for end-user display |
+| `session_not_initialized` | `tool`, `_diagnostic`, `available_task_examples` (list), `hint` -- dispatch gate before any handler runs (issue #243) |
+| `unknown_tool` | `tool` -- tool name not registered in the dispatch router (issue #243) |
+| `invalid_input` | `tool`, `received_arguments` -- Pydantic argument validation failed before the handler ran (issue #243) |
 | `partial_module_structure` | `missing_elements` (list), `has_main`, `has_docs_dict`, `has_flextools_binding` |
 | `unprotected_writes` | `mutating_calls` (list), `write_certification_required` |
 | `casting_issues_detected` | `casting_issues` (list), `polymorphic_collections`, `general_guidance` -- issue #40 B-1: on a READ-ONLY run (`write_enabled=false`), this code is emitted (and the run rejected) only if at least one `casting_issues[*].severity` is `"error"` (a known-pattern hit, or a genuine attribute typo). If every issue is `"warning"` (an index-derived lookup with no corroborating known pattern), the run **proceeds instead of rejecting** -- see "Read-only casting severity downgrade" below. WRITE-enabled runs are unaffected: this code still rejects at every severity. |

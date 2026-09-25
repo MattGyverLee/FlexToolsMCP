@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 36 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 39 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + invalid_api_mode + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
   parse_job_cancelled
@@ -15,7 +15,9 @@ Provides:
   parse_scope_mismatch, parser_timeout, parser_job_failed
   + internal_error (#89)
   + 2 parser-check CP4 codes: parser_filing_in_progress, grammar_load_unclean
-  + 2 parser-check CP5 codes: parser_config_failed, parse_sandbox_refused)
+  + 2 parser-check CP5 codes: parser_config_failed, parse_sandbox_refused
+  + 3 pre-handler dispatch codes (#243): session_not_initialized,
+  unknown_tool, invalid_input)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -175,6 +177,31 @@ class InternalErrorDetail(BaseModel):
     error_type: Optional[str] = None
     traceback: Optional[str] = None
     tool: Optional[str] = None
+
+
+class SessionNotInitializedDetail(BaseModel):
+    """Pre-handler gate: session not configured (issue #243)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["session_not_initialized"] = "session_not_initialized"
+    tool: Optional[str] = None
+    hint: Optional[str] = None
+    _diagnostic: Optional[Any] = None
+    available_task_examples: Optional[List[str]] = None
+
+
+class UnknownToolDetail(BaseModel):
+    """Pre-handler gate: tool name not in dispatch router (issue #243)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["unknown_tool"] = "unknown_tool"
+    tool: Optional[str] = None
+
+
+class InvalidInputDetail(BaseModel):
+    """Pre-handler gate: Pydantic argument validation failed (issue #243)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["invalid_input"] = "invalid_input"
+    tool: Optional[str] = None
+    received_arguments: Optional[Any] = None
 
 
 class PartialModuleStructureDetail(BaseModel):
@@ -806,13 +833,16 @@ class ParseSandboxRefusedDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 36 per-code detail models
+# Discriminated union over all 39 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
     SyntaxErrorDetail,
     ServerStateErrorDetail,
     InternalErrorDetail,
+    SessionNotInitializedDetail,
+    UnknownToolDetail,
+    InvalidInputDetail,
     PartialModuleStructureDetail,
     UnprotectedWritesDetail,
     CastingIssuesDetectedDetail,
@@ -888,7 +918,7 @@ def validate_detail(data: Dict[str, Any]) -> AnyDetail:
 
     Args:
         data: Dict containing at minimum ``error_code`` matching one of the
-              36 known codes, plus any per-code detail fields.
+              39 known codes, plus any per-code detail fields.
 
     Returns:
         A validated instance of the appropriate detail model (e.g.

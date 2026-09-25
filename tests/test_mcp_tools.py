@@ -365,8 +365,9 @@ class TestWorkflowGates(TestCase):
         READ_ONLY_SAFE nor run_module."""
         result = call_tool("flextools_run_operation", {"operations": "print('hello')"})
         data = self._parse_response(result)
-        self.assertIn("error", data)
-        self.assertIn("not initialized", data.get("error", "").lower())
+        self.assertEqual(data.get("status"), "error")
+        self.assertEqual(data.get("error_code"), "session_not_initialized")
+        self.assertIn("flextools_start", data.get("message", "").lower())
 
     def test_list_categories_before_start_auto_inits_readonly(self):
         """Issue #53: flextools_list_categories is READ_ONLY_SAFE -- cold call
@@ -393,8 +394,9 @@ class TestWorkflowGates(TestCase):
         scopes auto-init to READ_ONLY_SAFE tools + run_module only)."""
         result = call_tool("flextools_manage_config", {"action": "list"})
         data = self._parse_response(result)
-        self.assertIn("error", data)
-        self.assertIn("not initialized", data.get("error", "").lower())
+        self.assertEqual(data.get("status"), "error")
+        self.assertEqual(data.get("error_code"), "session_not_initialized")
+        self.assertIn("flextools_start", data.get("message", "").lower())
 
     def test_run_module_cold_with_project_name_executes_readonly(self):
         """Issue #53 item 3: run_module with a project_name on a cold session

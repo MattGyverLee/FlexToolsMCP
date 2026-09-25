@@ -81,6 +81,18 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "(verbose=True for project-lock/pythonnet detail) for a diagnostic "
         "snapshot instead of reading server logs -- retrying won't help."
     ),
+    "session_not_initialized": (
+        "call flextools_start first to initialize the session and set "
+        "api_mode/write_enabled before using project-scoped tools."
+    ),
+    "unknown_tool": (
+        "the tool name isn't registered -- check the flextools_ prefix and "
+        "the MCP tools list; old unprefixed names no longer work."
+    ),
+    "invalid_input": (
+        "the tool arguments didn't match the schema -- read the validation "
+        "message and fix the offending field before retrying."
+    ),
     "partial_module_structure": (
         "call flextools_get_module_template to get the full "
         "Main/docs/FlexToolsModule scaffold, OR drop the def Main "

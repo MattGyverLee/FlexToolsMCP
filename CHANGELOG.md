@@ -251,6 +251,13 @@ sorted position, not the top). Changes without an issue go under Other.
   `flextools_parse_text(apply=true)` run could file a word. `FilingWorker` now
   never idle-releases; `final_commit` closes the project. `FilingBackend.setup`
   refuses by name (`runtime_error` / `ProjectNotOpen`) if the project is closed.
+- **Search/API rows advertised broken `from flexicon import` lines for
+  internal classes** ([#245](https://github.com/MattGyverLee/FlexToolsMCP/issues/245)).
+  ``_build_entity_import`` now AST-parses flexicon's ``__init__.py`` re-exports
+  (and records ``top_level_importable`` at index refresh) so non-exported types
+  such as ``MSACollection`` and ``BaseOperations`` get a deep
+  ``flexicon.code.*`` import instead of a top-level name that raises
+  ``ImportError``.
 
 ### Added
 

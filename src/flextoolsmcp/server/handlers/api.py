@@ -9,8 +9,11 @@ Provides read-only API discovery tools:
 """
 
 import heapq
+import importlib.util
 import re
 from collections import deque
+from functools import lru_cache
+from pathlib import Path
 from mcp.types import TextContent
 from typing import List, Dict, Any
 
@@ -391,6 +394,42 @@ def build_response_with_context(data: dict, include_session: bool = True) -> dic
     return data
 
 
+@lru_cache(maxsize=1)
+def _flexicon_top_level_exports() -> frozenset[str] | None:
+    """Parse flexicon/__init__.py for re-exported names (no flexicon import)."""
+    try:
+        from flextoolsmcp.flexicon_analyzer import extract_flexicon_top_level_exports_from_init
+
+        spec = importlib.util.find_spec("flexicon")
+        if spec and spec.origin:
+            exports = extract_flexicon_top_level_exports_from_init(Path(spec.origin))
+            if exports:
+                return exports
+    except Exception:
+        pass
+    return None
+
+
+def _flexicon_deep_import_line(namespace: str, entity_name: str) -> str:
+    """Import line using the indexed flexicon.code.* module path."""
+    if namespace.startswith("flexicon."):
+        return f"from {namespace} import {entity_name}"
+    return f"from flexicon import {entity_name}"
+
+
+def _entity_top_level_importable(
+    entity_name: str,
+    entity: dict | None,
+    exports: frozenset[str] | None,
+) -> bool | None:
+    """True/False when known; None when the export surface is unavailable."""
+    if entity and "top_level_importable" in entity:
+        return bool(entity["top_level_importable"])
+    if exports is not None:
+        return entity_name in exports
+    return None
+
+
 def _build_entity_import(library: str, entity_name: str, namespace: str = "",
                           entity: dict | None = None) -> str:
     """Ready-to-paste access line for a result row.
@@ -418,6 +457,20 @@ def _build_entity_import(library: str, entity_name: str, namespace: str = "",
             return access_path
     if library == "liblcm":
         return f"from {namespace} import {entity_name}" if namespace else ""
+
+    if library in ("flexicon", "flexlibs_stable"):
+        exports = _flexicon_top_level_exports() if library == "flexicon" else None
+        top_level = _entity_top_level_importable(entity_name, entity, exports)
+        ns = (entity or {}).get(KEY_NAMESPACE) or namespace
+        if top_level is False or (
+            top_level is None
+            and exports is not None
+            and entity_name not in exports
+            and ns.startswith("flexicon.code.")
+        ):
+            if ns:
+                return _flexicon_deep_import_line(ns, entity_name)
+
     return f"from {library} import {entity_name}"
 
 

@@ -5,6 +5,14 @@
 Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
+### Fixed
+
+- **Tool success payload contract drift guard ([#152](https://github.com/MattGyverLee/FlexToolsMCP/issues/152)).**
+  Added `tool_output_validation` plus CI-local `validate_integrity.py success_models`
+  so the three tools with `output_model` metadata (`run_module`, `get_object_api`,
+  `search_by_capability`) stay aligned with their `*Success` Pydantic envelopes via
+  golden run_module fixtures and minimal smoke payloads.
+
 ### Other
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*

@@ -12,7 +12,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from flextoolsmcp.tool_output_validation import (
     iter_validation_cases,
     run_output_model_validation,
-    validate_success_payload,
 )
 from flextoolsmcp.server.response_models import RunModuleSuccess
 

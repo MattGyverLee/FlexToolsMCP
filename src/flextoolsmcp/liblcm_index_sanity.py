@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Tuple
 
 log = logging.getLogger("liblcm-extractor")
 

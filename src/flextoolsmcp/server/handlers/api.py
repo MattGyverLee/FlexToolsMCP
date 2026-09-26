@@ -49,6 +49,10 @@ try:
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
+    from ..constants import (
+        NOT_CMPOSSIBILITY_NAME_COLLISION as _NOT_CMPOSSIBILITY_NAME_COLLISION,
+        not_cmpossibility_warning as _not_cmpossibility_warning_impl,
+    )
 except ImportError:
     from server.kernel import get_api_index, session_state
     from response_utils import json_response
@@ -79,6 +83,10 @@ except ImportError:
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
+    )
+    from server.constants import (
+        NOT_CMPOSSIBILITY_NAME_COLLISION as _NOT_CMPOSSIBILITY_NAME_COLLISION,
+        not_cmpossibility_warning as _not_cmpossibility_warning_impl,
     )
 
 try:
@@ -132,12 +140,13 @@ SUFFIX_KIND_GUIDE = {
 # IMoMorphType is the explicit contrast case: it DOES inherit
 # base="CmPossibility" (interfaces includes "ICmPossibility"), so
 # ICmPossibility(morphType).Name is correct there and it must stay out of
-# Re-export for tests and callers that import from handlers.api.
-from ..constants import NOT_CMPOSSIBILITY_NAME_COLLISION, not_cmpossibility_warning
+# this set. Canonical definition lives in server.constants; re-exported here
+# for tests and callers that import from handlers.api.
+NOT_CMPOSSIBILITY_NAME_COLLISION = _NOT_CMPOSSIBILITY_NAME_COLLISION
 
 
 def _not_cmpossibility_warning(object_type: str) -> str | None:
-    return not_cmpossibility_warning(object_type)
+    return _not_cmpossibility_warning_impl(object_type)
 
 
 # API mode configuration

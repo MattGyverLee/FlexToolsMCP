@@ -127,26 +127,26 @@
     <rect x="925" y="222" width="180" height="62" rx="6" fill="white" stroke="#F87171" stroke-width="1.5"/>
     <text x="935" y="238" font-size="11" font-weight="700" fill="#7F1D1D">5b · Write-mode pass</text>
     <text x="935" y="253" font-size="10" fill="#475569">write_enabled = True</text>
-    <text x="935" y="267" font-size="10" fill="#475569">write lock engages,</text>
-    <text x="935" y="280" font-size="10" fill="#475569">undo entry recorded</text>
+    <text x="935" y="267" font-size="10" fill="#475569">access check + lock,</text>
+    <text x="935" y="280" font-size="10" fill="#475569">backup, then writes</text>
 
     <!-- Footer -->
     <text x="1015" y="302" text-anchor="middle" font-size="9.5" font-weight="600" fill="#7F1D1D">both passes traverse the 12-gate gauntlet ↓</text>
-    <text x="1015" y="314" text-anchor="middle" font-size="9" fill="#9F1239">(gate 11 write-lock fires only on 5b)</text>
+    <text x="1015" y="314" text-anchor="middle" font-size="9" fill="#9F1239">(gate 11 access + lock fire only on 5b)</text>
   </g>
 
-  <!-- ============ STAGE 6: Inspect &amp; Undo ============ -->
+  <!-- ============ STAGE 6: Inspect ============ -->
   <g>
     <rect x="1130" y="80" width="200" height="200" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
     <circle cx="1153" cy="103" r="13" fill="#D97706"/>
     <text x="1153" y="108" text-anchor="middle" font-size="13" font-weight="700" fill="white">6</text>
-    <text x="1235" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#78350F">Inspect &amp; Undo</text>
+    <text x="1235" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#78350F">Inspect</text>
     <text x="1140" y="136" font-size="11" font-weight="600" fill="#78350F">flextools_get_operation_logs</text>
     <text x="1140" y="151" font-size="10.5" fill="#92400E">• logs + recommendations</text>
     <text x="1140" y="170" font-size="11" font-weight="600" fill="#78350F">flextools_get_session_history</text>
-    <text x="1140" y="184" font-size="10.5" fill="#92400E">• audit trail / undo stack</text>
-    <text x="1140" y="203" font-size="11" font-weight="600" fill="#78350F">flextools_undo_last_operation</text>
-    <text x="1140" y="217" font-size="10.5" fill="#92400E">• ActionHandler.Undo()</text>
+    <text x="1140" y="184" font-size="10.5" fill="#92400E">• audit trail</text>
+    <text x="1140" y="203" font-size="11" font-weight="600" fill="#78350F">No undo tool (#92)</text>
+    <text x="1140" y="217" font-size="10.5" fill="#92400E">• pre-write backup instead</text>
     <line x1="1140" y1="227" x2="1320" y2="227" stroke="#FCD34D" stroke-width="1"/>
     <text x="1140" y="243" font-size="10" font-weight="700" fill="#78350F">SAFEGUARDS</text>
     <text x="1140" y="258" font-size="10" fill="#78350F">• pattern tracker → Stage 3</text>
@@ -177,7 +177,7 @@
   <!-- ============ GAUNTLET PANEL ============ -->
   <rect x="55" y="368" width="1490" height="262" rx="10" fill="white" stroke="#DC2626" stroke-width="2"/>
   <text x="800" y="394" text-anchor="middle" font-size="15" font-weight="700" fill="#7F1D1D">Stage 5 — 12-Gate Pre-flight Gauntlet (run on every pass: 5a dry-run AND 5b write-mode)</text>
-  <text x="800" y="411" text-anchor="middle" font-size="11" fill="#9F1239">Each gate returns a structured error before subprocess launch. Red gates HARD BLOCK execution. Gate 11 only acquires the lock when write_enabled=True.</text>
+  <text x="800" y="411" text-anchor="middle" font-size="11" fill="#9F1239">Each gate returns a structured error before subprocess launch. Red gates HARD BLOCK execution. Gate 11 checks project access and takes the lock only when write_enabled=True.</text>
 
   <!-- Pill positions: row1 y=425, row2 y=525. Pill w=225 h=82. x: 90, 330, 570, 810, 1050, 1290 -->
 
@@ -304,15 +304,15 @@
     <text x="820" y="603" font-size="9.5" font-style="italic" fill="#78350F">→ invalid_api_chain</text>
   </g>
 
-  <!-- Gate 11: Per-project write lock -->
+  <!-- Gate 11: Project access + write lock -->
   <g>
     <rect x="1050" y="525" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
     <circle cx="1066" cy="541" r="10" fill="#D97706"/>
     <text x="1066" y="545" text-anchor="middle" font-size="10" font-weight="700" fill="white">11</text>
-    <text x="1085" y="545" font-size="11.5" font-weight="700" fill="#78350F">Per-project write lock</text>
-    <text x="1060" y="564" font-size="10" fill="#92400E">get_project_write_lock(name)</text>
-    <text x="1060" y="578" font-size="10" fill="#475569">5b only — asyncio.Lock</text>
-    <text x="1060" y="591" font-size="10" fill="#475569">serializes CUD per project</text>
+    <text x="1085" y="545" font-size="11.5" font-weight="700" fill="#78350F">Access check + write lock</text>
+    <text x="1060" y="564" font-size="10" fill="#92400E">probe_write_access + lock</text>
+    <text x="1060" y="578" font-size="10" fill="#475569">5b only — FLEx w/o sharing</text>
+    <text x="1060" y="591" font-size="10" fill="#475569">refused; serializes CUD</text>
     <text x="1060" y="603" font-size="9.5" font-style="italic" fill="#78350F">prevents corruption</text>
   </g>
 
@@ -357,8 +357,8 @@
     <text x="600" y="805" font-weight="700">• Pattern learning loop</text>
     <text x="620" y="819" fill="#166534" font-size="10">success/fail recorded → discovery hints</text>
 
-    <text x="600" y="845" font-weight="700">• Undo stack (ActionHandler.Undo)</text>
-    <text x="620" y="859" fill="#166534" font-size="10">CUD ops recorded for rollback review</text>
+    <text x="600" y="845" font-weight="700">• Pre-write backup (no undo)</text>
+    <text x="620" y="859" fill="#166534" font-size="10">first write per session copies .fwdata</text>
 
     <!-- Col 3 -->
     <text x="1100" y="725" font-weight="700">• Cross-flavor coverage gaps surfaced</text>

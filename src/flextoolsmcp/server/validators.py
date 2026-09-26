@@ -4247,6 +4247,116 @@ def _build_cast_candidate_set(
     return candidates
 
 
+# Issue #278: `if var.ClassName == "MoStemMsa":` (or `in (...)`) narrows `var`
+# to the matching concrete interface inside that branch, the same way an
+# explicit `var = IMoStemMsa(var)` cast satisfies the casting gate.
+
+
+def _is_classname_access_on_var(expr: ast.AST, var_name: str) -> bool:
+    if isinstance(expr, ast.Attribute):
+        return (
+            isinstance(expr.value, ast.Name)
+            and expr.value.id == var_name
+            and expr.attr == "ClassName"
+        )
+    if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
+        if expr.func.id != "getattr" or len(expr.args) < 2:
+            return False
+        obj, attr = expr.args[0], expr.args[1]
+        if not (isinstance(obj, ast.Name) and obj.id == var_name):
+            return False
+        if isinstance(attr, ast.Constant) and attr.value == "ClassName":
+            return True
+    return False
+
+
+def _class_name_literals_from_compare(test: ast.AST, var_name: str) -> Set[str]:
+    """LCM class names proven by `var.ClassName == "X"` or `in (...)`."""
+    if not isinstance(test, ast.Compare) or len(test.ops) != 1:
+        return set()
+    if not _is_classname_access_on_var(test.left, var_name):
+        return set()
+    op = test.ops[0]
+    comparator = test.comparators[0]
+    if isinstance(op, ast.Eq):
+        if isinstance(comparator, ast.Constant) and isinstance(comparator.value, str):
+            return {comparator.value}
+        return set()
+    if isinstance(op, ast.In):
+        names: Set[str] = set()
+        if isinstance(comparator, (ast.Tuple, ast.List)):
+            for elt in comparator.elts:
+                if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                    names.add(elt.value)
+        return names
+    return set()
+
+
+def _stmt_list_contains_node(stmts: List[ast.stmt], node: ast.AST) -> bool:
+    for stmt in stmts:
+        for desc in ast.walk(stmt):
+            if desc is node:
+                return True
+    return False
+
+
+def _elif_if_containing(
+    orelse: List[ast.stmt], node: ast.AST
+) -> Optional[ast.If]:
+    """Innermost ``elif`` (``If`` in ``orelse``) whose body contains ``node``."""
+    for stmt in orelse:
+        if not isinstance(stmt, ast.If):
+            continue
+        if _stmt_list_contains_node(stmt.body, node):
+            return stmt
+        nested = _elif_if_containing(stmt.orelse, node)
+        if nested is not None:
+            return nested
+    return None
+
+
+def _class_name_literals_from_classname_guard(
+    node: ast.AST, parents: Dict[ast.AST, ast.AST], var_name: str
+) -> Set[str]:
+    """Innermost enclosing ``if``/``elif`` arm that narrows ``var_name``."""
+    current: ast.AST = node
+    while current in parents:
+        parent = parents[current]
+        if isinstance(parent, ast.If):
+            if _stmt_list_contains_node(parent.body, node):
+                found = _class_name_literals_from_compare(parent.test, var_name)
+                if found:
+                    return found
+            elif _stmt_list_contains_node(parent.orelse, node):
+                elif_if = _elif_if_containing(parent.orelse, node)
+                if elif_if is not None:
+                    found = _class_name_literals_from_compare(elif_if.test, var_name)
+                    if found:
+                        return found
+        current = parent
+    return set()
+
+
+def _interfaces_from_classname_guard_at_line(
+    tree: ast.AST,
+    parents: Dict[ast.AST, ast.AST],
+    line_num: int,
+    var_name: str,
+    class_name_mapping: Dict[str, str],
+) -> Set[str]:
+    ifaces: Set[str] = set()
+    for n in ast.walk(tree):
+        if getattr(n, "lineno", None) != line_num:
+            continue
+        if not (isinstance(n, ast.Name) and n.id == var_name):
+            continue
+        for lcm_class in _class_name_literals_from_classname_guard(n, parents, var_name):
+            iface = class_name_mapping.get(lcm_class)
+            if iface:
+                ifaces.add(iface)
+    return ifaces
+
+
 # Issue #103: hvo instability. liblcm states this outright --
 # `src/SIL.LCModel/Application/Impl/DomainDataByFlid.cs:40-44`:
 #   "The hvo values are true 'handles' in that they are valid for one
@@ -6421,10 +6531,16 @@ def detect_casting_needs(
             )
         )
 
+    _class_name_mapping = (casting_index or {}).get("class_name_mapping") or {}
+    _guard_parents: Dict[ast.AST, ast.AST] = {}
+    if tree is not None:
+        _guard_parents = _parents if _parents else _build_parent_map(tree)
+
     def _receiver_ifaces_for(ln: int, var: str) -> Set[str]:
         """Interfaces PROVEN safe for `var` at line `ln`: the existing
         branch-aware cast_alias set, UNIONED with a non-polymorphic
-        loop-target binding (issue #121 negative control) when one exists.
+        loop-target binding (issue #121 negative control) when one exists,
+        UNIONED with a ClassName guard on the same arm (issue #278).
         A NON-polymorphic `element_type` (e.g. `for e in project.LexEntry.
         GetAll(): ...` where GetAll's element_type is exactly "ILexEntry",
         not a base/weak type) is exactly as good a safety proof as an
@@ -6448,6 +6564,10 @@ def detect_casting_needs(
         _lb = loop_element_types.get((ln, var))
         if _lb and not _lb[1]:
             ifaces.add(_lb[0])
+        if tree is not None and _guard_parents and _class_name_mapping:
+            ifaces |= _interfaces_from_classname_guard_at_line(
+                tree, _guard_parents, ln, var, _class_name_mapping
+            )
         return ifaces
 
     # Known polymorphic patterns that ALWAYS need casting across all flavors
@@ -6913,6 +7033,16 @@ def detect_casting_needs(
                     if _resolved_cast is not None:
                         continue
                     if _build_cast_candidate_set(_arg, _parents, tree).get(_arg.id):
+                        continue
+                if _class_name_mapping:
+                    _guard_ifaces = _interfaces_from_classname_guard_at_line(
+                        tree,
+                        _guard_parents or _parents,
+                        _node.lineno,
+                        _arg.id,
+                        _class_name_mapping,
+                    )
+                    if _expected_iface in _guard_ifaces:
                         continue
                 _dedupe_key = (_node.lineno, _arg.id, _method_name)
                 if _dedupe_key in _rule_b_seen:

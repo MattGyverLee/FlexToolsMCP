@@ -23,8 +23,10 @@ sorted position, not the top). Changes without an issue go under Other.
   ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
   run_module casting validator now errors on `ICmPossibility(...)` when the
   argument is known to be `IMoInflAffixSlot`, `IMoInflAffixTemplate`, or
-  `IMoInflClass`, including `ICmPossibility(x).Name` chains that previously
-  passed at `injection_tier=none` and failed at runtime.
+  `IMoInflClass` -- including explicit interface casts, provenance attributes
+  such as `ICmPossibility(m.InflectionClassRA)`, and curated receiver names
+  like `ICmPossibility(slot)` -- so these shapes no longer pass at
+  `injection_tier=none` and fail at runtime.
 - **Tool success payload contract drift guard ([#152](https://github.com/MattGyverLee/FlexToolsMCP/issues/152)).**
   Added `tool_output_validation` plus CI-local `validate_integrity.py success_models`
   so the three tools with `output_model` metadata (`run_module`, `get_object_api`,

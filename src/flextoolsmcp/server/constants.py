@@ -110,6 +110,75 @@ def not_cmpossibility_warning(object_type: str) -> str | None:
     )
 
 
+# Owning/ref property names whose return type is provably one of the
+# NOT_CMPOSSIBILITY_NAME_COLLISION types (MasterLCModel.xml).
+NOT_CMPOSSIBILITY_PROVENANCE_ATTRS = frozenset({
+    "InflectionClassRA",
+    "DefaultInflectionClassRA",
+    "InflectionClassesOC",
+    "InflectionClassesRC",
+    "SubclassesOC",
+    "AffixSlotsOC",
+    "SlotsRC",
+    "SlotRA",
+    "SlotsRS",
+    "PrefixSlotsRS",
+    "SuffixSlotsRS",
+    "EncliticSlotsRS",
+    "ProcliticSlotsRS",
+    "AffixTemplatesOS",
+    "TemplateRA",
+})
+
+NOT_CMPOSSIBILITY_RECEIVER_NAMES = frozenset({
+    "slot", "affix_slot", "infl_slot", "slot_obj",
+    "template", "tmpl", "templ", "affix_template", "template_obj",
+    "infl_class", "inflection_class", "infl_cls", "inflClass", "infl_class_obj",
+})
+
+_INFL_CLASS_PROVENANCE = frozenset({
+    "InflectionClassRA",
+    "DefaultInflectionClassRA",
+    "InflectionClassesOC",
+    "InflectionClassesRC",
+    "SubclassesOC",
+})
+_INFL_SLOT_PROVENANCE = frozenset({
+    "AffixSlotsOC",
+    "SlotsRC",
+    "SlotRA",
+    "SlotsRS",
+    "PrefixSlotsRS",
+    "SuffixSlotsRS",
+    "EncliticSlotsRS",
+    "ProcliticSlotsRS",
+})
+
+
+def not_cmpossibility_type_for_provenance_attr(attr: str) -> str | None:
+    """Return IMoInfl* interface for a known provenance property, else None."""
+    if attr in _INFL_CLASS_PROVENANCE:
+        return "IMoInflClass"
+    if attr in _INFL_SLOT_PROVENANCE:
+        return "IMoInflAffixSlot"
+    if attr in {"AffixTemplatesOS", "TemplateRA"}:
+        return "IMoInflAffixTemplate"
+    return None
+
+
+def not_cmpossibility_type_for_receiver_name(name: str) -> str | None:
+    """Map curated receiver variable names to NOT_ICmPossibility types."""
+    if name in {"slot", "affix_slot", "infl_slot", "slot_obj"}:
+        return "IMoInflAffixSlot"
+    if name in {"template", "tmpl", "templ", "affix_template", "template_obj"}:
+        return "IMoInflAffixTemplate"
+    if name in {
+        "infl_class", "inflection_class", "infl_cls", "inflClass", "infl_class_obj",
+    }:
+        return "IMoInflClass"
+    return None
+
+
 # ============================================================
 # Raw LCM handle names that map to Flexicon project accessors (issue #69)
 # ============================================================

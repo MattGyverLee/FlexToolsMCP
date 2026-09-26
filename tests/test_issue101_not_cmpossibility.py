@@ -296,5 +296,55 @@ class TestInvalidICmPossibilityCastPreflight(unittest.TestCase):
         self.assertEqual(len(self._invalid_ic_poss_issues(result)), 1)
 
 
+class TestICmPossibilityProvenanceGate(unittest.TestCase):
+    """Issue #101 B1: attribute and receiver-name provenance for ICmPossibility."""
+
+    def _run(self, code: str):
+        from server.validators import detect_casting_needs
+
+        return detect_casting_needs(code, casting_index=None)
+
+    def _invalid_ic_poss_issues(self, result):
+        return [
+            i
+            for i in result.get("casting_issues") or []
+            if i.get("kind") == "invalid_icmpossibility_cast"
+        ]
+
+    def test_inflection_class_ra_provenance_flags(self):
+        code = "name = ICmPossibility(m.InflectionClassRA).Name\n"
+        result = self._run(code)
+        self.assertEqual(len(self._invalid_ic_poss_issues(result)), 1)
+
+    def test_slot_receiver_name_flags(self):
+        code = "name = ICmPossibility(slot).Name\n"
+        result = self._run(code)
+        self.assertEqual(len(self._invalid_ic_poss_issues(result)), 1)
+
+    def test_morph_type_not_flagged(self):
+        code = "name = ICmPossibility(morphType).Name\n"
+        result = self._run(code)
+        self.assertEqual(self._invalid_ic_poss_issues(result), [])
+
+    def test_pos_not_flagged(self):
+        code = "name = ICmPossibility(pos).Name\n"
+        result = self._run(code)
+        self.assertEqual(self._invalid_ic_poss_issues(result), [])
+
+    def test_unrelated_attribute_not_flagged(self):
+        code = "name = ICmPossibility(obj.Guid).Name\n"
+        result = self._run(code)
+        self.assertEqual(self._invalid_ic_poss_issues(result), [])
+
+    def test_b1_injection_tier_not_none(self):
+        code = (
+            "for m in project.MorphRules.GetAllInstances():\n"
+            "    name = ICmPossibility(m.InflectionClassRA).Name\n"
+        )
+        result = self._run(code)
+        self.assertTrue(result["has_casting_issues"])
+        self.assertNotEqual(result["injection_tier"], "none")
+
+
 if __name__ == "__main__":
     unittest.main()

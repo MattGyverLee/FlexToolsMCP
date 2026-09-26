@@ -236,6 +236,11 @@ ALL_ERROR_CODES = [
     ("wrong_library_imports", dict(wrong_imports=["flexlibs"], api_mode="flexicon", affected_symbols=["LexOps"])),
     ("invalid_api_mode", dict(allowed_modes=["flexicon", "flexlibs_stable", "liblcm"], received="bogus")),
     ("invalid_api_chain", dict(issues=[], guidance="Fix chain")),
+    ("reflection_bypass_detected", dict(
+        findings=[{"kind": "operator.methodcaller", "line": 2, "expr": "operator.methodcaller(\"Add\", ...)(...)"}],
+        reflection_bypass_count=1,
+        next_steps=["1. Replace reflection with casts."],
+    )),
     ("nested_unit_of_work", dict(constructs=[{"construct": "UndoableUnitOfWorkHelper(...)", "line": 3}])),
     ("project_locked", dict(
         guidance="Enable project sharing in FLEx, then retry",

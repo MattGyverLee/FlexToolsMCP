@@ -111,6 +111,12 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "entry.AlternateFormsOS), not on the entry. Copy the "
         "replacement_example from the rejection."
     ),
+    "reflection_bypass_detected": (
+        "remove reflection shortcuts (operator.methodcaller, importlib "
+        "SIL.LCModel imports, getattr/setattr on LCM members) and use normal "
+        "dotted access with explicit interface casts or flexicon Operations "
+        "methods so preflight can verify casting and write safety."
+    ),
     "nested_unit_of_work": (
         # Re-scoped for issue #144: what's already open around the mutation
         # is the runner's session-long task on older flexicon, or

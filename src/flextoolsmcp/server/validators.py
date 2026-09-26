@@ -689,6 +689,183 @@ def detect_nested_unit_of_work(code: str, tree: Optional[ast.AST] = None) -> dic
 
 
 # ============================================================
+# Reflection bypass detection (issue #277)
+# ============================================================
+#
+# Static preflight (casting, write certification, polymorphic hints) only
+# sees normal attribute access and flexicon Operations calls. Reaching LCM
+# through operator.methodcaller, importlib + getattr, or setattr/getattr with
+# a string-literal member name sidesteps those checks entirely. This detector
+# flags those idioms so write runs refuse rather than silently losing safety.
+
+
+_REFLECTION_ATTR_FUNCS = frozenset({"getattr", "setattr", "hasattr", "delattr"})
+_LCM_IMPORT_MODULE_MARKERS = ("SIL.LCModel", "LCModel")
+
+
+def _ast_str_literal(node: ast.AST) -> Optional[str]:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
+def _looks_like_lcm_member_name(name: str) -> bool:
+    if not name or name.startswith("_"):
+        return False
+    return name[0].isupper()
+
+
+def _is_operator_methodcaller_call(node: ast.Call) -> bool:
+    func = node.func
+    return (
+        isinstance(func, ast.Attribute)
+        and func.attr == "methodcaller"
+        and isinstance(func.value, ast.Name)
+        and func.value.id == "operator"
+    )
+
+
+def _is_importlib_import_module_call(node: ast.Call) -> Optional[str]:
+    func = node.func
+    module_name: Optional[str] = None
+    if isinstance(func, ast.Attribute) and func.attr == "import_module":
+        if isinstance(func.value, ast.Name) and func.value.id == "importlib":
+            if node.args:
+                module_name = _ast_str_literal(node.args[0])
+    elif isinstance(func, ast.Name) and func.id == "import_module":
+        if node.args:
+            module_name = _ast_str_literal(node.args[0])
+    if not module_name:
+        return None
+    for marker in _LCM_IMPORT_MODULE_MARKERS:
+        if marker in module_name:
+            return module_name
+    return None
+
+
+def detect_reflection_bypass(code: str, tree: Optional[ast.AST] = None) -> dict:
+    """Detect LCM access patterns that bypass static preflight analysis.
+
+    Flags (AST-based -- string literals and comments never match):
+      - ``operator.methodcaller("...", ...)(receiver)``
+      - ``importlib.import_module("SIL.LCModel")`` (and similar LCModel paths)
+      - ``getattr/setattr/hasattr/delattr(obj, "MemberName")`` when MemberName
+        looks like an LCM property or method (PascalCase, not dunder)
+
+    Returns:
+        dict with:
+          has_reflection_bypass: bool
+          findings: [{kind, expr, line, detail}, ...]
+          reflection_bypass_count: int
+    """
+    empty = {"has_reflection_bypass": False, "findings": [], "reflection_bypass_count": 0}
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return empty
+
+    findings: List[Dict[str, Any]] = []
+    seen: Set[Tuple[str, int, str]] = set()
+
+    def _record(kind: str, line: int, expr: str, detail: str) -> None:
+        key = (kind, line, expr)
+        if key in seen:
+            return
+        seen.add(key)
+        findings.append({"kind": kind, "line": line, "expr": expr, "detail": detail})
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+
+        # operator.methodcaller("Add", ...)(obj)
+        if isinstance(node.func, ast.Call) and _is_operator_methodcaller_call(node.func):
+            mc = node.func
+            method = _ast_str_literal(mc.args[0]) if mc.args else None
+            label = f'operator.methodcaller("{method or "?"}", ...)(...)'
+            _record(
+                "operator.methodcaller",
+                node.lineno,
+                label,
+                "LCM member invoked via operator.methodcaller; casting and write "
+                "preflight cannot see this access.",
+            )
+            continue
+
+        lcm_mod = _is_importlib_import_module_call(node)
+        if lcm_mod is not None:
+            _record(
+                "importlib.import_module",
+                node.lineno,
+                f'importlib.import_module("{lcm_mod}")',
+                "Dynamic LCModel import used to reach types or members preflight "
+                "does not analyze.",
+            )
+            continue
+
+        func = node.func
+        attr_name: Optional[str] = None
+        if isinstance(func, ast.Name):
+            attr_name = func.id
+        elif isinstance(func, ast.Attribute):
+            attr_name = func.attr
+
+        if attr_name not in _REFLECTION_ATTR_FUNCS or len(node.args) < 2:
+            continue
+        member = _ast_str_literal(node.args[1])
+        if not member or not _looks_like_lcm_member_name(member):
+            continue
+        _record(
+            f"builtin.{attr_name}",
+            node.lineno,
+            f'{attr_name}(..., "{member}"' + (", ...)" if attr_name == "setattr" else ")"),
+            f"Reflection access to LCM member '{member}' bypasses casting and "
+            "write-safety static analysis.",
+        )
+
+    if not findings:
+        return empty
+    return {
+        "has_reflection_bypass": True,
+        "findings": findings,
+        "reflection_bypass_count": len(findings),
+    }
+
+
+def build_reflection_bypass_rejection(check: dict) -> dict:
+    """Message + next_steps for a reflection_bypass_detected refusal (issue #277)."""
+    findings = check.get("findings") or []
+    where = ", ".join(
+        f"{f.get('expr', '?')} (line {f.get('line')})" for f in findings[:5]
+    )
+    extra = len(findings) - min(len(findings), 5)
+    if extra > 0:
+        where += f", +{extra} more"
+    message = (
+        "Refused: this code reaches LCM through reflection, so casting checks "
+        "and write certification cannot see it. "
+        f"Detected: {where}. "
+        "Use normal attribute access with the correct interface cast, or "
+        "flexicon Operations methods, instead of methodcaller/getattr/setattr "
+        "or dynamic SIL.LCModel imports."
+    )
+    steps = [
+        "Replace operator.methodcaller(...) calls with direct attribute access "
+        "after casting to the concrete interface (e.g. IMoStemMsa(msa).PartOfSpeechRA).",
+        "Replace getattr/setattr/hasattr on LCM objects with normal dotted access "
+        "and an explicit cast where the casting preflight requires one.",
+        "Import concrete interfaces statically (from SIL.LCModel import IMoStemMsa) "
+        "instead of importlib.import_module + getattr.",
+        "Re-run flextools_run_module().",
+    ]
+    return {
+        "message": message,
+        "next_steps": [f"{i}. {text}" for i, text in enumerate(steps, 1)],
+    }
+
+
+# ============================================================
 # Deprecated members (curated_deprecations.py)
 # ============================================================
 

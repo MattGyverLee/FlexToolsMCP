@@ -35,7 +35,7 @@ def _stub_write_enabled_non_mutating_preflight(monkeypatch, tmp_path):
     """Preflight says read-only (needs_lock=False) but write_enabled=True."""
     if kernel.get_operations_logger() is None:
         kernel.init_operations_logger()
-    monkeypatch.setattr(project_discovery, "check_project_locked", lambda name: None)
+    monkeypatch.setattr(project_discovery, "find_lock_file", lambda name: None)
     monkeypatch.setattr(execution_mod, "get_api_index", lambda: None)
     monkeypatch.setattr(execution_mod, "get_log_dir", lambda: tmp_path)
     monkeypatch.setattr(execution_mod, "validate_server_state", lambda: {"is_healthy": True, "issues": []})

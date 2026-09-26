@@ -32,7 +32,7 @@ WHAT STAYS WITH EACH CALLER, on purpose:
   * Logging and message wording, which name what the caller is doing.
 
 TEST SEAMS PRESERVED. `run_module`'s standing tests patch
-`project_access.probe_project_access`, `project_discovery.check_project_locked`
+`project_access.probe_project_access`, `project_discovery.find_lock_file`
 and `execution.perform_pre_write_backup`, and reassign `execution.session_state`.
 So every leaf here is looked up at CALL time (module attributes, not names
 bound at import), and the backup function, the session state and the config
@@ -148,7 +148,7 @@ def probe_write_access(project_name: str) -> AccessDecision:
     decision = AccessDecision(project_name=project_name, access=access, verdict=verdict)
 
     if verdict in REFUSING_VERDICTS:
-        lock_path = _project_discovery.check_project_locked(project_name)
+        lock_path = _project_discovery.find_lock_file(project_name)
         remedy = _project_access.build_access_remedy(access)
         holder = _holder_fields(access)
         decision.refusal = {

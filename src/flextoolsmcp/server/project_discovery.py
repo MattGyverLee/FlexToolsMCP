@@ -263,16 +263,13 @@ def resolve_project_name(requested: str) -> ResolveResult:
     return ResolveResult(None, suggestions, "no_match")
 
 
-def check_project_locked(project_name: str) -> Optional[Path]:
+def find_lock_file(project_name: str) -> Optional[Path]:
     """Issue #33: check for a .fwdata.lock file before launching the subprocess.
 
     Existence check ONLY -- a lock file may be stale or shared. Use
-    probe_project_access() for any accessibility decision (P3,
-    lock-site-inventory.md project_discovery.py:262-274: this function's
-    NAME asserts a conclusion its return value does not support; the
-    rename to find_lock_file() is deferred to a later cycle as it touches
-    ~9 call sites across src/ and tests/, but the contract is stated here
-    so a caller reads it correctly in the meantime).
+    probe_project_access() for any accessibility decision. (Formerly
+    check_project_locked(); renamed in the issue #93 CP6 cleanup because
+    that name asserted a conclusion the return value does not support.)
 
     Returns the Path to the lock file if one exists, else None.
     Requires get_projects_directory() to succeed; if it can't determine the

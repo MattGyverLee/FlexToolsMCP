@@ -230,7 +230,7 @@ def test_no_project_wide_lock_name_appears_in_the_claim_module():
     names = {n.id for n in ast.walk(ast.parse(source)) if isinstance(n, ast.Name)}
     names |= {n.attr for n in ast.walk(ast.parse(source)) if isinstance(n, ast.Attribute)}
     assert not names & {"get_project_write_lock", "project_write_locks",
-                        "check_project_locked", "locking", "flock", "lockf"}
+                        "find_lock_file", "locking", "flock", "lockf"}
     assert ".fwdata.lock" not in source
 
 

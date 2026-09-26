@@ -499,7 +499,7 @@ def _stub_agreement_env(monkeypatch, tmp_path):
     if kernel.get_operations_logger() is None:
         kernel.init_operations_logger()
     monkeypatch.setattr(project_discovery, "resolve_or_explain", lambda name: (name, None))
-    monkeypatch.setattr(project_discovery, "check_project_locked", lambda name: None)
+    monkeypatch.setattr(project_discovery, "find_lock_file", lambda name: None)
     # Issue #93 cycle 7 (P1-A): this helper drives handle_run_module(...,
     # validate_only=True), which reaches the project_lock enrichment;
     # without stubbing probe_project_access too, that enrichment probes
@@ -617,10 +617,10 @@ def _stub_validate_only_env(monkeypatch, tmp_path):
     if kernel.get_operations_logger() is None:
         kernel.init_operations_logger()
     monkeypatch.setattr(project_discovery, "resolve_or_explain", lambda name: (name, None))
-    monkeypatch.setattr(project_discovery, "check_project_locked", lambda name: None)
+    monkeypatch.setattr(project_discovery, "find_lock_file", lambda name: None)
     # Issue #93 cycle 7 (P1-A, cycle6-qc.md / lock-site-inventory.md
     # execution.py:2035-2047): the project_lock enrichment calls
-    # probe_project_access() too -- stub it alongside check_project_locked
+    # probe_project_access() too -- stub it alongside find_lock_file
     # so verdict/blocking are deterministic instead of host-dependent.
     # Individual tests can override this via monkeypatch.setattr(
     # project_access, "probe_project_access", ...) for other verdicts.
@@ -765,7 +765,7 @@ class TestHandleRunModuleValidateOnly:
 class TestValidateOnlyProjectLockEnrichment:
     """Issue #93 cycle 7 (P1-A): the validate_only project_lock enrichment
     (execution.py:2049-2076) was untested with a controlled probe -- every
-    existing test stubbed check_project_locked but not
+    existing test stubbed find_lock_file but not
     probe_project_access, so verdict/blocking were whatever the live host
     happened to report. These pin the emitted payload for the three
     verdicts explicitly required by the cycle-7 fix, plus the fail-open

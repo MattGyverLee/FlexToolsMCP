@@ -2211,11 +2211,11 @@ async def _handle_validate_only(
     # READ-ONLY project-lock probe -- never opens the project, just checks
     # for a stale/live .fwdata.lock file next to it.
     try:
-        from ..project_discovery import check_project_locked
+        from ..project_discovery import find_lock_file
     except (ImportError, ValueError):
-        from server.project_discovery import check_project_locked
+        from server.project_discovery import find_lock_file
     try:
-        _lock_path = check_project_locked(project_name) if project_name else None
+        _lock_path = find_lock_file(project_name) if project_name else None
     except Exception:
         _lock_path = None
     project_lock: Dict[str, Any] = {"locked": _lock_path is not None}

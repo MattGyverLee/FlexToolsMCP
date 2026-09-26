@@ -144,7 +144,7 @@ def _stub_env(monkeypatch, tmp_path, *, is_cud=True):
         kernel.init_operations_logger()
     monkeypatch.setattr(project_discovery, "resolve_or_explain", lambda name: (name, None))
     monkeypatch.setattr(
-        project_discovery, "check_project_locked",
+        project_discovery, "find_lock_file",
         lambda name: tmp_path / f"{name}.fwdata.lock",
     )
     monkeypatch.setattr(execution_mod, "get_api_index", lambda: None)

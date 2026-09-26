@@ -42,6 +42,7 @@ NON_REPORTABLE_CODES: frozenset = frozenset(
         "wrong_library_imports",
         # Write-safety gate
         "unprotected_writes",
+        "reflection_bypass_detected",
         # Structural half-conversion
         "partial_module_structure",
         # Project / infra codes

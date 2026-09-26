@@ -315,6 +315,21 @@ class InvalidApiChainDetail(BaseModel):
     guidance: Optional[str] = None
 
 
+class ReflectionBypassDetectedDetail(BaseModel):
+    """Detail payload for reflection_bypass_detected rejections (issue #277).
+
+    Fires on write-enabled runs whose code reaches LCM through reflection
+    (operator.methodcaller, importlib LCModel imports, or getattr/setattr on
+    PascalCase member names) so static casting and write certification cannot
+    see the access. See validators.detect_reflection_bypass().
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["reflection_bypass_detected"] = "reflection_bypass_detected"
+    findings: List[Any] = Field(default_factory=list)
+    reflection_bypass_count: int = 0
+    next_steps: List[Any] = Field(default_factory=list)
+
+
 class NestedUnitOfWorkDetail(BaseModel):
     """Detail payload for nested_unit_of_work rejections (issue #92 follow-up,
     re-derived for issue #144).
@@ -897,6 +912,7 @@ AnyDetail = Union[
     WrongLibraryImportsDetail,
     InvalidApiModeDetail,
     InvalidApiChainDetail,
+    ReflectionBypassDetectedDetail,
     NestedUnitOfWorkDetail,
     ProjectLockedDetail,
     ProjectDriveUnavailableDetail,

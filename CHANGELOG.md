@@ -43,6 +43,13 @@ sorted position, not the top). Changes without an issue go under Other.
   inflectional-affix `SlotsRC` assignments (duplicate-slot detection plus optional
   `SetInflAffMsaSlots` repair), matching the pattern users were hand-writing in
   runtime logs.
+- **Preflight blocks LCM reflection bypass on write runs**
+  ([#277](https://github.com/MattGyverLee/FlexToolsMCP/issues/277)). New
+  `reflection_bypass_detected` gate flags `operator.methodcaller`,
+  `importlib.import_module("SIL.LCModel")`, and `getattr`/`setattr` on
+  PascalCase LCM member names so casting and write certification cannot be
+  sidestepped. Read-only runs proceed with warnings; JSONL telemetry records
+  `reflection_bypass_count`.
 
 ### Other
 

@@ -22,16 +22,22 @@ try:
     from .constants import (
         KNOWN_OPERATIONS,
         NOT_CMPOSSIBILITY_NAME_COLLISION,
+        NOT_CMPOSSIBILITY_PROVENANCE_ATTRS,
         PROJECT_ACCESSOR_ALIASES,
         PROJECT_RAW_HANDLE_ALIASES,
+        not_cmpossibility_type_for_provenance_attr,
+        not_cmpossibility_type_for_receiver_name,
         not_cmpossibility_warning,
     )
 except ImportError:
     from server.constants import (
         KNOWN_OPERATIONS,
         NOT_CMPOSSIBILITY_NAME_COLLISION,
+        NOT_CMPOSSIBILITY_PROVENANCE_ATTRS,
         PROJECT_ACCESSOR_ALIASES,
         PROJECT_RAW_HANDLE_ALIASES,
+        not_cmpossibility_type_for_provenance_attr,
+        not_cmpossibility_type_for_receiver_name,
         not_cmpossibility_warning,
     )
 
@@ -2477,6 +2483,14 @@ def _lcm_interface_types_for_expr(
         binding = loop_element_types.get((at_line, var))
         if binding and not binding[1]:
             ifaces.add(binding[0])
+        recv_iface = not_cmpossibility_type_for_receiver_name(var)
+        if recv_iface:
+            ifaces.add(recv_iface)
+    elif isinstance(expr, ast.Attribute):
+        if expr.attr in NOT_CMPOSSIBILITY_PROVENANCE_ATTRS:
+            prov_iface = not_cmpossibility_type_for_provenance_attr(expr.attr)
+            if prov_iface:
+                ifaces.add(prov_iface)
     elif isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
         fid = expr.func.id
         if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
@@ -5665,6 +5679,21 @@ _RECEIVER_NAME_TO_INTERFACE = {
     "wa_obj": "IWfiAnalysis",
     "morph_obj": "IMoForm",
     "bundle_obj": "IWfiMorphBundle",
+    # Issue #101: morphology list receivers are NOT ICmPossibility.
+    "slot": "IMoInflAffixSlot",
+    "affix_slot": "IMoInflAffixSlot",
+    "infl_slot": "IMoInflAffixSlot",
+    "slot_obj": "IMoInflAffixSlot",
+    "template": "IMoInflAffixTemplate",
+    "tmpl": "IMoInflAffixTemplate",
+    "templ": "IMoInflAffixTemplate",
+    "affix_template": "IMoInflAffixTemplate",
+    "template_obj": "IMoInflAffixTemplate",
+    "infl_class": "IMoInflClass",
+    "inflection_class": "IMoInflClass",
+    "infl_cls": "IMoInflClass",
+    "inflClass": "IMoInflClass",
+    "infl_class_obj": "IMoInflClass",
 }
 
 # Suffixes that signal a typed receiver -- strip and retry the base name.

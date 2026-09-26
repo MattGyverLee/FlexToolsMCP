@@ -433,7 +433,11 @@ def test_write_certification_payload_surfaces_guarded_mutations():
     payload = build_write_certification_payload(cert, cud_info)
 
     assert payload["is_certified_readonly"] is True
-    assert payload["mutating_calls_detected"] == []
+    assert len(payload["mutating_calls_detected"]) == 1
+    hit = payload["mutating_calls_detected"][0]
+    assert hit["protected"] is True
+    assert hit["kind"] == "wrapper"
+    assert "CreateField" in hit["call"]
     assert any(p["method"] == "CreateField" for p in payload["protected_calls"])
     assert payload["performs_writes"] is True
 

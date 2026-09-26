@@ -12,6 +12,17 @@ sorted position, not the top). Changes without an issue go under Other.
   so the three tools with `output_model` metadata (`run_module`, `get_object_api`,
   `search_by_capability`) stay aligned with their `*Success` Pydantic envelopes via
   golden run_module fixtures and minimal smoke payloads.
+- [#140](https://github.com/MattGyverLee/FlexToolsMCP/issues/140): LibLCM index
+  refresh now runs post-build namespace and anchor-type sanity checks, logs loud
+  `[index-sanity]` warnings, and records `index_sanity_warnings` /
+  `coverage_gaps` in index metadata when coverage is implausibly low (would have
+  caught #135/G14).
+- **Curated recipe `audit-repair-infl-aff-msa-slots`**
+  ([#102](https://github.com/MattGyverLee/FlexToolsMCP/issues/102)). Search and
+  `find_examples` now surface a discoverable audit/repair snippet for
+  inflectional-affix `SlotsRC` assignments (duplicate-slot detection plus optional
+  `SetInflAffMsaSlots` repair), matching the pattern users were hand-writing in
+  runtime logs.
 
 ### Other
 

@@ -81,7 +81,8 @@ try:
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_partial_module_structure, detect_undiscovered_entities,
+        detect_partial_module_structure, detect_top_level_main_invocation,
+        detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
         detect_interface_attribute_typos,
@@ -100,7 +101,8 @@ except ImportError:
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_partial_module_structure, detect_undiscovered_entities,
+        detect_partial_module_structure, detect_top_level_main_invocation,
+        detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
         detect_interface_attribute_typos,
@@ -2019,6 +2021,26 @@ def _build_validate_only_checks(
     else:
         checks.append({"gate": "partial_module_structure", "passed": True, "note": "skipped (skip_module_check=True)"})
 
+    # --- Gate 3a: top_level_main_invocation (issue #279) ---
+    top_level_main_check = detect_top_level_main_invocation(code, code_tree)
+    if top_level_main_check["has_top_level_main_call"]:
+        if write_enabled:
+            checks.append({
+                "gate": "top_level_main_invocation",
+                "passed": False,
+                "issues": [top_level_main_check["message"]],
+                "call_lines": top_level_main_check["call_lines"],
+            })
+        else:
+            checks.append({
+                "gate": "top_level_main_invocation",
+                "passed": True,
+                "advisory": top_level_main_check["message"],
+                "call_lines": top_level_main_check["call_lines"],
+            })
+    else:
+        checks.append({"gate": "top_level_main_invocation", "passed": True})
+
     # --- Gate 3b: deprecated_member (curated_deprecations.py) ---
     # Same detector + message builder handle_run_module uses; hard-rejects
     # there on read-only and write-enabled runs alike.
@@ -3045,6 +3067,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # non-blocking advisory (read-only run, no issue at "error" severity).
     # Surfaced in the response `warnings` list instead of rejecting.
     _casting_readonly_warnings: Optional[List[Dict[str, Any]]] = None
+    # Issue #279: module-level Main(...) when def Main exists (read-only advisory).
+    _top_level_main_readonly_warning: Optional[str] = None
     # Issue #80: provenance. 'existing' code (from disk / pasted by the human)
     # skips the two API-DISCOVERY gates -- verifying every API the model didn't
     # author is expensive LLM work we don't need. This is a COST lever ONLY:
@@ -3232,6 +3256,34 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 error_code="partial_module_structure",
                 code_size_bytes=_code_size_bytes,
             )
+
+    # Issue #279: reject write runs that call Main at module level when Main
+    # is also defined -- the runner calls Main again after exec().
+    top_level_main_check = detect_top_level_main_invocation(code, code_tree)
+    if top_level_main_check["has_top_level_main_call"]:
+        if write_enabled:
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
+                "top_level_main_invocation",
+                f"call_lines={top_level_main_check['call_lines']}",
+            log_dir_fn=get_log_dir,
+            )
+            return _attach_assistance_if_loop(
+                error_response(
+                    "top_level_main_invocation",
+                    top_level_main_check["message"],
+                    call_lines=top_level_main_check["call_lines"],
+                    next_steps=[
+                        "1. Remove the module-level Main(project, report, modifyAllowed) call",
+                        "2. Keep only the def Main(...) definition -- flextools_run_module invokes it",
+                        "3. Re-run flextools_run_module()",
+                    ],
+                    op_id=op_id,
+                ),
+                error_code="top_level_main_invocation",
+                code_size_bytes=_code_size_bytes,
+            )
+        _top_level_main_readonly_warning = top_level_main_check["message"]
 
     # Deprecated-member check (curated_deprecations.py): HARD BLOCK on both
     # read-only and write-enabled runs. A curated-deprecated member exists in
@@ -4133,6 +4185,12 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # non-blocking advisory (read-only run, no issue at "error" severity --
     # see the gate-local downgrade above). Still surfaced here so the caller
     # sees them even though preflight let the run proceed.
+    if _top_level_main_readonly_warning:
+        warnings.append(
+            "[double Main execution] " + _top_level_main_readonly_warning
+        )
+        warnings.append("")
+
     if _casting_readonly_warnings:
         warnings.append(
             f"[casting] {len(_casting_readonly_warnings)} polymorphic property "

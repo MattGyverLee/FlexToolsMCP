@@ -79,7 +79,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 41 codes below |
+| `error_code` | string | one of the 42 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -116,6 +116,7 @@ authoritative. All detail fields are optional unless noted.
 | `unknown_tool` | `tool` -- tool name not registered in the dispatch router (issue #243) |
 | `invalid_input` | `tool`, `received_arguments` -- Pydantic argument validation failed before the handler ran (issue #243) |
 | `partial_module_structure` | `missing_elements` (list), `has_main`, `has_docs_dict`, `has_flextools_binding` |
+| `top_level_main_invocation` | `call_lines` (list of int) -- issue #279; write-enabled runs only: module-level `Main(...)` when `def Main` is also defined (runner would invoke Main twice). Read-only runs proceed with a non-blocking advisory instead. |
 | `unprotected_writes` | `mutating_calls` (list), `write_certification_required` |
 | `casting_issues_detected` | `casting_issues` (list), `polymorphic_collections`, `general_guidance` -- issue #40 B-1: on a READ-ONLY run (`write_enabled=false`), this code is emitted (and the run rejected) only if at least one `casting_issues[*].severity` is `"error"` (a known-pattern hit, or a genuine attribute typo). If every issue is `"warning"` (an index-derived lookup with no corroborating known pattern), the run **proceeds instead of rejecting** -- see "Read-only casting severity downgrade" below. WRITE-enabled runs are unaffected: this code still rejects at every severity. |
 | `api_discovery_required` | `detected_candidates` (list), `auto_discovered_pending_validation` (list; entities auto-granted on read-only runs but not yet validated via `get_object_api`, issue #244), `session`, `missing_entity`, `suggested_tool_call` |

@@ -30,6 +30,7 @@ if __package__:
     from .json_utils import sort_json_arrays
     from .curated_deprecations import apply_to_api_index as apply_curated_deprecations
     from .flexicon_analyzer import infer_unified_output_behavior
+    from .liblcm_index_sanity import apply_index_sanity_audit, ANCHOR_MIN_MEMBER_COUNTS
     from .constants import (
         PROPERTY_KIND_OWNING_SEQUENCE,
         PROPERTY_KIND_OWNING_COLLECTION,
@@ -61,6 +62,7 @@ else:
     from json_utils import sort_json_arrays
     from curated_deprecations import apply_to_api_index as apply_curated_deprecations
     from flexicon_analyzer import infer_unified_output_behavior
+    from liblcm_index_sanity import apply_index_sanity_audit, ANCHOR_MIN_MEMBER_COUNTS
     from constants import (
         PROPERTY_KIND_OWNING_SEQUENCE,
         PROPERTY_KIND_OWNING_COLLECTION,
@@ -1039,6 +1041,7 @@ def build_api_documentation(assemblies: List[Any], fetch_descriptions: bool = Fa
     # Process each type
     total_types = len(types)
     processed = 0
+    live_anchor_types = {}
 
     for i, t in enumerate(types):
         if i % 50 == 0:
@@ -1048,6 +1051,8 @@ def build_api_documentation(assemblies: List[Any], fetch_descriptions: bool = Fa
         if type_info:
             entity_id = type_info["id"]
             api_doc["entities"][entity_id] = type_info
+            if entity_id in ANCHOR_MIN_MEMBER_COUNTS:
+                live_anchor_types[entity_id] = t
             processed += 1
 
             # Update metadata
@@ -1142,6 +1147,8 @@ def build_api_documentation(assemblies: List[Any], fetch_descriptions: bool = Fa
     log.info(f"  Methods: {api_doc['metadata']['total_methods']}")
     log.info(f"  Properties: {api_doc['metadata']['total_properties']}")
     log.info(f"  Relationships: {api_doc['metadata']['total_relationships']}")
+
+    apply_index_sanity_audit(api_doc, live_types=live_anchor_types or None)
 
     return api_doc
 

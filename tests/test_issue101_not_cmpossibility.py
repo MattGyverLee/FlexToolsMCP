@@ -241,5 +241,60 @@ class TestRealIndexPremise(unittest.TestCase):
         self.assertIn("ICmPossibility", entity.get("interfaces", []))
 
 
+# ---------------------------------------------------------------------------
+# run_module casting validator (preflight) -- issue #101 follow-up
+# ---------------------------------------------------------------------------
+
+class TestInvalidICmPossibilityCastPreflight(unittest.TestCase):
+    """Reopened #101: discovery tools warn, but detect_casting_needs must
+    reject the bad cast before run_module reaches runtime."""
+
+    def _casting(self, code: str):
+        from server.validators import detect_casting_needs
+
+        return detect_casting_needs(code, casting_index=None)
+
+    def _invalid_ic_poss_issues(self, result):
+        return [
+            i
+            for i in result.get("casting_issues") or []
+            if i.get("kind") == "invalid_icmpossibility_cast"
+        ]
+
+    def test_icmpossibility_on_infl_template_cast_alias_flags(self):
+        code = (
+            "from SIL.LCModel import IMoInflAffixTemplate, ICmPossibility\n"
+            "def Main(project, report, modify):\n"
+            "    t = IMoInflAffixTemplate(x)\n"
+            "    nm = ICmPossibility(t).Name\n"
+            "    report.Info(str(nm))\n"
+        )
+        result = self._casting(code)
+        bad = self._invalid_ic_poss_issues(result)
+        self.assertEqual(len(bad), 1, bad)
+        self.assertEqual(bad[0]["severity"], "error")
+        self.assertIn("NOT ICmPossibility", bad[0]["fix"])
+
+    def test_icmpossibility_on_immo_morph_type_not_flagged(self):
+        code = (
+            "from SIL.LCModel import IMoMorphType, ICmPossibility\n"
+            "def Main(project, report, modify):\n"
+            "    mt = IMoMorphType(x)\n"
+            "    nm = ICmPossibility(mt).Name\n"
+            "    report.Info(str(nm))\n"
+        )
+        result = self._casting(code)
+        self.assertEqual(self._invalid_ic_poss_issues(result), [])
+
+    def test_inline_template_cast_to_icmpossibility_flags(self):
+        code = (
+            "from SIL.LCModel import IMoInflAffixTemplate, ICmPossibility\n"
+            "def f(x):\n"
+            "    return ICmPossibility(IMoInflAffixTemplate(x)).Name\n"
+        )
+        result = self._casting(code)
+        self.assertEqual(len(self._invalid_ic_poss_issues(result)), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

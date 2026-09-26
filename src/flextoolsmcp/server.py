@@ -859,7 +859,8 @@ async def list_tools() -> list[Tool]:
         # reject every response from run_module / get_object_api / search_by_capability.
         # Re-enable ONLY together with returning structuredContent from call_tool() (the
         # low-level mcp API supports returning (list[ContentBlock], dict)) AND after
-        # confirming the handler dicts validate against the *Success models. See docs/TODO.md.
+        # confirming the handler dicts validate against the *Success models
+        # (see flextoolsmcp.tool_output_validation and validate_integrity success_models).
         # if tool_def.output_model is not None:
         #     kwargs["outputSchema"] = tool_def.output_model.model_json_schema(by_alias=True)
         tools.append(Tool(**kwargs))

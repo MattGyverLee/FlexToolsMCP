@@ -19,6 +19,22 @@ sorted position, not the top). Changes without an issue go under Other.
   (custom fields, writing systems) still need FLEx closed.
   `docs/RECOVERY.md` and `docs/workflow-detail.md` no longer describe the
   removed undo tool.
+- **Preflight rejects `ICmPossibility` casts on morphology lists that are not possibilities**
+  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
+  run_module casting validator now errors on `ICmPossibility(...)` when the
+  argument is known to be `IMoInflAffixSlot`, `IMoInflAffixTemplate`, or
+  `IMoInflClass`, including `ICmPossibility(x).Name` chains that previously
+  passed at `injection_tier=none` and failed at runtime.
+- **Tool success payload contract drift guard ([#152](https://github.com/MattGyverLee/FlexToolsMCP/issues/152)).**
+  Added `tool_output_validation` plus CI-local `validate_integrity.py success_models`
+  so the three tools with `output_model` metadata (`run_module`, `get_object_api`,
+  `search_by_capability`) stay aligned with their `*Success` Pydantic envelopes via
+  golden run_module fixtures and minimal smoke payloads.
+- [#140](https://github.com/MattGyverLee/FlexToolsMCP/issues/140): LibLCM index
+  refresh now runs post-build namespace and anchor-type sanity checks, logs loud
+  `[index-sanity]` warnings, and records `index_sanity_warnings` /
+  `coverage_gaps` in index metadata when coverage is implausibly low (would have
+  caught #135/G14).
 - **Curated recipe `audit-repair-infl-aff-msa-slots`**
   ([#102](https://github.com/MattGyverLee/FlexToolsMCP/issues/102)). Search and
   `find_examples` now surface a discoverable audit/repair snippet for

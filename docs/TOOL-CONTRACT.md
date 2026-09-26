@@ -39,7 +39,7 @@ informational only — it does not change `status` or fail the run.
 |---|---|---|
 | `signal` | string | `"lcm_undoable_action_count"` (only signal today) |
 | `lcm_undoable_action_count` | int | Observed count after execution (zero triggers the advisory) |
-| `verdict` | string | `"no_observable_effect"` when mutating preflight and zero actions |
+| `verdict` | string | `"no_observable_effect"` when mutating preflight and zero actions; `"certification_underreported"` when LCM recorded actions but `write_certification.performs_writes` is false (issue #280) |
 | `note` | string | Human-readable explanation for the caller |
 
 #### Graceful discovery redirect (issue #80)

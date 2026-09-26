@@ -176,9 +176,7 @@ def build_effect_check_payload(
     zero undoable actions, attach an advisory ``effect_check`` block so callers
     can distinguish success-with-no-exception from success-with-no-mutation.
     """
-    if not write_enabled or not is_mutating_script:
-        return None
-    if not execution_result.get("success"):
+    if not write_enabled or not execution_result.get("success"):
         return None
     count = execution_result.get("lcm_undoable_action_count")
     if count is None:
@@ -187,18 +185,37 @@ def build_effect_check_payload(
         count_int = int(count)
     except (TypeError, ValueError):
         return None
-    if count_int != 0:
-        return None
-    return {
-        "signal": "lcm_undoable_action_count",
-        "lcm_undoable_action_count": 0,
-        "verdict": "no_observable_effect",
-        "note": (
-            "Preflight classified this run as mutating, but LCM recorded zero "
-            "undoable actions. The script reported success without raising, so "
-            "a wrapper no-op or wrong collection target may have done nothing."
-        ),
-    }
+
+    write_cert = execution_result.get("write_certification") or {}
+    performs_writes = write_cert.get("performs_writes")
+
+    if is_mutating_script and count_int == 0:
+        return {
+            "signal": "lcm_undoable_action_count",
+            "lcm_undoable_action_count": 0,
+            "verdict": "no_observable_effect",
+            "note": (
+                "Preflight classified this run as mutating, but LCM recorded zero "
+                "undoable actions. The script reported success without raising, so "
+                "a wrapper no-op or wrong collection target may have done nothing."
+            ),
+        }
+
+    # Issue #280: index gaps can leave performs_writes false while LCM counted
+    # real mutations (e.g. MakeFeatStruc thin wrappers).
+    if performs_writes is False and count_int > 0:
+        return {
+            "signal": "lcm_undoable_action_count",
+            "lcm_undoable_action_count": count_int,
+            "verdict": "certification_underreported",
+            "note": (
+                "LCM recorded undoable actions, but write_certification reported "
+                "performs_writes=false. Treat the run as mutating; refresh indexes "
+                "or extend the certifier if this persists."
+            ),
+        }
+
+    return None
 
 
 # Issue #46: auto-fix config

@@ -5466,6 +5466,76 @@ def compute_is_mutating_script(cert: dict, cud_info: dict) -> bool:
     )
 
 
+def build_mutations_detected_list(cert: dict) -> List[Dict[str, Any]]:
+    """Enumerate mutating calls from certification, including guarded ones.
+
+    Shared by ``build_writeability_payload`` (``mutations_detected`` on
+    validate_only / confirmation paths) and ``build_write_certification_payload``
+    (``mutating_calls_detected`` on successful runs). Issue #105: the two
+    surfaces must stay aligned so a run that actually mutates never reports
+    an empty itemisation while ``performs_writes`` / ``is_mutating_script``
+    is true.
+    """
+    mutations_detected: List[Dict[str, Any]] = []
+
+    for m in cert.get("mutating_calls", []) or []:
+        if not m.get("is_mutating"):
+            continue
+        call_name = ".".join(part for part in (m.get("class"), m.get("method")) if part)
+        mutations_detected.append({
+            "line": m.get("line"),
+            "call": call_name or m.get("method"),
+            "kind": "wrapper",
+            "protected": False,
+        })
+
+    for m in cert.get("protected_calls", []) or []:
+        call_name = ".".join(part for part in (m.get("class"), m.get("method")) if part)
+        mutations_detected.append({
+            "line": m.get("line"),
+            "call": call_name or m.get("method"),
+            "kind": "wrapper",
+            "protected": True,
+        })
+
+    for c in cert.get("unprotected_liblcm_calls", []) or []:
+        mutations_detected.append({
+            "line": c.get("line"),
+            "call": c.get("method"),
+            "kind": "raw_lcm",
+            "protected": False,
+        })
+
+    for c in cert.get("protected_liblcm_calls", []) or []:
+        mutations_detected.append({
+            "line": c.get("line"),
+            "call": c.get("method"),
+            "kind": "raw_lcm",
+            "protected": True,
+        })
+
+    # De-dup: Step 1c (index-based project.<Accessor>.<Method> resolution)
+    # and the line-blind project.*.Create/Delete/Set/Update patterns in
+    # _LIBLCM_MUTABLE_PATTERNS can both fire for the SAME call (e.g.
+    # `project.CustomFields.CreateField(...)` is now caught both as a
+    # "wrapper" hit via the index and as a "raw_lcm" hit via the generic
+    # project.*.Create regex). Prefer the index-confirmed "wrapper" entry --
+    # it names the exact class/method -- and drop the redundant same-line
+    # "raw_lcm" duplicate rather than showing the user two rows for one
+    # mutation.
+    _wrapper_lines = {
+        m["line"] for m in mutations_detected
+        if m["kind"] == "wrapper" and m.get("line") is not None
+    }
+    mutations_detected = [
+        m for m in mutations_detected
+        if not (m["kind"] == "raw_lcm" and m.get("line") in _wrapper_lines)
+    ]
+
+    mutations_detected.sort(key=lambda m: (m.get("line") is None, m.get("line") or 0))
+    return mutations_detected
+
+
 def build_writeability_payload(
     code: str,
     api_index,
@@ -5526,63 +5596,7 @@ def build_writeability_payload(
     if cert is None:
         cert = certify_script_readonly(code, api_index, tree)
 
-    mutations_detected: List[Dict[str, Any]] = []
-
-    for m in cert.get("mutating_calls", []) or []:
-        if not m.get("is_mutating"):
-            continue
-        call_name = ".".join(part for part in (m.get("class"), m.get("method")) if part)
-        mutations_detected.append({
-            "line": m.get("line"),
-            "call": call_name or m.get("method"),
-            "kind": "wrapper",
-            "protected": False,
-        })
-
-    for m in cert.get("protected_calls", []) or []:
-        call_name = ".".join(part for part in (m.get("class"), m.get("method")) if part)
-        mutations_detected.append({
-            "line": m.get("line"),
-            "call": call_name or m.get("method"),
-            "kind": "wrapper",
-            "protected": True,
-        })
-
-    for c in cert.get("unprotected_liblcm_calls", []) or []:
-        mutations_detected.append({
-            "line": c.get("line"),
-            "call": c.get("method"),
-            "kind": "raw_lcm",
-            "protected": False,
-        })
-
-    for c in cert.get("protected_liblcm_calls", []) or []:
-        mutations_detected.append({
-            "line": c.get("line"),
-            "call": c.get("method"),
-            "kind": "raw_lcm",
-            "protected": True,
-        })
-
-    # De-dup: Step 1c (index-based project.<Accessor>.<Method> resolution)
-    # and the line-blind project.*.Create/Delete/Set/Update patterns in
-    # _LIBLCM_MUTABLE_PATTERNS can both fire for the SAME call (e.g.
-    # `project.CustomFields.CreateField(...)` is now caught both as a
-    # "wrapper" hit via the index and as a "raw_lcm" hit via the generic
-    # project.*.Create regex). Prefer the index-confirmed "wrapper" entry --
-    # it names the exact class/method -- and drop the redundant same-line
-    # "raw_lcm" duplicate rather than showing the user two rows for one
-    # mutation.
-    _wrapper_lines = {
-        m["line"] for m in mutations_detected
-        if m["kind"] == "wrapper" and m.get("line") is not None
-    }
-    mutations_detected = [
-        m for m in mutations_detected
-        if not (m["kind"] == "raw_lcm" and m.get("line") in _wrapper_lines)
-    ]
-
-    mutations_detected.sort(key=lambda m: (m.get("line") is None, m.get("line") or 0))
+    mutations_detected = build_mutations_detected_list(cert)
 
     is_mutating_script = compute_is_mutating_script(cert, cud_info)
 
@@ -5603,17 +5617,15 @@ def build_write_certification_payload(cert: dict, cud_info: dict) -> dict:
     """Build the ``write_certification`` block on successful run_module responses.
 
     ``is_certified_readonly`` answers the unprotected-writes gate only (guarded
-    mutations are excluded). Callers asking "did this script write at all?"
-    should read ``performs_writes`` and the ``protected_*`` lists -- the same
-    signals ``build_writeability_payload()`` already surfaces on validate_only /
-    confirmation_required paths (issue #131).
+    mutations are excluded). ``mutating_calls_detected`` lists every mutation
+    the certifier found (``protected: true`` when guarded), matching
+    ``build_writeability_payload()``'s ``mutations_detected`` shape (issue
+    #105 residual; ``protected_*`` lists retained for issue #131).
     """
     return {
         "is_certified_readonly": cert["is_certified_readonly"],
         "confidence": cert["confidence"],
-        "mutating_calls_detected": [
-            m for m in cert.get("mutating_calls", []) if m.get("is_mutating")
-        ],
+        "mutating_calls_detected": build_mutations_detected_list(cert),
         "protected_calls": list(cert.get("protected_calls") or []),
         "protected_liblcm_calls": list(cert.get("protected_liblcm_calls") or []),
         "performs_writes": compute_is_mutating_script(cert, cud_info),

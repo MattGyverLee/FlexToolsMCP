@@ -5,6 +5,14 @@
 Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
+### Fixed
+
+- [#140](https://github.com/MattGyverLee/FlexToolsMCP/issues/140): LibLCM index
+  refresh now runs post-build namespace and anchor-type sanity checks, logs loud
+  `[index-sanity]` warnings, and records `index_sanity_warnings` /
+  `coverage_gaps` in index metadata when coverage is implausibly low (would have
+  caught #135/G14).
+
 ### Other
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*

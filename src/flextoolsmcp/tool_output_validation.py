@@ -15,14 +15,14 @@ from typing import Any, Dict, Iterable, List, Tuple, Type
 
 from pydantic import BaseModel
 
-try:
+if __package__:
     from .server.response_models import (
         GetObjectApiSuccess,
         RunModuleSuccess,
         SearchByCapabilitySuccess,
     )
     from .server.tool_definitions import TOOLS
-except ImportError:
+else:
     from server.response_models import (
         GetObjectApiSuccess,
         RunModuleSuccess,
@@ -81,7 +81,7 @@ def validate_success_payload(model: Type[BaseModel], data: Dict[str, Any]) -> No
 
 def iter_validation_cases() -> Iterable[Tuple[str, str, Dict[str, Any]]]:
     """Yield (tool_name, case_label, payload_dict) for every check."""
-    for tool_name, (model, golden_names) in _STRUCTURED_OUTPUT_TOOLS.items():
+    for tool_name, (_model, golden_names) in _STRUCTURED_OUTPUT_TOOLS.items():
         for golden_name in golden_names:
             path = GOLDEN_DIR / golden_name
             with open(path, encoding="utf-8") as f:

@@ -505,6 +505,110 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
         "source": "curated",
         "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "eval-corpus"},
     },
+    "audit-repair-infl-aff-msa-slots": {
+        "intent": "Audit inflectional-affix MSAs for duplicate slot assignments and repair SlotsRC",
+        "match_terms": [
+            "audit infl aff msa",
+            "repair infl aff msa slots",
+            "malformed inflectional affix msa",
+            "SlotsRC infl aff",
+            "inflectional affix slot assignment",
+            "audit msa slots",
+        ],
+        "entities": ["MSA", "LexEntry", "LexSense"],
+        "operations": ["read", "update", "write", "iterate"],
+        "requires_write": True,
+        "code": (
+            "from SIL.LCModel import IMoInflAffMsa\n\n"
+            "def _slot_label(slot):\n"
+            "    name = slot.Name\n"
+            "    if name is None:\n"
+            "        return \"(unnamed)\"\n"
+            "    alt = name.BestAnalysisAlternative\n"
+            "    text = alt.Text if alt else \"\"\n"
+            "    return \"\" if text == \"***\" else (text or str(slot.Guid)[:8])\n\n"
+            "def _infl_slot_report(infl_msa):\n"
+            "    labels = []\n"
+            "    seen = set()\n"
+            "    duplicate = False\n"
+            "    for slot in list(infl_msa.SlotsRC):\n"
+            "        guid = str(slot.Guid).lower()\n"
+            "        if guid in seen:\n"
+            "            duplicate = True\n"
+            "        seen.add(guid)\n"
+            "        labels.append(_slot_label(slot))\n"
+            "    return labels, duplicate\n\n"
+            "infl_count = 0\n"
+            "malformed = []\n"
+            "for entry in project.LexEntry.GetAll():\n"
+            "    headword = project.LexEntry.GetHeadword(entry)\n"
+            "    for sense in project.LexEntry.GetAllSenses(entry):\n"
+            "        msa = project.Senses.GetGrammaticalInfo(sense)\n"
+            "        if msa is None or getattr(msa, \"ClassName\", \"\") != \"MoInflAffMsa\":\n"
+            "            continue\n"
+            "        infl_count += 1\n"
+            "        infl = IMoInflAffMsa(msa)\n"
+            "        labels, duplicate = _infl_slot_report(infl)\n"
+            "        sense_n = project.Senses.GetSenseNumber(sense)\n"
+            "        flag = \" MALFORMED(duplicate slot)\" if duplicate else \"\"\n"
+            "        report.Info(\n"
+            "            f\"{headword} sense {sense_n}: infl-aff slots=[{', '.join(labels) or '(none)'}]{flag}\"\n"
+            "        )\n"
+            "        if duplicate:\n"
+            "            malformed.append((entry, sense, labels))\n\n"
+            "report.Info(f\"Audited {infl_count} inflectional-affix MSA(s); \"\n"
+            "            f\"{len(malformed)} with duplicate slot reference(s).\")\n\n"
+            "# Optional repair: set these before a write-enabled run.\n"
+            "REPAIR_HEADWORD = None\n"
+            "REPAIR_SENSE_INDEX = 0\n"
+            "REPAIR_SLOT_NAMES = None  # e.g. [\"SubjectConcord\", \"TAM\"]\n\n"
+            "if REPAIR_HEADWORD and REPAIR_SLOT_NAMES is not None:\n"
+            "    entry = project.LexEntry.Find(REPAIR_HEADWORD)\n"
+            "    if entry is None:\n"
+            "        report.Error(f\"Entry {REPAIR_HEADWORD!r} not found\")\n"
+            "    else:\n"
+            "        senses = project.LexEntry.GetAllSenses(entry)\n"
+            "        if REPAIR_SENSE_INDEX >= len(senses):\n"
+            "            report.Error(f\"Sense index {REPAIR_SENSE_INDEX} out of range\")\n"
+            "        else:\n"
+            "            sense = senses[REPAIR_SENSE_INDEX]\n"
+            "            msa = project.Senses.GetGrammaticalInfo(sense)\n"
+            "            if msa is None or getattr(msa, \"ClassName\", \"\") != \"MoInflAffMsa\":\n"
+            "                report.Error(\"Target sense has no inflectional-affix MSA\")\n"
+            "            else:\n"
+            "                pos = project.Senses.GetPartOfSpeechObject(sense)\n"
+            "                slots_by_name = {}\n"
+            "                if pos is not None:\n"
+            "                    for slot in project.POS.GetAffixSlots(pos):\n"
+            "                        slots_by_name[_slot_label(slot)] = slot\n"
+            "                resolved = [slots_by_name[n] for n in REPAIR_SLOT_NAMES if n in slots_by_name]\n"
+            "                missing = [n for n in REPAIR_SLOT_NAMES if n not in slots_by_name]\n"
+            "                if missing:\n"
+            "                    report.Warning(f\"Unknown slot name(s) for POS: {missing}\")\n"
+            "                if modifyAllowed:\n"
+            "                    project.MSA.SetInflAffMsaSlots(sense, resolved, replace=True)\n"
+            "                    report.Info(\n"
+            "                        f\"Replaced SlotsRC on {REPAIR_HEADWORD} sense {REPAIR_SENSE_INDEX} \"\n"
+            "                        f\"with {len(resolved)} slot(s)\"\n"
+            "                    )\n"
+            "                else:\n"
+            "                    report.Info(\n"
+            "                        f\"(Would set SlotsRC on {REPAIR_HEADWORD} sense \"\n"
+            "                        f\"{REPAIR_SENSE_INDEX} to {REPAIR_SLOT_NAMES})\"\n"
+            "                    )\n"
+        ),
+        "notes": (
+            "WARNING: writes when REPAIR_HEADWORD and REPAIR_SLOT_NAMES are set and "
+            "modifyAllowed is True. The audit pass is read-only. Slot membership edits "
+            "use project.MSA.SetInflAffMsaSlots on flexicon 4.10+; on older flexicon "
+            "builds before MattGyverLee/flexicon#258 you must use raw "
+            "IMoInflAffMsa(msa).SlotsRC.Remove(...) / .Add(...) instead. "
+            "IMoInflAffixSlot.Name is its own field -- never cast slots to ICmPossibility "
+            "to read .Name (see issue #101)."
+        ),
+        "source": "curated",
+        "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "preflight"},
+    },
     # Replacement for the deprecated ILexEntry.DoNotUseForParsing /
     # LexEntryOperations.SetDoNotUseForParsing (see curated_deprecations.py):
     # the code is the deprecation's own example, so the two can't drift.

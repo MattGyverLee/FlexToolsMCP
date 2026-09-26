@@ -19,9 +19,19 @@ import tokenize
 from typing import Dict, Iterator, List, Set, Optional, Any, Tuple, TypeGuard, Union
 
 try:
-    from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES, PROJECT_RAW_HANDLE_ALIASES
+    from .constants import (
+        KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES, PROJECT_RAW_HANDLE_ALIASES,
+        NOT_CMPOSSIBILITY_NAME_COLLISION,
+        _NOT_CMPOSSIBILITY_PROVENANCE_ATTRS,
+        _NOT_CMPOSSIBILITY_RECEIVER_NAMES,
+    )
 except ImportError:
-    from server.constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES, PROJECT_RAW_HANDLE_ALIASES
+    from server.constants import (
+        KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES, PROJECT_RAW_HANDLE_ALIASES,
+        NOT_CMPOSSIBILITY_NAME_COLLISION,
+        _NOT_CMPOSSIBILITY_PROVENANCE_ATTRS,
+        _NOT_CMPOSSIBILITY_RECEIVER_NAMES,
+    )
 
 
 # ============================================================
@@ -5540,6 +5550,26 @@ _RECEIVER_NAME_TO_INTERFACE = {
     "wa_obj": "IWfiAnalysis",
     "morph_obj": "IMoForm",
     "bundle_obj": "IWfiMorphBundle",
+    # Issue #101 (b): morphology list receiver names -- NOT ICmPossibility.
+    # These appear as .Name tie-break candidates alongside ICmPossibility;
+    # mapping them here ensures _pick_cast_interface returns the correct
+    # interface (IMoInflAffixSlot / IMoInflAffixTemplate / IMoInflClass)
+    # rather than falling through to None on ambiguous "Name" lookups.
+    # Per _NOT_CMPOSSIBILITY_RECEIVER_NAMES in server.constants.
+    "slot": "IMoInflAffixSlot",
+    "affix_slot": "IMoInflAffixSlot",
+    "infl_slot": "IMoInflAffixSlot",
+    "slot_obj": "IMoInflAffixSlot",
+    "template": "IMoInflAffixTemplate",
+    "tmpl": "IMoInflAffixTemplate",
+    "templ": "IMoInflAffixTemplate",
+    "affix_template": "IMoInflAffixTemplate",
+    "template_obj": "IMoInflAffixTemplate",
+    "infl_class": "IMoInflClass",
+    "inflection_class": "IMoInflClass",
+    "infl_cls": "IMoInflClass",
+    "inflClass": "IMoInflClass",
+    "infl_class_obj": "IMoInflClass",
 }
 
 # Suffixes that signal a typed receiver -- strip and retry the base name.
@@ -5996,6 +6026,127 @@ def build_casting_notes(annotated_count: int) -> Optional[str]:
     )
 
 
+def _wrong_icmpossibility_cast_issues(
+    tree: Optional[ast.AST],
+    code: str,
+) -> List[Dict]:
+    """Issue #101 (run-time half): flag ``ICmPossibility(<expr>)`` calls where
+    ``<expr>`` is provably a NOT_CMPOSSIBILITY type.
+
+    Two provenance paths are checked:
+
+    **Attribute provenance (Hit B1):** the argument is an attribute access
+    ``obj.SomeProp`` and ``SomeProp`` is in
+    ``_NOT_CMPOSSIBILITY_PROVENANCE_ATTRS`` (owning/ref properties whose return
+    type is IMoInflAffixSlot, IMoInflAffixTemplate, or IMoInflClass per
+    MasterLCModel.xml).  Example: ``ICmPossibility(m.InflectionClassRA)``.
+
+    **Receiver-name provenance:** the argument is a bare variable name matching
+    ``_NOT_CMPOSSIBILITY_RECEIVER_NAMES`` (slot / template / infl_class-style
+    convention names).  Example: ``ICmPossibility(slot)``.
+
+    **Out of scope (A-series -- documented, NOT flagged):**
+    ``IMoInflAffixTemplate(t)`` where ``t`` came from
+    ``MorphRuleOperations.GetAllAffixTemplates()`` / ``GetAllAffixTemplatesForPOS()``.
+    The cast TARGET matches the claimed collection element type; the runtime
+    failure is a wrapper/collection impurity (the wrapper returns a heterogeneous
+    internal object that doesn't implement IMoInflAffixTemplate on some FLEx
+    versions), NOT a statically wrong-target cast.  We cannot prove statically
+    that ``GetAllAffixTemplates`` returns a non-template object without runtime
+    type evidence, so flagging would produce false positives on correct casts.
+    Document and discard; do NOT broaden this gate to cover it.
+
+    Severity: ``"error"`` (same as #121(d) confirmed-crash hits) because the
+    failure is deterministic -- the cast ALWAYS fails for these types at runtime.
+    """
+    if tree is None:
+        return []
+
+    issues: List[Dict] = []
+    code_lines = code.splitlines()
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Name):
+            continue
+        if node.func.id != "ICmPossibility":
+            continue
+        if not node.args:
+            continue
+
+        arg = node.args[0]
+        line_num = node.lineno
+        line_content = code_lines[line_num - 1] if line_num <= len(code_lines) else ""
+
+        # Attribute provenance: ICmPossibility(obj.SomeProp)
+        if isinstance(arg, ast.Attribute) and arg.attr in _NOT_CMPOSSIBILITY_PROVENANCE_ATTRS:
+            attr_name = arg.attr
+            # Determine which NOT_CMPOSSIBILITY type this property returns
+            # (best-effort label for the fix message)
+            if attr_name in {"InflectionClassRA", "DefaultInflectionClassRA",
+                             "InflectionClassesOC", "InflectionClassesRC", "SubclassesOC"}:
+                target_type = "IMoInflClass"
+            elif attr_name in {"AffixSlotsOC", "SlotsRC", "SlotRA", "SlotsRS",
+                               "PrefixSlotsRS", "SuffixSlotsRS",
+                               "EncliticSlotsRS", "ProcliticSlotsRS"}:
+                target_type = "IMoInflAffixSlot"
+            else:  # AffixTemplatesOS, TemplateRA
+                target_type = "IMoInflAffixTemplate"
+            issues.append({
+                "property": "ICmPossibility",
+                "line": line_num,
+                "pattern": line_content.strip()[:80],
+                "found_at": line_content.strip()[:120],
+                "missing_on": ["ICmPossibility (wrong interface -- NOT ICmPossibility)"],
+                "available_on": [target_type],
+                "fix": (
+                    f"Remove the ICmPossibility() cast. `{attr_name}` returns "
+                    f"{target_type}, which is NOT ICmPossibility. "
+                    f"Read .Name directly: `obj.{attr_name}.Name` "
+                    f"(or cast to {target_type} if you need the typed interface). "
+                    f"Contrast: IMoMorphType IS ICmPossibility -- that cast is correct."
+                ),
+                "flexicon_helper": (
+                    "Use flextools_get_object_api or flextools_resolve_property "
+                    f"with object_type='{target_type}' to browse the correct API."
+                ),
+                "severity": "error",
+                "rewrite": None,
+                "imports_needed": [f"from SIL.LCModel import {target_type}"],
+                "cast_interface": target_type,
+            })
+
+        # Receiver-name provenance: ICmPossibility(slot) / ICmPossibility(infl_class) etc.
+        elif isinstance(arg, ast.Name) and arg.id in _NOT_CMPOSSIBILITY_RECEIVER_NAMES:
+            var_name = arg.id
+            issues.append({
+                "property": "ICmPossibility",
+                "line": line_num,
+                "pattern": line_content.strip()[:80],
+                "found_at": line_content.strip()[:120],
+                "missing_on": ["ICmPossibility (wrong interface -- NOT ICmPossibility)"],
+                "available_on": ["IMoInflAffixSlot / IMoInflAffixTemplate / IMoInflClass"],
+                "fix": (
+                    f"Remove the ICmPossibility() cast. Variable `{var_name}` "
+                    f"name suggests a slot/template/inflection-class object, which "
+                    f"is NOT ICmPossibility. Read .Name directly on the object "
+                    f"(cast to its own concrete interface if needed). "
+                    f"Contrast: IMoMorphType IS ICmPossibility -- that cast is correct."
+                ),
+                "flexicon_helper": (
+                    "Use flextools_get_object_api with object_type='IMoInflAffixSlot', "
+                    "'IMoInflAffixTemplate', or 'IMoInflClass' to browse the correct API."
+                ),
+                "severity": "error",
+                "rewrite": None,
+                "imports_needed": [],
+                "cast_interface": None,
+            })
+
+    return issues
+
+
 def detect_casting_needs(
     code: str,
     casting_index: Optional[Dict] = None,
@@ -6112,6 +6263,10 @@ def detect_casting_needs(
             tree = None
     if tree is not None:
         issues.extend(_redundant_project_cache_casting_issues(tree))
+        # Issue #101 (run-time half): flag ICmPossibility(expr) where expr is
+        # provably NOT ICmPossibility by attribute or receiver-name provenance.
+        # Severity "error" -- the cast ALWAYS throws TypeError at runtime.
+        issues.extend(_wrong_icmpossibility_cast_issues(tree, code))
         ast_assigns, _ast_calls, ast_bindings = _collect_assign_call_nodes(tree)
         # Issue #130: type every FLExProject-valued variable, not just the
         # injected `project`, so a module written in flexicon's documented

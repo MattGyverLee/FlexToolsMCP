@@ -92,6 +92,13 @@ try:
 except ImportError:
     from server import skeleton_storage
 
+# Issue #101: curated set lives in server.constants so validators.py can
+# import it without a circular dependency via handlers/api.
+try:
+    from ..constants import NOT_CMPOSSIBILITY_NAME_COLLISION
+except ImportError:
+    from server.constants import NOT_CMPOSSIBILITY_NAME_COLLISION
+
 # Type note: api_index is initialized by server.py before any handlers are called
 
 # Operation type keyword patterns
@@ -114,31 +121,9 @@ SUFFIX_KIND_GUIDE = {
     "RC": "Reference Collection - unordered collection of references"
 }
 
-# ============================================================
-# Issue #101: types that look like ICmPossibility but are not
-# ============================================================
-# IMoInflAffixSlot, IMoInflAffixTemplate and IMoInflClass (and their concrete
-# implementations) declare base="CmObject" in MasterLCModel.xml and do NOT
-# implement ICmPossibility -- their `Name` (MultiUnicode) is each type's OWN
-# attribute, a pure name collision with CmPossibility.Name. Code that
-# reasonably guesses "this is a POS-owned list, cast to ICmPossibility to
-# read .Name" throws `TypeError: object does not implement ICmPossibility`
-# at runtime (confirmed against liblcm_api_v11.0.0.json).
-#
-# Deliberately curated, NOT a structural rule (e.g. "declares an own `Name`
-# property and doesn't implement ICmPossibility"): that heuristic
-# false-positives on ~76 other CmObject-derived liblcm entities that were
-# never mistaken for possibility lists (CmAgent, CmFile, LangProject, ...).
-# IMoMorphType is the explicit contrast case: it DOES inherit
-# base="CmPossibility" (interfaces includes "ICmPossibility"), so
-# ICmPossibility(morphType).Name is correct there and it must stay out of
-# this set. Same curated-exception-list pattern as
-# constants.PROJECT_ACCESSOR_ALIASES.
-NOT_CMPOSSIBILITY_NAME_COLLISION = frozenset({
-    "IMoInflAffixSlot", "MoInflAffixSlot",
-    "IMoInflAffixTemplate", "MoInflAffixTemplate",
-    "IMoInflClass", "MoInflClass",
-})
+# Issue #101: NOT_CMPOSSIBILITY_NAME_COLLISION is imported from
+# server.constants (see import block above) so validators.py can share the
+# same curated set without a circular dependency through handlers/api.
 
 
 def _not_cmpossibility_warning(object_type: str) -> str | None:

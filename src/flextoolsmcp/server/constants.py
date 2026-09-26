@@ -107,6 +107,60 @@ PROJECT_RAW_HANDLE_ALIASES = {
 }
 
 # ============================================================
+# Issue #101: NOT ICmPossibility name-collision types (runtime cast gate)
+# ============================================================
+# IMoInflAffixSlot, IMoInflAffixTemplate, and IMoInflClass each declare base=
+# "CmObject" in MasterLCModel.xml -- they are NOT ICmPossibility despite having
+# their own `Name` (MultiUnicode) attribute. Code that casts them via
+# `ICmPossibility(obj).Name` crashes with TypeError at runtime.
+#
+# IMoMorphType is the explicit contrast case: it DOES inherit base="CmPossibility"
+# (interfaces includes "ICmPossibility"), so ICmPossibility(morphType).Name is
+# correct there and it must stay out of this set.
+NOT_CMPOSSIBILITY_NAME_COLLISION = frozenset({
+    "IMoInflAffixSlot", "MoInflAffixSlot",
+    "IMoInflAffixTemplate", "MoInflAffixTemplate",
+    "IMoInflClass", "MoInflClass",
+})
+
+# Owning/ref property names whose return type is provably one of the
+# NOT_CMPOSSIBILITY_NAME_COLLISION types. Used by the static cast gate in
+# validators.detect_casting_needs to flag ICmPossibility(<expr>.SomeProp)
+# at script-analysis time (Hit B1 shape). Source: MasterLCModel.xml.
+_NOT_CMPOSSIBILITY_PROVENANCE_ATTRS = frozenset({
+    # IMoInflClass-returning properties
+    "InflectionClassRA",         # IMoDerivAffMsa.{From,To}InflectionClassRA, IMoDerivStepMsa.InflectionClassRA, IMoStemMsa.InflectionClassRA
+    "DefaultInflectionClassRA",  # IPartOfSpeech.DefaultInflectionClassRA
+    "InflectionClassesOC",       # IPartOfSpeech.InflectionClassesOC
+    "InflectionClassesRC",       # IMoAffixForm.InflectionClassesRC
+    "SubclassesOC",              # IMoInflClass.SubclassesOC (nested subclasses)
+    # IMoInflAffixSlot-returning properties
+    "AffixSlotsOC",              # IPartOfSpeech.AffixSlotsOC
+    "SlotsRC",                   # IMoInflAffMsa / IMoStemMsa / ILexEntryInflType.SlotsRC
+    "SlotRA",                    # IMoInflAffixSlotApp.SlotRA
+    "SlotsRS",                   # IMoInflAffixTemplate.SlotsRS (slots, not templates)
+    "PrefixSlotsRS",             # IMoInflAffixTemplate.PrefixSlotsRS
+    "SuffixSlotsRS",             # IMoInflAffixTemplate.SuffixSlotsRS
+    "EncliticSlotsRS",           # IMoInflAffixTemplate.EncliticSlotsRS
+    "ProcliticSlotsRS",          # IMoInflAffixTemplate.ProcliticSlotsRS
+    # IMoInflAffixTemplate-returning properties
+    "AffixTemplatesOS",          # IPartOfSpeech.AffixTemplatesOS
+    "TemplateRA",                # IMoInflTemplateApp.TemplateRA
+})
+
+# Variable name heuristics -> suspected NOT_CMPOSSIBILITY type. When a bare
+# Name argument to ICmPossibility() matches one of these, the cast is flagged.
+# Deliberately curated and conservative -- "ic" kept short per domain convention.
+_NOT_CMPOSSIBILITY_RECEIVER_NAMES = frozenset({
+    # Slot patterns
+    "slot", "affix_slot", "infl_slot", "slot_obj",
+    # Template patterns
+    "template", "tmpl", "templ", "affix_template", "template_obj",
+    # InflClass patterns
+    "infl_class", "inflection_class", "infl_cls", "inflClass", "infl_class_obj",
+})
+
+# ============================================================
 # API Mode Values
 # ============================================================
 # Supported API modes. Used across validators, models,

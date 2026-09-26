@@ -7,6 +7,17 @@ sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
 
+- **`run_module` casting gate missed `ICmPossibility` casts on MoInfl* types**
+  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). Discovery
+  tools already warned via `not_cmpossibility_warning` (#255); the static
+  validator in `detect_casting_needs` now flags `ICmPossibility(<expr>)` when
+  `<expr>` is a known MoInfl slot/template/infl-class provenance attribute or
+  receiver name, elevating `injection_tier` above `none` so the B1 recurrence
+  (`ICmPossibility(m.InflectionClassRA)`) is refused before execution.
+  `IMoMorphType` / legitimate `pos` casts stay unflagged. Heterogeneous
+  `GetAllAffixTemplates()` -> `IMoInflAffixTemplate(t)` failures remain
+  out of static scope (documented).
+
 - **Curated recipe `audit-repair-infl-aff-msa-slots`**
   ([#102](https://github.com/MattGyverLee/FlexToolsMCP/issues/102)). Search and
   `find_examples` now surface a discoverable audit/repair snippet for

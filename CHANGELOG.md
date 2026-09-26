@@ -5,6 +5,15 @@
 Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
+### Fixed
+
+- **Curated recipe `audit-repair-infl-aff-msa-slots`**
+  ([#102](https://github.com/MattGyverLee/FlexToolsMCP/issues/102)). Search and
+  `find_examples` now surface a discoverable audit/repair snippet for
+  inflectional-affix `SlotsRC` assignments (duplicate-slot detection plus optional
+  `SetInflAffMsaSlots` repair), matching the pattern users were hand-writing in
+  runtime logs.
+
 ### Other
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*

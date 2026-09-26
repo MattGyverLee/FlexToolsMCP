@@ -103,6 +103,11 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "Main/docs/FlexToolsModule scaffold, OR drop the def Main "
         "wrapper entirely and submit the body as a bare snippet."
     ),
+    "top_level_main_invocation": (
+        "remove the module-level Main(...) call -- flextools_run_module "
+        "invokes Main itself after loading the module; a top-level call "
+        "runs the body twice."
+    ),
     "deprecated_member": (
         "the code uses a curated-deprecated member (e.g. "
         "DoNotUseForParsing, which no FLEx parser reads). Remove it -- do "

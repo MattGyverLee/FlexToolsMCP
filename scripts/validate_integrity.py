@@ -353,6 +353,24 @@ def check_tool_reference_doc():
     return False
 
 
+def check_output_models():
+    """Validate golden/minimal success payloads against ToolDef.output_model (#152)."""
+    sys.path.insert(0, os.path.join(os.getcwd(), "src"))
+    try:
+        from flextoolsmcp.tool_output_validation import run_output_model_validation
+    except ImportError as exc:
+        print(f"OUTPUT MODEL ERROR: could not import tool_output_validation: {exc}", file=sys.stderr)
+        return False
+
+    ok, errors = run_output_model_validation()
+    if ok:
+        print("  tool output models: golden + minimal success payloads OK [OK]")
+        return True
+    for err in errors:
+        print(f"OUTPUT MODEL ERROR: {err}", file=sys.stderr)
+    return False
+
+
 def check_refresh_runs():
     """Verify refresh.py runs successfully with --help."""
     result = subprocess.run(
@@ -628,6 +646,8 @@ def cmd_server(args):
         all_ok = False
     if not check_tool_reference_doc():
         all_ok = False
+    if not check_output_models():
+        all_ok = False
 
     return 0 if all_ok else 1
 
@@ -708,8 +728,11 @@ def cmd_all(args):
     print("\n[4/5] Checking refresh...")
     all_ok = cmd_refresh(args) == 0 and all_ok
 
-    print("\n[5/5] Checking flexicon...")
+    print("\n[5/6] Checking flexicon...")
     all_ok = cmd_flexicon(args) == 0 and all_ok
+
+    print("\n[6/6] Checking tool output models...")
+    all_ok = check_output_models() and all_ok
 
     return 0 if all_ok else 1
 
@@ -729,6 +752,7 @@ def main():
     subparsers.add_parser('server', help='Check server.py tools')
     subparsers.add_parser('refresh', help='Check refresh.py')
     subparsers.add_parser('flexicon', help='Check flexicon contract')
+    subparsers.add_parser('success_models', help='Check tool *Success model payloads (#152)')
     subparsers.add_parser('all', help='Run all checks')
 
     args = parser.parse_args()
@@ -739,6 +763,7 @@ def main():
         'server': cmd_server,
         'refresh': cmd_refresh,
         'flexicon': cmd_flexicon,
+        'success_models': lambda args: 0 if check_output_models() else 1,
         'all': cmd_all,
         None: cmd_all,  # Default to all checks
     }

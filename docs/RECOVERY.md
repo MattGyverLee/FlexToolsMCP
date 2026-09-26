@@ -30,6 +30,20 @@ or per-call: `flextools_run_module(..., backup_before_write=false)`.
 The backup is skipped (with a `WARNING` in `operations.log`) if free disk
 space on the backup volume is under 2x the project's `.fwdata` size.
 
+## Backups are the only safety net
+
+There is no undo. LCM keeps its undo stack in memory, and every `run_module`
+call runs in a fresh process, so there is never anything left to undo; the
+old `flextools_undo_last_operation` tool never worked and was removed (#92).
+To reverse an MCP write, repair it in place with another script, restore a
+backup as described below, or (for a Send/Receive project) re-download from
+the repository.
+
+**With FLEx open in shared mode** (see [SHARED-MODE.md](SHARED-MODE.md)), the
+backup copies the `.fwdata` on disk, which can lag behind FLEx's unsaved
+in-memory state. Treat it as a floor to fall back to, not a copy of what the
+FLEx window showed at the time.
+
 ## Restore is manual, on purpose
 
 **There is no automated restore tool.** Restoring a backup means overwriting

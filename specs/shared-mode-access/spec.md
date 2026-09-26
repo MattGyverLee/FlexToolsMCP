@@ -686,7 +686,8 @@ gap). The remaining entries are draft notes with no GitHub issue, by ruling.
   (a consumer over-blocks rather than under-blocks) and enumerated as a
   "note" row -- not a DEFECT row -- in `reviews/lock-site-inventory.md`.
   Folds into #118 (the fail-open issue above), item (3).
-- **P3, cycle 7, deferred with the contract documented in place:**
+- **RESOLVED 2026-09-25 (CP6 cleanup, `2964b09`): renamed to `find_lock_file()` across `src/` and `tests/`.**
+  **P3, cycle 7, deferred with the contract documented in place:**
   `project_discovery.py:262` `check_project_locked()`'s *name* asserts a
   conclusion its return value cannot support (a lock file may be stale or
   shared). It is the proximate cause of two of the three historical
@@ -701,7 +702,8 @@ gap). The remaining entries are draft notes with no GitHub issue, by ruling.
   "~9 call sites" estimate undercounted. Do it as a standalone mechanical
   commit in the CP6 cleanup pass; no GitHub issue (it is inside #93's
   scope and carries a durable row in `reviews/lock-site-inventory.md`).
-- **P3, cycle 7, new:** `sweep_stale_locks()` runs at server startup
+- **RESOLVED 2026-09-25 (CP6 cleanup, `73cfa87`): the per-lock body moved to `_describe_lock()` and its call is guarded; a failure degrades to a holder-unknown warning.**
+  **P3, cycle 7, new:** `sweep_stale_locks()` runs at server startup
   (`server.py:1048`) with **no** `try/except` around its per-lock loop and
   none at the call site, so an unexpected exception there fails server
   startup outright. Pre-existing shape (`read_lock_holder` / `_pid_is_alive`
@@ -709,7 +711,8 @@ gap). The remaining entries are draft notes with no GitHub issue, by ruling.
   (`is_project_sharing_enabled`, `build_access_remedy`; both internally
   exception-tolerant, so the added risk is small). One-line fix: wrap the
   loop body in `except Exception: continue`, or guard the call site.
-- **P1, cycle 8, NEW, live-observed, OWNED -- the `flextools_health`
+- **RESOLVED before CP6 started, by #145 (`991a869`): `flextools_health` re-runs `sweep_stale_locks()` on every call, `startup_lock_warnings` is gone, and `validate_server_state()` no longer relays lock warnings.**
+  **P1, cycle 8, NEW, live-observed, OWNED -- the `flextools_health`
   `warnings` array is frozen for the life of the server process and can
   contradict its own response body.** Live evidence:
   `evidence/live-session2.md` Item G. In one and the same `verbose=True`

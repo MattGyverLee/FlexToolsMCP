@@ -118,18 +118,18 @@
     <text x="925" y="272" font-size="10" fill="#7F1D1D">+ pattern tracker records</text>
   </g>
 
-  <!-- ============ STAGE 6: Inspect &amp; Undo ============ -->
+  <!-- ============ STAGE 6: Inspect ============ -->
   <g>
     <rect x="1130" y="80" width="200" height="200" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
     <circle cx="1153" cy="103" r="13" fill="#D97706"/>
     <text x="1153" y="108" text-anchor="middle" font-size="13" font-weight="700" fill="white">6</text>
-    <text x="1235" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#78350F">Inspect &amp; Undo</text>
+    <text x="1235" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#78350F">Inspect</text>
     <text x="1140" y="136" font-size="11" font-weight="600" fill="#78350F">flextools_get_operation_logs</text>
     <text x="1140" y="151" font-size="10.5" fill="#92400E">• logs + recommendations</text>
     <text x="1140" y="170" font-size="11" font-weight="600" fill="#78350F">flextools_get_session_history</text>
-    <text x="1140" y="184" font-size="10.5" fill="#92400E">• audit trail / undo stack</text>
-    <text x="1140" y="203" font-size="11" font-weight="600" fill="#78350F">flextools_undo_last_operation</text>
-    <text x="1140" y="217" font-size="10.5" fill="#92400E">• ActionHandler.Undo()</text>
+    <text x="1140" y="184" font-size="10.5" fill="#92400E">• audit trail</text>
+    <text x="1140" y="203" font-size="11" font-weight="600" fill="#78350F">No undo tool (#92)</text>
+    <text x="1140" y="217" font-size="10.5" fill="#92400E">• pre-write backup instead</text>
     <line x1="1140" y1="227" x2="1320" y2="227" stroke="#FCD34D" stroke-width="1"/>
     <text x="1140" y="243" font-size="10" font-weight="700" fill="#78350F">SAFEGUARDS</text>
     <text x="1140" y="258" font-size="10" fill="#78350F">• pattern tracker → Stage 3</text>
@@ -287,15 +287,15 @@
     <text x="820" y="597" font-size="9.5" font-style="italic" fill="#78350F">→ invalid_api_chain</text>
   </g>
 
-  <!-- Gate 11: Per-project write lock -->
+  <!-- Gate 11: Project access + write lock -->
   <g>
     <rect x="1050" y="515" width="225" height="85" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
     <circle cx="1066" cy="531" r="10" fill="#D97706"/>
     <text x="1066" y="535" text-anchor="middle" font-size="10" font-weight="700" fill="white">11</text>
-    <text x="1085" y="535" font-size="11.5" font-weight="700" fill="#78350F">Per-project write lock</text>
-    <text x="1060" y="555" font-size="10" fill="#92400E">get_project_write_lock(name)</text>
-    <text x="1060" y="570" font-size="10" fill="#475569">asyncio.Lock serializes</text>
-    <text x="1060" y="585" font-size="10" fill="#475569">CUD on same project</text>
+    <text x="1085" y="535" font-size="11.5" font-weight="700" fill="#78350F">Access check + write lock</text>
+    <text x="1060" y="555" font-size="10" fill="#92400E">probe_write_access + lock</text>
+    <text x="1060" y="570" font-size="10" fill="#475569">FLEx w/o sharing → refused;</text>
+    <text x="1060" y="585" font-size="10" fill="#475569">serializes CUD per project</text>
     <text x="1060" y="597" font-size="9.5" font-style="italic" fill="#78350F">prevents corruption</text>
   </g>
 
@@ -341,8 +341,8 @@
     <text x="600" y="805" font-weight="700">• Pattern learning loop</text>
     <text x="620" y="819" fill="#166534" font-size="10">success/fail recorded → discovery hints</text>
 
-    <text x="600" y="845" font-weight="700">• Undo stack (ActionHandler.Undo)</text>
-    <text x="620" y="859" fill="#166534" font-size="10">CUD ops recorded for rollback review</text>
+    <text x="600" y="845" font-weight="700">• Pre-write backup (no undo)</text>
+    <text x="620" y="859" fill="#166534" font-size="10">first write per session copies .fwdata</text>
 
     <!-- Col 3 -->
     <text x="1100" y="725" font-weight="700">• Cross-flavor coverage gaps surfaced</text>

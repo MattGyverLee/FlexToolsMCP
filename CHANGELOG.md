@@ -7,6 +7,18 @@ sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
 
+- **Shared mode: one bad lock no longer breaks startup or `flextools_health`**
+  ([#93](https://github.com/MattGyverLee/FlexToolsMCP/issues/93)). An unexpected
+  error while inspecting a single `.fwdata.lock` used to abort the whole lock
+  sweep, which runs at server startup and on every health call. That lock now
+  gets a holder-unknown warning and the sweep continues. The internal
+  `check_project_locked()` helper is renamed `find_lock_file()`: it only checks
+  that a lock file exists, which says nothing about whether the project is
+  actually locked. New [`docs/SHARED-MODE.md`](docs/SHARED-MODE.md) explains
+  what works with FLEx open, how to turn on project sharing, and which changes
+  (custom fields, writing systems) still need FLEx closed.
+  `docs/RECOVERY.md` and `docs/workflow-detail.md` no longer describe the
+  removed undo tool.
 - **Preflight rejects `ICmPossibility` casts on morphology lists that are not possibilities**
   ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
   run_module casting validator now errors on `ICmPossibility(...)` when the

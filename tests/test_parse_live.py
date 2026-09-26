@@ -420,7 +420,7 @@ async def test_a_call_after_an_idle_release_reloads_the_grammar_and_the_lock_is_
     test, which would otherwise still pass for the wrong reason if release
     silently stopped happening.
     """
-    from flextoolsmcp.server.project_discovery import check_project_locked
+    from flextoolsmcp.server.project_discovery import find_lock_file
 
     async with live_runner(tmp_path) as (runner, recorder):
         first = await try_word(
@@ -438,7 +438,7 @@ async def test_a_call_after_an_idle_release_reloads_the_grammar_and_the_lock_is_
         # the evidence artifact used.
         await asyncio.sleep(1.0)
 
-        assert check_project_locked(HC_PROJECT) is None, (
+        assert find_lock_file(HC_PROJECT) is None, (
             "the project's fwdata lock is supposed to be dropped once the "
             "worker's queue goes idle between calls (#223), not held out to "
             "the process's own idle_timeout"

@@ -109,3 +109,26 @@ class TestSweepStaleLocks:
 
         lock_logs = [r for r in caplog.records if "LoggedLock" in r.message]
         assert lock_logs, "Expected at least one WARNING log mentioning LoggedLock"
+
+    def test_sweep_survives_per_lock_failure(self, tmp_path, monkeypatch):
+        """Issue #93 CP6: an exception inspecting one lock must not abort the
+        sweep (it runs at startup and on every flextools_health call)."""
+        monkeypatch.setenv("FW_PROJECTS_DIR", str(tmp_path))
+        _make_project(tmp_path, "AlphaLock", with_lock=True)
+        _make_project(tmp_path, "BetaLock", with_lock=True)
+
+        from server import project_access
+        from server.project_discovery import sweep_stale_locks
+
+        def _boom(name):
+            if name == "AlphaLock":
+                raise RuntimeError("corrupt lock")
+            return None
+
+        monkeypatch.setattr(project_access, "read_lock_holder", _boom)
+        warnings = sweep_stale_locks()
+
+        assert len(warnings) == 2
+        assert "AlphaLock" in warnings[0] and "RuntimeError: corrupt lock" in warnings[0]
+        assert "exclusively held" in warnings[0]
+        assert "BetaLock" in warnings[1] and "could not be identified" in warnings[1]

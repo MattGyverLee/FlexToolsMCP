@@ -10,7 +10,7 @@ must still be able to fix the entry the batch just exposed.
 The edit path is `flextools_run_module` with `write_enabled=True`. It can be
 held up by exactly two things this server controls: the per-project write
 lock (`kernel.get_project_write_lock`), which serializes CUD runs, and the
-`.fwdata.lock` file check (`project_discovery.check_project_locked`). A parse
+`.fwdata.lock` file check (`project_discovery.find_lock_file`). A parse
 job must take neither. This file asserts both while a batch is genuinely
 running in a real (stub) worker, and then asserts structurally that no CP3
 module reaches for either -- or for any other process-wide lock.
@@ -61,7 +61,7 @@ FINGERPRINT = {
 #: Anything that would amount to a project-wide claim.
 _CLAIM_NAMES = {
     "get_project_write_lock", "project_write_locks",
-    "check_project_locked", "locking", "flock", "lockf",
+    "find_lock_file", "locking", "flock", "lockf",
 }
 
 
@@ -114,7 +114,7 @@ async def test_the_batch_takes_no_lock_file(running_batch, tmp_path, monkeypatch
     monkeypatch.setattr(
         project_discovery, "get_projects_directory", lambda: (str(projects), "test")
     )
-    assert project_discovery.check_project_locked("P") is None
+    assert project_discovery.find_lock_file("P") is None
     assert not running_batch.is_terminal
 
 

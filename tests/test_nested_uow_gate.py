@@ -174,7 +174,7 @@ def _stub_env(monkeypatch, tmp_path, *, is_cud=True):
     if kernel.get_operations_logger() is None:
         kernel.init_operations_logger()
     monkeypatch.setattr(project_discovery, "resolve_or_explain", lambda name: (name, None))
-    monkeypatch.setattr(project_discovery, "check_project_locked", lambda name: None)
+    monkeypatch.setattr(project_discovery, "find_lock_file", lambda name: None)
     monkeypatch.setattr(execution_mod, "get_api_index", lambda: None)
     monkeypatch.setattr(execution_mod, "get_log_dir", lambda: tmp_path)
     monkeypatch.setattr(execution_mod, "validate_server_state", lambda: {"is_healthy": True, "issues": []})

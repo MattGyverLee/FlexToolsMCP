@@ -25,7 +25,7 @@
   <text x="80" y="326" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> dry-run is the cheap path; mutations should be</text>
   <text x="80" y="342" font-size="11" fill="#166534">a deliberate, named choice</text>
   <text x="80" y="364" font-size="11" fill="#166534"><tspan font-weight="700">Cascade:</tspan> modifyAllowed=False inside Main, gate 11</text>
-  <text x="80" y="380" font-size="11" fill="#166534">(write lock) doesn't fire, undo stack stays empty</text>
+  <text x="80" y="380" font-size="11" fill="#166534">(access check + write lock) doesn't fire, no backup taken</text>
   <text x="80" y="402" font-size="10.5" font-style="italic" fill="#475569">A user must say "yes, write" twice — start() and run_module()</text>
 
   <!-- 1.2 -->
@@ -138,15 +138,15 @@
 
   <!-- 3.2 -->
   <rect x="1085" y="425" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
-  <text x="1105" y="450" font-size="13" font-weight="700" fill="#14532D">Undo stack (ActionHandler.Undo)</text>
-  <text x="1105" y="470" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> session.undo_stack, undo_last_operation</text>
-  <text x="1105" y="488" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> every CUD op recorded as OperationRecord</text>
-  <text x="1105" y="504" font-size="11" fill="#166534">with timestamp, code, output, project</text>
-  <text x="1105" y="526" font-size="11" fill="#166534"><tspan font-weight="700">Review-first design:</tspan> tool returns the operation</text>
-  <text x="1105" y="542" font-size="11" fill="#166534">to undo but does NOT auto-call ActionHandler.Undo()</text>
-  <text x="1105" y="564" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> undo must be intentional — user reviews,</text>
-  <text x="1105" y="580" font-size="11" fill="#166534">then runs ActionHandler.Undo() via run_module</text>
-  <text x="1105" y="602" font-size="10.5" font-style="italic" fill="#475569">Three stacks: history (full), undo, redo</text>
+  <text x="1105" y="450" font-size="13" font-weight="700" fill="#14532D">Pre-write backup — no undo (#92)</text>
+  <text x="1105" y="470" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> write_ladder; ~/.flextoolsmcp/backups/</text>
+  <text x="1105" y="488" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> first write per (session, project)</text>
+  <text x="1105" y="504" font-size="11" fill="#166534">copies the .fwdata first</text>
+  <text x="1105" y="526" font-size="11" fill="#166534"><tspan font-weight="700">Why no undo:</tspan> LCM keeps its undo stack in</text>
+  <text x="1105" y="542" font-size="11" fill="#166534">memory; every run_module is a fresh process</text>
+  <text x="1105" y="564" font-size="11" fill="#166534"><tspan font-weight="700">FLEx open:</tspan> the disk copy can lag FLEx's</text>
+  <text x="1105" y="580" font-size="11" fill="#166534">unsaved state — a floor, not a snapshot</text>
+  <text x="1105" y="602" font-size="10.5" font-style="italic" fill="#475569">Restore is manual, on purpose — see RECOVERY.md</text>
 
   <!-- 3.3 -->
   <rect x="1085" y="625" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>

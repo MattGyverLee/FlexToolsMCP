@@ -167,5 +167,5 @@
   <text x="800" y="1028" text-anchor="middle" font-size="11" fill="#92400E" font-style="italic">This is the structural reason the AI cannot ship code without first citing real signatures from the index.</text>
 
   <!-- Footer -->
-  <text x="800" y="1080" text-anchor="middle" font-size="11" fill="#64748B" font-style="italic">↗ See workflow-detail-2-foundation.svg for what these tools read from. Next page: Stages 5 &amp; 6 — Run Module &amp; Inspect/Undo.</text>
+  <text x="800" y="1080" text-anchor="middle" font-size="11" fill="#64748B" font-style="italic">↗ See workflow-detail-2-foundation.svg for what these tools read from. Next page: Stages 5 &amp; 6 — Run Module &amp; Inspect.</text>
 </svg>

@@ -326,9 +326,9 @@ Direct C# access (`sense.Gloss.BestAnalysisAlternative.Text`) still returns `'**
 
 ---
 
-## Detail 4 — Stages 5 & 6: Run Module & Inspect / Undo
+## Detail 4 — Stages 5 & 6: Run Module & Inspect
 
-> The only stage that touches the database — and the only stage that records, learns, and rolls back.
+> The only stage that touches the database — and the only stage that records and learns. There is no rollback: LCM's undo stack lives in memory and each run is a fresh process (see [RECOVERY.md](RECOVERY.md)).
 
 ### Stage 5 — Run Module
 
@@ -346,8 +346,8 @@ Direct C# access (`sense.Gloss.BestAnalysisAlternative.Text`) still returns `'**
 
 **5b · Write-mode pass**
 - `write_enabled = True  →  modifyAllowed = True`
-- Per-project `asyncio.Lock` acquired. Mutations actually run. Undo entry recorded.
-- Both passes traverse the 12-gate gauntlet — gate 11 (write lock) only fires on 5b.
+- Project access probed (gate 10a); per-project `asyncio.Lock` acquired; pre-write backup taken on the first write per session. Mutations actually run.
+- Both passes traverse the 12-gate gauntlet — gates 10a (project access) and 11 (write lock) only fire on 5b.
 
 #### Subprocess execution flow
 
@@ -388,9 +388,9 @@ Every run records, recommendations follow.
   - `common_errors_needing_fix`
 - Persisted to `~/.flextoolsmcp/logs/patterns.json` — survives sessions.
 
-### Stage 6 — Inspect & Undo
+### Stage 6 — Inspect
 
-Three tools for review, learning, and rollback.
+Two tools for review and learning.
 
 #### `flextools_get_operation_logs`
 
@@ -407,32 +407,21 @@ Logs + recommendations dashboard.
 
 #### `flextools_get_session_history`
 
-Audit trail + undo availability.
+Audit trail.
 
 - **Reads:** `session_state.operations_history`
 - **Inputs:** `include_operations` (full code/output)
 - **Returns:**
   - `initialized`, `api_mode`, `project`, `write_enabled`
   - history summary (counts by tool/result)
-  - `undo_available`, `redo_available`
   - `next_steps` (contextual)
-- Each `OperationRecord` captures: `timestamp`, `tool`, `args_summary`, `script_code`, `output`, `success`, `undoable`, `project`, `extracted_details`
-- Three stacks: `operations_history` (full), `undo_stack`, `redo_stack`
-
-#### `flextools_undo_last_operation`
-
-Queues a rollback, doesn't auto-execute.
-
-- **Pre-conditions:** `can_undo() == True`, `write_enabled` was `True`
-- **Action:** `pop_undo()` returns the `OperationRecord`, returns the operation summary, reports `remaining_undoable`, `redo_available`
-- **Note:** Tool does NOT auto-call `ActionHandler.Undo()`. User reviews, then runs `Undo()` via `run_module`.
-- Review-first design — undo is intentional, not automatic.
+- Each `OperationRecord` captures: `timestamp`, `tool`, `args_summary`, `script_code`, `script_output`, `success`, `project`, `extracted_details`
 
 ---
 
 ## Detail 5 — Pre-flight Gauntlet
 
-> 12 gates before the subprocess launches. Each gate returns a structured error. Red gates HARD BLOCK execution. Runs on every pass (5a and 5b).
+> 12 numbered gates, plus the project-access check (10a), before the subprocess launches. Each gate returns a structured error. Red gates HARD BLOCK execution. Runs on every pass (5a and 5b).
 
 ### Architectural notes
 
@@ -455,6 +444,7 @@ Queues a rollback, doesn't auto-execute.
 | 8 | Missing Operations imports | `detect_missing_operations_imports()` |  | uses `LexEntryOperations`, `LexSenseOperations` etc. without importing. Enforces the `import_statement` contract from `get_object_api` | `missing_imports` |
 | 9 | Wrong-library imports | `detect_wrong_library_imports()` |  | imports that don't match `api_mode` (e.g. `from flexlibs import ...` in flexicon mode). The silent-fail risk | `wrong_library_imports` |
 | 10 | Invalid project chain | `detect_invalid_project_chains()` |  | `project.<name>` typos. Conservative — only blocks when difflib finds a high-confidence match (≥0.7) | `invalid_api_chain` |
+| 10a | Project access (shared mode) | `probe_write_access()` → `probe_project_access()` | ✓ | FLEx holds the project with sharing **off** (`open_exclusive`), or a live non-FieldWorks process holds the lock (`held_by_other`). `open_shared` and `stale_lock` proceed with a `shared_mode` advisory. Fires only when `write_enabled=True` AND mutating (5b pass). See [SHARED-MODE.md](SHARED-MODE.md) | `project_locked` |
 | 11 | Per-project write lock | `get_project_write_lock(name)` |  | acquires `asyncio.Lock` keyed by project. Fires only when `write_enabled=True` AND mutating (5b pass) | (lock acquisition) |
 | 12 | Subprocess timeout | `run_script_async(timeout=300)` |  | configurable via `timeout_seconds`. UTF-8 reconfigured stdout/err. Temp `.py` cleaned up on exit | `Execution timeout` |
 
@@ -470,7 +460,7 @@ Queues a rollback, doesn't auto-execute.
 - **Where:** `flextools_start`, `flextools_run_module`
 - **What:** `write_enabled` defaults to `False` everywhere unless explicitly opted in by the user
 - **Why:** dry-run is the cheap path; mutations should be a deliberate, named choice
-- **Cascade:** `modifyAllowed=False` inside `Main`; gate 11 (write lock) doesn't fire; undo stack stays empty
+- **Cascade:** `modifyAllowed=False` inside `Main`; gates 10a (project access) and 11 (write lock) don't fire; no backup is taken
 - A user must say "yes, write" twice — `start()` and `run_module()`
 
 #### Dry-run before write (5a → 5b)
@@ -545,12 +535,11 @@ Queues a rollback, doesn't auto-execute.
 - **Persistence:** survives sessions; corpus grows over time, recommendations get sharper
 - Self-tuning — no manual curation required
 
-#### Undo stack (`ActionHandler.Undo`)
-- **Where:** `session.undo_stack`, `undo_last_operation`
-- **What:** every CUD op recorded as `OperationRecord` with timestamp, code, output, project
-- **Review-first design:** tool returns the operation to undo but does NOT auto-call `ActionHandler.Undo()`
-- **Why:** undo must be intentional — user reviews, then runs `ActionHandler.Undo()` via `run_module`
-- Three stacks: history (full), undo, redo
+#### No undo -- backups instead (#92)
+- **Where:** pre-write backup in `write_ladder`; `~/.flextoolsmcp/backups/`
+- **What:** the first mutating run per (session, project) copies the `.fwdata` first; there is no undo tool
+- **Why:** LCM's undo stack is in-memory only and every `run_module` is a fresh process, so an undo tool could never work. The old `flextools_undo_last_operation` was removed
+- **Recovery:** repair in place, restore a backup by hand ([RECOVERY.md](RECOVERY.md)), or re-download a Send/Receive project
 
 #### Cross-flavor coverage gaps surfaced
 - **Where:** bridge files, `find_wrappers_for_lcm`

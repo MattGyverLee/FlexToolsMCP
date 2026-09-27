@@ -197,11 +197,13 @@ class TestToolRegistration(ToolsTestBase):
                             f"Tool '{tool.name}' has empty description")
 
     def test_all_tools_have_input_schema(self):
-        """Every tool should have an inputSchema."""
+        """Every tool should have an inputSchema (either major's spelling)."""
+        from flextoolsmcp.mcp_compat import tool_input_schema
         for tool in self.tools:
-            self.assertIsNotNone(tool.inputSchema,
+            schema = tool_input_schema(tool)
+            self.assertIsNotNone(schema,
                                  f"Tool '{tool.name}' has no inputSchema")
-            self.assertEqual(tool.inputSchema.get("type"), "object",
+            self.assertEqual(schema.get("type"), "object",
                              f"Tool '{tool.name}' inputSchema type should be 'object'")
 
 
@@ -219,45 +221,37 @@ class TestToolAnnotations(ToolsTestBase):
                                  f"Tool '{tool.name}' missing annotations")
 
     def test_annotations_have_required_keys(self):
-        """Every annotation dict should have all 4 standard keys."""
+        """Every annotation dict should have all 4 standard keys (either spelling)."""
+        from flextoolsmcp.mcp_compat import normalized_annotation_keys
         required_keys = {"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"}
         for tool in self.tools:
             if tool.annotations is None:
                 continue
-            # annotations may be a dict or object with attributes
-            ann = tool.annotations
-            if hasattr(ann, '__dict__'):
-                ann_keys = set(vars(ann).keys())
-            else:
-                ann_keys = set(ann.keys())
+            ann_keys = normalized_annotation_keys(tool.annotations)
             for key in required_keys:
                 self.assertIn(key, ann_keys,
                               f"Tool '{tool.name}' annotations missing '{key}'")
 
     def test_readonly_tools_annotated_correctly(self):
         """Read-only tools should have readOnlyHint=True."""
+        from flextoolsmcp.mcp_compat import annotation_value
         for name in READ_ONLY_TOOLS:
             tool = self.tools_by_name.get(name)
             if tool is None:
                 continue
-            ann = tool.annotations
-            readonly = ann.get("readOnlyHint") if isinstance(ann, dict) else getattr(ann, "readOnlyHint", None)
+            readonly = annotation_value(tool.annotations, "readOnlyHint")
             self.assertTrue(readonly,
                             f"Tool '{name}' should be readOnlyHint=True")
 
     def test_destructive_tools_annotated_correctly(self):
         """Destructive tools should have destructiveHint=True and readOnlyHint=False."""
+        from flextoolsmcp.mcp_compat import annotation_value
         for name in DESTRUCTIVE_TOOLS:
             tool = self.tools_by_name.get(name)
             if tool is None:
                 continue
-            ann = tool.annotations
-            if isinstance(ann, dict):
-                destructive = ann.get("destructiveHint")
-                readonly = ann.get("readOnlyHint")
-            else:
-                destructive = getattr(ann, "destructiveHint", None)
-                readonly = getattr(ann, "readOnlyHint", None)
+            destructive = annotation_value(tool.annotations, "destructiveHint")
+            readonly = annotation_value(tool.annotations, "readOnlyHint")
             self.assertTrue(destructive,
                             f"Tool '{name}' should be destructiveHint=True")
             self.assertFalse(readonly,
@@ -265,11 +259,11 @@ class TestToolAnnotations(ToolsTestBase):
 
     def test_manage_config_is_not_readonly(self):
         """manage_config has mixed read/write, so readOnlyHint should be False."""
+        from flextoolsmcp.mcp_compat import annotation_value
         tool = self.tools_by_name.get("flextools_manage_config")
         if tool is None:
             return
-        ann = tool.annotations
-        readonly = ann.get("readOnlyHint") if isinstance(ann, dict) else getattr(ann, "readOnlyHint", None)
+        readonly = annotation_value(tool.annotations, "readOnlyHint")
         self.assertFalse(readonly,
                          "flextools_manage_config should be readOnlyHint=False (mixed read/write)")
 

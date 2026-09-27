@@ -127,10 +127,11 @@ async def test_a_read_only_batch_can_be_cancelled_too(filing_env):
 
 
 def test_the_cancel_tool_is_not_read_only_and_not_destructive():
+    from flextoolsmcp.mcp_compat import annotation_value
     from flextoolsmcp.server.tool_definitions import TOOLS
 
     annotations = TOOLS["flextools_parse_cancel"].annotations
-    assert annotations.readOnlyHint is False
-    assert annotations.destructiveHint is False
-    assert annotations.idempotentHint is True
-    assert TOOLS["flextools_parse_status"].annotations.readOnlyHint is True
+    assert annotation_value(annotations, "readOnlyHint") is False
+    assert annotation_value(annotations, "destructiveHint") is False
+    assert annotation_value(annotations, "idempotentHint") is True
+    assert annotation_value(TOOLS["flextools_parse_status"].annotations, "readOnlyHint") is True

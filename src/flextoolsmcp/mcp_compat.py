@@ -102,6 +102,78 @@ def annotation_is_read_only(annotations: Any) -> bool:
     return False
 
 
+_CAMEL_TO_SNAKE = {
+    "readOnlyHint": "read_only_hint",
+    "destructiveHint": "destructive_hint",
+    "idempotentHint": "idempotent_hint",
+    "openWorldHint": "open_world_hint",
+    "inputSchema": "input_schema",
+    "outputSchema": "output_schema",
+    "isError": "is_error",
+}
+_SNAKE_TO_CAMEL = {v: k for k, v in _CAMEL_TO_SNAKE.items()}
+
+
+def annotation_value(annotations: Any, camel_name: str) -> Any:
+    """Read one annotations field across both majors' spellings.
+
+    Test helper (and future production use): mcp 1.x exposes camelCase
+    (``readOnlyHint``), mcp 2.x exposes snake_case (``read_only_hint``);
+    each major exposes ONLY its own on attribute read. Reads snake first,
+    then camel, then dict-style lookups under both keys. Returns None when
+    absent on both spellings (mirrors the old ``getattr(ann,
+    "readOnlyHint", None)`` default).
+    """
+    if annotations is None:
+        return None
+    snake = _CAMEL_TO_SNAKE.get(camel_name, camel_name)
+    for attr in (snake, camel_name):
+        try:
+            value = getattr(annotations, attr, None)
+        except Exception:
+            continue
+        # getattr(obj, name, None) with pydantic v2 can still raise
+        # AttributeError for the foreign spelling instead of returning the
+        # default -- the try/except above covers that; an explicit None
+        # means "field exists but unset", so keep probing the other spelling.
+        if value is not None:
+            return value
+    if isinstance(annotations, dict):
+        if snake in annotations:
+            return annotations[snake]
+        return annotations.get(camel_name)
+    # vars() fallback for objects whose __getattr__ is hostile: pydantic
+    # v2 stores field values in __dict__ under the canonical name.
+    try:
+        d = vars(annotations)
+        if snake in d:
+            return d[snake]
+        if camel_name in d:
+            return d[camel_name]
+    except Exception:
+        pass
+    return None
+
+
+def normalized_annotation_keys(annotations: Any) -> set:
+    """Annotation key set normalized to camelCase across both majors.
+
+    ``vars(ToolAnnotations)`` yields snake_case on mcp 2.x and camelCase on
+    1.x; normalizing lets one assertion cover both (see
+    test_annotations_have_required_keys).
+    """
+    if annotations is None:
+        return set()
+    if isinstance(annotations, dict):
+        keys = set(annotations.keys())
+    else:
+        try:
+            keys = set(vars(annotations).keys())
+        except Exception:
+            keys = set()
+    return {_SNAKE_TO_CAMEL.get(k, k) for k in keys}
+
+
 def make_list_tools_handler(
     list_tools_fn: Callable[[], Awaitable[list]],
 ) -> Callable[[Any, Any], Awaitable[Any]]:
@@ -132,6 +204,15 @@ def _tool_input_schema(tool: Any) -> Any:
         if schema:
             return schema
     return None
+
+
+def tool_input_schema(tool: Any) -> Any:
+    """Public alias for :func:`_tool_input_schema` (test seam).
+
+    Kept as a thin wrapper so tests import a non-underscore name while the
+    internal schema-provider path keeps its existing reference.
+    """
+    return _tool_input_schema(tool)
 
 
 def make_schema_provider(

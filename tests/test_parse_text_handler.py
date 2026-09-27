@@ -304,13 +304,14 @@ def test_scope_kind_and_value_are_validated_together():
 
 def test_the_tool_is_annotated_at_its_designed_maximum_capability():
     """CP4 FR-001: the annotation does NOT change now that filing ships."""
+    from flextoolsmcp.mcp_compat import annotation_value
     from flextoolsmcp.server.tool_definitions import TOOLS
 
     tool = TOOLS["flextools_parse_text"]
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is True
-    assert tool.annotations.idempotentHint is False
-    assert tool.annotations.openWorldHint is False
+    assert annotation_value(tool.annotations, "readOnlyHint") is False
+    assert annotation_value(tool.annotations, "destructiveHint") is True
+    assert annotation_value(tool.annotations, "idempotentHint") is False
+    assert annotation_value(tool.annotations, "openWorldHint") is False
     assert tool.input_model is ParseTextInput
 
 

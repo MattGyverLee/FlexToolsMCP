@@ -109,6 +109,13 @@ def _stash_op_start(
     _OP_STASH_ORDER.append(op_id)
 
 
+def stash_merge(op_id: str, **fields: Any) -> None:
+    """Merge optional fields into an open op stash entry (issue #277 telemetry)."""
+    if not fields or op_id not in _OP_STASH:
+        return
+    _OP_STASH[op_id].update(fields)
+
+
 # ---------------------------------------------------------------------------
 # JSONL file helpers
 # ---------------------------------------------------------------------------
@@ -207,6 +214,9 @@ def _write_jsonl_line(
         "warning_count": warning_count,
         "error_count": error_count,
     }
+    rbc = stash.get("reflection_bypass_count")
+    if rbc is not None:
+        record["reflection_bypass_count"] = rbc
 
     try:
         log_dir = log_dir_fn()

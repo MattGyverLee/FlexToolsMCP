@@ -148,6 +148,12 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "message": "Invalid API method chain detected",
         "issues": [],
     },
+    "reflection_bypass_detected": {
+        "message": "Refused: this code reaches LCM through reflection",
+        "findings": [],
+        "reflection_bypass_count": 0,
+        "next_steps": [],
+    },
     "nested_unit_of_work": {
         # Issue #144: message is mode-conditional at runtime (legacy vs.
         # flexicon's "per-operation-uow" capability); this fixture uses the

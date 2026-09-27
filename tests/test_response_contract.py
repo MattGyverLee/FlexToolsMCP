@@ -238,6 +238,11 @@ ALL_ERROR_CODES = [
     ("wrong_library_imports", dict(wrong_imports=["flexlibs"], api_mode="flexicon", affected_symbols=["LexOps"])),
     ("invalid_api_mode", dict(allowed_modes=["flexicon", "flexlibs_stable", "liblcm"], received="bogus")),
     ("invalid_api_chain", dict(issues=[], guidance="Fix chain")),
+    ("reflection_bypass_detected", dict(
+        findings=[{"kind": "operator.methodcaller", "line": 2, "expr": "operator.methodcaller(\"Add\", ...)(...)"}],
+        reflection_bypass_count=1,
+        next_steps=["1. Replace reflection with casts."],
+    )),
     ("nested_unit_of_work", dict(constructs=[{"construct": "UndoableUnitOfWorkHelper(...)", "line": 3}])),
     ("project_locked", dict(
         guidance="Enable project sharing in FLEx, then retry",
@@ -479,8 +484,9 @@ class TestParserCheckCP2bCodes:
         # #243 adds session_not_initialized, unknown_tool, invalid_input -> 39;
         # curated deprecations add deprecated_member -> 40;
         # #70 adds raw_addcustomfield_write_risk -> 41;
-        # #279 adds top_level_main_invocation -> 42.
-        assert union_size == 42, f"the detail union holds {union_size} models"
+        # #279 adds top_level_main_invocation -> 42;
+        # #277 adds reflection_bypass_detected -> 43.
+        assert union_size == 43, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

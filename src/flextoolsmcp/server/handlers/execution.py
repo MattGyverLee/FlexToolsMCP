@@ -92,6 +92,7 @@ try:
         compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
         detect_deprecated_members, build_deprecated_member_rejection,
+        detect_reflection_bypass, build_reflection_bypass_rejection,
         detect_raw_addcustomfield_risk,
     )
 except ImportError:
@@ -112,6 +113,7 @@ except ImportError:
         compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
         detect_deprecated_members, build_deprecated_member_rejection,
+        detect_reflection_bypass, build_reflection_bypass_rejection,
         detect_raw_addcustomfield_risk,
     )
 
@@ -239,9 +241,9 @@ except (ImportError, ValueError):
 
 # Issue #50: structured JSONL telemetry (one line per op, alongside prose .log)
 try:
-    from .op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics
+    from .op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics, stash_merge
 except ImportError:
-    from server.handlers.op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics
+    from server.handlers.op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics, stash_merge
 
 # Diagnostic-report CP2: precision casting-recurrence signature (deferred
 # cycle-2 QC P1). Pure function, no transmission -- see
@@ -2074,6 +2076,35 @@ def _build_validate_only_checks(
     else:
         checks.append({"gate": "deprecated_member", "passed": True})
 
+    # --- Gate 3c: reflection_bypass (issue #277) ---
+    # Same detector + refusal rule handle_run_module uses (reject on write
+    # runs only). The preview must agree with execution: without this gate a
+    # write script using reflection previews `validated` and then refuses at
+    # the live gate. Mirrors production order (deprecated -> reflection).
+    reflection_check = detect_reflection_bypass(code, code_tree)
+    if reflection_check["has_reflection_bypass"] and write_enabled:
+        rejection = build_reflection_bypass_rejection(reflection_check)
+        checks.append({
+            "gate": "reflection_bypass",
+            "passed": False,
+            "issues": reflection_check["findings"],
+            "message": rejection["message"],
+            "next_steps": rejection["next_steps"],
+        })
+    elif reflection_check["has_reflection_bypass"]:
+        checks.append({
+            "gate": "reflection_bypass",
+            "passed": True,
+            "advisory": (
+                "reflection present, but the live gate refuses reflection "
+                "only on write runs -- a read-only run_module would proceed "
+                "without rejecting"
+            ),
+            "findings": reflection_check["findings"],
+        })
+    else:
+        checks.append({"gate": "reflection_bypass", "passed": True})
+
     # --- Gate 4: unprotected_writes (also feeds the writeability builder) ---
     cud_info = detect_cud_operations(code)
     cert = certify_script_readonly(code, api_idx, code_tree)
@@ -3333,6 +3364,35 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             code_size_bytes=_code_size_bytes,
         )
 
+    # Reflection bypass (issue #277): methodcaller / importlib+getattr / setattr
+    # reflection sidesteps casting and write-safety static analysis.
+    reflection_bypass_check = detect_reflection_bypass(code, code_tree)
+    if op_id:
+        stash_merge(
+            op_id,
+            reflection_bypass_count=int(reflection_bypass_check.get("reflection_bypass_count") or 0),
+        )
+    if reflection_bypass_check["has_reflection_bypass"] and write_enabled:
+        rejection = build_reflection_bypass_rejection(reflection_bypass_check)
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "reflection_bypass_detected",
+            f"count={reflection_bypass_check.get('reflection_bypass_count')}",
+        log_dir_fn=get_log_dir,
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "reflection_bypass_detected",
+                rejection["message"],
+                findings=reflection_bypass_check["findings"],
+                reflection_bypass_count=reflection_bypass_check["reflection_bypass_count"],
+                next_steps=rejection["next_steps"],
+                op_id=op_id,
+            ),
+            error_code="reflection_bypass_detected",
+            code_size_bytes=_code_size_bytes,
+        )
+
     # Nested-UnitOfWork check (issue #92 follow-up, re-derived for issue
     # #144): a script that opens its OWN raw UnitOfWork --
     # UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper or a bare
@@ -4196,6 +4256,20 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         )
         for finding in addcustomfield_check["findings"]:
             warnings.append(f"  line {finding['line']}: {finding['detail']}")
+        warnings.append("")
+
+    if reflection_bypass_check["has_reflection_bypass"]:
+        count = reflection_bypass_check.get("reflection_bypass_count", 0)
+        warnings.append(
+            f"[reflection bypass] {count} reflection access pattern(s) detected "
+            "(operator.methodcaller, importlib LCModel import, or "
+            "getattr/setattr on PascalCase LCM members). READ-ONLY runs proceed "
+            "but write_enabled=True will refuse (issue #277)."
+        )
+        for finding in reflection_bypass_check["findings"][:10]:
+            warnings.append(
+                f"  line {finding['line']}: {finding.get('detail', finding.get('expr', ''))}"
+            )
         warnings.append("")
 
     # Issue #40 B-1: casting issues downgraded from a hard reject to a

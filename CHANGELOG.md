@@ -44,6 +44,16 @@ sorted position, not the top). Changes without an issue go under Other.
   `SetInflAffMsaSlots` repair), matching the pattern users were hand-writing in
   runtime logs.
 
+- **A warning no longer crashes the server with `RecursionError`**
+  ([#286](https://github.com/MattGyverLee/FlexToolsMCP/issues/286)). The
+  hook that logs the HuggingFace "unauthenticated" warning replaced
+  `warnings.showwarning` and then called `warnings.showwarning` for every
+  other warning -- that is, itself. Once the server had loaded, any displayed
+  warning from a library raised `RecursionError` inside the `warnings.warn()`
+  call that emitted it, and test collection failed depending on test order.
+  The hook now forwards to the handler it replaced, and doesn't stack a
+  second copy if `server.py` is executed again.
+
 ### Other
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*

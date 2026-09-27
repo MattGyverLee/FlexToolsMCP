@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 41 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 42 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + raw_addcustomfield_write_risk + invalid_api_mode
   + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
@@ -214,6 +214,13 @@ class PartialModuleStructureDetail(BaseModel):
     has_main: Optional[bool] = None
     has_docs_dict: Optional[bool] = None
     has_flextools_binding: Optional[bool] = None
+
+
+class TopLevelMainInvocationDetail(BaseModel):
+    """Detail payload for top_level_main_invocation rejections (issue #279)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["top_level_main_invocation"] = "top_level_main_invocation"
+    call_lines: List[int] = Field(default_factory=list)
 
 
 class UnprotectedWritesDetail(BaseModel):
@@ -877,7 +884,7 @@ class ParseSandboxRefusedDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 41 per-code detail models
+# Discriminated union over all 42 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -888,6 +895,7 @@ AnyDetail = Union[
     UnknownToolDetail,
     InvalidInputDetail,
     PartialModuleStructureDetail,
+    TopLevelMainInvocationDetail,
     UnprotectedWritesDetail,
     CastingIssuesDetectedDetail,
     ApiDiscoveryRequiredDetail,

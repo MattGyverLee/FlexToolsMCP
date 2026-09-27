@@ -33,6 +33,7 @@ from flextoolsmcp.server.response_models import (
     SyntaxErrorDetail,
     ServerStateErrorDetail,
     PartialModuleStructureDetail,
+    TopLevelMainInvocationDetail,
     UnprotectedWritesDetail,
     CastingIssuesDetectedDetail,
     ApiDiscoveryRequiredDetail,
@@ -227,6 +228,7 @@ ALL_ERROR_CODES = [
     ("syntax_error", dict(line_number=1, guidance="Fix syntax")),
     ("server_state_error", dict(server_state={"is_healthy": False, "issues": []})),
     ("partial_module_structure", dict(missing_elements=["docs"])),
+    ("top_level_main_invocation", dict(call_lines=[4])),
     ("unprotected_writes", dict(mutating_calls=[])),
     ("casting_issues_detected", dict(casting_issues=[], severity="error")),
     ("api_discovery_required", dict(detected_candidates=[], session=None, hint="Discover first")),
@@ -318,6 +320,7 @@ DETAIL_MODEL_MAP = {
     "syntax_error": SyntaxErrorDetail,
     "server_state_error": ServerStateErrorDetail,
     "partial_module_structure": PartialModuleStructureDetail,
+    "top_level_main_invocation": TopLevelMainInvocationDetail,
     "unprotected_writes": UnprotectedWritesDetail,
     "casting_issues_detected": CastingIssuesDetectedDetail,
     "api_discovery_required": ApiDiscoveryRequiredDetail,
@@ -475,8 +478,9 @@ class TestParserCheckCP2bCodes:
         # parser_config_failed and parse_sandbox_refused (M-2) -> 36;
         # #243 adds session_not_initialized, unknown_tool, invalid_input -> 39;
         # curated deprecations add deprecated_member -> 40;
-        # #70 adds raw_addcustomfield_write_risk -> 41.
-        assert union_size == 41, f"the detail union holds {union_size} models"
+        # #70 adds raw_addcustomfield_write_risk -> 41;
+        # #279 adds top_level_main_invocation -> 42.
+        assert union_size == 42, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

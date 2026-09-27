@@ -17,6 +17,7 @@ from server.validators import (
     detect_cud_operations,
     detect_module_structure,
     detect_partial_module_structure,
+    detect_top_level_main_invocation,
     detect_polymorphic_error,
     detect_class_id_constant_error,
     detect_overload_resolution_error,
@@ -140,6 +141,44 @@ class TestPartialModuleStructure(unittest.TestCase):
         # Acceptable: nested Main is unusual and getting a structural nudge is
         # not actively wrong.
         self.assertTrue(result["has_main"])
+
+
+class TestTopLevelMainInvocation(unittest.TestCase):
+    """Tests for detect_top_level_main_invocation() (issue #279)."""
+
+    def test_main_def_without_top_level_call_not_flagged(self):
+        code = (
+            "def Main(project, report, modifyAllowed):\n"
+            "    report.Info('once')\n"
+        )
+        result = detect_top_level_main_invocation(code)
+        self.assertFalse(result["has_top_level_main_call"])
+
+    def test_top_level_main_call_with_def_is_flagged(self):
+        code = (
+            "def Main(project, report, modifyAllowed):\n"
+            "    report.Info('hello')\n"
+            "Main(project, report, modifyAllowed)\n"
+        )
+        result = detect_top_level_main_invocation(code)
+        self.assertTrue(result["has_top_level_main_call"])
+        self.assertEqual(result["call_lines"], [3])
+        self.assertIn("twice", result["message"])
+
+    def test_main_call_without_def_not_flagged(self):
+        code = "Main(project, report, modifyAllowed)\n"
+        result = detect_top_level_main_invocation(code)
+        self.assertFalse(result["has_top_level_main_call"])
+
+    def test_main_under_name_main_guard_not_flagged(self):
+        code = (
+            "def Main(project, report, modifyAllowed):\n"
+            "    pass\n"
+            "if __name__ == '__main__':\n"
+            "    Main(project, report, modifyAllowed)\n"
+        )
+        result = detect_top_level_main_invocation(code)
+        self.assertFalse(result["has_top_level_main_call"])
 
 
 class TestPolymorphicError(unittest.TestCase):

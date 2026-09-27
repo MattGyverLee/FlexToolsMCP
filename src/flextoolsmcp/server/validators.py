@@ -560,6 +560,73 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
     }
 
 
+_TOP_LEVEL_MAIN_MESSAGE = (
+    "Code defines `Main(...)` and also calls `Main(...)` at module level. "
+    "The runner invokes `Main` itself after loading the module, so the body "
+    "would execute twice (duplicate writes and side effects). Remove the "
+    "top-level `Main(...)` call and keep only the `def Main` definition."
+)
+
+
+def detect_top_level_main_invocation(
+    code: str, code_tree: Optional[ast.AST] = None
+) -> dict:
+    """Detect a module-level ``Main(...)`` call when ``def Main`` is also defined.
+
+    Issue #279: the runner ``exec``s the module (running top-level statements
+    once) and then calls ``Main(project, report, modifyAllowed)`` again when
+    ``Main`` is bound in the namespace — so a bare top-level call doubles
+    execution. ``if __name__ == "__main__":`` blocks are ignored here because
+    the runner sets ``__name__`` to ``__flextools_module__``, not ``__main__``.
+    """
+    if code_tree is None:
+        try:
+            code_tree = ast.parse(code)
+        except SyntaxError:
+            return {
+                "has_top_level_main_call": False,
+                "call_lines": [],
+                "message": "",
+            }
+
+    if not isinstance(code_tree, ast.Module):
+        return {
+            "has_top_level_main_call": False,
+            "call_lines": [],
+            "message": "",
+        }
+
+    has_main_def = any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == "Main"
+        for node in code_tree.body
+    )
+    if not has_main_def:
+        return {
+            "has_top_level_main_call": False,
+            "call_lines": [],
+            "message": "",
+        }
+
+    call_lines: List[int] = []
+    for node in code_tree.body:
+        if not isinstance(node, ast.Expr):
+            continue
+        call = node.value
+        if not isinstance(call, ast.Call):
+            continue
+        func = call.func
+        if isinstance(func, ast.Name) and func.id == "Main":
+            call_lines.append(node.lineno)
+
+    has_call = bool(call_lines)
+    return {
+        "has_top_level_main_call": has_call,
+        "call_lines": call_lines,
+        "message": _TOP_LEVEL_MAIN_MESSAGE if has_call else "",
+    }
+
+
 # ============================================================
 # Nested-UnitOfWork detection (issue #92 follow-up; re-derived for #144)
 # ============================================================

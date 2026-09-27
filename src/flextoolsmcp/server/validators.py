@@ -769,6 +769,18 @@ def detect_nested_unit_of_work(code: str, tree: Optional[ast.AST] = None) -> dic
 _REFLECTION_ATTR_FUNCS = frozenset({"getattr", "setattr", "hasattr", "delattr"})
 _LCM_IMPORT_MODULE_MARKERS = ("SIL.LCModel", "LCModel")
 
+# Receiver names bound by the runner that can never reach LCM (the reporter).
+# `project` is deliberately NOT here -- getattr(project, ...) can reach the
+# LCM cache. `modifyAllowed`/`write_enabled` are plain bools, but user code
+# can rebind any name, so only the reporter (never a plausible LCM holder)
+# is exempt.
+_NON_LCM_RECEIVER_NAMES = frozenset({"report"})
+
+# LCM pythonnet get_/set_ accessor methods (set_String, get_String, ...) start
+# lowercase, unlike every other LCM member. _looks_like_lcm_member_name must
+# accept them or reflected writes like getattr(ms, "set_String") go unseen.
+_LCM_SET_GET_MEMBER_RE = re.compile(r"^(?:get|set)_[A-Z]")
+
 
 def _ast_str_literal(node: ast.AST) -> Optional[str]:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -779,7 +791,29 @@ def _ast_str_literal(node: ast.AST) -> Optional[str]:
 def _looks_like_lcm_member_name(name: str) -> bool:
     if not name or name.startswith("_"):
         return False
-    return name[0].isupper()
+    if name[0].isupper():
+        return True
+    # LCM pythonnet accessor methods (ITsString.set_String, get_String, ...).
+    return bool(_LCM_SET_GET_MEMBER_RE.match(name))
+
+
+def _receiver_may_reach_lcm(receiver: Optional[ast.AST]) -> bool:
+    """Conservative answer to "could this reflective call reach LCM?".
+
+    Only two shapes are trusted: the runner-injected reporter name and
+    constant receivers (a string/number literal is never an LCM object).
+    Everything else -- unknown names, attributes, call results, subscripts,
+    and a missing receiver -- is assumed to possibly reach LCM. Errs toward
+    flagging because the write gate (not the detector) decides refusal, and
+    it only refuses write runs.
+    """
+    if receiver is None:
+        return True
+    if isinstance(receiver, ast.Constant):
+        return False
+    if isinstance(receiver, ast.Name):
+        return receiver.id not in _NON_LCM_RECEIVER_NAMES
+    return True
 
 
 def _is_operator_methodcaller_call(node: ast.Call) -> bool:
@@ -814,10 +848,23 @@ def detect_reflection_bypass(code: str, tree: Optional[ast.AST] = None) -> dict:
     """Detect LCM access patterns that bypass static preflight analysis.
 
     Flags (AST-based -- string literals and comments never match):
-      - ``operator.methodcaller("...", ...)(receiver)``
+      - ``operator.methodcaller("...", ...)(receiver)`` when the method looks
+        like an LCM member (or cannot be resolved to a literal)
       - ``importlib.import_module("SIL.LCModel")`` (and similar LCModel paths)
       - ``getattr/setattr/hasattr/delattr(obj, "MemberName")`` when MemberName
-        looks like an LCM property or method (PascalCase, not dunder)
+        looks like an LCM property or method (PascalCase, or LCM get_/set_
+        accessors like set_String -- never dunder)
+      - any of the above with an unresolvable (non-literal) member name on a
+        receiver that may reach LCM -- preflight cannot see what it reaches
+
+    Never flags:
+      - non-LCM member names (``getattr(obj, "lower")``)
+      - calls on receivers that cannot reach LCM (the ``report`` reporter,
+        constant literals)
+
+    Receiver analysis is intentionally name-based and conservative: unknown
+    receivers are assumed to possibly reach LCM. The write gate refuses only
+    write runs, so read-only introspection is never blocked.
 
     Returns:
         dict with:
@@ -850,14 +897,27 @@ def detect_reflection_bypass(code: str, tree: Optional[ast.AST] = None) -> dict:
         if isinstance(node.func, ast.Call) and _is_operator_methodcaller_call(node.func):
             mc = node.func
             method = _ast_str_literal(mc.args[0]) if mc.args else None
-            label = f'operator.methodcaller("{method or "?"}", ...)(...)'
-            _record(
-                "operator.methodcaller",
-                node.lineno,
-                label,
-                "LCM member invoked via operator.methodcaller; casting and write "
-                "preflight cannot see this access.",
-            )
+            receiver = node.args[0] if node.args else None
+            if method is not None and not _looks_like_lcm_member_name(method):
+                # e.g. methodcaller("lower") -- no LCM member by that name,
+                # so nothing preflight needs to see.
+                continue
+            if not _receiver_may_reach_lcm(receiver):
+                continue
+            if method is None:
+                label = 'operator.methodcaller(<unresolved>, ...)(...)'
+                detail = (
+                    "LCM member invoked via operator.methodcaller with an "
+                    "unresolvable method name; casting and write preflight "
+                    "cannot see this access."
+                )
+            else:
+                label = f'operator.methodcaller("{method}", ...)(...)'
+                detail = (
+                    "LCM member invoked via operator.methodcaller; casting "
+                    "and write preflight cannot see this access."
+                )
+            _record("operator.methodcaller", node.lineno, label, detail)
             continue
 
         lcm_mod = _is_importlib_import_module_call(node)
@@ -880,8 +940,27 @@ def detect_reflection_bypass(code: str, tree: Optional[ast.AST] = None) -> dict:
 
         if attr_name not in _REFLECTION_ATTR_FUNCS or len(node.args) < 2:
             continue
+        receiver = node.args[0]
         member = _ast_str_literal(node.args[1])
+        if member is None:
+            # Unresolvable member name (variable, expression): preflight
+            # cannot see what this reaches. Flag it when the receiver may
+            # reach LCM; the write gate (not the detector) decides refusal.
+            if not _receiver_may_reach_lcm(receiver):
+                continue
+            _record(
+                f"builtin.{attr_name}-unresolved",
+                node.lineno,
+                f"{attr_name}(..., <unresolved>)",
+                "Reflection access with an unresolvable member name on an "
+                "object that may reach LCM bypasses casting and write-safety "
+                "static analysis.",
+            )
+            continue
         if not member or not _looks_like_lcm_member_name(member):
+            continue
+        if not _receiver_may_reach_lcm(receiver):
+            # e.g. hasattr(report, "Info") -- the reporter, not the LCM.
             continue
         _record(
             f"builtin.{attr_name}",

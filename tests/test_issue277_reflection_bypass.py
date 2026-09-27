@@ -51,6 +51,60 @@ class TestDetectReflectionBypass:
         assert not result["has_reflection_bypass"]
 
 
+class TestDetectorPrecision:
+    """Review findings: lowercase LCM mutators must be caught, unresolvable
+    members on LCM-reaching receivers must be caught, and harmless
+    non-LCM reflection must not be flagged."""
+
+    def test_getattr_set_string_flagged(self):
+        # Finding A: ITsString.set_String is lowercase-first but a genuine
+        # LCM mutator (cf. _LIBLCM_MUTABLE_PATTERNS in validators.py).
+        code = 'if modifyAllowed:\n    getattr(ms, "set_String")(ws, value)\n'
+        result = detect_reflection_bypass(code)
+        assert result["has_reflection_bypass"]
+        assert any("set_String" in f.get("expr", "") for f in result["findings"])
+
+    def test_getattr_get_string_flagged(self):
+        code = 'x = getattr(ms, "get_String")(ws)\n'
+        result = detect_reflection_bypass(code)
+        assert result["has_reflection_bypass"]
+
+    def test_getattr_unresolved_member_flagged(self):
+        # Finding A: a non-literal member name cannot be proven safe --
+        # preflight cannot see what this reaches.
+        code = 'if modifyAllowed:\n    getattr(ms, name)(ws, value)\n'
+        result = detect_reflection_bypass(code)
+        assert result["has_reflection_bypass"]
+        assert any("unresolved" in f.get("kind", "") for f in result["findings"])
+
+    def test_getattr_unresolved_on_reporter_not_flagged(self):
+        code = 'getattr(report, name)\n'
+        result = detect_reflection_bypass(code)
+        assert not result["has_reflection_bypass"]
+
+    def test_hasattr_reporter_not_flagged(self):
+        # Finding C: the reporter is not the LCM.
+        code = 'if hasattr(report, "Info"):\n    report.Info("ready")\n'
+        result = detect_reflection_bypass(code)
+        assert not result["has_reflection_bypass"]
+
+    def test_methodcaller_lower_not_flagged(self):
+        # Finding C: no LCM member is named "lower".
+        code = 'text = operator.methodcaller("lower")(text)\n'
+        result = detect_reflection_bypass(code)
+        assert not result["has_reflection_bypass"]
+
+    def test_methodcaller_unresolved_flagged(self):
+        code = 'operator.methodcaller(name)(ms)\n'
+        result = detect_reflection_bypass(code)
+        assert result["has_reflection_bypass"]
+
+    def test_methodcaller_set_string_still_flagged(self):
+        code = 'operator.methodcaller("set_String", ws, t)(ms)\n'
+        result = detect_reflection_bypass(code)
+        assert result["has_reflection_bypass"]
+
+
 def _stub_env(monkeypatch, tmp_path):
     if kernel.get_operations_logger() is None:
         kernel.init_operations_logger()
@@ -142,3 +196,48 @@ class TestGateWiring:
         }
         data = _parse(asyncio.run(execution_mod.handle_run_module(args)))
         assert data.get("error_code") != "reflection_bypass_detected"
+
+
+class TestValidateOnlyParity:
+    """Review finding: validate_only must agree with execution. Before the
+    Gate 3c fix, a write preview of reflection code returned `validated`
+    while the live gate refused the same script."""
+
+    def test_preview_agrees_with_execution_refusal(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path)
+
+        base_args = {
+            "code": 'import operator\noperator.methodcaller("Add", pub)(sense_rc)\n',
+            "project_name": "TestProj_refl",
+            "write_enabled": True,
+            "confirmed": True,
+            "skip_api_check": True,
+            "skip_module_check": True,
+        }
+
+        preview = _parse(
+            asyncio.run(execution_mod.handle_run_module({**base_args, "validate_only": True}))
+        )
+        assert preview["status"] == "validation_failed", preview
+        by_gate = {c["gate"]: c for c in preview["checks"]}
+        assert by_gate["reflection_bypass"]["passed"] is False
+
+        data = _parse(asyncio.run(execution_mod.handle_run_module(base_args)))
+        assert data["error_code"] == "reflection_bypass_detected"
+
+    def test_preview_passes_harmless_reflection_on_write(self, monkeypatch, tmp_path):
+        """Finding C at the preview level: reporter-only reflection must not
+        fail the new gate on a write run."""
+        _stub_env(monkeypatch, tmp_path)
+        args = {
+            "code": 'if hasattr(report, "Info"):\n    report.Info("ready")\n',
+            "project_name": "TestProj_refl",
+            "write_enabled": True,
+            "confirmed": True,
+            "skip_api_check": True,
+            "skip_module_check": True,
+            "validate_only": True,
+        }
+        preview = _parse(asyncio.run(execution_mod.handle_run_module(args)))
+        by_gate = {c["gate"]: c for c in preview["checks"]}
+        assert by_gate["reflection_bypass"]["passed"] is True, by_gate["reflection_bypass"]

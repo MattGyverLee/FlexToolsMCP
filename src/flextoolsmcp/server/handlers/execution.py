@@ -2076,6 +2076,35 @@ def _build_validate_only_checks(
     else:
         checks.append({"gate": "deprecated_member", "passed": True})
 
+    # --- Gate 3c: reflection_bypass (issue #277) ---
+    # Same detector + refusal rule handle_run_module uses (reject on write
+    # runs only). The preview must agree with execution: without this gate a
+    # write script using reflection previews `validated` and then refuses at
+    # the live gate. Mirrors production order (deprecated -> reflection).
+    reflection_check = detect_reflection_bypass(code, code_tree)
+    if reflection_check["has_reflection_bypass"] and write_enabled:
+        rejection = build_reflection_bypass_rejection(reflection_check)
+        checks.append({
+            "gate": "reflection_bypass",
+            "passed": False,
+            "issues": reflection_check["findings"],
+            "message": rejection["message"],
+            "next_steps": rejection["next_steps"],
+        })
+    elif reflection_check["has_reflection_bypass"]:
+        checks.append({
+            "gate": "reflection_bypass",
+            "passed": True,
+            "advisory": (
+                "reflection present, but the live gate refuses reflection "
+                "only on write runs -- a read-only run_module would proceed "
+                "without rejecting"
+            ),
+            "findings": reflection_check["findings"],
+        })
+    else:
+        checks.append({"gate": "reflection_bypass", "passed": True})
+
     # --- Gate 4: unprotected_writes (also feeds the writeability builder) ---
     cud_info = detect_cud_operations(code)
     cert = certify_script_readonly(code, api_idx, code_tree)

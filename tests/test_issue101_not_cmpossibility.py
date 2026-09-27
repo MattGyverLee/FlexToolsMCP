@@ -346,5 +346,142 @@ class TestICmPossibilityProvenanceGate(unittest.TestCase):
         self.assertNotEqual(result["injection_tier"], "none")
 
 
+# ---------------------------------------------------------------------------
+# Extended provenance coverage (every attr / receiver name in server.constants)
+# ---------------------------------------------------------------------------
+
+class TestWrongICmPossibilityCastIssues(unittest.TestCase):
+    """Issue #101 (run-time half): static detection of ICmPossibility(<expr>)
+    where <expr> is provably a NOT_CMPOSSIBILITY type.
+
+    All positive cases must have severity='error' and produce injection_tier
+    != 'none' on the full detect_casting_needs result.
+
+    A-series NOTE (out of scope for static checking):
+    ``IMoInflAffixTemplate(t)`` where ``t`` came from
+    ``MorphRuleOperations.GetAllAffixTemplates()`` / ``GetAllAffixTemplatesForPOS()``
+    is NOT flagged here.  The cast TARGET matches the declared collection element
+    type; the runtime failure is a wrapper/collection impurity (some FLEx versions
+    return heterogeneous internal objects), NOT a statically wrong-target cast.
+    We cannot prove statically that GetAllAffixTemplates returns a non-template
+    object without runtime evidence -- flagging it would produce false positives
+    on correct-looking casts to the very type the collection claims to hold.
+    These cases are left to runtime diagnostics.
+    """
+
+    def _run(self, code: str) -> dict:
+        from server.validators import detect_casting_needs
+        return detect_casting_needs(code, None)
+
+    # --- Attribute provenance (Hit B1 shapes) ---
+
+    def test_b1_defaultinflectionclassra_flagged(self):
+        code = "name = ICmPossibility(pos.DefaultInflectionClassRA).Name\n"
+        result = self._run(code)
+        self.assertTrue(result["has_casting_issues"])
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues)
+        self.assertEqual(issues[0]["severity"], "error")
+
+    def test_b1_affixslotsoc_flagged(self):
+        """AffixSlotsOC returns IMoInflAffixSlot -- NOT ICmPossibility."""
+        code = "name = ICmPossibility(pos.AffixSlotsOC).Name\n"
+        result = self._run(code)
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues, "AffixSlotsOC provenance should be flagged")
+        self.assertEqual(issues[0]["severity"], "error")
+
+    def test_b1_affixtemplates_os_flagged(self):
+        """AffixTemplatesOS returns IMoInflAffixTemplate -- NOT ICmPossibility."""
+        code = "name = ICmPossibility(pos.AffixTemplatesOS).Name\n"
+        result = self._run(code)
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues, "AffixTemplatesOS provenance should be flagged")
+        self.assertEqual(issues[0]["severity"], "error")
+
+    def test_b1_slotsrc_flagged(self):
+        code = "s = ICmPossibility(msa.SlotsRC).Name\n"
+        result = self._run(code)
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues, "SlotsRC provenance should be flagged")
+
+    def test_b1_templatera_flagged(self):
+        code = "t = ICmPossibility(app.TemplateRA).Name\n"
+        result = self._run(code)
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues, "TemplateRA provenance should be flagged")
+
+    def test_b1_slotother_prefixslotsrs_flagged(self):
+        code = "s = ICmPossibility(tmpl.PrefixSlotsRS).Name\n"
+        result = self._run(code)
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues, "PrefixSlotsRS provenance should be flagged")
+
+    # --- Receiver-name provenance ---
+
+    def test_receiver_template_flagged(self):
+        code = "name = ICmPossibility(template).Name\n"
+        result = self._run(code)
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues, "'template' receiver name should be flagged")
+
+    def test_receiver_infl_class_flagged(self):
+        code = "name = ICmPossibility(infl_class).Name\n"
+        result = self._run(code)
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues, "'infl_class' receiver name should be flagged")
+
+    def test_receiver_inflClass_flagged(self):
+        code = "name = ICmPossibility(inflClass).Name\n"
+        result = self._run(code)
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues, "'inflClass' receiver name should be flagged")
+
+    def test_receiver_tmpl_flagged(self):
+        code = "name = ICmPossibility(tmpl).Name\n"
+        result = self._run(code)
+        issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+        self.assertTrue(issues, "'tmpl' receiver name should be flagged")
+
+    # --- Negative cases ---
+
+    def test_generic_variable_not_flagged(self):
+        """A plain variable like 'obj' or 'item' is not in the heuristic list."""
+        for var in ("obj", "item", "x", "entry", "sense"):
+            with self.subTest(var=var):
+                code = f"name = ICmPossibility({var}).Name\n"
+                result = self._run(code)
+                issues = [i for i in result["casting_issues"] if "ICmPossibility" in i["property"]]
+                self.assertFalse(issues, f"'{var}' should not trigger ICmPossibility gate")
+
+    # --- Provenance constant is shared (not copied) ---
+
+    def test_provenance_set_imported_from_server_constants(self):
+        """NOT_CMPOSSIBILITY_NAME_COLLISION in api.py and the provenance attrs
+        in validators.py both come from server.constants -- not copied."""
+        from server.constants import NOT_CMPOSSIBILITY_NAME_COLLISION as from_constants
+        from server.handlers.api import NOT_CMPOSSIBILITY_NAME_COLLISION as from_api
+        self.assertIs(from_constants, from_api,
+                      "api.py must re-export from server.constants, not define its own copy")
+
+    def test_receiver_map_has_correct_entries_for_slot_template_inflclass(self):
+        """_RECEIVER_NAME_TO_INTERFACE maps slot/template/inflclass names to
+        their correct interfaces, never to ICmPossibility."""
+        from server.validators import _RECEIVER_NAME_TO_INTERFACE
+        for name, iface in _RECEIVER_NAME_TO_INTERFACE.items():
+            if name in ("slot", "affix_slot", "infl_slot", "slot_obj",
+                        "template", "tmpl", "templ", "affix_template", "template_obj",
+                        "infl_class", "inflection_class", "infl_cls", "inflClass",
+                        "infl_class_obj"):
+                self.assertNotEqual(
+                    iface, "ICmPossibility",
+                    f"Receiver '{name}' must not map to ICmPossibility (issue #101 b)",
+                )
+                self.assertIn(
+                    iface, ("IMoInflAffixSlot", "IMoInflAffixTemplate", "IMoInflClass"),
+                    f"Receiver '{name}' must map to a NOT_CMPOSSIBILITY type",
+                )
+
+
 if __name__ == "__main__":
     unittest.main()

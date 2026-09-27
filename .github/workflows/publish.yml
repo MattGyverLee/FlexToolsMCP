@@ -84,11 +84,19 @@ jobs:
           $smokeDir = Join-Path $env:RUNNER_TEMP "flextools-smoke"
           New-Item -ItemType Directory -Force -Path $smokeDir | Out-Null
           Push-Location $smokeDir
-          # Resolved mcp (2.x today) ...
-          & "$env:GITHUB_WORKSPACE\smoke-venv\Scripts\python.exe" -c "import asyncio; from flextoolsmcp.server import APIIndex, list_tools; ts = asyncio.run(list_tools()); print(len(ts)); assert len(ts) >= 10"
+          $smokePy = "$env:GITHUB_WORKSPACE\smoke-venv\Scripts\python.exe"
+          $smokeCheck = "import asyncio; from flextoolsmcp.server import APIIndex, list_tools; ts = asyncio.run(list_tools()); print(len(ts)); assert len(ts) >= 10"
+          # Resolved mcp (2.x today). PowerShell does NOT stop on a failing
+          # native process, so check $LASTEXITCODE immediately -- otherwise a
+          # failed 2.x check followed by a passing 1.x check would still
+          # publish a broken wheel.
+          & $smokePy -c $smokeCheck
+          if ($LASTEXITCODE -ne 0) { throw "Smoke test failed under resolved MCP" }
           # ... then the oldest supported 1.x floor (issue #83 dual support).
-          & "$env:GITHUB_WORKSPACE\smoke-venv\Scripts\python.exe" -m pip install "mcp==1.27.0"
-          & "$env:GITHUB_WORKSPACE\smoke-venv\Scripts\python.exe" -c "import asyncio; from flextoolsmcp.server import APIIndex, list_tools; ts = asyncio.run(list_tools()); print(len(ts)); assert len(ts) >= 10"
+          & $smokePy -m pip install "mcp==1.27.0"
+          if ($LASTEXITCODE -ne 0) { throw "MCP floor downgrade failed" }
+          & $smokePy -c $smokeCheck
+          if ($LASTEXITCODE -ne 0) { throw "Smoke test failed under MCP 1.27.0 floor" }
           Pop-Location
 
   publish:

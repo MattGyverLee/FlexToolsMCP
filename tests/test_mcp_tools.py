@@ -36,7 +36,7 @@ def run_async(coro):
 def _get_srv():
     """Load and cache server.py module (avoiding reloading on every call).
 
-    The decorated list_tools() and call_tool() functions live in server.py,
+    The undecorated list_tools() and call_tool() functions live in server.py,
     not in server/__init__.py. We load it directly via importlib.
     """
     import importlib.util
@@ -420,6 +420,36 @@ class TestWorkflowGates(TestCase):
             "cold run_module without write_enabled=True must never end up "
             "write-enabled -- a cold session is always read-only"
         ))
+
+    def test_wire_rejected_cold_run_module_leaves_session_cold(self):
+        """Issue #83 review: on 2.x the raw on_call_tool handler has no
+        decorator pre-validation, so the wire adapter must reject invalid
+        arguments BEFORE the dispatcher (and its cold-session gate) runs --
+        a rejected first call must not initialize the session (1.x parity,
+        where the decorator validates before our code is ever invoked).
+
+        Driven through the real adapter + real tool list + real dispatcher,
+        so both majors execute identical code here."""
+        from types import SimpleNamespace
+
+        from flextoolsmcp.mcp_compat import (  # type: ignore
+            make_call_tool_handler,
+            make_schema_provider,
+        )
+        srv = _get_srv()
+        handler = make_call_tool_handler(
+            srv.call_tool, make_schema_provider(srv.list_tools)
+        )
+        params = SimpleNamespace(
+            name="flextools_run_module", arguments={"project_name": "Demo"}
+        )
+        result = run_async(handler(None, params))
+        is_error = getattr(result, "is_error", None)
+        if is_error is None:  # mcp 1.x spells the attribute isError
+            is_error = result.isError
+        self.assertTrue(is_error)
+        self.assertIn("Input validation error", result.content[0].text)
+        self.assertFalse(srv.session_state.initialized)
 
     def test_run_module_cold_write_enabled_matches_explicit_start_plus_run(self):
         """Issue #53 acceptance: cold run_module with write_enabled=True and a

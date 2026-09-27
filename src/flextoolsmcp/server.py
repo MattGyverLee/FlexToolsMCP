@@ -78,7 +78,7 @@ if __package__:
     from .server.startup_notices import record_index_refresh_failure
     from .response_utils import error_response
     from . import curated_deprecations
-    from .mcp_compat import build_server
+    from .mcp_compat import annotation_is_read_only, build_server
 else:
     from server.kernel import (
         get_operations_logger,
@@ -95,7 +95,7 @@ else:
     from server.startup_notices import record_index_refresh_failure
     from response_utils import error_response
     import curated_deprecations
-    from mcp_compat import build_server
+    from mcp_compat import annotation_is_read_only, build_server
 _local_imports_done = _time_module.time()
 
 # Safe logging helper that works even before initialization
@@ -926,8 +926,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     _pending_session_note: Optional[str] = None
     if name not in _SESSION_INDEPENDENT_TOOLS and not session_state.initialized:
         tool_def = TOOL_DEFINITIONS.get(name)
+        # Read-only check must accept both MCP majors' annotation spellings
+        # (readOnlyHint on 1.x, read_only_hint on 2.x) -- see
+        # mcp_compat.annotation_is_read_only.
         is_read_only_safe = bool(
-            tool_def is not None and getattr(tool_def.annotations, "readOnlyHint", False)
+            tool_def is not None
+            and annotation_is_read_only(tool_def.annotations)
         )
         is_run_module = (name == "flextools_run_module")
 

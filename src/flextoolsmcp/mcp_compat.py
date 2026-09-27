@@ -16,13 +16,14 @@ signatures and bodies verbatim -- they stop being decorated and are passed to
 returning bare ``list[TextContent]``; the 2.x branch wraps them in
 ``CallToolResult`` at this single seam.
 
-Deliberately NOT in the 2.x branch: ``jsonschema`` pre-validation of
-``arguments`` against ``inputSchema``. mcp 1.x's decorator validated before
-calling; a raw 2.x ``on_call_tool`` handler does not. That is nearly a no-op
-here because ``tool_definitions.get_schema()`` generates ``inputSchema`` from
-the same Pydantic model ``server.py`` re-validates against -- the constraint
-set is identical, only the error *shape* differs (the repo's own
-``invalid_input`` JSON instead of mcp's ``isError`` text).
+Deliberately NOT in the 2.x branch: anything beyond input pre-validation.
+mcp 1.x's decorator validated ``arguments`` against ``inputSchema`` before
+calling; a raw 2.x ``on_call_tool`` handler does not. The adapter below
+closes that gap with ``jsonschema`` (a hard mcp 2.x dependency) because the
+divergence is behavioral, not cosmetic: server.py's cold-session gate
+configures session state *before* its own Pydantic re-validation, so without
+pre-validation a rejected first call would initialize the session on 2.x
+while leaving it cold on 1.x.
 """
 
 from pathlib import Path
@@ -76,6 +77,31 @@ def _construct(name: str, version: str, **kwargs: Any) -> Server:
         return Server(name, **kwargs)
 
 
+def annotation_is_read_only(annotations: Any) -> bool:
+    """True when a tool annotations object marks the tool read-only-safe.
+
+    mcp 1.x spells the field ``readOnlyHint``, mcp 2.x spells it
+    ``read_only_hint`` -- and each major exposes ONLY its own spelling on
+    attribute read (construction accepts both via pydantic aliases). Reading
+    just one spelling silently resolves to False on the other major, which
+    disabled cold-session auto-initialization for every read-only tool under
+    2.x. Read both, plus mapping-style fallbacks for dict-shaped annotations.
+    """
+    if annotations is None:
+        return False
+    for attr in ("read_only_hint", "readOnlyHint"):
+        try:
+            if getattr(annotations, attr, False):
+                return True
+        except Exception:
+            continue
+    if isinstance(annotations, dict):
+        return bool(
+            annotations.get("read_only_hint", annotations.get("readOnlyHint", False))
+        )
+    return False
+
+
 def make_list_tools_handler(
     list_tools_fn: Callable[[], Awaitable[list]],
 ) -> Callable[[Any, Any], Awaitable[Any]]:
@@ -92,20 +118,102 @@ def make_list_tools_handler(
     return _on_list_tools
 
 
+def _tool_input_schema(tool: Any) -> Any:
+    """A Tool's input schema across both majors' field spellings.
+
+    Same mirror-image layout as the annotations (``input_schema`` on 2.x,
+    ``inputSchema`` on 1.x); each major exposes only its own on read.
+    """
+    for attr in ("input_schema", "inputSchema"):
+        try:
+            schema = getattr(tool, attr, None)
+        except Exception:
+            continue
+        if schema:
+            return schema
+    return None
+
+
+def make_schema_provider(
+    list_tools_fn: Callable[[], Awaitable[list]],
+) -> Callable[[], Awaitable[dict]]:
+    """Build the ``{tool_name: inputSchema}`` provider for pre-validation.
+
+    Factored out of :func:`build_server` so tests can wire the real tool list
+    to the real adapter and prove rejected calls never reach the dispatcher.
+    Tools without a readable schema are skipped (fail-open per tool).
+    """
+
+    async def _provider() -> dict:
+        schemas: dict = {}
+        for tool in await list_tools_fn():
+            schema = _tool_input_schema(tool)
+            if schema:
+                schemas[tool.name] = schema
+        return schemas
+
+    return _provider
+
+
 def make_call_tool_handler(
     call_tool_fn: Callable[[str, dict], Awaitable[list]],
+    schema_provider: Optional[Callable[[], Awaitable[dict]]] = None,
 ) -> Callable[[Any, Any], Awaitable[Any]]:
     """Adapt ``async (name, arguments) -> list[TextContent]`` to ``on_call_tool``.
 
     Wraps the bare content list in ``CallToolResult`` and maps a raising
     handler to an ``isError`` result (mirroring mcp 1.x's decorator behavior).
     Only used on the 2.x branch; factored out for direct testing.
+
+    When ``schema_provider`` is given (``async () -> {tool_name: inputSchema}``,
+    wired by :func:`build_server` from the same tool list), arguments are
+    pre-validated with ``jsonschema`` before delegating -- the 1.x decorator
+    validated before calling, and without this a rejected first call would
+    initialize the cold session on 2.x while leaving it cold on 1.x. A
+    validation failure returns the same ``isError`` shape 1.x produced
+    (``Input validation error: ...``). Unknown tools (no schema), a failing
+    provider, or a missing ``jsonschema`` all fail open to plain delegation.
     """
     from mcp.types import CallToolResult, TextContent
 
+    try:
+        from jsonschema import ValidationError as _ValidationError
+        from jsonschema import validate as _validate_jsonschema
+    except Exception:  # jsonschema absent -- pre-validation skipped (fail-open)
+        _ValidationError = None  # type: ignore[assignment]
+        _validate_jsonschema = None  # type: ignore[assignment]
+
+    _schema_cache: Optional[dict] = None
+
+    async def _schemas() -> dict:
+        nonlocal _schema_cache
+        if _schema_cache is None and schema_provider is not None:
+            try:
+                _schema_cache = await schema_provider()
+            except Exception:
+                _schema_cache = {}
+        return _schema_cache or {}
+
     async def _on_call_tool(ctx: Any, params: Any) -> Any:
+        name = params.name
+        arguments = params.arguments or {}
+        if _validate_jsonschema is not None and schema_provider is not None:
+            schema = (await _schemas()).get(name)
+            if schema:
+                try:
+                    _validate_jsonschema(instance=arguments, schema=schema)
+                except _ValidationError as exc:
+                    return CallToolResult(
+                        content=[
+                            TextContent(
+                                type="text",
+                                text=f"Input validation error: {exc.message}",
+                            )
+                        ],
+                        isError=True,
+                    )
         try:
-            content = await call_tool_fn(params.name, params.arguments or {})
+            content = await call_tool_fn(name, arguments)
         except Exception as exc:
             return CallToolResult(
                 content=[TextContent(type="text", text=f"Error: {exc}")],
@@ -142,7 +250,8 @@ def build_server(
     if not MCP2:
         srv = _construct(name, server_version)
         # On 1.x the decorators are just registration callables -- applying
-        # them explicitly is equivalent to the old ``@``-syntax.
+        # them explicitly is equivalent to the old ``@``-syntax. The 1.x
+        # decorator pre-validates arguments itself, so no schema wiring here.
         srv.list_tools()(list_tools_fn)
         srv.call_tool()(call_tool_fn)
         return srv
@@ -151,5 +260,7 @@ def build_server(
         name,
         server_version,
         on_list_tools=make_list_tools_handler(list_tools_fn),
-        on_call_tool=make_call_tool_handler(call_tool_fn),
+        on_call_tool=make_call_tool_handler(
+            call_tool_fn, make_schema_provider(list_tools_fn)
+        ),
     )

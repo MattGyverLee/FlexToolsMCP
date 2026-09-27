@@ -30,10 +30,11 @@ import asyncio
 from types import SimpleNamespace
 
 from mcp.server import Server
-from mcp.types import TextContent, Tool
+from mcp.types import TextContent, Tool, ToolAnnotations
 
 from flextoolsmcp.mcp_compat import (
     MCP2,
+    annotation_is_read_only,
     build_server,
     make_call_tool_handler,
     make_list_tools_handler,
@@ -124,3 +125,92 @@ def test_call_tool_adapter_tolerates_null_arguments():
     result = asyncio.run(handler(None, SimpleNamespace(name="x", arguments=None)))
     assert not _is_error(result)
     assert seen == {}
+
+
+# ---------------------------------------------------------------------------
+# annotation_is_read_only: both majors' ToolAnnotations spellings (issue #83
+# review -- the cold-session gate read only the 1.x spelling, so every
+# read-only tool looked unsafe under 2.x).
+# ---------------------------------------------------------------------------
+
+
+def test_annotation_helper_reads_both_spellings():
+    assert annotation_is_read_only(ToolAnnotations(readOnlyHint=True))
+    assert not annotation_is_read_only(ToolAnnotations(readOnlyHint=False))
+    assert not annotation_is_read_only(None)
+
+
+def test_real_tool_annotations_resolve_on_this_major():
+    """The shipped TOOL_DEFINITIONS must read correctly under the INSTALLED
+    major -- this is the exact lookup server.py's cold-session gate performs.
+    Catches a spelling mismatch on whichever major CI installs."""
+    from flextoolsmcp.server.tool_definitions import TOOLS
+
+    assert annotation_is_read_only(
+        TOOLS["flextools_search_by_capability"].annotations
+    )
+    assert not annotation_is_read_only(TOOLS["flextools_run_module"].annotations)
+
+
+# ---------------------------------------------------------------------------
+# 2.x adapter input pre-validation (issue #83 review -- without it, a
+# rejected first call initialized the cold session on 2.x while leaving it
+# cold on 1.x, where the decorator pre-validates).
+# ---------------------------------------------------------------------------
+
+_STRICT_SCHEMA = {
+    "type": "object",
+    "properties": {"text": {"type": "string"}},
+    "required": ["text"],
+}
+
+
+async def _strict_schema_provider():
+    return {"probe": _STRICT_SCHEMA}
+
+
+def test_call_tool_adapter_prevalidates_before_delegating():
+    """Invalid arguments are rejected WITHOUT invoking the handler -- so the
+    cold-session gate inside never runs and the session stays untouched."""
+    called = []
+
+    async def _recording(name, arguments):
+        called.append(name)
+        return [TextContent(type="text", text="ok")]
+
+    handler = make_call_tool_handler(_recording, _strict_schema_provider)
+    params = SimpleNamespace(name="probe", arguments={"text": 123})
+    result = asyncio.run(handler(None, params))
+    assert _is_error(result)
+    assert "Input validation error" in result.content[0].text
+    assert called == []
+
+
+def test_call_tool_adapter_valid_arguments_delegate():
+    handler = make_call_tool_handler(_fake_call_tool, _strict_schema_provider)
+    params = SimpleNamespace(name="probe", arguments={"text": "hi"})
+    result = asyncio.run(handler(None, params))
+    assert not _is_error(result)
+    assert [c.text for c in result.content] == ["ok:probe"]
+
+
+def test_call_tool_adapter_unknown_tool_delegates_without_schema():
+    """No schema for the name (e.g. unknown tool) -- fail open to the handler,
+    which owns the unknown_tool envelope on both majors."""
+    handler = make_call_tool_handler(_fake_call_tool, _strict_schema_provider)
+    params = SimpleNamespace(name="other", arguments={"anything": 1})
+    result = asyncio.run(handler(None, params))
+    assert not _is_error(result)
+    assert [c.text for c in result.content] == ["ok:other"]
+
+
+def test_call_tool_adapter_failing_provider_fails_open():
+    """A schema provider that raises must never break valid calls."""
+
+    async def _boom_provider():
+        raise RuntimeError("schemas unavailable")
+
+    handler = make_call_tool_handler(_fake_call_tool, _boom_provider)
+    params = SimpleNamespace(name="probe", arguments={"text": "hi"})
+    result = asyncio.run(handler(None, params))
+    assert not _is_error(result)

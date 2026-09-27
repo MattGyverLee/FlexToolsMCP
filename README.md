@@ -276,6 +276,7 @@ Tool responses follow a versioned envelope contract. See [docs/TOOL-CONTRACT.md]
 | [docs/WHY-AI.md](docs/WHY-AI.md) | When AI is useful for FieldWorks work |
 | [docs/INNOVATIONS.md](docs/INNOVATIONS.md) | Technical innovations in this MCP |
 | [docs/BACKGROUND.md](docs/BACKGROUND.md) | Project history |
+| [docs/PARSER-GUIDE.md](docs/PARSER-GUIDE.md) | Using the parser-check tools: try a word, parse a text, read the diff, file results |
 
 ## Safety & Limitations
 

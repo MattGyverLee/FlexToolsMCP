@@ -226,8 +226,8 @@ no setting, flag, or shortcut that skips any of these steps:
    different word would now be affected, the grammar's standing changed),
    you get a **new** preview instead of a filing run -- your confirmation
    only ever applies to the exact plan you saw.
-3. **A backup is taken first** (this is the mandatory safety net, not
-   optional): before filing writes anything, the server backs up your
+3. **A backup is attempted first, every time** (there is no setting that
+   skips it): before filing writes anything, the server backs up your
    project file. If a backup genuinely can't be taken -- for example, not
    enough free disk space -- filing still goes ahead, but you get a loud,
    explicit warning that says there is no way back if something goes

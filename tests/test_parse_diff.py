@@ -334,13 +334,14 @@ def test_the_diff_source_never_names_the_engine_check():
 
 
 def test_the_tool_is_read_only_and_routed():
+    from flextoolsmcp.mcp_compat import annotation_value
     from flextoolsmcp.server import dispatch
     from flextoolsmcp.server.models import ParseDiffInput
     from flextoolsmcp.server.tool_definitions import TOOLS
 
     tool = TOOLS["flextools_parse_diff"]
-    assert tool.annotations.readOnlyHint is True
-    assert tool.annotations.destructiveHint is False
+    assert annotation_value(tool.annotations, "readOnlyHint") is True
+    assert annotation_value(tool.annotations, "destructiveHint") is False
     handler, model = dispatch.DISPATCH_ROUTES["flextools_parse_diff"]
     assert handler is parse_handler.handle_flextools_parse_diff and model is ParseDiffInput
 

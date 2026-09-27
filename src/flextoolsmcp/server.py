@@ -65,7 +65,9 @@ if __package__ is None:
         sys.path.insert(0, _src_path)
 
 _mcp_import_begin = _time_module.time()
-from mcp.server import Server
+from mcp.server import Server  # noqa: F401 -- re-exported via the server package
+# lazy loader (`from flextoolsmcp.server import Server`); handler registration
+# itself moved to .mcp_compat.build_server() (issue #83).
 _mcp_import_done = _time_module.time()
 
 _local_imports_begin = _time_module.time()
@@ -85,6 +87,7 @@ if __package__:
     from .server.startup_notices import record_index_refresh_failure
     from .response_utils import error_response
     from . import curated_deprecations
+    from .mcp_compat import annotation_is_read_only, build_server
 else:
     from server.kernel import (
         get_operations_logger,
@@ -101,6 +104,7 @@ else:
     from server.startup_notices import record_index_refresh_failure
     from response_utils import error_response
     import curated_deprecations
+    from mcp_compat import annotation_is_read_only, build_server
 _local_imports_done = _time_module.time()
 
 # Safe logging helper that works even before initialization
@@ -718,10 +722,11 @@ class APIIndex:
             "reverse_mapping.json"
         )
 
-# Initialize the MCP server
-_server_init_begin = _time_module.time()
-server = Server("flextools-mcp")
-_server_init_done = _time_module.time()
+# The MCP server itself is constructed AFTER the list_tools()/call_tool()
+# definitions below via mcp_compat.build_server() (issue #83: dual mcp 1.x/2.x
+# support). Registration takes the plain functions -- they are NOT decorated --
+# so this module imports cleanly on both majors. `server` is assigned there;
+# main() uses it at run time.
 
 # Global index (loaded on startup)
 api_index: Optional[APIIndex] = None
@@ -843,7 +848,8 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         _log_warning(f"Could not auto-refresh {library_name}: {e}")
         return False
 
-@server.list_tools()
+# Registered on the MCP server via build_server() below (issue #83) -- NOT
+# decorated, so this module imports on both mcp 1.x and 2.x.
 async def list_tools() -> list[Tool]:
     """List all MCP tools, generated from Pydantic models in tool_definitions.py.
 
@@ -890,7 +896,8 @@ _SESSION_INDEPENDENT_TOOLS = frozenset({
 })
 
 
-@server.call_tool()
+# Registered on the MCP server via build_server() below (issue #83) -- NOT
+# decorated, so this module imports on both mcp 1.x and 2.x.
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
     operations_logger = get_operations_logger()
@@ -928,8 +935,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     _pending_session_note: Optional[str] = None
     if name not in _SESSION_INDEPENDENT_TOOLS and not session_state.initialized:
         tool_def = TOOL_DEFINITIONS.get(name)
+        # Read-only check must accept both MCP majors' annotation spellings
+        # (readOnlyHint on 1.x, read_only_hint on 2.x) -- see
+        # mcp_compat.annotation_is_read_only.
         is_read_only_safe = bool(
-            tool_def is not None and getattr(tool_def.annotations, "readOnlyHint", False)
+            tool_def is not None
+            and annotation_is_read_only(tool_def.annotations)
         )
         is_run_module = (name == "flextools_run_module")
 
@@ -1084,6 +1095,14 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         result_preview = result_text[:1000] if result_text else "(empty)"
         operations_logger.debug(f"[OUT] {name}: {result_preview}")
     return result
+
+# Initialize the MCP server (issue #83: dual mcp 1.x/2.x support via
+# mcp_compat.build_server -- decorators on 1.x, constructor-injected
+# on_list_tools=/on_call_tool= on 2.x). Must follow the definitions above;
+# version= is passed explicitly for serverInfo parity (2.x defaults it to "").
+_server_init_begin = _time_module.time()
+server = build_server("flextools-mcp", list_tools, call_tool)
+_server_init_done = _time_module.time()
 
 async def main():
     """Run the MCP server."""

@@ -122,8 +122,9 @@ def __getattr__(name: str):
         'main',
         'run',
 
-        # MCP protocol entry points (server.py:689, 809, 855) -- must be
-        # reachable via `from flextoolsmcp.server import list_tools` etc.
+        # MCP protocol entry points (server.py: Server construction +
+        # list_tools/call_tool definitions, registered via mcp_compat) -- must
+        # be reachable via `from flextoolsmcp.server import list_tools` etc.
         'server',
         'list_tools',
         'call_tool',

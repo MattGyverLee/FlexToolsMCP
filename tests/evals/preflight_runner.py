@@ -44,6 +44,7 @@ from typing import Any, Dict, Optional, Set
 from server.validators import (
     validate_server_state,
     detect_partial_module_structure,
+    detect_top_level_main_invocation,
     detect_deprecated_members,
     certify_script_readonly,
     detect_undiscovered_entities,
@@ -310,6 +311,16 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
                 "partial_module_structure",
                 str(partial["missing_elements"]),
             )
+
+    # Gate 3a: top_level_main_invocation (issue #279). Write runs only.
+    top_level_main = detect_top_level_main_invocation(code, tree)
+    if top_level_main["has_top_level_main_call"] and write_enabled:
+        return PreflightResult(
+            "preflight_reject",
+            "top_level_main_invocation",
+            "top_level_main_invocation",
+            str(top_level_main["call_lines"]),
+        )
 
     # Gate 3b: deprecated_member (curated_deprecations.py). Unconditional:
     # read-only and write-enabled runs alike.

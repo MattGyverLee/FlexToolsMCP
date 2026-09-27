@@ -26,7 +26,7 @@ class TestBuildEffectCheckPayload(unittest.TestCase):
             )
         )
 
-    def test_non_mutating_preflight_omits(self):
+    def test_non_mutating_preflight_zero_actions_omits(self):
         self.assertIsNone(
             build_effect_check_payload(
                 {"success": True, "lcm_undoable_action_count": 0},

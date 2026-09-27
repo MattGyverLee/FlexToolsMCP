@@ -315,7 +315,12 @@ def generate_method_usage_hint(method_name: str, return_type: str = "") -> str:
         return "retrieval"
     elif method_name.startswith("Set") or method_name.startswith("Update"):
         return "modification"
-    elif method_name.startswith("Create") or method_name.startswith("Add") or method_name.startswith("New"):
+    elif (
+        method_name.startswith("Create")
+        or method_name.startswith("Add")
+        or method_name.startswith("New")
+        or method_name.startswith("Make")
+    ):
         return "creation"
     elif method_name.startswith("Delete") or method_name.startswith("Remove"):
         return "deletion"
@@ -1036,6 +1041,13 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
         if isinstance(child, ast.Call):
             if (isinstance(child.func, ast.Attribute)
                     and child.func.attr == '_EnsureWriteEnabled'
+                    and isinstance(child.func.value, ast.Name)
+                    and child.func.value.id == 'self'):
+                result["calls_ensure_write_enabled"] = True
+            # Thin wrappers delegate to _MakeFeatStruc (issue #280); mutation
+            # happens there, not in the public method body.
+            elif (isinstance(child.func, ast.Attribute)
+                    and child.func.attr == '_MakeFeatStruc'
                     and isinstance(child.func.value, ast.Name)
                     and child.func.value.id == 'self'):
                 result["calls_ensure_write_enabled"] = True

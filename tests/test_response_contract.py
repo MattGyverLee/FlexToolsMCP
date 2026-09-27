@@ -480,8 +480,9 @@ class TestParserCheckCP2bCodes:
         # parser_config_failed and parse_sandbox_refused (M-2) -> 36;
         # #243 adds session_not_initialized, unknown_tool, invalid_input -> 39;
         # curated deprecations add deprecated_member -> 40;
-        # #70 adds raw_addcustomfield_write_risk -> 41.
-        assert union_size == 41, f"the detail union holds {union_size} models"
+        # #70 adds raw_addcustomfield_write_risk -> 41;
+        # #277 adds reflection_bypass_detected -> 42.
+        assert union_size == 42, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

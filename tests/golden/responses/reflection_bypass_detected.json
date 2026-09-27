@@ -1,0 +1,16 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "reflection_bypass_detected",
+  "message": "Refused: this code reaches LCM through reflection",
+  "findings": [],
+  "reflection_bypass_count": 0,
+  "next_steps": [],
+  "error": {
+    "code": "reflection_bypass_detected",
+    "message": "Refused: this code reaches LCM through reflection",
+    "findings": [],
+    "reflection_bypass_count": 0,
+    "next_steps": []
+  }
+}

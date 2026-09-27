@@ -44,8 +44,40 @@ from typing import Any, Dict, List, Optional, Tuple
 # Loading
 # ---------------------------------------------------------------------------
 
+def _is_run_module_record(record: Dict[str, Any]) -> bool:
+    """True for a `run_module` telemetry record, false for a `parse` one.
+
+    Issue #167 (parser-check CP6): operations.jsonl now also carries
+    `"kind": "parse"` records (`handlers/parse_telemetry.py`), sharing this
+    file with the `"kind": "run_module"` records this report is about. A
+    parse record has no `session_id` / `user_intent`, so it would otherwise
+    land as its own standalone group-of-1 in `_group_records()` (legacy
+    empty-intent fallback) and get counted into `total_records`,
+    `total_groups`, `abandoned_groups`, and (if its `error_code` happened to
+    collide with a run_module code, or its `outcome` were ever
+    "runtime_fail") `rejects_by_error_code` -- all distortions of a report
+    whose whole point is run_module's first-pass-green / turns-to-green
+    metric.
+
+    This is a deliberate one-line COPY of
+    `op_telemetry.is_run_module_record()`, not an import of it: this script
+    is documented STDLIB ONLY (json, argparse, statistics) so it keeps
+    working with no `flextoolsmcp` package installed. A record with no
+    `"kind"` key at all is a pre-#167 legacy line and is treated as
+    `"run_module"` for backward compatibility, matching that helper.
+    """
+    return record.get("kind", "run_module") == "run_module"
+
+
 def load_jsonl(paths: List[Path]) -> Tuple[List[Dict[str, Any]], int]:
-    """Load records from a list of JSONL files. Returns (records, skipped_count)."""
+    """Load records from a list of JSONL files. Returns (records, skipped_count).
+
+    Only `"kind": "run_module"` records are returned (see
+    `_is_run_module_record()`) -- this report's metrics are all defined over
+    that population; `"kind": "parse"` records sharing the same file are
+    dropped here, at the single load point, rather than filtered
+    piecemeal downstream.
+    """
     records: List[Dict[str, Any]] = []
     skipped = 0
     for path in paths:
@@ -58,9 +90,12 @@ def load_jsonl(paths: List[Path]) -> Tuple[List[Dict[str, Any]], int]:
                     if not line:
                         continue
                     try:
-                        records.append(json.loads(line))
+                        record = json.loads(line)
                     except (json.JSONDecodeError, ValueError):
                         skipped += 1
+                        continue
+                    if _is_run_module_record(record):
+                        records.append(record)
         except OSError as exc:
             print(f"[WARN] Could not read {path}: {exc}", file=sys.stderr)
     return records, skipped

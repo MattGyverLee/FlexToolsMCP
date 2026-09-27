@@ -3234,8 +3234,12 @@ def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
 # LIMITATION: this allowlist is not exhaustive -- new stable-mode functions
 # with the same raw-iterator hazard won't be flagged until added here. This
 # is a deliberate conservative/low-false-positive tradeoff (SPEC.md cycle-4
-# guidance) rather than a fragile source-text heuristic. Revisit if flexlibs
-# stable ever gains reliable return-type index data.
+# guidance) rather than a fragile source-text heuristic. Re-verified
+# 2026-09-27 against flexlibs stable v1.2.8's bundled index
+# (`flexlibs_api_v1.2.8.json`): `return_type` is still blank for all 71
+# FLExProject methods (`methods_with_return_type: 0`), so the allowlist
+# remains index-independent. Revisit only if a future flexlibs stable
+# ships reliable return-type index data.
 STABLE_ONE_SHOT_METHODS = {
     "LexiconAllEntries",
     "LexiconAllEntriesSorted",

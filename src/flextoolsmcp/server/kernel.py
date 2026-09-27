@@ -27,7 +27,10 @@ from dataclasses import dataclass, field
 from .session import SessionState
 
 if TYPE_CHECKING:
-    from server import APIIndex
+    # APIIndex lives in src/flextoolsmcp/server.py (sibling of this package),
+    # re-exported lazily via flextoolsmcp.server.__getattr__. Type-only import
+    # so the runtime stays cycle-free (server.py imports this kernel module).
+    from flextoolsmcp.server import APIIndex
 
 # Import PatternTracker (will be defined in patterns.py later, for now import from server.py)
 # This is imported at module level after everything is set up
@@ -829,7 +832,15 @@ def initialize_kernel() -> Tuple[bool, Optional[str]]:
 
     # Load API indexes (non-blocking - will load what's available)
     try:
-        from server import APIIndex  # Temporary import, will be resolved during modularization
+        # APIIndex is defined in src/flextoolsmcp/server.py, which imports this
+        # kernel module -- so it can only be imported lazily here (a top-level
+        # import would be circular). Dual-path like get_index_dir(): packaged
+        # runs go through flextoolsmcp.server (lazy __getattr__ re-export),
+        # script-mode runs use the top-level `server` name.
+        if __package__ and __package__.startswith("flextoolsmcp"):
+            from flextoolsmcp.server import APIIndex
+        else:
+            from server import APIIndex  # type: ignore[no-redef]
         api_index = APIIndex.load(get_index_dir())
         operations_logger.info("API indexes loaded successfully")
     except Exception as e:

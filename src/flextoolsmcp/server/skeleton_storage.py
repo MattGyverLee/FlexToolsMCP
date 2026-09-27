@@ -196,15 +196,18 @@ def capture_from_code(
             return []
 
         path = get_skeleton_path()
-        existing = _load_all(path)
         captured: List[SkeletonClosetEntry] = []
         captured_at = _now_iso()
         # Normalize entities once.
         entities_clean = [e for e in (entities_used or []) if e]
 
         with _WRITE_LOCK:
-            # Re-read inside the lock would be safer if other writers exist;
-            # for now the single-process MCP makes this acceptable.
+            # Re-read inside the lock so concurrent captures in this process
+            # dedupe against each other. Cross-process writers remain
+            # best-effort: the MCP server is single-process (stdio), so the
+            # worst case is a duplicate JSONL line, which readers tolerate
+            # (deduped on load / skipped on capture).
+            existing = _load_all(path)
             with path.open("a", encoding="utf-8") as fp:
                 for node in defs:
                     source = _def_source(code, node)

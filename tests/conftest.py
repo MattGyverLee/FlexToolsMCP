@@ -32,6 +32,7 @@ def pytest_configure(config):
     Must run before any test module imports ``kernel.setup_logging``.
     """
     global _PYTEST_LOG_DIR
+    _fail_fast_on_unsupported_mcp()
     config.addinivalue_line(
         "markers",
         "windows_only: test needs Windows (skipped when sys.platform != 'win32')",
@@ -40,6 +41,62 @@ def pytest_configure(config):
         return
     _PYTEST_LOG_DIR = Path(tempfile.mkdtemp(prefix="flextoolsmcp_pytest_logs_"))
     os.environ["FLEXTOOLSMCP_LOG_DIR"] = str(_PYTEST_LOG_DIR)
+
+
+# Issue #285: fail fast when the test interpreter's mcp is outside the
+# supported range. requirements.txt/pyproject.toml pin mcp>=1.27.0,<3 (1.x
+# and 2.x via the #83 compat shim), but nothing enforced that pin at test
+# time -- collection then failed deep inside server.py with
+# "AttributeError: 'Server' object has no attribute 'list_tools'", which
+# points at the wrong layer. Stop at session start with one clear message
+# instead. If the supported range ever widens (e.g. mcp 3.x gets a shim),
+# update _SUPPORTED_MCP_MAJOR_RANGE and the floor below in step.
+_SUPPORTED_MCP_FLOOR = (1, 27, 0)
+_SUPPORTED_MCP_MAJORS = (1, 2)
+
+
+def _parse_mcp_version(version_str: str):
+    """Parse 'X.Y.Z[pre]' into an (X, Y, Z) int tuple; None if unparseable."""
+    parts = version_str.split(".")
+    numbers = []
+    for part in parts[:3]:
+        digits = ""
+        for char in part:
+            if char.isdigit():
+                digits += char
+            else:
+                break
+        if not digits:
+            return None
+        numbers.append(int(digits))
+    while len(numbers) < 3:
+        numbers.append(0)
+    return tuple(numbers)
+
+
+def _fail_fast_on_unsupported_mcp() -> None:
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+    except ImportError:  # pragma: no cover -- stdlib always has this
+        return
+    try:
+        installed = version("mcp")
+    except PackageNotFoundError:
+        return
+    parsed = _parse_mcp_version(installed)
+    if parsed is None:
+        return
+    if parsed[0] in _SUPPORTED_MCP_MAJORS and parsed >= _SUPPORTED_MCP_FLOOR:
+        return
+    pytest.exit(
+        f"mcp {installed} is installed, but this repo supports "
+        f"mcp>=1.27.0,<3 (1.x and 2.x via the #83 compat shim; see #285). "
+        "Run the tests with "
+        r".venv\Scripts\python -m pytest, or pip install "
+        '"mcp>=1.27.0,<3" (pip install -r requirements.txt) in this '
+        "interpreter.",
+        returncode=2,
+    )
 
 
 def pytest_unconfigure(config):

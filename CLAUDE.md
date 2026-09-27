@@ -356,11 +356,12 @@ around it:
   its summary instead of re-reading the files.
 - **Don't re-read** a file already read this session unless it changed.
 - **pytest** is already lean; keep it that way:
-  `python -m pytest -q -m "not requires_flex" <path> | tail -20`.
+  `.venv\Scripts\python -m pytest -q -m "not requires_flex" <path> | tail -20`.
 
 ## Don'ts:
 - This is a Windows system; don't use emojis in console messages.
-- Call Python with `python` instead of `python3`.
+- Call Python with `python` instead of `python3` (exception: run tests with `.venv\Scripts\python -m pytest` -- see #285).
+- Don't run pytest with bare `python` / system Python -- its `mcp` version may fall outside the supported range (`mcp>=1.27.0,<3`), which breaks collection confusingly; the suite fails fast with the fix. Always use `.venv\Scripts\python -m pytest` (or `pip install -r requirements.txt` in that interpreter).
 - **Don't omit the flexicon imports** - this causes silent failures with wrong library versions.
 - Don't assume FLExTools will inject the right library - be explicit.
 

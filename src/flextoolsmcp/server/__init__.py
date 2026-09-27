@@ -201,10 +201,34 @@ def __getattr__(name: str):
                 # a decorator at server.py import time) is never laundered
                 # into a misleading missing-attribute error.
                 _server_load_error = exc
+                # Issue #285: name the mcp version when the cause is an mcp
+                # API break, so the server doesn't fail just as unclearly
+                # outside pytest. 1.x and 2.x are covered by the #83 compat
+                # shim -- an AttributeError on Server at import time now
+                # points at an mcp outside the supported mcp>=1.27.0,<3 range.
+                _mcp_hint = ""
+                if isinstance(exc, AttributeError) and "Server" in str(exc):
+                    try:
+                        from importlib.metadata import version as _mcp_version
+
+                        _installed = _mcp_version("mcp")
+                        _mcp_hint = (
+                            f" This looks like mcp {_installed} is installed, "
+                            f"outside the supported range mcp>=1.27.0,<3 "
+                            f"(issues #83/#285). Run with the repo .venv "
+                            f"or pip install -r requirements.txt."
+                        )
+                    except Exception:  # noqa: BLE001 -- hint is best-effort
+                        _mcp_hint = (
+                            " This looks like an unsupported mcp version "
+                            "(supported range is mcp>=1.27.0,<3 -- issues "
+                            "#83/#285). Run with the repo .venv "
+                            "or pip install -r requirements.txt."
+                        )
                 raise ImportError(
                     f"flextoolsmcp.server lazy-load of '{name}' failed: server.py raised "
                     f"{type(exc).__name__} while executing (NOT a missing-attribute error). "
-                    f"See chained cause below."
+                    f"See chained cause below.{_mcp_hint}"
                 ) from exc
             _server_module_cache = _server_module
 

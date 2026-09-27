@@ -35,6 +35,14 @@ warnings.filterwarnings('ignore', message='.*position_ids.*')
 # Capture HF Hub unauthenticated warning to log it properly
 import warnings as _warnings_module
 _hf_warned = False
+# Forward non-HF warnings to the hook that was installed BEFORE ours. Calling
+# _warnings_module.showwarning from inside the handler would call the handler
+# itself and recurse until RecursionError (issue #286). If this module body
+# runs a second time (server/__init__.py lazy-loads it via exec_module),
+# unwrap our earlier hook instead of stacking another one on top of it.
+_original_showwarning = getattr(
+    _warnings_module.showwarning, '_flextools_original', _warnings_module.showwarning
+)
 
 def _warning_handler(message, category, filename, lineno, file=None, line=None):
     """Custom warning handler to capture and log HF Hub warnings."""
@@ -45,8 +53,9 @@ def _warning_handler(message, category, filename, lineno, file=None, line=None):
         _log_warning(f"HuggingFace Hub: {msg_str}")
     elif 'unauthenticated' not in msg_str.lower():
         # Show other warnings normally
-        _warnings_module.showwarning(message, category, filename, lineno, file, line)
+        _original_showwarning(message, category, filename, lineno, file, line)
 
+_warning_handler._flextools_original = _original_showwarning
 _warnings_module.showwarning = _warning_handler
 
 # Ensure src is in sys.path when running as a script

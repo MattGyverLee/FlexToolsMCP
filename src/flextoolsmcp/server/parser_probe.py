@@ -944,8 +944,9 @@ def probe_hc_agent(project, active_engine: Optional[str]) -> AgentProbeResult:
             f"parser is {active_engine!r}. FieldWorks does not create this "
             "agent when a project is bootstrapped; open the project in "
             "FieldWorks with the HC parser active (Words > Parser > Choose "
-            "Parser) and run Try a Word once so FieldWorks creates it, then "
-            "retry this operation."
+            "Parser) and run Try a Word once so FieldWorks creates it. Then "
+            "call flextools_parse_text(apply=true) without confirmed: it "
+            "re-checks the agent and files nothing until you confirm."
         )
         return AgentProbeResult(
             state=AGENT_STATE_ABSENT,

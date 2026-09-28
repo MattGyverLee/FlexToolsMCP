@@ -147,18 +147,18 @@ response-key registry. No story work starts until this phase is done.
 **Wave 1 (independent):**
 
 - [ ] **T029** [P] [US3] Validator tests: a bad PARAMS block, an unguarded write, `DoNotUseForParsing`, a GUID, a user path, and `Claude-Swahili` / `Target` defaults each fail; a `print` call fails (`detect_print_calls`); the shipped set passes (`test_all_curated_recipes_pass_preflight` now covers file recipes); `test_shipped_file_recipes_have_sena3_verification`; `test_first_batch_count` (at least 12 of the 16 ids); `test_vernacular_recipes_normalize` (FR-040, FR-041, FR-044, FR-050..053, SC-003) · `tests/test_recipes.py`
-- [ ] **T030** [P] [US3] Index-driven deprecation: a seeded recipe calling an index-deprecated flexicon method fails through `validate_recipe`; the run-time preflight (no `api_index`) is unchanged (FR-041, R17) · `tests/test_validators_deprecation_index.py`
-- [ ] **T031** [P] [US3] Raw-LCM gate: `PhoneEnvRC` with no note fails and names `AllomorphOperations.GetPhoneEnv`; an unwrapped property fails without a note and passes with `# flexicon gap: #NNN` or `# raw-lcm: reason`; `raw-lcm:` overrides a wrapper suggestion; `Duplicate` / `Delete` are never suggested; interface cast, `project.project`, `ServiceLocator` and `ClassName` comparison are each flagged; count above `raw_lcm_lines` fails and below passes; bridge inversion tested against the real 4.11.0 bridge file (FR-045, R18) · `tests/test_raw_lcm_gate.py`
+- [x] **T030** [P] [US3] Index-driven deprecation: a seeded recipe calling an index-deprecated flexicon method fails through `validate_recipe`; the run-time preflight (no `api_index`) is unchanged (FR-041, R17) · `tests/test_validators_deprecation_index.py`
+- [x] **T031** [P] [US3] Raw-LCM gate: `PhoneEnvRC` with no note fails and names `AllomorphOperations.GetPhoneEnv`; an unwrapped property fails without a note and passes with `# flexicon gap: #NNN` or `# raw-lcm: reason`; `raw-lcm:` overrides a wrapper suggestion; `Duplicate` / `Delete` are never suggested; interface cast, `project.project`, `ServiceLocator` and `ClassName` comparison are each flagged; count above `raw_lcm_lines` fails and below passes; bridge inversion tested against the real 4.11.0 bridge file (FR-045, R18) · `tests/test_raw_lcm_gate.py`
 
 ### Implementation: validator
 
 **⟶ Wait for the tests wave, then Wave 2 (single):**
 
-- [ ] **T032** [US3] `detect_deprecated_members(api_index=...)` reading index deprecation markers (R17); `detect_raw_lcm_access` plus the bridge-index inversion for wrapper suggestions (R18) · `src/flextoolsmcp/server/validators.py`
+- [x] **T032** [US3] `detect_deprecated_members(api_index=...)` reading index deprecation markers (R17); `detect_raw_lcm_access` plus the bridge-index inversion for wrapper suggestions (R18) · `src/flextoolsmcp/server/validators.py`
 
 **⟶ Wait for Wave 2, then Wave 3 (single):**
 
-- [ ] **T033** [US3] Extend `validate_recipe` with a `shipped=True` flag: PARAMS parses, `if modifyAllowed:` guard for `requires_write`, index-driven deprecation, scrub patterns from `recipe_files`, `detect_print_calls`, the raw-LCM gate and the `raw_lcm_lines` ratchet (FR-040, FR-041, FR-045) · `src/flextoolsmcp/recipe_validator.py`
+- [x] **T033** [US3] Extend `validate_recipe` with a `shipped=True` flag: PARAMS parses, `if modifyAllowed:` guard for `requires_write`, index-driven deprecation, scrub patterns from `recipe_files`, `detect_print_calls`, the raw-LCM gate and the `raw_lcm_lines` ratchet (FR-040, FR-041, FR-045) · `src/flextoolsmcp/recipe_validator.py`
 
 ### Implementation: recipe batch
 

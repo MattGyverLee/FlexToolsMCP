@@ -299,6 +299,38 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-28T05:38:46.539Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T030",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:57:16.153Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T031",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:57:30.340Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T032",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:57:34.679Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T033",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:57:38.997Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -743,7 +775,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T028",
+  "currentTask": "T033",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -943,6 +975,34 @@
       "did": "Pattern audit for session-provenance bug in evidence/pattern-audit.md",
       "files": [
         "specs/unified-recipes/evidence/pattern-audit.md"
+      ]
+    },
+    "T030": {
+      "status": "DONE",
+      "did": "Index-driven deprecation tests (R17): index-deprecated GetLanguage fails via validate_recipe, run-time preflight unchanged",
+      "files": [
+        "tests/test_validators_deprecation_index.py"
+      ]
+    },
+    "T031": {
+      "status": "DONE",
+      "did": "Raw-LCM gate tests (R18): PhoneEnvRC names GetPhoneEnv, notes override, Duplicate/Delete never suggested, ratchet",
+      "files": [
+        "tests/test_raw_lcm_gate.py"
+      ]
+    },
+    "T032": {
+      "status": "DONE",
+      "did": "detect_deprecated_members(api_index) index path plus detect_print_calls and detect_raw_lcm_access with bridge inversion",
+      "files": [
+        "src/flextoolsmcp/server/validators.py"
+      ]
+    },
+    "T033": {
+      "status": "DONE",
+      "did": "validate_recipe shipped flag: PARAMS, modifyAllowed guard, index deprecation, scrub, print ban, raw-LCM ratchet",
+      "files": [
+        "src/flextoolsmcp/recipe_validator.py"
       ]
     }
   },

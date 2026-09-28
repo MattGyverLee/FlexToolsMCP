@@ -910,6 +910,11 @@
     },
     {
       "decision": "strict-xfail-markers-for-batch-tests-until-T034-T051-ship"
+    },
+    {
+      "decision": "list_recipes-uses-response_utils-envelope-while-skeletons-keeps-legacy-shape",
+      "why": "contracts-tools-s3-mandates-standard-envelope-for-new-tool-append-only-keeps-old-keys",
+      "rejected": "raw-json-dumps-for-new-tool"
     }
   ],
   "step_summaries": {
@@ -1293,10 +1298,15 @@
       ]
     }
   },
-  "last_action": "T043+T045 done live pilot, T044 next",
+  "last_action": "Phase 6 US4 done -- T052-T060, 4320 passed, commit 27b3a92 pushed",
   "verified": [
     {
       "what": "full-lean-suite-green-4268-passed-5-skipped-2-xfailed"
+    },
+    {
+      "what": "phase-6-full-lean-suite",
+      "command": "pytest-lean",
+      "result": "4320-passed-3-skipped"
     }
   ]
 }

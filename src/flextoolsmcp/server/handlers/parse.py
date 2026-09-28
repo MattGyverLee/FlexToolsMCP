@@ -1710,6 +1710,23 @@ async def _handle_filing_request(
             "parser_agent_missing",
             detail.get("hint") or "The HermitCrab parser agent was not found.",
             **detail,
+            next_step=[
+                _rung(
+                    action="Run Try a Word once in FieldWorks with HC active, "
+                    "then ask for the filing preview again.",
+                    tool="flextools_parse_text",
+                    args={"project_name": project_name, "apply": True},
+                    rationale=(
+                        "FieldWorks does not create the HermitCrab agent when a "
+                        "project is bootstrapped; running one word in FieldWorks "
+                        "creates it. An unconfirmed apply=true call re-runs this "
+                        "agent probe and at most returns a preview -- it files "
+                        "nothing. flextools_health cannot confirm it: health "
+                        "never opens a project, so it never probes the agent."
+                    ),
+                    est_cost="minutes",
+                ),
+            ],
         )
 
     # (6) R-03 -- the write spine's surface.
@@ -3247,7 +3264,7 @@ def _sandbox_generation_may_run(request: ParseSandboxInput) -> bool:
 def _tool_missing_rungs(component: str) -> List[Dict[str, Any]]:
     return [
         _rung(
-            action="Repair or reinstall FieldWorks 9, then retry.",
+            action="Repair or reinstall FieldWorks 9.",
             tool=None,
             args=None,
             rationale=(
@@ -3374,7 +3391,7 @@ def _sandbox_run_engine_check(plan: _SandboxPlan) -> Optional[List[TextContent]]
         **ordered,
         next_step=[
             _rung(
-                action="Switch the project's parser to HermitCrab in FLEx, then retry.",
+                action="Switch the project's parser to HermitCrab in FLEx.",
                 tool=None,
                 args=None,
                 rationale=(

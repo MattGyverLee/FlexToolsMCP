@@ -350,7 +350,8 @@ def _hint(reading: EngineReading, supported: list) -> str:
             f"This project's active parser {HINT_UNREADABLE_PHRASE} from its .fwdata "
             f"({reading.reason}), so it is treated as {FAIL_SAFE_ENGINE!r}; this "
             f"operation requires one of {supported!r}. If FieldWorks was saving the "
-            "project, try again. Otherwise check the parser in FieldWorks via "
+            "project, wait for it to finish and run flextools_health to confirm the "
+            "project is readable. Otherwise check the parser in FieldWorks via "
             "Words > Parser > Choose Parser."
         )
     return (

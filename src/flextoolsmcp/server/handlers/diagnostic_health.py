@@ -673,6 +673,16 @@ def _build_recent_operations(limit: int = 5) -> List[Dict[str, Any]]:
     return [
         {
             "ts": r.get("ts"),
+            # Issue #167: operations.jsonl now interleaves "kind": "parse"
+            # records (handlers/parse_telemetry.py) with this module's
+            # "kind": "run_module" ones. This is a general "what happened
+            # recently" snapshot, not a run_module-specific stat, so both
+            # kinds are kept -- but each entry is labeled so a reader can
+            # tell a parse-tool call from a run_module op instead of the
+            # two being silently conflated. A pre-#167 legacy record has no
+            # "kind" key and is labeled "run_module" (same default used
+            # elsewhere, e.g. op_telemetry.is_run_module_record()).
+            "kind": r.get("kind", "run_module"),
             "outcome": r.get("outcome"),
             "error_code": r.get("error_code") or None,
             "project": r.get("project"),

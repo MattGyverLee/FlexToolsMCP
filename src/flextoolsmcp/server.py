@@ -900,6 +900,11 @@ _SESSION_INDEPENDENT_TOOLS = frozenset({
 # decorated, so this module imports on both mcp 1.x and 2.x.
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
+    # Issue #167 (parser-check CP6): wall-clock timer for the parse-path
+    # telemetry hook near the end of this function. Started unconditionally
+    # (cheap) rather than gated on `name` so the hook always has a real
+    # duration to report instead of guessing one.
+    _call_start_time = _time_module.time()
     operations_logger = get_operations_logger()
     # Log tool invocation (with safety check for early init).
     # [TOOL CALL] and [TOOL ARGS] are both INFO so they survive the default
@@ -1094,6 +1099,20 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         # Full result body for reproducibility (first 1000 chars), DEBUG only.
         result_preview = result_text[:1000] if result_text else "(empty)"
         operations_logger.debug(f"[OUT] {name}: {result_preview}")
+
+    # Issue #167 (parser-check CP6): operation logging for the parse path.
+    # A no-op for every non-parse tool name (checked inside log_parse_op);
+    # wrapped in its own try/except so a bug in telemetry can never surface
+    # as a tool-call failure.
+    try:
+        if __package__:
+            from .server.handlers.parse_telemetry import log_parse_op
+        else:
+            from server.handlers.parse_telemetry import log_parse_op
+        log_parse_op(name, arguments, result, _time_module.time() - _call_start_time)
+    except Exception:
+        pass
+
     return result
 
 # Initialize the MCP server (issue #83: dual mcp 1.x/2.x support via

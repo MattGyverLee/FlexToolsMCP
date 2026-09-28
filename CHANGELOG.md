@@ -5,6 +5,50 @@
 Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
+### Parser checks: release follow-through (CP6)
+
+The follow-through for the parser checks released in
+[2.13.0](#2130---2026-09-25)
+([#167](https://github.com/MattGyverLee/FlexToolsMCP/issues/167)). No new
+tools; the contract stays at `tool-responses/1.0`, and every change below is
+additive.
+
+- **User guide.** New [`docs/PARSER-GUIDE.md`](docs/PARSER-GUIDE.md) is written
+  for field linguists. It walks through trying a word, parsing a text in the
+  background, reading a diff, filing results (the one write path) and the
+  sandbox. It explains in plain language what `flextools_health`'s parser
+  section means, and lists every parser error with what to do about it. It is
+  linked from USAGE.md and the README.
+- **Every parser refusal now names a tool to run next, never a bare "retry".**
+  `parser_agent_missing` now points at `flextools_parse_text(apply=true)`
+  without `confirmed`: that call re-runs the agent check and files nothing.
+  Before, it said "then retry this operation". It does not point at
+  `flextools_health`, which never opens a project and so cannot see the
+  agent. The sandbox's `parser_engine_mismatch` and `parser_tool_missing`
+  steps drop their "then retry" wording, and the sandbox's unreadable-project
+  hint names `flextools_health` instead of "try again". A new test fails if
+  any parser-check refusal loses its route to a registered tool.
+- **Tool contract.** The `parser_timeout`, `parser_job_failed` and
+  `parser_config_failed` rows in `docs/TOOL-CONTRACT.md` now document the
+  `next_step` steps these errors already returned.
+- **Parse-tool telemetry.** Each call to a parse tool (the eight
+  `flextools_parse_*` / `flextools_try_word` tools plus
+  `flextools_grammar_health`) now adds one `"kind": "parse"` line to
+  `operations.jsonl`. The line records the tool, project, `run_id`, outcome,
+  `error_code` and duration, plus word counts for `parse_text` / `parse_sandbox`.
+  Every field is copied from the actual response, and a field the response
+  doesn't carry is left out rather than guessed. `run_module` lines now carry
+  `"kind": "run_module"`; older lines without `kind` still count as
+  `run_module`. The pass-rate statistics, `scripts/green_report.py` and the
+  diagnostic-report turn reconstruction count `run_module` lines only.
+  Before this, a parse call made between two `run_module` attempts would
+  split one turn into two. `flextools_health`'s recent-operations list shows
+  both kinds, labelled. Telemetry failures never fail the tool call.
+- **Maintainer health contract.** The `flextools_health` parser-block contract
+  no longer describes the retired `hc` console tool. It now matches the
+  components the sandbox actually checks (FieldWorks' bundled HermitCrab and
+  `GenerateHCConfig.exe`).
+
 ### Fixed
 
 ### Other

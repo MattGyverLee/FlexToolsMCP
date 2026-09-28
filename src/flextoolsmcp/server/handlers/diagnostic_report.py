@@ -65,9 +65,11 @@ except (ImportError, ValueError):
     )
 
 try:
-    from .op_telemetry import _load_jsonl_records, group_records_by_intent
+    from .op_telemetry import _load_jsonl_records, group_records_by_intent, is_run_module_record
 except ImportError:
-    from server.handlers.op_telemetry import _load_jsonl_records, group_records_by_intent
+    from server.handlers.op_telemetry import (
+        _load_jsonl_records, group_records_by_intent, is_run_module_record,
+    )
 
 # One-way dependency: handlers/diagnostic_report.py -> diagnostic/* (never
 # the reverse), matching the existing execution.py -> diagnostic.triggers
@@ -278,7 +280,19 @@ def build_advisory_for_success_close(op_id: str) -> Optional[Dict[str, Any]]:
             return None
 
         log_dir = get_log_dir()
-        all_records = _load_jsonl_records(log_dir)
+        # Issue #167: operations.jsonl also carries "kind": "parse" records
+        # (handlers/parse_telemetry.py) sharing this file. This whole
+        # pipeline is keyed on run_module's op_id/user_intent/turn-grouping
+        # shape (a parse record has none of those), and interleaving a
+        # parse call between two run_module calls of the same user_intent
+        # would fragment `group_records_by_intent`'s turn boundary (an
+        # empty-intent record always starts a new group). Filter to
+        # run_module records here, once, so every downstream step (turn
+        # lookup, reconstruct_slice, trigger/signature computation) only
+        # ever sees the population it was designed for.
+        all_records = [
+            r for r in _load_jsonl_records(log_dir) if is_run_module_record(r)
+        ]
         if not all_records:
             return None
 
@@ -339,7 +353,13 @@ async def handle_prepare_report(args) -> list:
 
     try:
         log_dir = get_log_dir()
-        all_records = _load_jsonl_records(log_dir)
+        # Issue #167: same run_module-only filter as build_advisory_for_
+        # success_close() above -- see that function's comment. An explicit
+        # flextools_prepare_report call reconstructs a run_module turn/op_id
+        # slice; parse records have neither and must not fragment it.
+        all_records = [
+            r for r in _load_jsonl_records(log_dir) if is_run_module_record(r)
+        ]
     except Exception as exc:
         return error_response(
             "server_state_error",

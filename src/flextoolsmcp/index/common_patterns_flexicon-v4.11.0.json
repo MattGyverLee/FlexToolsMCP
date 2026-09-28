@@ -446,6 +446,15 @@
     "ILexSense": [
       {
         "class": "LexSenseOperations",
+        "code": "project.Senses.AddDoNotPublishIn(sense, \"School Dictionary\")",
+        "description": "Exclude this sense from a publication.",
+        "method": "AddDoNotPublishIn",
+        "object_type": "ILexSense",
+        "operation": "create",
+        "source": "docstring"
+      },
+      {
+        "class": "LexSenseOperations",
         "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif senses:\n    ex = project.Senses.AddExample(senses[0], \"She runs every morning.\")\n    # Add translation (would need additional code)\n    print(f\"Added example: {ex.Hvo}\")",
         "description": "Add a new example sentence to a sense.",
         "method": "AddExample",
@@ -467,6 +476,15 @@
         "code": "entry = project.LexEntry.Find(\"run\")\nsense = entry.SensesOS[0]\nall_senses = project.Senses.GetAllSenses(sense)\nprint(f\"Total (including subsenses): {len(all_senses)}\")\nfor s in all_senses:\n    gloss = project.Senses.GetGloss(s)\n    depth = len(list(s.PathToRoot)) - 2\n    indent = \"  \" * depth\n    print(f\"{indent}{gloss}\")",
         "description": "Get this sense and all its subsenses recursively.",
         "method": "GetAllSenses",
+        "object_type": "ILexSense",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "LexSenseOperations",
+        "code": "entry = project.LexEntry.Find(\"bank\")\nsense = entry.SensesOS[1]\nproject.Senses.GetDoNotPublishIn(sense)\n            ['School Dictionary']",
+        "description": "Get the publications this sense should not be published in.",
+        "method": "GetDoNotPublishIn",
         "object_type": "ILexSense",
         "operation": "read",
         "source": "docstring"
@@ -505,6 +523,15 @@
         "method": "MergeObject",
         "object_type": "ILexSense",
         "operation": "merge",
+        "source": "docstring"
+      },
+      {
+        "class": "LexSenseOperations",
+        "code": "project.Senses.RemoveDoNotPublishIn(sense, \"School Dictionary\")",
+        "description": "Remove a publication from this sense's exclude list, so the sense is\npublished there again.",
+        "method": "RemoveDoNotPublishIn",
+        "object_type": "ILexSense",
+        "operation": "delete",
         "source": "docstring"
       }
     ],
@@ -930,6 +957,15 @@
         "source": "docstring"
       },
       {
+        "class": "AffixSlot",
+        "code": "slot = posOps.GetAffixSlots(verb)[0]\n            wrapped = AffixSlot(slot)",
+        "description": "Initialize AffixSlot wrapper with a slot object.",
+        "method": "__init__",
+        "object_type": "general",
+        "operation": "general",
+        "source": "docstring"
+      },
+      {
         "class": "AffixTemplate",
         "code": "template = morphRuleOps.GetAllAffixTemplates()[0]\n            wrapped = AffixTemplate(template)",
         "description": "Initialize AffixTemplate wrapper with a template object.",
@@ -1063,15 +1099,6 @@
         "object_type": "general",
         "operation": "read",
         "source": "docstring"
-      },
-      {
-        "class": "AgentOperations",
-        "code": "agent = project.Agents.Find(\"MyParser\")\ncount = project.Agents.GetEvaluationCount(agent)\nprint(f\"Parser has {count} evaluations\")\n            Parser has 145 evaluations\n\n# Compare human vs parser evaluations\nfor agent in project.Agents.GetAll():\n    name = project.Agents.GetName(agent)\n    count = project.Agents.GetEvaluationCount(agent)\n    agent_type = \"Human\" if project.Agents.IsHuman(agent) else \"Parser\"\n    print(f\"{name} ({agent_type}): {count} evaluations\")",
-        "description": "Get the number of evaluations created by an agent.",
-        "method": "GetEvaluationCount",
-        "object_type": "general",
-        "operation": "read",
-        "source": "docstring"
       }
     ]
   },
@@ -1178,7 +1205,7 @@
       },
       {
         "class": "AnthropologyOperations",
-        "code": "# Create a simple item\nitem = project.Anthropology.Create(\"Marriage Customs\")\nprint(project.Anthropology.GetName(item))\n            Marriage Customs\n\n# Create with abbreviation and OCM code\nitem = project.Anthropology.Create(\n    \"Marriage Customs\",\n    abbreviation=\"MAR\",\n    anthro_code=\"586\"\n)\nprint(project.Anthropology.GetAnthroCode(item))\n            586\n\n# Create multiple items\nkinship = project.Anthropology.Create(\"Kinship\", \"KIN\", \"600\")\nreligion = project.Anthropology.Create(\"Religion\", \"REL\", \"770\")",
+        "code": "# Create a simple item\nitem = project.Anthropology.Create(\"Marriage Customs\")\nprint(project.Anthropology.GetName(item))\n            Marriage Customs\n\n# Create with abbreviation and OCM code\nitem = project.Anthropology.Create(\n    \"Marriage Customs\",\n    abbreviation=\"MAR\",\n    anthro_code=\"586\"\n)\nprint(project.Anthropology.GetAnthroCode(item))\n            586\n\n# Create multiple items\nkinship = project.Anthropology.Create(\"Kinship\", \"KIN\", \"600\")\nreligion = project.Anthropology.Create(\"Religion\", \"REL\", \"770\")\n\n# A subitem is just a Create with a parent\nwedding = project.Anthropology.Create(\n    \"Wedding Ceremony\", \"WED\", \"586.1\", parent=marriage)",
         "description": "Create a new anthropology item.",
         "method": "Create",
         "object_type": "general",
@@ -1340,7 +1367,7 @@
       },
       {
         "class": "DataNotebookOperations",
-        "code": "# Create a basic record\nrecord = project.DataNotebook.Create(\n    \"Interview with Speaker A\",\n    \"Notes from interview about kinship terms\"\n)\nprint(project.DataNotebook.GetTitle(record))\n            Interview with Speaker A\n\n# Create with specific writing system\nrecord = project.DataNotebook.Create(\n    \"Entrevista con Hablante A\",\n    content=\"Notas sobre terminología de parentesco\",\n    wsHandle=project.WSHandle('es')\n)\n\n# Create and configure\nrecord = project.DataNotebook.Create(\"Field Observation\")\nproject.DataNotebook.SetDateOfEvent(record, \"2024-01-15\")\nproject.DataNotebook.SetStatus(record, \"Draft\")",
+        "code": "# Create a basic record\nrecord = project.DataNotebook.Create(\n    \"Interview with Speaker A\",\n    \"Notes from interview about kinship terms\"\n)\nprint(project.DataNotebook.GetTitle(record))\n            Interview with Speaker A\n\n# Create with specific writing system\nrecord = project.DataNotebook.Create(\n    \"Entrevista con Hablante A\",\n    content=\"Notas sobre terminología de parentesco\",\n    wsHandle=project.WSHandle('es')\n)\n\n# A sub-record is just a Create with a parent\nsub = project.DataNotebook.Create(\n    \"Kinship Terminology\", parent=record)\n\n# Create and configure\nrecord = project.DataNotebook.Create(\"Field Observation\")\nproject.DataNotebook.SetDateOfEvent(record, \"2024-01-15\")\nproject.DataNotebook.SetStatus(record, \"Draft\")",
         "description": "Create a new research notebook record.",
         "method": "Create",
         "object_type": "general",
@@ -1658,6 +1685,15 @@
         "source": "docstring"
       },
       {
+        "class": "AffixSlot",
+        "code": "slot = posOps.GetAffixSlots(verb)[0]\n            wrapped = AffixSlot(slot)",
+        "description": "Initialize AffixSlot wrapper with a slot object.",
+        "method": "__init__",
+        "object_type": "general",
+        "operation": "general",
+        "source": "docstring"
+      },
+      {
         "class": "AffixTemplate",
         "code": "template = morphRuleOps.GetAllAffixTemplates()[0]\n            wrapped = AffixTemplate(template)",
         "description": "Initialize AffixTemplate wrapper with a template object.",
@@ -1878,15 +1914,6 @@
         "code": "todos = annos.by_type(\"To Do\")\n            print(len(todos))  # Number of To Do annotations\n\n            questions = annos.by_type(\"Question\")",
         "description": "Filter the collection to a specific annotation type.",
         "method": "by_type",
-        "object_type": "general",
-        "operation": "general",
-        "source": "docstring"
-      },
-      {
-        "class": "AnnotationCollection",
-        "code": "consultant_notes = annos.consultant()\n            print(len(consultant_notes))  # Number of consultant notes",
-        "description": "Filter to consultant notes.",
-        "method": "consultant",
         "object_type": "general",
         "operation": "general",
         "source": "docstring"
@@ -2295,6 +2322,15 @@
       },
       {
         "class": "AllomorphOperations",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    print(allomorphOps.GetIsAbstract(allomorphs[0]))\n            False",
+        "description": "Check whether an allomorph is an abstract underlying form.",
+        "method": "GetIsAbstract",
+        "object_type": "IMoForm",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
         "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    morphType = allomorphOps.GetMorphType(allomorphs[0])\n    # Get type name\n    wsHandle = project.GetDefaultAnalysisWSHandle()\n    type_name = ITsString(morphType.Name.get_String(wsHandle)).Text\n    print(type_name)\n            stem",
         "description": "Returns the morpheme type (stem, root, prefix, suffix, infix, affix).",
         "method": "GetMorphType",
@@ -2451,15 +2487,6 @@
         "code": "# Get types available to users\nfor anno_def in project.AnnotationDef.GetUserCreatableTypes():\n    name = project.AnnotationDef.GetName(anno_def)\n    anno_type = project.AnnotationDef.GetAnnotationType(anno_def)\n    print(f\"Available: {name} (type={anno_type})\")\n            Available: To Do (type=0)\n            Available: Question (type=1)\n            Available: Custom Review (type=0)\n\n# Count user-creatable types\ncount = len(list(project.AnnotationDef.GetUserCreatableTypes()))\nprint(f\"Users can create {count} annotation types\")",
         "description": "Get all annotation definitions that users can create.",
         "method": "GetUserCreatableTypes",
-        "object_type": "general",
-        "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "AnthropologyOperations",
-        "code": "# Find by name\nitem = project.Anthropology.Find(\"Marriage Customs\")\nif item:\n    code = project.Anthropology.GetAnthroCode(item)\n    print(f\"Found item with code: {code}\")\n            Found item with code: 586\n\n# Handle not found\nitem = project.Anthropology.Find(\"Nonexistent Item\")\nif not item:\n    print(\"Item not found\")\n            Item not found",
-        "description": "Find an anthropology item by its name.",
-        "method": "Find",
         "object_type": "general",
         "operation": "read",
         "source": "docstring"
@@ -2626,6 +2653,15 @@
         "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorph = list(allomorphOps.GetAll(entry))[0]\n\n# Set audio from external file (will be copied to LinkedFiles)\naudio_path = allomorphOps.SetFormAudio(\n    allomorph,\n    \"/path/to/recordings/pronunciation.wav\"\n)\nprint(f\"Audio stored at: {audio_path}\")\n            LinkedFiles/AudioVisual/pronunciation.wav\n\n# Set audio with specific audio writing system\naudio_ws = project.WSHandle('en-Zxxx-x-audio')\nallomorphOps.SetFormAudio(allomorph, \"/path/to/audio.wav\", audio_ws)",
         "description": "Set an audio recording for an allomorph's Form field.",
         "method": "SetFormAudio",
+        "object_type": "IMoForm",
+        "operation": "update",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    allomorphOps.SetIsAbstract(allomorphs[0], True)\n    print(allomorphOps.GetIsAbstract(allomorphs[0]))\n            True",
+        "description": "Set whether an allomorph is an abstract underlying form.",
+        "method": "SetIsAbstract",
         "object_type": "IMoForm",
         "operation": "update",
         "source": "docstring"
@@ -2854,15 +2890,6 @@
         "object_type": "general",
         "operation": "update",
         "source": "docstring"
-      },
-      {
-        "class": "DataNotebookOperations",
-        "code": "record = project.DataNotebook.Find(\"Interview 1\")\nproject.DataNotebook.SetContent(\n    record,\n    \"Detailed notes from interview about kinship terminology. \"\n    \"Speaker provided examples of terms for siblings and cousins.\"\n)\n\n# Update content incrementally\nexisting = project.DataNotebook.GetContent(record)\nnew_content = existing + \"\\n\\nAdditional observations...\"\nproject.DataNotebook.SetContent(record, new_content)",
-        "description": "Set the content/body text of a notebook record.",
-        "method": "SetContent",
-        "object_type": "general",
-        "operation": "update",
-        "source": "docstring"
       }
     ]
   },
@@ -2967,6 +2994,36 @@
       "verified_against": {
         "flexicon": "4.2.1",
         "verified_by": "eval-corpus"
+      }
+    },
+    "audit-repair-infl-aff-msa-slots": {
+      "code": "from SIL.LCModel import IMoInflAffMsa\n\ndef _slot_label(slot):\n    name = slot.Name\n    if name is None:\n        return \"(unnamed)\"\n    alt = name.BestAnalysisAlternative\n    text = alt.Text if alt else \"\"\n    return \"\" if text == \"***\" else (text or str(slot.Guid)[:8])\n\ndef _infl_slot_report(infl_msa):\n    labels = []\n    seen = set()\n    duplicate = False\n    for slot in list(infl_msa.SlotsRC):\n        guid = str(slot.Guid).lower()\n        if guid in seen:\n            duplicate = True\n        seen.add(guid)\n        labels.append(_slot_label(slot))\n    return labels, duplicate\n\ninfl_count = 0\nmalformed = []\nfor entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        msa = project.Senses.GetGrammaticalInfo(sense)\n        if msa is None or getattr(msa, \"ClassName\", \"\") != \"MoInflAffMsa\":\n            continue\n        infl_count += 1\n        infl = IMoInflAffMsa(msa)\n        labels, duplicate = _infl_slot_report(infl)\n        sense_n = project.Senses.GetSenseNumber(sense)\n        flag = \" MALFORMED(duplicate slot)\" if duplicate else \"\"\n        report.Info(\n            f\"{headword} sense {sense_n}: infl-aff slots=[{', '.join(labels) or '(none)'}]{flag}\"\n        )\n        if duplicate:\n            malformed.append((entry, sense, labels))\n\nreport.Info(f\"Audited {infl_count} inflectional-affix MSA(s); \"\n            f\"{len(malformed)} with duplicate slot reference(s).\")\n\n# Optional repair: set these before a write-enabled run.\nREPAIR_HEADWORD = None\nREPAIR_SENSE_INDEX = 0\nREPAIR_SLOT_NAMES = None  # e.g. [\"SubjectConcord\", \"TAM\"]\n\nif REPAIR_HEADWORD and REPAIR_SLOT_NAMES is not None:\n    entry = project.LexEntry.Find(REPAIR_HEADWORD)\n    if entry is None:\n        report.Error(f\"Entry {REPAIR_HEADWORD!r} not found\")\n    else:\n        senses = project.LexEntry.GetAllSenses(entry)\n        if REPAIR_SENSE_INDEX >= len(senses):\n            report.Error(f\"Sense index {REPAIR_SENSE_INDEX} out of range\")\n        else:\n            sense = senses[REPAIR_SENSE_INDEX]\n            msa = project.Senses.GetGrammaticalInfo(sense)\n            if msa is None or getattr(msa, \"ClassName\", \"\") != \"MoInflAffMsa\":\n                report.Error(\"Target sense has no inflectional-affix MSA\")\n            else:\n                pos = project.Senses.GetPartOfSpeechObject(sense)\n                slots_by_name = {}\n                if pos is not None:\n                    for slot in project.POS.GetAffixSlots(pos):\n                        slots_by_name[_slot_label(slot)] = slot\n                resolved = [slots_by_name[n] for n in REPAIR_SLOT_NAMES if n in slots_by_name]\n                missing = [n for n in REPAIR_SLOT_NAMES if n not in slots_by_name]\n                if missing:\n                    report.Warning(f\"Unknown slot name(s) for POS: {missing}\")\n                if modifyAllowed:\n                    project.MSA.SetInflAffMsaSlots(sense, resolved, replace=True)\n                    report.Info(\n                        f\"Replaced SlotsRC on {REPAIR_HEADWORD} sense {REPAIR_SENSE_INDEX} \"\n                        f\"with {len(resolved)} slot(s)\"\n                    )\n                else:\n                    report.Info(\n                        f\"(Would set SlotsRC on {REPAIR_HEADWORD} sense \"\n                        f\"{REPAIR_SENSE_INDEX} to {REPAIR_SLOT_NAMES})\"\n                    )\n",
+      "entities": [
+        "LexEntry",
+        "LexSense",
+        "MSA"
+      ],
+      "intent": "Audit inflectional-affix MSAs for duplicate slot assignments and repair SlotsRC",
+      "match_terms": [
+        "audit infl aff msa",
+        "repair infl aff msa slots",
+        "malformed inflectional affix msa",
+        "SlotsRC infl aff",
+        "inflectional affix slot assignment",
+        "audit msa slots"
+      ],
+      "notes": "WARNING: writes when REPAIR_HEADWORD and REPAIR_SLOT_NAMES are set and modifyAllowed is True. The audit pass is read-only. Slot membership edits use project.MSA.SetInflAffMsaSlots on flexicon 4.10+; on older flexicon builds before MattGyverLee/flexicon#258 you must use raw IMoInflAffMsa(msa).SlotsRC.Remove(...) / .Add(...) instead. IMoInflAffixSlot.Name is its own field -- never cast slots to ICmPossibility to read .Name (see issue #101).",
+      "operations": [
+        "read",
+        "update",
+        "write",
+        "iterate"
+      ],
+      "requires_write": true,
+      "source": "curated",
+      "verified_against": {
+        "flexicon": "4.2.1",
+        "verified_by": "preflight"
       }
     },
     "batch-update-citation-forms": {
@@ -3463,7 +3520,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1191,
-    "unique_patterns": 117
+    "total_patterns": 1212,
+    "unique_patterns": 120
   }
 }

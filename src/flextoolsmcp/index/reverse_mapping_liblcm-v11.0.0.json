@@ -7,6 +7,15 @@
       "methods": {},
       "wraps_interfaces": []
     },
+    "AffixSlot": {
+      "category": "grammar",
+      "method_count": 1,
+      "methods": {},
+      "wraps_interfaces": [
+        "IPartOfSpeech",
+        "ITsString"
+      ]
+    },
     "AffixTemplate": {
       "category": "grammar",
       "method_count": 1,
@@ -50,7 +59,7 @@
     },
     "AllomorphOperations": {
       "category": "lexicon",
-      "method_count": 19,
+      "method_count": 21,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
@@ -351,6 +360,7 @@
         "IDsConstChart",
         "IDsConstChartFactory",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IText",
         "ITsString"
       ]
@@ -482,7 +492,7 @@
     },
     "InflectionFeatureOperations": {
       "category": "grammar",
-      "method_count": 27,
+      "method_count": 28,
       "methods": {},
       "wraps_interfaces": [
         "IFsClosedFeature",
@@ -567,7 +577,7 @@
     },
     "LexSenseOperations": {
       "category": "lexicon",
-      "method_count": 88,
+      "method_count": 91,
       "methods": {},
       "wraps_interfaces": [
         "ICmPicture",
@@ -607,7 +617,7 @@
     },
     "MSAOperations": {
       "category": "lexicon",
-      "method_count": 13,
+      "method_count": 19,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
@@ -740,10 +750,11 @@
     },
     "POSOperations": {
       "category": "grammar",
-      "method_count": 27,
+      "method_count": 32,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -752,7 +763,7 @@
     },
     "ParagraphOperations": {
       "category": "texts",
-      "method_count": 12,
+      "method_count": 13,
       "methods": {},
       "wraps_interfaces": [
         "IStTxtPara",
@@ -1049,7 +1060,7 @@
     },
     "SegmentOperations": {
       "category": "texts",
-      "method_count": 29,
+      "method_count": 30,
       "methods": {},
       "wraps_interfaces": [
         "ISegment",
@@ -2541,6 +2552,10 @@
         {
           "class": "ConstChartOperations",
           "methods": []
+        },
+        {
+          "class": "DiscourseOperations",
+          "methods": []
         }
       ],
       "flexlibs_stable": null
@@ -3696,6 +3711,13 @@
       },
       "flexlibs_stable": null
     },
+    "IMoInflAffixSlot": {
+      "flexlibs_2": {
+        "class": "POSOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
     "IMoInflAffixSlotFactory": {
       "flexlibs_2": {
         "class": "POSOperations",
@@ -4053,6 +4075,10 @@
     },
     "IPartOfSpeech": {
       "flexlibs_2": [
+        {
+          "class": "AffixSlot",
+          "methods": []
+        },
         {
           "class": "AffixTemplate",
           "methods": []
@@ -5148,6 +5174,10 @@
     },
     "ITsString": {
       "flexlibs_2": [
+        {
+          "class": "AffixSlot",
+          "methods": []
+        },
         {
           "class": "AffixTemplate",
           "methods": []

@@ -7,6 +7,45 @@ sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
 
+### Other
+
+*(Unreleased changes with no issue link go here; append at the bottom.)*
+
+## [2.14.0] - 2026-09-27
+
+### Headline: Flexicon 4.11.0 index, MCP 1.x/2.x dual support, preflight hardening
+
+- **Reindexed against Flexicon 4.11.0** (bundled index 4.10.0 -> 4.11.0:
+  121 -> 122 entities, 1581 -> 1601 methods). The `pyflexicon` floor in
+  `pyproject.toml` / `requirements.txt` rises to `>=4.11.0` to match;
+  LibLCM v11.0.0 regenerated, flexlibs 1.2.8 unchanged.
+- **MCP 1.x/2.x dual support** ([#83](https://github.com/MattGyverLee/FlexToolsMCP/issues/83)):
+  installs resolving `mcp` to 2.x work via the new compat shim; requirement
+  is now `mcp>=1.27.0,<3`.
+- **Preflight/validator hardening cluster**: reflection-bypass gate (#277),
+  `ClassName`-guard narrowing (#278), module-level `Main()` double-execution
+  block (#279), `MakeFeatStruc` classified mutating (#280), `ICmPossibility`
+  casts rejected on morphology lists (#101), shared-mode lock sweep (#93),
+  warnings-hook `RecursionError` fix (#286).
+
+### Test report
+
+- Full live suite (`pytest`, Windows + FieldWorks): **4267 passed**,
+  8 skipped, 3 failed -- all three are timing-sensitive parse-cache
+  assertions (`test_parse_live.py` x2, `test_parse_live_cp5.py::test_s5_warm_cache`)
+  that fail identically on clean main without this release's changes
+  (pre-existing, unrelated to the index/floor bump).
+- `python scripts/validate_integrity.py all` exits clean.
+- Tier-2 live LLM evals: not run for this release (manual, pre-release only).
+
+### Fixed
+
+- **Dual MCP 1.x/2.x support**
+  ([#83](https://github.com/MattGyverLee/FlexToolsMCP/issues/83)). Tool
+  registration now goes through `src/flextoolsmcp/mcp_compat.py`, which uses
+  the decorator API on MCP 1.x and constructor-injected handlers on 2.x, so
+  installs that resolve `mcp` to 2.x work instead of failing at import. The
+  declared requirement is now `mcp>=1.27.0,<3`, locked by regression tests.
 - **Shared mode: one bad lock no longer breaks startup or `flextools_health`**
   ([#93](https://github.com/MattGyverLee/FlexToolsMCP/issues/93)). An unexpected
   error while inspecting a single `.fwdata.lock` used to abort the whole lock
@@ -41,15 +80,40 @@ sorted position, not the top). Changes without an issue go under Other.
   ([#102](https://github.com/MattGyverLee/FlexToolsMCP/issues/102)). Search and
   `find_examples` now surface a discoverable audit/repair snippet for
   inflectional-affix `SlotsRC` assignments (duplicate-slot detection plus optional
-  `SetInflAffMsaSlots` repair), matching the pattern users were hand-writing in
-  runtime logs.
+   `SetInflAffMsaSlots` repair), matching the pattern users were hand-writing in
+   runtime logs.
+- [#105](https://github.com/MattGyverLee/FlexToolsMCP/issues/105):
+  `write_certification.mutating_calls_detected` only listed unprotected
+  mutating calls, so guarded writes reported `performs_writes: true` with an
+  empty itemisation. Both surfaces now share the same mutation-list builder,
+  so protected and unprotected mutations are enumerated with the same shape.
 - **Preflight blocks LCM reflection bypass on write runs**
   ([#277](https://github.com/MattGyverLee/FlexToolsMCP/issues/277)). New
   `reflection_bypass_detected` gate flags `operator.methodcaller`,
   `importlib.import_module("SIL.LCModel")`, and `getattr`/`setattr` on
   PascalCase LCM member names so casting and write certification cannot be
-  sidestepped. Read-only runs proceed with warnings; JSONL telemetry records
-  `reflection_bypass_count`.
+   sidestepped. Read-only runs proceed with warnings; JSONL telemetry records
+   `reflection_bypass_count`.
+- **Casting preflight honors `ClassName` guards**
+  ([#278](https://github.com/MattGyverLee/FlexToolsMCP/issues/278)). An
+  `if var.ClassName == "X"` (or `in (...)`) check now narrows `var` to the
+  matching concrete interface inside that branch, same as an explicit cast,
+  so guarded code no longer draws spurious casting rejections.
+- **Preflight blocks module-level `Main()` double execution**
+  ([#279](https://github.com/MattGyverLee/FlexToolsMCP/issues/279)). A
+  module that both defines `Main` and calls it at top level now fails
+  preflight on write runs (advisory on read-only runs) instead of executing
+  twice.
+- **Validators classify `MakeFeatStruc` as mutating**
+  ([#280](https://github.com/MattGyverLee/FlexToolsMCP/issues/280)).
+  `Make*` builder methods count as creation, and a
+  `certification_underreported` effect check fires when LCM actions occur
+  while `write_certification.performs_writes` is false.
+- **Tests fail fast when `mcp` is outside the supported range**
+  ([#285](https://github.com/MattGyverLee/FlexToolsMCP/issues/285)). Test
+  collection aborts at session start with a diagnostic pointing at the
+  supported `>=1.27.0,<3` range instead of failing later with an unrelated
+  import error.
 
 - **A warning no longer crashes the server with `RecursionError`**
   ([#286](https://github.com/MattGyverLee/FlexToolsMCP/issues/286)). The

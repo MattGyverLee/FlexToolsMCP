@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.10.0"
+    "version": "4.11.0"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -93,6 +93,36 @@
       "lcm_deps": [],
       "mapping_type": "pure_python",
       "method": "as_morpheme_prohibition",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "AffixSlot.__init__": {
+      "class": "AffixSlot",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "lcm_slot": [
+            "arg[0] of __init__()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IPartOfSpeech",
+        "PartOfSpeechTags",
+        "ITsString"
+      ],
+      "mapping_type": "pure_python",
+      "method": "__init__",
       "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
@@ -2122,6 +2152,11 @@
             "type": "type_conversion"
           },
           {
+            "description": "Converts to bool",
+            "pattern": "bool",
+            "type": "type_conversion"
+          },
+          {
             "description": "Converts to list",
             "pattern": "list",
             "type": "type_conversion"
@@ -2377,6 +2412,64 @@
       "properties_accessed": [
         "Form"
       ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "AllomorphOperations.GetIsAbstract": {
+      "class": "AllomorphOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "allomorph_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetAllomorphObject()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to bool",
+            "pattern": "bool",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
+        "IMoStemAllomorphFactory",
+        "IMoAffixAllomorphFactory",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IPhEnvironment",
+        "LexEntryTags",
+        "ITsString",
+        "TsStringUtils",
+        "IMoStemAllomorph",
+        "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
+        "IMoAffixAllomorphFactory"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetIsAbstract",
+      "methods_called": [],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -2945,6 +3038,68 @@
       "properties_accessed": [
         "Form"
       ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "AllomorphOperations.SetIsAbstract": {
+      "class": "AllomorphOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "allomorph_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetAllomorphObject()"
+          ],
+          "value": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of bool()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to bool",
+            "pattern": "bool",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
+        "IMoStemAllomorphFactory",
+        "IMoAffixAllomorphFactory",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IPhEnvironment",
+        "LexEntryTags",
+        "ITsString",
+        "TsStringUtils",
+        "IMoStemAllomorph",
+        "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
+        "IMoAffixAllomorphFactory"
+      ],
+      "mapping_type": "pure_python",
+      "method": "SetIsAbstract",
+      "methods_called": [],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -5092,11 +5247,15 @@
             "arg[0] of _ValidateParam()",
             "arg[0] of Exists()",
             "arg[0] of MakeString()"
+          ],
+          "parent": [
+            "arg[0] of __GetItemObject()"
           ]
         },
         "properties_accessed": [
           "AnthroListOA (OwningAtomic)",
-          "PossibilitiesOS (OwningSequence)"
+          "PossibilitiesOS (OwningSequence)",
+          "SubPossibilitiesOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -5108,6 +5267,11 @@
           {
             "default": "None",
             "param": "anthro_code",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "parent",
             "type": "default_value"
           },
           {
@@ -5139,7 +5303,8 @@
       ],
       "properties_accessed": [
         "AnthroListOA (OwningAtomic)",
-        "PossibilitiesOS (OwningSequence)"
+        "PossibilitiesOS (OwningSequence)",
+        "SubPossibilitiesOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": [
@@ -5148,35 +5313,30 @@
     },
     "AnthropologyOperations.CreateSubitem": {
       "class": "AnthropologyOperations",
-      "factories_used": [
-        "ICmAnthroItemFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "ICmAnthroItemFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "direct",
         "methods_called": [
-          ".Add()",
-          ".Create()",
-          ".set_String()"
+          ".Create()"
         ],
         "param_usage": {
           "abbreviation": [
-            "arg[0] of MakeString()"
+            "abbreviation= of Create()"
+          ],
+          "anthro_code": [
+            "anthro_code= of Create()"
           ],
           "name": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
+            "arg[0] of Create()"
           ],
           "parent_item": [
-            "arg[0] of __GetItemObject()"
+            "arg[0] of _ValidateParam()",
+            "parent= of Create()"
           ]
         },
-        "properties_accessed": [
-          "SubPossibilitiesOS (OwningSequence)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -5195,9 +5355,7 @@
             "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "ICmAnthroItem",
@@ -5209,20 +5367,14 @@
         "TsStringUtils",
         "ICmPossibilityListFactory"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "direct",
       "method": "CreateSubitem",
       "methods_called": [
-        ".Add()",
-        ".Create()",
-        ".set_String()"
+        ".Create()"
       ],
-      "properties_accessed": [
-        "SubPossibilitiesOS (OwningSequence)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "AnthropologyOperations.Delete": {
       "class": "AnthropologyOperations",
@@ -14512,6 +14664,10 @@
           "content": [
             "arg[1] of _SetRecordContent()"
           ],
+          "parent": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetRecordObject()"
+          ],
           "title": [
             "arg[0] of _ValidateParam()",
             "arg[0] of _MakeTsString()"
@@ -14524,7 +14680,8 @@
         },
         "properties_accessed": [
           "RecordsOC (OwningCollection)",
-          "ResearchNotebookOA (OwningAtomic)"
+          "ResearchNotebookOA (OwningAtomic)",
+          "SubRecordsOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -14536,6 +14693,11 @@
           {
             "default": "None",
             "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "parent",
             "type": "default_value"
           },
           {
@@ -14574,46 +14736,38 @@
       ],
       "properties_accessed": [
         "RecordsOC (OwningCollection)",
-        "ResearchNotebookOA (OwningAtomic)"
+        "ResearchNotebookOA (OwningAtomic)",
+        "SubRecordsOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": []
     },
     "DataNotebookOperations.CreateSubRecord": {
       "class": "DataNotebookOperations",
-      "factories_used": [
-        "IRnGenericRecFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "IRnGenericRecFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "direct",
         "methods_called": [
-          ".Add()",
           ".Create()"
         ],
         "param_usage": {
           "content": [
-            "arg[1] of _SetRecordContent()"
+            "content= of Create()"
           ],
           "parent_record_or_hvo": [
-            "arg[0] of __GetRecordObject()"
+            "arg[0] of _ValidateParam()",
+            "parent= of Create()"
           ],
           "title": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of _MakeTsString()"
+            "arg[0] of Create()"
           ],
           "wsHandle": [
-            "arg[0] of __WSHandle()",
-            "arg[1] of _MakeTsString()",
-            "arg[2] of _SetRecordContent()"
+            "wsHandle= of Create()"
           ]
         },
-        "properties_accessed": [
-          "SubRecordsOS (OwningSequence)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -14625,11 +14779,6 @@
             "default": "None",
             "param": "wsHandle",
             "type": "default_value"
-          },
-          {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
           }
         ],
         "utilities_used": []
@@ -14649,15 +14798,12 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "direct",
       "method": "CreateSubRecord",
       "methods_called": [
-        ".Add()",
         ".Create()"
       ],
-      "properties_accessed": [
-        "SubRecordsOS (OwningSequence)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -17098,6 +17244,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17166,6 +17313,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17190,12 +17338,12 @@
     "DiscourseOperations.CreateChart": {
       "class": "DiscourseOperations",
       "factories_used": [
-        "IConstChartFactory"
+        "IDsConstChartFactory"
       ],
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [
-          "IConstChartFactory"
+          "IDsConstChartFactory"
         ],
         "mapping_type": "composite",
         "methods_called": [
@@ -17213,6 +17361,7 @@
           ]
         },
         "properties_accessed": [
+          "BasedOnRA (ReferenceAtomic)",
           "ChartsOC (OwningCollection)",
           "ContentsOA (OwningAtomic)"
         ],
@@ -17252,6 +17401,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17274,6 +17424,7 @@
         ".set_String()"
       ],
       "properties_accessed": [
+        "BasedOnRA (ReferenceAtomic)",
         "ChartsOC (OwningCollection)",
         "ContentsOA (OwningAtomic)"
       ],
@@ -17288,7 +17439,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
           ".Remove()"
         ],
@@ -17298,8 +17449,7 @@
           ]
         },
         "properties_accessed": [
-          "ChartsOC (OwningCollection)",
-          "Owner"
+          "ChartsOC (OwningCollection)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -17321,6 +17471,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17335,14 +17486,13 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "DeleteChart",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "ChartsOC (OwningCollection)",
-        "Owner"
+        "ChartsOC (OwningCollection)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -17353,7 +17503,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
           ".Remove()"
         ],
@@ -17363,7 +17513,6 @@
           ]
         },
         "properties_accessed": [
-          "Owner",
           "RowsOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -17386,6 +17535,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17400,13 +17550,12 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "DeleteRow",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "Owner",
         "RowsOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -17437,8 +17586,8 @@
           ]
         },
         "properties_accessed": [
+          "BasedOnRA (ReferenceAtomic)",
           "ChartsOC (OwningCollection)",
-          "Owner",
           "RowsOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -17471,6 +17620,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17493,8 +17643,8 @@
         ".Create()"
       ],
       "properties_accessed": [
+        "BasedOnRA (ReferenceAtomic)",
         "ChartsOC (OwningCollection)",
-        "Owner",
         "RowsOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -17506,7 +17656,7 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "convenience",
         "methods_called": [],
         "param_usage": {
           "text_or_hvo": [
@@ -17515,7 +17665,9 @@
         },
         "properties_accessed": [
           "ChartsOC (OwningCollection)",
-          "ContentsOA (OwningAtomic)"
+          "ContentsOA (OwningAtomic)",
+          "DiscourseDataOA (OwningAtomic)",
+          "Hvo"
         ],
         "repositories_used": [],
         "transformations": [
@@ -17537,6 +17689,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17551,12 +17704,14 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "convenience",
       "method": "GetAllCharts",
       "methods_called": [],
       "properties_accessed": [
         "ChartsOC (OwningCollection)",
-        "ContentsOA (OwningAtomic)"
+        "ContentsOA (OwningAtomic)",
+        "DiscourseDataOA (OwningAtomic)",
+        "Hvo"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -17624,6 +17779,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17685,6 +17841,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17768,6 +17925,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17825,6 +17983,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17882,6 +18041,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -17941,6 +18101,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -18000,6 +18161,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -18059,6 +18221,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -18111,6 +18274,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -18189,6 +18353,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -18273,6 +18438,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -18321,6 +18487,7 @@
         "IDsConstChartFactory",
         "IDsChart",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
@@ -18626,6 +18793,7 @@
         },
         "properties_accessed": [
           "EnvironmentsOS (OwningSequence)",
+          "Hvo",
           "LeftContextRA (ReferenceAtomic)",
           "PhonologicalDataOA (OwningAtomic)",
           "RightContextRA (ReferenceAtomic)"
@@ -18651,6 +18819,11 @@
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
           }
         ],
         "utilities_used": [
@@ -18674,6 +18847,7 @@
       ],
       "properties_accessed": [
         "EnvironmentsOS (OwningSequence)",
+        "Hvo",
         "LeftContextRA (ReferenceAtomic)",
         "PhonologicalDataOA (OwningAtomic)",
         "RightContextRA (ReferenceAtomic)"
@@ -21172,6 +21346,7 @@
         },
         "properties_accessed": [
           "ExamplesOS (OwningSequence)",
+          "Hvo",
           "TranslationsOC (OwningCollection)",
           "TypeRA (ReferenceAtomic)"
         ],
@@ -21219,6 +21394,7 @@
       ],
       "properties_accessed": [
         "ExamplesOS (OwningSequence)",
+        "Hvo",
         "TranslationsOC (OwningCollection)",
         "TypeRA (ReferenceAtomic)"
       ],
@@ -33633,6 +33809,75 @@
         "TsStringUtils.MakeString"
       ]
     },
+    "InflectionFeatureOperations.DescribeFeatStruc": {
+      "class": "InflectionFeatureOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "fs_or_spec": [
+            "arg[0] of isinstance()",
+            "arg[0] of _GetObject()",
+            "arg[0] of type()"
+          ],
+          "slot": [
+            "slot= of _ResolveFeatureStrucOwner()"
+          ]
+        },
+        "properties_accessed": [
+          "ClassName"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "slot",
+            "type": "default_value"
+          },
+          {
+            "description": "Resolves HVO (integer) to object if needed",
+            "pattern": "GetObject",
+            "type": "hvo_resolution"
+          },
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoInflClass",
+        "IMoInflClassFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
+        "IFsFeatDefn",
+        "IFsComplexFeature",
+        "IFsComplexFeatureFactory",
+        "IFsClosedFeature",
+        "IFsClosedFeatureFactory",
+        "IFsSymFeatVal",
+        "IFsSymFeatValFactory",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsFeatStrucType",
+        "IFsFeatStrucTypeFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "DescribeFeatStruc",
+      "methods_called": [],
+      "properties_accessed": [
+        "ClassName"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "InflectionFeatureOperations.Exists": {
       "class": "InflectionFeatureOperations",
       "factories_used": [],
@@ -34785,7 +35030,7 @@
       "class": "InflectionFeatureOperations",
       "factories_used": [],
       "inline": {
-        "calls_ensure_write_enabled": false,
+        "calls_ensure_write_enabled": true,
         "factories_used": [],
         "mapping_type": "pure_python",
         "methods_called": [],
@@ -35329,40 +35574,30 @@
     },
     "LexEntryOperations.AddSense": {
       "class": "LexEntryOperations",
-      "factories_used": [
-        "ILexSenseFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "ILexSenseFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "direct",
         "methods_called": [
-          ".Add()",
-          ".Create()",
-          ".set_String()"
+          ".Create()"
         ],
         "param_usage": {
           "entry_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
+            "arg[0] of isinstance()",
+            "arg[0] of __ResolveObject()",
+            "arg[0] of getattr()",
+            "arg[0] of Create()"
           ],
           "gloss": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of _ValidateStringNotEmpty()",
-            "arg[0] of MakeString()"
+            "arg[1] of Create()"
           ],
           "wsHandle": [
-            "arg[0] of __WSHandleAnalysis()",
-            "arg[1] of MakeString()",
-            "arg[0] of set_String()"
+            "wsHandle= of Create()"
           ]
         },
-        "properties_accessed": [
-          "Gloss",
-          "SensesOS (OwningSequence)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -35386,9 +35621,7 @@
             "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "ILexEntry",
@@ -35409,21 +35642,14 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "direct",
       "method": "AddSense",
       "methods_called": [
-        ".Add()",
-        ".Create()",
-        ".set_String()"
+        ".Create()"
       ],
-      "properties_accessed": [
-        "Gloss",
-        "SensesOS (OwningSequence)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "LexEntryOperations.ApplySyncableProperties": {
       "class": "LexEntryOperations",
@@ -41022,6 +41248,66 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "LexSenseOperations.AddDoNotPublishIn": {
+      "class": "LexSenseOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [
+          ".Add()"
+        ],
+        "param_usage": {
+          "publication": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolvePublication()",
+            "arg[0] of Add()"
+          ],
+          "sense_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetSenseObject()"
+          ]
+        },
+        "properties_accessed": [
+          "DoNotPublishInRC (ReferenceCollection)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Resolves HVO (integer) to object if needed",
+            "pattern": "GetSense",
+            "type": "hvo_resolution"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILexSense",
+        "ILexSenseFactory",
+        "ILexEntry",
+        "ILexExampleSentenceFactory",
+        "ICmSemanticDomain",
+        "ICmPicture",
+        "ICmPictureFactory",
+        "ICmTranslationFactory",
+        "IReversalIndexEntry",
+        "LexEntryTags",
+        "ITsString",
+        "TsStringUtils",
+        "ReflectionHelper"
+      ],
+      "mapping_type": "direct",
+      "method": "AddDoNotPublishIn",
+      "methods_called": [
+        ".Add()"
+      ],
+      "properties_accessed": [
+        "DoNotPublishInRC (ReferenceCollection)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "LexSenseOperations.AddDomainType": {
       "class": "LexSenseOperations",
       "factories_used": [],
@@ -41564,7 +41850,7 @@
         "param_usage": {
           "entry_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of __GetEntryObject()"
+            "arg[0] of __GetSenseOwnerObject()"
           ],
           "gloss": [
             "arg[0] of _ValidateParam()",
@@ -41589,9 +41875,18 @@
             "type": "default_value"
           },
           {
+            "description": "Resolves HVO (integer) to object if needed",
+            "pattern": "GetSense",
+            "type": "hvo_resolution"
+          },
+          {
             "description": "Applies default writing system if not specified",
             "pattern": "WSHandle",
             "type": "ws_default"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
           },
           {
             "description": "Converts to int",
@@ -41641,56 +41936,34 @@
     },
     "LexSenseOperations.CreateSubsense": {
       "class": "LexSenseOperations",
-      "factories_used": [
-        "ILexSenseFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "ILexSenseFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "direct",
         "methods_called": [
-          ".Add()",
-          ".Create()",
-          ".set_String()"
+          ".Create()"
         ],
         "param_usage": {
           "gloss": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of _ValidateStringNotEmpty()",
-            "arg[0] of MakeString()"
+            "arg[1] of Create()"
           ],
           "parent_sense_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of __GetSenseObject()"
+            "arg[0] of __IsSenseParent()",
+            "arg[0] of Create()"
           ],
           "wsHandle": [
-            "arg[0] of __WSHandleAnalysis()",
-            "arg[1] of MakeString()",
-            "arg[0] of set_String()"
+            "wsHandle= of Create()"
           ]
         },
-        "properties_accessed": [
-          "Gloss",
-          "SensesOS (OwningSequence)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
             "default": "None",
             "param": "wsHandle",
             "type": "default_value"
-          },
-          {
-            "description": "Resolves HVO (integer) to object if needed",
-            "pattern": "GetSense",
-            "type": "hvo_resolution"
-          },
-          {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
           },
           {
             "description": "Converts to int",
@@ -41703,9 +41976,7 @@
             "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "ILexSense",
@@ -41722,21 +41993,14 @@
         "TsStringUtils",
         "ReflectionHelper"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "direct",
       "method": "CreateSubsense",
       "methods_called": [
-        ".Add()",
-        ".Create()",
-        ".set_String()"
+        ".Create()"
       ],
-      "properties_accessed": [
-        "Gloss",
-        "SensesOS (OwningSequence)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "LexSenseOperations.Delete": {
       "class": "LexSenseOperations",
@@ -41825,6 +42089,7 @@
         },
         "properties_accessed": [
           "ClassName",
+          "Hvo",
           "Owner",
           "SensesOS (OwningSequence)"
         ],
@@ -41882,6 +42147,7 @@
       ],
       "properties_accessed": [
         "ClassName",
+        "Hvo",
         "Owner",
         "SensesOS (OwningSequence)"
       ],
@@ -42710,6 +42976,68 @@
         ".get_String()"
       ],
       "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "LexSenseOperations.GetDoNotPublishIn": {
+      "class": "LexSenseOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "sense_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetSenseObject()"
+          ]
+        },
+        "properties_accessed": [
+          "DoNotPublishInRC (ReferenceCollection)",
+          "Guid"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Resolves HVO (integer) to object if needed",
+            "pattern": "GetSense",
+            "type": "hvo_resolution"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          },
+          {
+            "description": "Converts to str",
+            "pattern": "str",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILexSense",
+        "ILexSenseFactory",
+        "ILexEntry",
+        "ILexExampleSentenceFactory",
+        "ICmSemanticDomain",
+        "ICmPicture",
+        "ICmPictureFactory",
+        "ICmTranslationFactory",
+        "IReversalIndexEntry",
+        "LexEntryTags",
+        "ITsString",
+        "TsStringUtils",
+        "ReflectionHelper"
+      ],
+      "mapping_type": "direct",
+      "method": "GetDoNotPublishIn",
+      "methods_called": [],
+      "properties_accessed": [
+        "DoNotPublishInRC (ReferenceCollection)",
+        "Guid"
+      ],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -45092,6 +45420,66 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "LexSenseOperations.RemoveDoNotPublishIn": {
+      "class": "LexSenseOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [
+          ".Remove()"
+        ],
+        "param_usage": {
+          "publication": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolvePublication()",
+            "arg[0] of Remove()"
+          ],
+          "sense_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetSenseObject()"
+          ]
+        },
+        "properties_accessed": [
+          "DoNotPublishInRC (ReferenceCollection)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Resolves HVO (integer) to object if needed",
+            "pattern": "GetSense",
+            "type": "hvo_resolution"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILexSense",
+        "ILexSenseFactory",
+        "ILexEntry",
+        "ILexExampleSentenceFactory",
+        "ICmSemanticDomain",
+        "ICmPicture",
+        "ICmPictureFactory",
+        "ICmTranslationFactory",
+        "IReversalIndexEntry",
+        "LexEntryTags",
+        "ITsString",
+        "TsStringUtils",
+        "ReflectionHelper"
+      ],
+      "mapping_type": "direct",
+      "method": "RemoveDoNotPublishIn",
+      "methods_called": [
+        ".Remove()"
+      ],
+      "properties_accessed": [
+        "DoNotPublishInRC (ReferenceCollection)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "LexSenseOperations.RemoveDomainType": {
       "class": "LexSenseOperations",
       "factories_used": [],
@@ -47089,6 +47477,10 @@
             "arg[0] of _ValidateParam()",
             "arg[0] of MakeString()"
           ],
+          "parent": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveObject()"
+          ],
           "wsHandle": [
             "arg[0] of __WSHandle()",
             "arg[1] of MakeString()",
@@ -47097,7 +47489,8 @@
         },
         "properties_accessed": [
           "LocationsOA (OwningAtomic)",
-          "PossibilitiesOS (OwningSequence)"
+          "PossibilitiesOS (OwningSequence)",
+          "SubPossibilitiesOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -47109,6 +47502,11 @@
           {
             "default": "None",
             "param": "alias",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "parent",
             "type": "default_value"
           },
           {
@@ -47142,7 +47540,8 @@
       ],
       "properties_accessed": [
         "LocationsOA (OwningAtomic)",
-        "PossibilitiesOS (OwningSequence)"
+        "PossibilitiesOS (OwningSequence)",
+        "SubPossibilitiesOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": [
@@ -47151,41 +47550,30 @@
     },
     "LocationOperations.CreateSublocation": {
       "class": "LocationOperations",
-      "factories_used": [
-        "ICmLocationFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "ICmLocationFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "direct",
         "methods_called": [
-          ".Add()",
-          ".Create()",
-          ".set_String()"
+          ".Create()"
         ],
         "param_usage": {
           "alias": [
-            "arg[0] of MakeString()"
+            "alias= of Create()"
           ],
           "name": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
+            "arg[0] of Create()"
           ],
           "parent_location_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
+            "parent= of Create()"
           ],
           "wsHandle": [
-            "arg[0] of __WSHandle()",
-            "arg[1] of MakeString()",
-            "arg[0] of set_String()"
+            "arg[1] of Create()"
           ]
         },
-        "properties_accessed": [
-          "SubPossibilitiesOS (OwningSequence)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -47199,19 +47587,12 @@
             "type": "default_value"
           },
           {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
-          },
-          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "ICmLocation",
@@ -47220,20 +47601,14 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "direct",
       "method": "CreateSublocation",
       "methods_called": [
-        ".Add()",
-        ".Create()",
-        ".set_String()"
+        ".Create()"
       ],
-      "properties_accessed": [
-        "SubPossibilitiesOS (OwningSequence)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "LocationOperations.Delete": {
       "class": "LocationOperations",
@@ -49227,6 +49602,316 @@
       "repositories_used": [
         "ILexEntryRepository"
       ],
+      "utilities_used": []
+    },
+    "MSAOperations.GetDerivFromFeatures": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "sense_or_msa": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveMsaForFeatures()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetDerivFromFeatures",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "MSAOperations.GetDerivToFeatures": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "sense_or_msa": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveMsaForFeatures()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetDerivToFeatures",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "MSAOperations.GetFeatures": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "sense_or_msa": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveMsaForFeatures()"
+          ],
+          "slot": [
+            "slot= of __ReadMsaFeatureStrucSpec()"
+          ]
+        },
+        "properties_accessed": [
+          "ClassName"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "slot",
+            "type": "default_value"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "direct",
+      "method": "GetFeatures",
+      "methods_called": [],
+      "properties_accessed": [
+        "ClassName"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "MSAOperations.GetInflAffFeatures": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "sense_or_msa": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveMsaForFeatures()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetInflAffFeatures",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "MSAOperations.GetInflAffMsaSlots": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "sense_or_msa": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __TryResolveInflAffMsa()"
+          ]
+        },
+        "properties_accessed": [
+          "SlotsRC (ReferenceCollection)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "direct",
+      "method": "GetInflAffMsaSlots",
+      "methods_called": [],
+      "properties_accessed": [
+        "SlotsRC (ReferenceCollection)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "MSAOperations.GetStemFeatures": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "sense_or_msa": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveMsaForFeatures()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetStemFeatures",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
       "utilities_used": []
     },
     "MSAOperations.GetSyncableProperties": {
@@ -52666,6 +53351,7 @@
           "FeatureRA (ReferenceAtomic)",
           "FeatureSpecsOC (OwningCollection)",
           "FeaturesOA (OwningAtomic)",
+          "Hvo",
           "NaturalClassesOS (OwningSequence)",
           "PhonologicalDataOA (OwningAtomic)",
           "SegmentsRC (ReferenceCollection)",
@@ -52717,6 +53403,7 @@
         "FeatureRA (ReferenceAtomic)",
         "FeatureSpecsOC (OwningCollection)",
         "FeaturesOA (OwningAtomic)",
+        "Hvo",
         "NaturalClassesOS (OwningSequence)",
         "PhonologicalDataOA (OwningAtomic)",
         "SegmentsRC (ReferenceCollection)",
@@ -55228,6 +55915,11 @@
         "repositories_used": [],
         "transformations": [
           {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
             "description": "Converts to list",
             "pattern": "list",
             "type": "type_conversion"
@@ -56002,71 +56694,62 @@
     },
     "POSOperations.AddSubcategory": {
       "class": "POSOperations",
-      "factories_used": [
-        "IPartOfSpeechFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "IPartOfSpeechFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "direct",
         "methods_called": [
-          ".Add()",
-          ".Create()",
-          ".set_String()"
+          ".Create()"
         ],
         "param_usage": {
           "abbreviation": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
+            "arg[1] of Create()"
+          ],
+          "catalogSourceId": [
+            "catalogSourceId= of Create()"
           ],
           "name": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
+            "arg[0] of Create()"
           ],
           "pos_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
+            "parent= of Create()"
           ]
         },
-        "properties_accessed": [
-          "SubPossibilitiesOS (OwningSequence)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
+          {
+            "default": "None",
+            "param": "catalogSourceId",
+            "type": "default_value"
+          },
           {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "direct",
       "method": "AddSubcategory",
       "methods_called": [
-        ".Add()",
-        ".Create()",
-        ".set_String()"
+        ".Create()"
       ],
-      "properties_accessed": [
-        "SubPossibilitiesOS (OwningSequence)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "POSOperations.ApplySyncableProperties": {
       "class": "POSOperations",
@@ -56114,6 +56797,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56166,6 +56850,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56207,11 +56892,16 @@
             "arg[0] of _ValidateParam()",
             "arg[0] of Exists()",
             "arg[0] of MakeString()"
+          ],
+          "parent": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveObject()"
           ]
         },
         "properties_accessed": [
           "PartsOfSpeechOA (OwningAtomic)",
-          "PossibilitiesOS (OwningSequence)"
+          "PossibilitiesOS (OwningSequence)",
+          "SubPossibilitiesOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -56219,6 +56909,15 @@
             "default": "None",
             "param": "catalogSourceId",
             "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "parent",
+            "type": "default_value"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
           },
           {
             "description": "Converts to int",
@@ -56232,6 +56931,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56247,7 +56947,8 @@
       ],
       "properties_accessed": [
         "PartsOfSpeechOA (OwningAtomic)",
-        "PossibilitiesOS (OwningSequence)"
+        "PossibilitiesOS (OwningSequence)",
+        "SubPossibilitiesOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": [
@@ -56297,6 +56998,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56344,6 +57046,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56413,6 +57116,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56457,6 +57161,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56517,6 +57222,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56589,6 +57295,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56627,17 +57334,13 @@
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
           }
         ],
         "utilities_used": []
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56650,6 +57353,47 @@
       "properties_accessed": [
         "AffixSlotsOC (OwningCollection)"
       ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "POSOperations.GetAffixesInSlot": {
+      "class": "POSOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "slot_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveSlot()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILexEntryRepository",
+        "IMoInflAffixSlot",
+        "IMoInflAffixSlotFactory",
+        "IPartOfSpeech",
+        "IPartOfSpeechFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetAffixesInSlot",
+      "methods_called": [],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -56684,6 +57428,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56733,6 +57478,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56777,6 +57523,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56827,6 +57574,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56879,6 +57627,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56920,6 +57669,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -56986,6 +57736,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57032,6 +57783,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57041,6 +57793,65 @@
       "mapping_type": "pure_python",
       "method": "GetParent",
       "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "POSOperations.GetSlotName": {
+      "class": "POSOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [
+          ".get_String()"
+        ],
+        "param_usage": {
+          "slot_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveSlot()"
+          ],
+          "wsHandle": [
+            "arg[0] of __WSHandle()",
+            "arg[0] of get_String()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
+            "description": "Converts to ITsString",
+            "pattern": "ITsString",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILexEntryRepository",
+        "IMoInflAffixSlot",
+        "IMoInflAffixSlotFactory",
+        "IPartOfSpeech",
+        "IPartOfSpeechFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "GetSlotName",
+      "methods_called": [
+        ".get_String()"
+      ],
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
@@ -57079,6 +57890,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57132,6 +57944,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57143,6 +57956,47 @@
       "methods_called": [
         ".get_String()"
       ],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "POSOperations.IsSlotOptional": {
+      "class": "POSOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "slot_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveSlot()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to bool",
+            "pattern": "bool",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILexEntryRepository",
+        "IMoInflAffixSlot",
+        "IMoInflAffixSlotFactory",
+        "IPartOfSpeech",
+        "IPartOfSpeechFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "pure_python",
+      "method": "IsSlotOptional",
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
@@ -57176,6 +58030,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57238,6 +58093,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57288,6 +58144,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57334,6 +58191,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57392,6 +58250,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57408,6 +58267,113 @@
       "utilities_used": [
         "TsStringUtils.MakeString"
       ]
+    },
+    "POSOperations.SetSlotName": {
+      "class": "POSOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "convenience",
+        "methods_called": [
+          ".set_String()"
+        ],
+        "param_usage": {
+          "name": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of MakeString()"
+          ],
+          "slot_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveSlot()"
+          ],
+          "wsHandle": [
+            "arg[0] of __WSHandle()",
+            "arg[1] of MakeString()",
+            "arg[0] of set_String()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          }
+        ],
+        "utilities_used": [
+          "TsStringUtils.MakeString"
+        ]
+      },
+      "lcm_deps": [
+        "ILexEntryRepository",
+        "IMoInflAffixSlot",
+        "IMoInflAffixSlotFactory",
+        "IPartOfSpeech",
+        "IPartOfSpeechFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "convenience",
+      "method": "SetSlotName",
+      "methods_called": [
+        ".set_String()"
+      ],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": [
+        "TsStringUtils.MakeString"
+      ]
+    },
+    "POSOperations.SetSlotOptional": {
+      "class": "POSOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "optional": [
+            "arg[0] of bool()"
+          ],
+          "slot_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveSlot()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to bool",
+            "pattern": "bool",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILexEntryRepository",
+        "IMoInflAffixSlot",
+        "IMoInflAffixSlotFactory",
+        "IPartOfSpeech",
+        "IPartOfSpeechFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "pure_python",
+      "method": "SetSlotOptional",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
     },
     "POSOperations.__init__": {
       "class": "POSOperations",
@@ -57429,6 +58395,7 @@
       },
       "lcm_deps": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -57647,7 +58614,7 @@
           ]
         },
         "properties_accessed": [
-          "Owner",
+          "Hvo",
           "ParagraphsOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -57703,7 +58670,7 @@
         ".Create()"
       ],
       "properties_accessed": [
-        "Owner",
+        "Hvo",
         "ParagraphsOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -57754,6 +58721,42 @@
       "properties_accessed": [
         "ContentsOA (OwningAtomic)",
         "ParagraphsOS (OwningSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "ParagraphOperations.GetOwningText": {
+      "class": "ParagraphOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "paragraph_or_hvo": [
+            "arg[0] of __GetParagraphObject()"
+          ]
+        },
+        "properties_accessed": [
+          "Owner"
+        ],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IText",
+        "IStTxtPara",
+        "IStTxtParaFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "GetOwningText",
+      "methods_called": [],
+      "properties_accessed": [
+        "Owner"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -60988,7 +61991,7 @@
       "class": "PhonFeatureOperations",
       "factories_used": [],
       "inline": {
-        "calls_ensure_write_enabled": false,
+        "calls_ensure_write_enabled": true,
         "factories_used": [],
         "mapping_type": "pure_python",
         "methods_called": [],
@@ -63664,6 +64667,7 @@
         },
         "properties_accessed": [
           "ClassName",
+          "Hvo",
           "PhonRulesOS (OwningSequence)",
           "PhonologicalDataOA (OwningAtomic)",
           "StratumRA (ReferenceAtomic)"
@@ -63683,6 +64687,11 @@
           {
             "description": "Converts to int",
             "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
             "type": "type_conversion"
           }
         ],
@@ -63715,6 +64724,7 @@
       ],
       "properties_accessed": [
         "ClassName",
+        "Hvo",
         "PhonRulesOS (OwningSequence)",
         "PhonologicalDataOA (OwningAtomic)",
         "StratumRA (ReferenceAtomic)"
@@ -74785,6 +75795,7 @@
           ]
         },
         "properties_accessed": [
+          "Hvo",
           "SegmentsOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -74792,11 +75803,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
             "type": "type_conversion"
           }
         ],
@@ -74813,6 +75819,7 @@
       "method": "Exists",
       "methods_called": [],
       "properties_accessed": [
+        "Hvo",
         "SegmentsOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -75264,6 +76271,38 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "SegmentOperations.GetOwningParagraph": {
+      "class": "SegmentOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "segment_or_hvo": [
+            "arg[0] of __GetSegmentObject()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ISegment",
+        "ISegmentFactory",
+        "IStTxtPara",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetOwningParagraph",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "SegmentOperations.GetSyncableProperties": {
       "class": "SegmentOperations",
       "factories_used": [],
@@ -75421,8 +76460,8 @@
           ]
         },
         "properties_accessed": [
+          "Hvo",
           "NotesOS (OwningSequence)",
-          "Owner",
           "SegmentsOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -75462,8 +76501,8 @@
         ".Remove()"
       ],
       "properties_accessed": [
+        "Hvo",
         "NotesOS (OwningSequence)",
-        "Owner",
         "SegmentsOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -75576,16 +76615,11 @@
           ]
         },
         "properties_accessed": [
-          "AnalysesRS (ReferenceSequence)"
+          "AnalysesRS (ReferenceSequence)",
+          "Hvo"
         ],
         "repositories_used": [],
-        "transformations": [
-          {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
-          }
-        ],
+        "transformations": [],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -75599,7 +76633,8 @@
       "method": "ReplaceAnalysis",
       "methods_called": [],
       "properties_accessed": [
-        "AnalysesRS (ReferenceSequence)"
+        "AnalysesRS (ReferenceSequence)",
+        "Hvo"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -84071,6 +85106,7 @@
         },
         "properties_accessed": [
           "Form",
+          "Hvo",
           "MorphBundlesOS (OwningSequence)",
           "MorphRA (ReferenceAtomic)",
           "MsaRA (ReferenceAtomic)",
@@ -84123,6 +85159,7 @@
       ],
       "properties_accessed": [
         "Form",
+        "Hvo",
         "MorphBundlesOS (OwningSequence)",
         "MorphRA (ReferenceAtomic)",
         "MsaRA (ReferenceAtomic)",

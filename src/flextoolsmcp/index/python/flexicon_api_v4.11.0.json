@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.10.0"
+    "version": "4.11.0"
   },
   "categories": {
     "discourse": {
@@ -68,6 +68,7 @@
       "description": "Operations related to grammar",
       "entities": [
         "AdhocProhibition",
+        "AffixSlot",
         "AffixTemplate",
         "AffixTemplateCollection",
         "CompoundRule",
@@ -511,6 +512,264 @@
       "type": "class",
       "usage_hint": "Class for working with grammar data in FieldWorks"
     },
+    "AffixSlot": {
+      "base_classes": [
+        "LCMObjectWrapper"
+      ],
+      "category": "grammar",
+      "description": "Wrapper for inflectional affix slot objects providing unified\ninterface access.\n\nHandles MoInflAffixSlot objects transparently, providing common\nproperties without exposing ClassName or casting.\n\nAttributes:\n_obj: The base interface object (IMoInflAffixSlot)\n_concrete: The concrete type object (IMoInflAffixSlot)\n",
+      "example": "        slot = posOps.GetAffixSlots(verb)[0]\n        print(slot.name)\n        if slot.optional:\n            print(\"Slot may be left empty\")",
+      "id": "AffixSlot",
+      "lcm_dependencies": [
+        "IPartOfSpeech",
+        "ITsString",
+        "PartOfSpeechTags"
+      ],
+      "methods": [
+        {
+          "description": "Initialize AffixSlot wrapper with a slot object.\n",
+          "example": "            slot = posOps.GetAffixSlots(verb)[0]\n            wrapped = AffixSlot(slot)",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "__init__",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An IMoInflAffixSlot object. Typically from ``POSOperations.GetAffixSlots()`` or ``AffixTemplate.prefix_slots`` / ``.suffix_slots`` / ``.proclitic_slots`` / ``.enclitic_slots``.",
+              "name": "lcm_slot",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "__init__(lcm_slot)",
+          "summary": "Initialize AffixSlot wrapper with a slot object.",
+          "usage_hint": null
+        }
+      ],
+      "name": "AffixSlot",
+      "namespace": "flexicon.code.Grammar.affix_slot",
+      "properties": [
+        {
+          "description": "Get the slot's name.\n",
+          "example": "            print(f\"Slot: {slot.name}\")",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": true,
+          "is_staticmethod": false,
+          "lcm_mapping": {
+            "calls_ensure_write_enabled": false,
+            "factories_used": [],
+            "mapping_type": "direct",
+            "methods_called": [
+              ".get_String()"
+            ],
+            "param_usage": {},
+            "properties_accessed": [],
+            "repositories_used": [],
+            "transformations": [
+              {
+                "description": "Converts to int",
+                "pattern": "int",
+                "type": "type_conversion"
+              },
+              {
+                "description": "Converts to ITsString",
+                "pattern": "ITsString",
+                "type": "type_conversion"
+              }
+            ],
+            "utilities_used": []
+          },
+          "name": "name",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty string when field is not set",
+              "value": "\"\""
+            },
+            "failure": [],
+            "notes": [
+              "Flexicon handles '***' placeholder automatically, returns ''"
+            ],
+            "success": {
+              "description": "str: The slot name in the analysis writing system, or empty string if not set (including FLEx's ``***`` null marker).",
+              "type": "str"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "str",
+          "returns": "str: The slot name in the analysis writing system, or empty string if not set (including FLEx's ``***`` null marker). ",
+          "signature": "name()",
+          "summary": "Get the slot's name.",
+          "usage_hint": null
+        },
+        {
+          "description": "Check whether the slot may be left empty.\n",
+          "example": "            if slot.optional:\n                print(\"This slot may be left empty\")",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": true,
+          "is_staticmethod": false,
+          "lcm_mapping": {
+            "calls_ensure_write_enabled": false,
+            "factories_used": [],
+            "mapping_type": "pure_python",
+            "methods_called": [],
+            "param_usage": {},
+            "properties_accessed": [],
+            "repositories_used": [],
+            "transformations": [
+              {
+                "description": "Converts to int",
+                "pattern": "int",
+                "type": "type_conversion"
+              },
+              {
+                "description": "Converts to bool",
+                "pattern": "bool",
+                "type": "type_conversion"
+              }
+            ],
+            "utilities_used": []
+          },
+          "name": "optional",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "bool: True if the slot is optional, False if it is obligatory (FLEx's default for a newly-created slot).",
+              "type": "bool"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "bool",
+          "returns": "bool: True if the slot is optional, False if it is obligatory (FLEx's default for a newly-created slot). ",
+          "signature": "optional()",
+          "summary": "Check whether the slot may be left empty.",
+          "usage_hint": "validation"
+        },
+        {
+          "description": "Get the inflectional-affix MSAs that fill this slot.\n",
+          "example": "            for affix_msa in slot.affixes:\n                print(affix_msa.Hvo)\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": true,
+          "is_staticmethod": false,
+          "lcm_mapping": {
+            "calls_ensure_write_enabled": false,
+            "factories_used": [],
+            "mapping_type": "pure_python",
+            "methods_called": [],
+            "param_usage": {},
+            "properties_accessed": [],
+            "repositories_used": [],
+            "transformations": [
+              {
+                "description": "Conditional logic for handling special cases",
+                "type": "conditional"
+              },
+              {
+                "description": "Converts to int",
+                "pattern": "int",
+                "type": "type_conversion"
+              },
+              {
+                "description": "Converts to list",
+                "pattern": "list",
+                "type": "type_conversion"
+              }
+            ],
+            "utilities_used": []
+          },
+          "name": "affixes",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "list: ``IMoInflAffMsa`` objects whose ``SlotsRC`` contains this slot, read via the direct ``IMoInflAffixSlot.Affixes`` back-reference. Empty list if none.",
+              "type": "list[object]"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "list[object]",
+          "returns": "list: ``IMoInflAffMsa`` objects whose ``SlotsRC`` contains this slot, read via the direct ``IMoInflAffixSlot.Affixes`` back-reference. Empty list if none. ",
+          "signature": "affixes()",
+          "summary": "Get the inflectional-affix MSAs that fill this slot.",
+          "usage_hint": null
+        },
+        {
+          "description": "Get the owner Part of Speech for this slot.\n",
+          "example": "            if slot.owner_pos:\n                print(f\"Slot for POS: {slot.owner_pos.Name}\")",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": true,
+          "is_staticmethod": false,
+          "lcm_mapping": {
+            "calls_ensure_write_enabled": false,
+            "factories_used": [],
+            "mapping_type": "pure_python",
+            "methods_called": [],
+            "param_usage": {},
+            "properties_accessed": [],
+            "repositories_used": [],
+            "transformations": [
+              {
+                "description": "Conditional logic for handling special cases",
+                "type": "conditional"
+              },
+              {
+                "description": "Converts to int",
+                "pattern": "int",
+                "type": "type_conversion"
+              }
+            ],
+            "utilities_used": []
+          },
+          "name": "owner_pos",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "IPartOfSpeech or None: The owner POS, or None if not available.",
+              "type": "IPartOfSpeech or None"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "IPartOfSpeech or None",
+          "returns": "IPartOfSpeech or None: The owner POS, or None if not available. ",
+          "signature": "owner_pos()",
+          "summary": "Get the owner Part of Speech for this slot.",
+          "usage_hint": null
+        }
+      ],
+      "source_file": "Grammar/affix_slot",
+      "summary": "Wrapper for inflectional affix slot objects providing unified\ninterface access.",
+      "tags": [
+        "grammar"
+      ],
+      "top_level_importable": false,
+      "type": "class",
+      "usage_hint": "Class for working with grammar data in FieldWorks"
+    },
     "AffixTemplate": {
       "base_classes": [
         "LCMObjectWrapper"
@@ -768,7 +1027,7 @@
         },
         {
           "description": "Get the prefix slots collection.\n",
-          "example": "            for slot in wrapped.prefix_slots:\n                print(f\"Prefix slot: {slot.Name}\")\n",
+          "example": "            for slot in wrapped.prefix_slots:\n                print(f\"Prefix slot: {slot.name}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -792,11 +1051,6 @@
                 "description": "Converts to int",
                 "pattern": "int",
                 "type": "type_conversion"
-              },
-              {
-                "description": "Converts to list",
-                "pattern": "list",
-                "type": "type_conversion"
               }
             ],
             "utilities_used": []
@@ -810,21 +1064,21 @@
             "failure": [],
             "notes": [],
             "success": {
-              "description": "List or collection of prefix slot objects, or empty list if none.",
+              "description": "list: AffixSlot wrapper objects, or empty list if none. Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes``, and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) for backward compatibility.",
               "type": "list[object]"
             }
           },
           "parameters": [],
           "raises": [],
           "return_type": "list[object]",
-          "returns": "List or collection of prefix slot objects, or empty list if none. ",
+          "returns": "list: AffixSlot wrapper objects, or empty list if none. Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes``, and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) for backward compatibility. ",
           "signature": "prefix_slots()",
           "summary": "Get the prefix slots collection.",
           "usage_hint": null
         },
         {
           "description": "Get the suffix slots collection.\n",
-          "example": "            for slot in wrapped.suffix_slots:\n                print(f\"Suffix slot: {slot.Name}\")\n",
+          "example": "            for slot in wrapped.suffix_slots:\n                print(f\"Suffix slot: {slot.name}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -848,33 +1102,34 @@
                 "description": "Converts to int",
                 "pattern": "int",
                 "type": "type_conversion"
-              },
-              {
-                "description": "Converts to list",
-                "pattern": "list",
-                "type": "type_conversion"
               }
             ],
             "utilities_used": []
           },
           "name": "suffix_slots",
           "output_behavior": {
-            "empty": null,
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "list: AffixSlot wrapper objects, or empty list if none. Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes``, and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) for backward compatibility.",
+              "type": "list"
+            }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "",
-          "returns": "List or collection of suffix slot objects, or empty list if none. ",
+          "return_type": "list",
+          "returns": "list: AffixSlot wrapper objects, or empty list if none. Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes``, and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) for backward compatibility. ",
           "signature": "suffix_slots()",
           "summary": "Get the suffix slots collection.",
-          "usage_hint": null
+          "usage_hint": "enumeration"
         },
         {
           "description": "Get the proclitic slots collection.\n",
-          "example": "            for slot in wrapped.proclitic_slots:\n                print(f\"Proclitic slot: {slot.Name}\")\n",
+          "example": "            for slot in wrapped.proclitic_slots:\n                print(f\"Proclitic slot: {slot.name}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -898,33 +1153,34 @@
                 "description": "Converts to int",
                 "pattern": "int",
                 "type": "type_conversion"
-              },
-              {
-                "description": "Converts to list",
-                "pattern": "list",
-                "type": "type_conversion"
               }
             ],
             "utilities_used": []
           },
           "name": "proclitic_slots",
           "output_behavior": {
-            "empty": null,
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "list: AffixSlot wrapper objects, or empty list if none. Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes``, and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) for backward compatibility.",
+              "type": "list"
+            }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "",
-          "returns": "List or collection of proclitic slot objects, or empty list if none. ",
+          "return_type": "list",
+          "returns": "list: AffixSlot wrapper objects, or empty list if none. Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes``, and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) for backward compatibility. ",
           "signature": "proclitic_slots()",
           "summary": "Get the proclitic slots collection.",
-          "usage_hint": null
+          "usage_hint": "enumeration"
         },
         {
           "description": "Get the enclitic slots collection.\n",
-          "example": "            for slot in wrapped.enclitic_slots:\n                print(f\"Enclitic slot: {slot.Name}\")\n",
+          "example": "            for slot in wrapped.enclitic_slots:\n                print(f\"Enclitic slot: {slot.name}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -948,29 +1204,30 @@
                 "description": "Converts to int",
                 "pattern": "int",
                 "type": "type_conversion"
-              },
-              {
-                "description": "Converts to list",
-                "pattern": "list",
-                "type": "type_conversion"
               }
             ],
             "utilities_used": []
           },
           "name": "enclitic_slots",
           "output_behavior": {
-            "empty": null,
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "list: AffixSlot wrapper objects, or empty list if none. Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes``, and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) for backward compatibility.",
+              "type": "list"
+            }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "",
-          "returns": "List or collection of enclitic slot objects, or empty list if none. ",
+          "return_type": "list",
+          "returns": "list: AffixSlot wrapper objects, or empty list if none. Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes``, and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) for backward compatibility. ",
           "signature": "enclitic_slots()",
           "summary": "Get the enclitic slots collection.",
-          "usage_hint": null
+          "usage_hint": "enumeration"
         },
         {
           "description": "Get the number of prefix slots.\n",
@@ -4024,6 +4281,45 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Check whether an allomorph is an abstract underlying form.\n\nFLEx marks abstract underlying forms with the \"Abstract form\"\ncheckbox; they matter for parser work.\n",
+          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     print(allomorphOps.GetIsAbstract(allomorphs[0]))\n            False\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetIsAbstract",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If allomorph_or_hvo is None."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "bool: True if this is an abstract form, False otherwise.",
+              "type": "bool"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IMoForm object or HVO. Accepts a lexeme form (``entry.LexemeFormOA``), an alternate form, an HVO int, or an ``Allomorph`` wrapper from ``GetAll()``.",
+              "name": "allomorph_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If allomorph_or_hvo is None."
+          ],
+          "return_type": "bool",
+          "returns": "bool: True if this is an abstract form, False otherwise. ",
+          "signature": "GetIsAbstract(allomorph_or_hvo)",
+          "summary": "Check whether an allomorph is an abstract underlying form.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Returns the morpheme type (stem, root, prefix, suffix, infix, affix).",
           "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     morphType = allomorphOps.GetMorphType(allomorphs[0])\n            ...     # Get type name\n            ...     wsHandle = project.GetDefaultAnalysisWSHandle()\n            ...     type_name = ITsString(morphType.Name.get_String(wsHandle)).Text\n            ...     print(type_name)\n            stem\n",
           "is_classmethod": false,
@@ -4419,6 +4715,55 @@
           "returns": "str: The internal path where the audio file was stored (relative to project). ",
           "signature": "SetFormAudio(allomorph_or_hvo, file_path, wsHandle=None)",
           "summary": "Set an audio recording for an allomorph's Form field.",
+          "usage_hint": "modification"
+        },
+        {
+          "description": "Set whether an allomorph is an abstract underlying form.\n",
+          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     allomorphOps.SetIsAbstract(allomorphs[0], True)\n            ...     print(allomorphOps.GetIsAbstract(allomorphs[0]))\n            True\n",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "SetIsAbstract",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If allomorph_or_hvo or value is None."
+              }
+            ],
+            "notes": [
+              "Modifies existing data - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IMoForm object or HVO. Accepts a lexeme form (``entry.LexemeFormOA``), an alternate form, an HVO int, or an ``Allomorph`` wrapper from ``GetAll()``.",
+              "name": "allomorph_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "True to mark as abstract, False to clear.",
+              "name": "value",
+              "type": "bool"
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_NullParameterError: If allomorph_or_hvo or value is None."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "SetIsAbstract(allomorph_or_hvo, value)",
+          "summary": "Set whether an allomorph is an abstract underlying form.",
           "usage_hint": "modification"
         },
         {
@@ -7102,8 +7447,8 @@
           "usage_hint": null
         },
         {
-          "description": "Create a new anthropology item.\n\nCreates a new top-level ICmAnthroItem in the project's anthropology list.\nUse CreateSubitem() to create hierarchical items.\n",
-          "example": "            >>> # Create a simple item\n            >>> item = project.Anthropology.Create(\"Marriage Customs\")\n            >>> print(project.Anthropology.GetName(item))\n            Marriage Customs\n\n            >>> # Create with abbreviation and OCM code\n            >>> item = project.Anthropology.Create(\n            ...     \"Marriage Customs\",\n            ...     abbreviation=\"MAR\",\n            ...     anthro_code=\"586\"\n            ... )\n            >>> print(project.Anthropology.GetAnthroCode(item))\n            586\n\n            >>> # Create multiple items\n            >>> kinship = project.Anthropology.Create(\"Kinship\", \"KIN\", \"600\")\n            >>> religion = project.Anthropology.Create(\"Religion\", \"REL\", \"770\")\n",
+          "description": "Create a new anthropology item.\n\nThis is the canonical creation path for both top-level items and\nsubitems; CreateSubitem delegates to it with parent=parent_item.\n\nCreates a new top-level ICmAnthroItem in the project's anthropology list.\nUse CreateSubitem() to create hierarchical items.\n",
+          "example": "            >>> # Create a simple item\n            >>> item = project.Anthropology.Create(\"Marriage Customs\")\n            >>> print(project.Anthropology.GetName(item))\n            Marriage Customs\n\n            >>> # Create with abbreviation and OCM code\n            >>> item = project.Anthropology.Create(\n            ...     \"Marriage Customs\",\n            ...     abbreviation=\"MAR\",\n            ...     anthro_code=\"586\"\n            ... )\n            >>> print(project.Anthropology.GetAnthroCode(item))\n            586\n\n            >>> # Create multiple items\n            >>> kinship = project.Anthropology.Create(\"Kinship\", \"KIN\", \"600\")\n            >>> religion = project.Anthropology.Create(\"Religion\", \"REL\", \"770\")\n\n            >>> # A subitem is just a Create with a parent\n            >>> wedding = project.Anthropology.Create(\n            ...     \"Wedding Ceremony\", \"WED\", \"586.1\", parent=marriage)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -7126,7 +7471,11 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If an item with this name already exists."
+                "when": "_ParameterError: If a top-level item with this name already"
+              },
+              {
+                "exception": "CreateSubitem",
+                "when": "'s behaviour), or if parent is invalid."
               }
             ],
             "notes": [
@@ -7153,6 +7502,11 @@
               "default": null,
               "name": "anthro_code",
               "type": ""
+            },
+            {
+              "default": null,
+              "name": "parent",
+              "type": ""
             }
           ],
           "raises": [
@@ -7163,16 +7517,18 @@
             "the pending harmonisation decision).",
             "AttributeError: If name is not a str (from a throwaway .strip()",
             "call retained per C7(b); not a deliberate type check).",
-            "FP_ParameterError: If an item with this name already exists."
+            "FP_ParameterError: If a top-level item with this name already",
+            "exists (subitems are not uniqueness-checked, preserving",
+            "CreateSubitem's behaviour), or if parent is invalid."
           ],
           "return_type": "ICmAnthroItem",
           "returns": "ICmAnthroItem: The newly created anthropology item object. ",
-          "signature": "Create(name, abbreviation=None, anthro_code=None)",
+          "signature": "Create(name, abbreviation=None, anthro_code=None, parent=None)",
           "summary": "Create a new anthropology item.",
           "usage_hint": "creation"
         },
         {
-          "description": "Create a new anthropology item as a child of an existing item.\n\nCreates a hierarchical relationship where the new item is a subcategory\nor more specific aspect of the parent item.\n",
+          "description": "Create a new anthropology item as a child of an existing item.\n\nThin wrapper over Create with parent=parent_item; all creation\nlogic (including the Q-242A/Q-242D whitespace handling) lives on\nCreate.\n\nCreates a hierarchical relationship where the new item is a subcategory\nor more specific aspect of the parent item.\n",
           "example": "            >>> # Create parent item\n            >>> marriage = project.Anthropology.Create(\"Marriage Customs\", \"MAR\", \"586\")\n            >>>\n            >>> # Create subitems\n            >>> wedding = project.Anthropology.CreateSubitem(\n            ...     marriage, \"Wedding Ceremony\", \"WED\", \"586.1\"\n            ... )\n            >>> gifts = project.Anthropology.CreateSubitem(\n            ...     marriage, \"Marriage Gifts\", \"GIFT\", \"586.2\"\n            ... )\n            >>>\n            >>> # Verify hierarchy\n            >>> parent = project.Anthropology.GetParent(wedding)\n            >>> print(project.Anthropology.GetName(parent))\n            Marriage Customs\n            >>>\n            >>> # Get all subitems\n            >>> for sub in project.Anthropology.GetSubitems(marriage):\n            ...     print(project.Anthropology.GetName(sub))\n            Wedding Ceremony\n            Marriage Gifts\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -17082,8 +17438,8 @@
           "usage_hint": null
         },
         {
-          "description": "Create a new research notebook record.\n\nCreates a top-level notebook record with the specified title and optional\ncontent. Use CreateSubRecord() to create hierarchical sub-records.\n",
-          "example": "            >>> # Create a basic record\n            >>> record = project.DataNotebook.Create(\n            ...     \"Interview with Speaker A\",\n            ...     \"Notes from interview about kinship terms\"\n            ... )\n            >>> print(project.DataNotebook.GetTitle(record))\n            Interview with Speaker A\n\n            >>> # Create with specific writing system\n            >>> record = project.DataNotebook.Create(\n            ...     \"Entrevista con Hablante A\",\n            ...     content=\"Notas sobre terminología de parentesco\",\n            ...     wsHandle=project.WSHandle('es')\n            ... )\n\n            >>> # Create and configure\n            >>> record = project.DataNotebook.Create(\"Field Observation\")\n            >>> project.DataNotebook.SetDateOfEvent(record, \"2024-01-15\")\n            >>> project.DataNotebook.SetStatus(record, \"Draft\")\n",
+          "description": "Create a new research notebook record.\n\nThis is the canonical creation path for both top-level records and\nsub-records; CreateSubRecord delegates to it with\nparent=parent_record_or_hvo.\n\nCreates a top-level notebook record with the specified title and optional\ncontent. Use CreateSubRecord() to create hierarchical sub-records.\n",
+          "example": "            >>> # Create a basic record\n            >>> record = project.DataNotebook.Create(\n            ...     \"Interview with Speaker A\",\n            ...     \"Notes from interview about kinship terms\"\n            ... )\n            >>> print(project.DataNotebook.GetTitle(record))\n            Interview with Speaker A\n\n            >>> # Create with specific writing system\n            >>> record = project.DataNotebook.Create(\n            ...     \"Entrevista con Hablante A\",\n            ...     content=\"Notas sobre terminología de parentesco\",\n            ...     wsHandle=project.WSHandle('es')\n            ... )\n\n            >>> # A sub-record is just a Create with a parent\n            >>> sub = project.DataNotebook.Create(\n            ...     \"Kinship Terminology\", parent=record)\n\n            >>> # Create and configure\n            >>> record = project.DataNotebook.Create(\"Field Observation\")\n            >>> project.DataNotebook.SetDateOfEvent(record, \"2024-01-15\")\n            >>> project.DataNotebook.SetStatus(record, \"Draft\")\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -17102,7 +17458,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If title is empty."
+                "when": "_ParameterError: If title is empty, or if the parent doesn't"
               }
             ],
             "notes": [
@@ -17131,21 +17487,28 @@
               "description": "Optional writing system handle. Defaults to analysis WS.",
               "name": "wsHandle",
               "type": ""
+            },
+            {
+              "default": null,
+              "description": "Optional parent record (IRnGenericRec) or its HVO. If None (default), creates a top-level record; if given, creates a sub-record of that parent. Defaults to None.",
+              "name": "parent",
+              "type": ""
             }
           ],
           "raises": [
             "FP_ReadOnlyError: If project is not opened with write enabled.",
             "FP_NullParameterError: If title is None.",
-            "FP_ParameterError: If title is empty."
+            "FP_ParameterError: If title is empty, or if the parent doesn't",
+            "exist."
           ],
           "return_type": "IRnGenericRec",
           "returns": "IRnGenericRec: The newly created notebook record object. ",
-          "signature": "Create(title, content=None, wsHandle=None)",
+          "signature": "Create(title, content=None, wsHandle=None, parent=None)",
           "summary": "Create a new research notebook record.",
           "usage_hint": "creation"
         },
         {
-          "description": "Create a new sub-record under a parent notebook record.\n\nCreates a child record in the hierarchical structure. Sub-records\ninherit the context of their parent but can have their own properties,\nlinks, and media.\n",
+          "description": "Create a new sub-record under a parent notebook record.\n\nThin wrapper over Create with parent=parent_record_or_hvo; all\ncreation logic lives on Create.\n\nCreates a child record in the hierarchical structure. Sub-records\ninherit the context of their parent but can have their own properties,\nlinks, and media.\n",
           "example": "            >>> # Create hierarchical structure\n            >>> parent = project.DataNotebook.Create(\"Interview with Speaker A\")\n            >>> sub1 = project.DataNotebook.CreateSubRecord(\n            ...     parent,\n            ...     \"Kinship Terminology\",\n            ...     \"Discussion of family relationship terms\"\n            ... )\n            >>> sub2 = project.DataNotebook.CreateSubRecord(\n            ...     parent,\n            ...     \"Color Terms\",\n            ...     \"Basic color terminology elicitation\"\n            ... )\n            >>> # Create nested sub-records\n            >>> subsub = project.DataNotebook.CreateSubRecord(\n            ...     sub1,\n            ...     \"Parent Terms\",\n            ...     \"Terms for mother and father\"\n            ... )\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -19367,6 +19730,7 @@
         "IDsConstChart",
         "IDsConstChartFactory",
         "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
         "IText",
         "ITsString",
         "TsStringUtils"
@@ -19474,8 +19838,8 @@
           "usage_hint": null
         },
         {
-          "description": "Create a new chart for a text.\n\nCreates either a constituent chart (IConstChart) or discourse chart based\non the chart_type parameter. The chart will be added to the text's chart\ncollection.\n",
-          "example": "            >>> discourse_ops = DiscourseOperations(project)\n            >>> text = list(project.Texts.GetAll())[0]\n            >>>\n            >>> # Create a constituent chart (default)\n            >>> chart = discourse_ops.CreateChart(text, \"Main Analysis\")\n            >>> print(discourse_ops.GetChartName(chart))\n            Main Analysis\n            >>>\n            >>> # Create a discourse chart\n            >>> discourse_chart = discourse_ops.CreateChart(text, \"Discourse\", \"discourse\")\n",
+          "description": "Create a new constituent chart based on a text.\n\nThe chart is owned project-level by ``lp.DiscourseDataOA.ChartsOC``\n(that is where the LCM keeps charts -- texts carry no chart\ncollection) and links back to the text through its ``BasedOnRA``\nreference to the text's StText contents, which is what\nGetAllCharts/GetOwningText read.\n",
+          "example": "            >>> discourse_ops = DiscourseOperations(project)\n            >>> text = list(project.Texts.GetAll())[0]\n            >>>\n            >>> # Create a constituent chart (default)\n            >>> chart = discourse_ops.CreateChart(text, \"Main Analysis\")\n            >>> print(discourse_ops.GetChartName(chart))\n            Main Analysis\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -19494,7 +19858,11 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If name is empty, text is invalid, or chart_type"
+                "when": "_ParameterError: If name is empty, text is invalid, text has no"
+              },
+              {
+                "exception": "StText",
+                "when": "contents, or chart_type is not \"constituent\"."
               }
             ],
             "notes": [
@@ -19524,13 +19892,13 @@
           "raises": [
             "FP_ReadOnlyError: If project was not opened with writeEnabled=True.",
             "FP_NullParameterError: If text_or_hvo or name is None.",
-            "FP_ParameterError: If name is empty, text is invalid, or chart_type",
-            "is not recognized."
+            "FP_ParameterError: If name is empty, text is invalid, text has no",
+            "StText contents, or chart_type is not \"constituent\"."
           ],
           "return_type": "",
-          "returns": "Chart object (IConstChart): The newly created chart. ",
+          "returns": "Chart object (IDsConstChart): The newly created chart. ",
           "signature": "CreateChart(text_or_hvo, name, chart_type='constituent')",
-          "summary": "Create a new chart for a text.",
+          "summary": "Create a new constituent chart based on a text.",
           "usage_hint": "creation"
         },
         {
@@ -19711,7 +20079,7 @@
             "notes": [],
             "success": {
               "description": "EnumerableWrapper[IConstChart | IDsChart]: Each chart associated with the text.",
-              "type": "EnumerableWrapper[Any]"
+              "type": "EnumerableWrapper[IConstChart | IDsChart]"
             }
           },
           "parameters": [
@@ -19726,7 +20094,7 @@
             "FP_NullParameterError: If text_or_hvo is None.",
             "FP_ParameterError: If the text does not exist or is invalid."
           ],
-          "return_type": "EnumerableWrapper[Any]",
+          "return_type": "EnumerableWrapper[IConstChart | IDsChart]",
           "returns": "EnumerableWrapper[IConstChart | IDsChart]: Each chart associated with the text. ",
           "signature": "GetAllCharts(text_or_hvo)",
           "summary": "Get all charts (discourse and constituent) for a text.",
@@ -33240,6 +33608,58 @@
           "usage_hint": "creation"
         },
         {
+          "description": "Render a feature structure as a short human-readable string\n(READ-ONLY, display only).\n\nThe MSA feature getters (``project.MSA.GetFeatures`` and the\nper-class ``GetStemFeatures`` / ``GetInflAffFeatures`` /\n``GetDerivFromFeatures`` / ``GetDerivToFeatures``, issue #544)\nreturn GUID-keyed specs so they round-trip safely through\n``MakeFeatStruc``. This method turns such a spec -- or a live\n``IFsFeatStruc`` -- into abbreviated bracket notation, e.g.\n``\"[nc: 1/2; num: sg]\"``, with complex values nested:\n``\"[agr: [pers: 3; num: pl]]\"``.\n",
+          "example": "            >>> spec = project.MSA.GetFeatures(sense)\n            >>> print(project.InflectionFeatures.DescribeFeatStruc(spec))\n            [nc: 1/2; num: sg]\n            >>> project.InflectionFeatures.DescribeFeatStruc(deriv_msa,\n            ...                                              slot=\"To\")\n            '[gen: f]'\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "DescribeFeatStruc",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty string when field is not set",
+              "value": "\"\""
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If ``fs_or_spec`` is not one of the shapes"
+              }
+            ],
+            "notes": [
+              "Flexicon handles '***' placeholder automatically, returns ''"
+            ],
+            "success": {
+              "description": "str: ``\"\"`` for ``None`` (or an owner whose feature structure is null); ``\"[]\"`` for an empty structure; otherwise ``\"[feat: val; ...]\"``. Each feature and value is labelled by its analysis abbreviation, falling back to its name, falling back to the raw key when neither is set or the GUID/HVO no longer resolves.",
+              "type": "str"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Any of: - a spec dict as returned by the #544 getters (``{featGuid: valGuid | {...}}``); keys/values may also be HVOs, LCM objects or wrappers, as ``MakeFeatStruc`` accepts; - the C4 sync dict produced for ``GetSyncableProperties`` (``{\"TypeGuid\": ..., \"specs\": {...}}``); - an ``IFsFeatStruc`` (object, HVO or wrapper); - an object that owns a feature structure (an MSA, a POS, a natural class, ...), read via its owning property; - ``None``.",
+              "name": "fs_or_spec",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Only for an owner with two feature-structure properties (``MoDerivAffMsa``: ``\"From\"``/``\"To\"``; ``PartOfSpeech``: ``\"Default\"``/``\"InherFeatVal\"``). Ignored otherwise.",
+              "name": "slot",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ParameterError: If ``fs_or_spec`` is not one of the shapes",
+            "above, or is an owner whose ``ClassName`` does not own a",
+            "feature structure (or needs ``slot=`` and none was given)."
+          ],
+          "return_type": "str",
+          "returns": "str: ``\"\"`` for ``None`` (or an owner whose feature structure is null); ``\"[]\"`` for an empty structure; otherwise ``\"[feat: val; ...]\"``. Each feature and value is labelled by its analysis abbreviation, falling back to its name, falling back to the raw key when neither is set or the GUID/HVO no longer resolves. ",
+          "signature": "DescribeFeatStruc(fs_or_spec, slot=None)",
+          "summary": "Render a feature structure as a short human-readable string\n(READ-ONLY, display only).",
+          "usage_hint": null
+        },
+        {
           "description": "Check whether an inflection feature with the given name exists.\n",
           "example": "",
           "is_classmethod": false,
@@ -34038,7 +34458,7 @@
           "returns": "IFsFeatStruc: The populated feature structure, attached to ``owner``'s C1-resolved owning property. ",
           "signature": "MakeFeatStruc(specs, owner=None, slot=None)",
           "summary": "Build an IFsFeatStruc populated from user-facing specs.",
-          "usage_hint": null
+          "usage_hint": "creation"
         },
         {
           "description": "Create a new IFsFeatStrucType under ``MsFeatureSystemOA.TypesOC``.\n\nUse this to introduce a structural grouping for inflection\nfeatures that will share a FsFeatStruc shape -- for example,\nBantu's \"tCommonAgr\" type, which groups person, number, and\nnoun-class features.\n\nThe new type is attached to ``MsFeatureSystemOA.TypesOC``\nBEFORE its Name and Abbreviation multistrings are written\n(Phase 2 ownership rule), so the property setters never hit\nan orphan LCM object.\n\nA fresh random GUID is generated. To create a catalog-aligned\ntype with a canonical GUID, use the bulk ImportCatalog path\ninstead -- the EticGlossList parser handles fsType entries\nas part of the full feature-system import.\n",
@@ -34605,7 +35025,7 @@
           "usage_hint": "creation"
         },
         {
-          "description": "Add a new sense to a lexical entry.\n",
+          "description": "Add a new sense to a lexical entry.\n\nThin wrapper over project.Senses.Create; all creation logic\nlives there.\n",
           "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> sense = project.LexEntry.AddSense(entry, \"to move rapidly on foot\")\n            >>> gloss = project.LexiconGetSenseGloss(sense)\n            >>> print(gloss)\n            to move rapidly on foot\n\n            >>> # Add sense in specific writing system\n            >>> sense_fr = project.LexEntry.AddSense(entry, \"courir\",\n            ...                                       project.WSHandle('fr'))\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -34625,7 +35045,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If gloss is empty"
+                "when": "_ParameterError: If gloss is empty, or if the parent is"
               }
             ],
             "notes": [
@@ -34659,7 +35079,9 @@
           "raises": [
             "FP_ReadOnlyError: If project is not opened with write enabled",
             "FP_NullParameterError: If entry_or_hvo or gloss is None",
-            "FP_ParameterError: If gloss is empty"
+            "FP_ParameterError: If gloss is empty, or if the parent is",
+            "provably not a lexical entry (a sense goes via",
+            "project.Senses.CreateSubsense)"
           ],
           "return_type": "ILexSense",
           "returns": "ILexSense: The newly created sense object ",
@@ -38735,6 +39157,12 @@
       "category": "lexicon",
       "common_patterns": [
         {
+          "code": "project.Senses.AddDoNotPublishIn(sense, \"School Dictionary\")",
+          "description": "Exclude this sense from a publication.",
+          "operation": "create",
+          "source": "docstring"
+        },
+        {
           "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif senses:\n    ex = project.Senses.AddExample(senses[0], \"She runs every morning.\")\n    # Add translation (would need additional code)\n    print(f\"Added example: {ex.Hvo}\")",
           "description": "Add a new example sentence to a sense.",
           "operation": "create",
@@ -38749,6 +39177,12 @@
         {
           "code": "entry = project.LexEntry.Find(\"run\")\nsense = entry.SensesOS[0]\nall_senses = project.Senses.GetAllSenses(sense)\nprint(f\"Total (including subsenses): {len(all_senses)}\")\nfor s in all_senses:\n    gloss = project.Senses.GetGloss(s)\n    depth = len(list(s.PathToRoot)) - 2\n    indent = \"  \" * depth\n    print(f\"{indent}{gloss}\")",
           "description": "Get this sense and all its subsenses recursively.",
+          "operation": "read",
+          "source": "docstring"
+        },
+        {
+          "code": "entry = project.LexEntry.Find(\"bank\")\nsense = entry.SensesOS[1]\nproject.Senses.GetDoNotPublishIn(sense)\n            ['School Dictionary']",
+          "description": "Get the publications this sense should not be published in.",
           "operation": "read",
           "source": "docstring"
         },
@@ -38774,6 +39208,12 @@
           "code": "# Merge duplicate sense into main sense with auto-deduplication\nkeep = project.Senses.Find(...)\nremove = project.Senses.Find(...)\nproject.Senses.MergeObject(keep, remove, fLoseNoStringData=True)\n# 'remove' is deleted, data merged into 'keep'\n# Any duplicate examples are also auto-removed\n\n# Result with fLoseNoStringData=True:\n# Definition: \"defn 1; defn 2\" (LibLCM uses SEMICOLON separator)\n# Gloss: \"gloss 1; gloss 2\" (LibLCM uses SEMICOLON separator)",
           "description": "Merge one sense into another (IRREVERSIBLE operation).",
           "operation": "merge",
+          "source": "docstring"
+        },
+        {
+          "code": "project.Senses.RemoveDoNotPublishIn(sense, \"School Dictionary\")",
+          "description": "Remove a publication from this sense's exclude list, so the sense is\npublished there again.",
+          "operation": "delete",
           "source": "docstring"
         }
       ],
@@ -38829,6 +39269,62 @@
           "returns": "",
           "signature": "AddAnthroCode(sense_or_hvo, anthro_code)",
           "summary": "Add an anthropology code to a sense.",
+          "usage_hint": "creation"
+        },
+        {
+          "description": "Exclude this sense from a publication.\n",
+          "example": "            >>> project.Senses.AddDoNotPublishIn(sense, \"School Dictionary\")",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "AddDoNotPublishIn",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If project is not opened with write enabled"
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If sense_or_hvo or publication is None"
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If publication name not found"
+              }
+            ],
+            "notes": [
+              "Creates new object - requires write access"
+            ],
+            "success": {
+              "type": "None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Either an ILexSense object or its HVO",
+              "name": "sense_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Publication name (str) or ICmPossibility object",
+              "name": "publication",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If project is not opened with write enabled",
+            "FP_NullParameterError: If sense_or_hvo or publication is None",
+            "FP_ParameterError: If publication name not found"
+          ],
+          "return_type": "None",
+          "returns": "",
+          "signature": "AddDoNotPublishIn(sense_or_hvo, publication)",
+          "summary": "Exclude this sense from a publication.",
           "usage_hint": "creation"
         },
         {
@@ -39180,8 +39676,8 @@
           "usage_hint": null
         },
         {
-          "description": "Create a new sense for a lexical entry.\n",
-          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> sense = project.Senses.Create(entry, \"to run\")\n            >>> print(project.Senses.GetGloss(sense))\n            to run\n\n            >>> # Create with specific writing system\n            >>> sense_fr = project.Senses.Create(entry, \"courir\",\n            ...                                   project.WSHandle('fr'))\n",
+          "description": "Create a new sense for a lexical entry, or a subsense under a sense.\n\nThis is the canonical creation path for both top-level senses and\nsubsenses; CreateSubsense and LexEntry.AddSense delegate to it.\n",
+          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> sense = project.Senses.Create(entry, \"to run\")\n            >>> print(project.Senses.GetGloss(sense))\n            to run\n\n            >>> # Create with specific writing system\n            >>> sense_fr = project.Senses.Create(entry, \"courir\",\n            ...                                   project.WSHandle('fr'))\n\n            >>> # A sense parent creates a subsense\n            >>> sub = project.Senses.Create(sense, \"to run (of water)\")\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -39200,7 +39696,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If gloss is empty."
+                "when": "_ParameterError: If gloss is empty, or if an HVO parent is"
               }
             ],
             "notes": [
@@ -39214,7 +39710,7 @@
           "parameters": [
             {
               "default": null,
-              "description": "The ILexEntry object or HVO.",
+              "description": "The parent object or HVO -- an ILexEntry for a top-level sense, or an ILexSense for a subsense. A subsense is itself an ILexSense owned by another sense, so sense and subsense parents take the same path.",
               "name": "entry_or_hvo",
               "type": ""
             },
@@ -39234,16 +39730,17 @@
           "raises": [
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If entry_or_hvo or gloss is None.",
-            "FP_ParameterError: If gloss is empty."
+            "FP_ParameterError: If gloss is empty, or if an HVO parent is",
+            "provably neither an entry nor a sense."
           ],
           "return_type": "ILexSense",
           "returns": "ILexSense: The newly created sense object. ",
           "signature": "Create(entry_or_hvo, gloss, wsHandle=None)",
-          "summary": "Create a new sense for a lexical entry.",
+          "summary": "Create a new sense for a lexical entry, or a subsense under a sense.",
           "usage_hint": "creation"
         },
         {
-          "description": "Create a new subsense under a parent sense.\n",
+          "description": "Create a new subsense under a parent sense.\n\nThin wrapper over Create with a sense parent; all creation logic\nlives on Create.\n",
           "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     subsense = project.Senses.CreateSubsense(senses[0], \"to run (of water)\")\n            ...     print(project.Senses.GetGloss(subsense))\n            to run (of water)\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -39263,7 +39760,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If gloss is empty."
+                "when": "_ParameterError: If gloss is empty, or if the parent is"
               }
             ],
             "notes": [
@@ -39297,7 +39794,8 @@
           "raises": [
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If parent_sense_or_hvo or gloss is None.",
-            "FP_ParameterError: If gloss is empty."
+            "FP_ParameterError: If gloss is empty, or if the parent is",
+            "provably not a sense (an entry goes via Create)."
           ],
           "return_type": "ILexSense",
           "returns": "ILexSense: The newly created subsense object. ",
@@ -39929,6 +40427,49 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Get the publications this sense should not be published in.\n\nA sense is published in every publication its entry is published in\nunless it is explicitly excluded here. An empty list is the normal\nstate.\n",
+          "element_source_property": "DoNotPublishInRC",
+          "element_type": "ICmPossibility",
+          "example": "            >>> entry = project.LexEntry.Find(\"bank\")\n            >>> sense = entry.SensesOS[1]\n            >>> project.Senses.GetDoNotPublishIn(sense)\n            ['School Dictionary']",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetDoNotPublishIn",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "list: List of publication names",
+              "type": "list"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Either an ILexSense object or its HVO",
+              "name": "sense_or_hvo",
+              "type": ""
+            }
+          ],
+          "polymorphic": true,
+          "raises": [],
+          "return_type": "list",
+          "returns": "list: List of publication names ",
+          "signature": "GetDoNotPublishIn(sense_or_hvo)",
+          "summary": "Get the publications this sense should not be published in.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Get the domain types of a sense.",
           "element_source_property": "DomainTypesRC",
           "element_type": "ICmPossibility",
@@ -40348,7 +40889,10 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "IMoMorphSynAnalysis | None: The attached MSA object, or ``None`` if the sense has no ``MorphoSyntaxAnalysisRA``.",
+              "type": "IMoMorphSynAnalysis | None"
+            }
           },
           "parameters": [
             {
@@ -40361,7 +40905,7 @@
           "raises": [
             "FP_NullParameterError: If sense_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "IMoMorphSynAnalysis | None",
           "returns": "IMoMorphSynAnalysis | None: The attached MSA object, or ``None`` if the sense has no ``MorphoSyntaxAnalysisRA``. ",
           "signature": "GetMSA(sense_or_hvo)",
           "summary": "Get the Morpho-Syntactic Analysis (MSA) object for a sense.",
@@ -40502,7 +41046,10 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "str | None: The POS abbreviation (e.g. ``\"v\"``, ``\"n\"``), or ``None`` if the sense has no MSA attached.",
+              "type": "str | None"
+            }
           },
           "parameters": [
             {
@@ -40515,7 +41062,7 @@
           "raises": [
             "FP_NullParameterError: If sense_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "str | None",
           "returns": "str | None: The POS abbreviation (e.g. ``\"v\"``, ``\"n\"``), or ``None`` if the sense has no MSA attached. ",
           "signature": "GetPartOfSpeech(sense_or_hvo)",
           "summary": "Returns the grammatical category (noun, verb, adjective, adverb, pronoun, etc.) for a sense.",
@@ -40538,7 +41085,10 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "IPartOfSpeech | None: The POS object for all four recognized MSA subtypes (``MoStemMsa``, ``MoInflAffMsa``, ``MoDerivAffMsa``, ``MoUnclassifiedAffixMsa``). For ``MoDerivAffMsa`` this is the *output* category (``ToPartOfSpeechRA``), consistent with :meth:`SetPartOfSpeech`. Returns ``None`` if the sense has no MSA, or if the MSA's subtype is not one of the four recognized POS-bearing types (a warning is logged in that case).",
+              "type": "IPartOfSpeech | None"
+            }
           },
           "parameters": [
             {
@@ -40551,7 +41101,7 @@
           "raises": [
             "FP_NullParameterError: If sense_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "IPartOfSpeech | None",
           "returns": "IPartOfSpeech | None: The POS object for all four recognized MSA subtypes (``MoStemMsa``, ``MoInflAffMsa``, ``MoDerivAffMsa``, ``MoUnclassifiedAffixMsa``). For ``MoDerivAffMsa`` this is the *output* category (``ToPartOfSpeechRA``), consistent with :meth:`SetPartOfSpeech`. Returns ``None`` if the sense has no MSA, or if the MSA's subtype is not one of the four recognized POS-bearing types (a warning is logged in that case). ",
           "signature": "GetPartOfSpeechObject(sense_or_hvo)",
           "summary": "Get the part of speech LCM object for a sense (symmetric to\n:meth:`SetPartOfSpeech`).",
@@ -41440,6 +41990,62 @@
           "returns": "",
           "signature": "RemoveAnthroCode(sense_or_hvo, anthro_code)",
           "summary": "Remove an anthropology code from a sense.",
+          "usage_hint": "deletion"
+        },
+        {
+          "description": "Remove a publication from this sense's exclude list, so the sense is\npublished there again.\n",
+          "example": "            >>> project.Senses.RemoveDoNotPublishIn(sense, \"School Dictionary\")",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "RemoveDoNotPublishIn",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If project is not opened with write enabled"
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If sense_or_hvo or publication is None"
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If publication name not found"
+              }
+            ],
+            "notes": [
+              "Destructive operation - requires write access"
+            ],
+            "success": {
+              "type": "None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Either an ILexSense object or its HVO",
+              "name": "sense_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Publication name (str) or ICmPossibility object",
+              "name": "publication",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If project is not opened with write enabled",
+            "FP_NullParameterError: If sense_or_hvo or publication is None",
+            "FP_ParameterError: If publication name not found"
+          ],
+          "return_type": "None",
+          "returns": "",
+          "signature": "RemoveDoNotPublishIn(sense_or_hvo, publication)",
+          "summary": "Remove a publication from this sense's exclude list, so the sense is\npublished there again.",
           "usage_hint": "deletion"
         },
         {
@@ -42892,8 +43498,8 @@
           "usage_hint": null
         },
         {
-          "description": "Create a new top-level location.\n",
-          "example": "            >>> # Create a simple location\n            >>> village = project.Location.Create(\"Barasana Village\", \"en\")\n            >>> print(project.Location.GetName(village))\n            Barasana Village\n\n            >>> # Create with alias\n            >>> region = project.Location.Create(\"Vaupés Department\", \"en\",\n            ...                                   alias=\"VAU\")\n            >>> print(project.Location.GetAlias(region))\n            VAU\n\n            >>> # Add coordinates and elevation\n            >>> project.Location.SetCoordinates(village, -1.2345, -70.6789)\n            >>> project.Location.SetElevation(village, 150)\n",
+          "description": "Create a new location.\n\nThis is the canonical creation path for both top-level locations\nand sublocations; CreateSublocation delegates to it with\nparent=parent_location_or_hvo.\n",
+          "example": "            >>> # Create a simple location\n            >>> village = project.Location.Create(\"Barasana Village\", \"en\")\n            >>> print(project.Location.GetName(village))\n            Barasana Village\n\n            >>> # Create with alias\n            >>> region = project.Location.Create(\"Vaupés Department\", \"en\",\n            ...                                   alias=\"VAU\")\n            >>> print(project.Location.GetAlias(region))\n            VAU\n\n            >>> # A sublocation is just a Create with a parent\n            >>> town = project.Location.Create(\"Mitú\", \"en\", parent=region)\n\n            >>> # Add coordinates and elevation\n            >>> project.Location.SetCoordinates(village, -1.2345, -70.6789)\n            >>> project.Location.SetElevation(village, 150)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -42912,7 +43518,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If name is empty."
+                "when": "_ParameterError: If name is empty, the locations list is"
               }
             ],
             "notes": [
@@ -42941,21 +43547,28 @@
               "description": "Optional alias/abbreviation for the location.",
               "name": "alias",
               "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional parent ICmLocation object or HVO. If None (default), creates a top-level location; if given, creates a sublocation of that parent. Defaults to None.",
+              "name": "parent",
+              "type": ""
             }
           ],
           "raises": [
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If name is None.",
-            "FP_ParameterError: If name is empty."
+            "FP_ParameterError: If name is empty, the locations list is",
+            "missing (top-level only), or the parent doesn't exist."
           ],
           "return_type": "ICmLocation",
           "returns": "ICmLocation: The newly created location object. ",
-          "signature": "Create(name, wsHandle=None, alias=None)",
-          "summary": "Create a new top-level location.",
+          "signature": "Create(name, wsHandle=None, alias=None, parent=None)",
+          "summary": "Create a new location.",
           "usage_hint": "creation"
         },
         {
-          "description": "Create a new sublocation under a parent location.\n",
+          "description": "Create a new sublocation under a parent location.\n\nThin wrapper over Create with parent=parent_location_or_hvo; all\ncreation logic lives on Create.\n",
           "example": "            >>> # Create hierarchical locations\n            >>> country = project.Location.Create(\"Colombia\", \"en\")\n            >>> department = project.Location.CreateSublocation(\n            ...     country, \"Vaupés Department\", \"en\", alias=\"VAU\")\n            >>> municipality = project.Location.CreateSublocation(\n            ...     department, \"Mitú\", \"en\")\n\n            >>> # Verify hierarchy\n            >>> parent = project.Location.GetRegion(municipality)\n            >>> print(project.Location.GetName(parent))\n            Vaupés Department\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -44884,6 +45497,258 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Read ``IMoDerivAffMsa.FromMsFeaturesOA`` as a ``MakeFeatStruc``-\nshaped spec.\n\nRead-side pair for\n``project.InflectionFeatures.MakeFeatStruc(specs, owner=deriv_msa,\nslot=\"From\")``.\n",
+          "example": "            >>> spec = project.MSA.GetDerivFromFeatures(sense)\n            >>> if spec is not None:\n            ...     project.InflectionFeatures.MakeFeatStruc(\n            ...         spec, owner=other_deriv_msa, slot=\"From\"\n            ...     )",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetDerivFromFeatures",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If ``sense_or_msa`` is null."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec. ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an MSA that is not ``MoDerivAffMsa``, or a derivational affix MSA whose ``FromMsFeaturesOA`` is null. ``{}`` when ``FromMsFeaturesOA`` is a present-but-empty feature structure.",
+              "type": "dict or None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An ``ILexSense``, ``IMoDerivAffMsa``, HVO, GUID string, or ``MorphosyntaxAnalysis`` wrapper.",
+              "name": "sense_or_msa",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If ``sense_or_msa`` is null."
+          ],
+          "return_type": "dict or None",
+          "returns": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec. ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an MSA that is not ``MoDerivAffMsa``, or a derivational affix MSA whose ``FromMsFeaturesOA`` is null. ``{}`` when ``FromMsFeaturesOA`` is a present-but-empty feature structure. ",
+          "signature": "GetDerivFromFeatures(sense_or_msa)",
+          "summary": "Read ``IMoDerivAffMsa.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Read ``IMoDerivAffMsa.ToMsFeaturesOA`` as a ``MakeFeatStruc``-\nshaped spec.\n\nRead-side pair for\n``project.InflectionFeatures.MakeFeatStruc(specs, owner=deriv_msa,\nslot=\"To\")``.\n",
+          "example": "            >>> spec = project.MSA.GetDerivToFeatures(sense)\n            >>> if spec is not None:\n            ...     project.InflectionFeatures.MakeFeatStruc(\n            ...         spec, owner=other_deriv_msa, slot=\"To\"\n            ...     )",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetDerivToFeatures",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If ``sense_or_msa`` is null."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec. ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an MSA that is not ``MoDerivAffMsa``, or a derivational affix MSA whose ``ToMsFeaturesOA`` is null. ``{}`` when ``ToMsFeaturesOA`` is a present-but-empty feature structure.",
+              "type": "dict or None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An ``ILexSense``, ``IMoDerivAffMsa``, HVO, GUID string, or ``MorphosyntaxAnalysis`` wrapper.",
+              "name": "sense_or_msa",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If ``sense_or_msa`` is null."
+          ],
+          "return_type": "dict or None",
+          "returns": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec. ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an MSA that is not ``MoDerivAffMsa``, or a derivational affix MSA whose ``ToMsFeaturesOA`` is null. ``{}`` when ``ToMsFeaturesOA`` is a present-but-empty feature structure. ",
+          "signature": "GetDerivToFeatures(sense_or_msa)",
+          "summary": "Read ``IMoDerivAffMsa.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Read an MSA's feature structure as a ``MakeFeatStruc``-shaped\nspec, dispatching on the MSA's concrete ``ClassName``.\n\nSingle entry point covering all four concrete MSA classes --\nprefer this over the explicit per-class getters\n(``GetStemFeatures`` / ``GetInflAffFeatures`` /\n``GetDerivFromFeatures`` / ``GetDerivToFeatures``) when the\ncaller does not already know the MSA's class (Principle III,\ndocs/API_DESIGN_PHILOSOPHY.md).\n",
+          "example": "            >>> spec = project.MSA.GetFeatures(sense)\n            >>> deriv_from = project.MSA.GetFeatures(deriv_msa, slot=\"From\")",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetFeatures",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If ``sense_or_msa`` is null."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the resolved MSA is ``MoDerivAffMsa``"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec (see the per-class getters for the exact owning property). ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an ``MoUnclassifiedAffixMsa`` (carries no feature-struct property at all -- confirmed by the live probe backing ``GetSyncableProperties``), or any other ``ClassName`` outside the four recognized MSA subtypes. ``{}`` when the owning property is a present-but-empty feature structure.",
+              "type": "dict or None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An ``ILexSense``, any concrete MSA object, HVO, GUID string, or ``MorphosyntaxAnalysis`` wrapper.",
+              "name": "sense_or_msa",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Required ONLY for a ``MoDerivAffMsa`` (which has two independent feature-struct slots): ``\"From\"`` or ``\"To\"``. Ignored for every other MSA class, even if supplied.",
+              "name": "slot",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If ``sense_or_msa`` is null.",
+            "FP_ParameterError: If the resolved MSA is ``MoDerivAffMsa``",
+            "and ``slot`` is not ``\"From\"`` or ``\"To\"`` -- a",
+            "derivational affix MSA has two independent feature-struct",
+            "slots and this method never guesses which one the caller",
+            "means."
+          ],
+          "return_type": "dict or None",
+          "returns": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec (see the per-class getters for the exact owning property). ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an ``MoUnclassifiedAffixMsa`` (carries no feature-struct property at all -- confirmed by the live probe backing ``GetSyncableProperties``), or any other ``ClassName`` outside the four recognized MSA subtypes. ``{}`` when the owning property is a present-but-empty feature structure. ",
+          "signature": "GetFeatures(sense_or_msa, slot=None)",
+          "summary": "Read an MSA's feature structure as a ``MakeFeatStruc``-shaped\nspec, dispatching on the MSA's concrete ``ClassName``.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Read ``IMoInflAffMsa.InflFeatsOA`` as a ``MakeFeatStruc``-shaped\nspec.\n\nRead-side pair for\n``project.InflectionFeatures.MakeFeatStruc(specs, owner=infl_msa)``.\n",
+          "example": "            >>> spec = project.MSA.GetInflAffFeatures(sense)\n            >>> if spec is not None:\n            ...     project.InflectionFeatures.MakeFeatStruc(\n            ...         spec, owner=other_infl_msa\n            ...     )",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetInflAffFeatures",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If ``sense_or_msa`` is null."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec. ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an MSA that is not ``MoInflAffMsa``, or an inflectional affix MSA whose ``InflFeatsOA`` is null. ``{}`` when ``InflFeatsOA`` is a present-but-empty feature structure.",
+              "type": "dict or None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An ``ILexSense``, ``IMoInflAffMsa``, HVO, GUID string, or ``MorphosyntaxAnalysis`` wrapper.",
+              "name": "sense_or_msa",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If ``sense_or_msa`` is null."
+          ],
+          "return_type": "dict or None",
+          "returns": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec. ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an MSA that is not ``MoInflAffMsa``, or an inflectional affix MSA whose ``InflFeatsOA`` is null. ``{}`` when ``InflFeatsOA`` is a present-but-empty feature structure. ",
+          "signature": "GetInflAffFeatures(sense_or_msa)",
+          "summary": "Read ``IMoInflAffMsa.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Read ``SlotsRC`` on an inflectional-affix MSA.\n\nThis is the read-side pair for ``SetInflAffMsaSlots``. Pass either\nthe sense whose ``MorphoSyntaxAnalysisRA`` should be read, or the\ninflectional-affix MSA (or its HVO) directly.\n",
+          "example": "            >>> slots = project.MSA.GetInflAffMsaSlots(sense)\n            >>> hvos = {int(s.Hvo) for s in slots}\n            >>> same = project.MSA.GetInflAffMsaSlots(infl_msa_hvo)",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetInflAffMsaSlots",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If ``sense_or_msa`` is null."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "list: ``IMoInflAffixSlot`` objects in ``SlotsRC`` order. An empty list when the sense has no MSA, the MSA is not inflectional-affix, or ``SlotsRC`` is empty.",
+              "type": "list"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An ``ILexSense``, ``IMoInflAffMsa``, HVO, or ``MorphosyntaxAnalysis`` wrapper.",
+              "name": "sense_or_msa",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If ``sense_or_msa`` is null."
+          ],
+          "return_type": "list",
+          "returns": "list: ``IMoInflAffixSlot`` objects in ``SlotsRC`` order. An empty list when the sense has no MSA, the MSA is not inflectional-affix, or ``SlotsRC`` is empty. ",
+          "signature": "GetInflAffMsaSlots(sense_or_msa)",
+          "summary": "Read ``SlotsRC`` on an inflectional-affix MSA.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Read ``IMoStemMsa.MsFeaturesOA`` as a ``MakeFeatStruc``-shaped spec.\n\nThis is the read-side pair for\n``project.InflectionFeatures.MakeFeatStruc(specs, owner=stem_msa)``:\nthe returned spec can be fed straight back into ``MakeFeatStruc``\nto reproduce an equivalent (GUID-keyed) feature structure on\nanother owner.\n",
+          "example": "            >>> spec = project.MSA.GetStemFeatures(sense)\n            >>> if spec is not None:\n            ...     project.InflectionFeatures.MakeFeatStruc(\n            ...         spec, owner=other_stem_msa\n            ...     )",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetStemFeatures",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If ``sense_or_msa`` is null."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec. ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an MSA that is not ``MoStemMsa``, or a stem MSA whose ``MsFeaturesOA`` is null. ``{}`` when ``MsFeaturesOA`` is a present-but-empty feature structure.",
+              "type": "dict or None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An ``ILexSense``, ``IMoStemMsa``, HVO, GUID string, or ``MorphosyntaxAnalysis`` wrapper.",
+              "name": "sense_or_msa",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If ``sense_or_msa`` is null."
+          ],
+          "return_type": "dict or None",
+          "returns": "dict or None: Recursive ``{featureGuid: valueGuid | {...}}`` spec. ``None`` when ``sense_or_msa`` denotes a sense with no MSA, an MSA that is not ``MoStemMsa``, or a stem MSA whose ``MsFeaturesOA`` is null. ``{}`` when ``MsFeaturesOA`` is a present-but-empty feature structure. ",
+          "signature": "GetStemFeatures(sense_or_msa)",
+          "summary": "Read ``IMoStemMsa.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Get dictionary of syncable properties for cross-project\nsynchronization of an MSA's feature structure(s).\n",
           "example": "",
           "is_classmethod": false,
@@ -46588,7 +47453,7 @@
             },
             {
               "default": null,
-              "description": "The IMoInflAffixSlot object or HVO to insert.",
+              "description": "The IMoInflAffixSlot object, its HVO, or the AffixSlot wrapper returned by ``project.POS.CreateAffixSlot``.",
               "name": "slot",
               "type": ""
             },
@@ -46946,8 +47811,8 @@
         {
           "collection_contract": {
             "behavioral": true,
-            "element_type": "Any",
-            "return_type": "EnumerableWrapper[Any]",
+            "element_type": "CompoundRule | AffixTemplate",
+            "return_type": "EnumerableWrapper[CompoundRule | AffixTemplate]",
             "shape": "enumerable_wrapper",
             "yields_lcm_objects": false
           },
@@ -46971,14 +47836,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "Generator[CompoundRule | AffixTemplate]: Each item is a ``CompoundRule`` or ``AffixTemplate`` wrapper object (NOT a raw ``IMoCompoundRule``/``IMoInflAffixTemplate``), yielded from ``GetAllCompoundRules()`` then ``GetAllAffixTemplates()``. Items can be passed straight back into other MorphRuleOperations methods (e.g. ``GetName(item)``, ``Delete(item)``, ``SetStratum(item, ...)``) -- resolvers unwrap the wrapper internally (issue #449). A caller performing a direct pythonnet cast, e.g. ``IMoInflAffixTemplate(item)``, must use ``item.lcm_object`` instead.",
-              "type": "EnumerableWrapper[Any]"
+              "description": "EnumerableWrapper[CompoundRule | AffixTemplate]: Each item is a ``CompoundRule`` or ``AffixTemplate`` wrapper object (NOT a raw ``IMoCompoundRule``/``IMoInflAffixTemplate``), yielded from ``GetAllCompoundRules()`` then ``GetAllAffixTemplates()``. Items can be passed straight back into other MorphRuleOperations methods (e.g. ``GetName(item)``, ``Delete(item)``, ``SetStratum(item, ...)``) -- resolvers unwrap the wrapper internally (issue #449). A caller performing a direct pythonnet cast, e.g. ``IMoInflAffixTemplate(item)``, must use ``item.lcm_object`` instead.",
+              "type": "EnumerableWrapper[CompoundRule | AffixTemplate]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "EnumerableWrapper[Any]",
-          "returns": "Generator[CompoundRule | AffixTemplate]: Each item is a ``CompoundRule`` or ``AffixTemplate`` wrapper object (NOT a raw ``IMoCompoundRule``/``IMoInflAffixTemplate``), yielded from ``GetAllCompoundRules()`` then ``GetAllAffixTemplates()``. Items can be passed straight back into other MorphRuleOperations methods (e.g. ``GetName(item)``, ``Delete(item)``, ``SetStratum(item, ...)``) -- resolvers unwrap the wrapper internally (issue #449). A caller performing a direct pythonnet cast, e.g. ``IMoInflAffixTemplate(item)``, must use ``item.lcm_object`` instead. ",
+          "return_type": "EnumerableWrapper[CompoundRule | AffixTemplate]",
+          "returns": "EnumerableWrapper[CompoundRule | AffixTemplate]: Each item is a ``CompoundRule`` or ``AffixTemplate`` wrapper object (NOT a raw ``IMoCompoundRule``/``IMoInflAffixTemplate``), yielded from ``GetAllCompoundRules()`` then ``GetAllAffixTemplates()``. Items can be passed straight back into other MorphRuleOperations methods (e.g. ``GetName(item)``, ``Delete(item)``, ``SetStratum(item, ...)``) -- resolvers unwrap the wrapper internally (issue #449). A caller performing a direct pythonnet cast, e.g. ``IMoInflAffixTemplate(item)``, must use ``item.lcm_object`` instead. ",
           "signature": "GetAll()",
           "summary": "Get all compound rules and affix templates in the project.",
           "usage_hint": "retrieval"
@@ -50586,15 +51451,15 @@
         {
           "collection_contract": {
             "behavioral": true,
-            "element_type": "Any",
-            "return_type": "List[Any]",
+            "element_type": "ICmOverlay",
+            "return_type": "list[ICmOverlay]",
             "shape": "python_list",
-            "yields_lcm_objects": false
+            "yields_lcm_objects": true
           },
-          "description": "Return all overlays in the project.",
+          "description": "Return all overlays in the project.\n",
           "element_source_property": "OverlaysOC",
           "element_type": "ICmOverlay",
-          "example": "",
+          "example": "            >>> for overlay in project.Overlays.GetAll():\n            ...     print(project.Overlays.GetName(overlay))",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -50613,13 +51478,14 @@
             ],
             "notes": [],
             "success": {
-              "type": "List[Any]"
+              "description": "list[ICmOverlay]: Every overlay in ``ILangProject.OverlaysOC``.",
+              "type": "list[ICmOverlay]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "List[Any]",
-          "returns": "",
+          "return_type": "list[ICmOverlay]",
+          "returns": "list[ICmOverlay]: Every overlay in ``ILangProject.OverlaysOC``. ",
           "signature": "GetAll()",
           "summary": "Return all overlays in the project.",
           "usage_hint": "retrieval"
@@ -51309,6 +52175,7 @@
       "id": "POSOperations",
       "lcm_dependencies": [
         "ILexEntryRepository",
+        "IMoInflAffixSlot",
         "IMoInflAffixSlotFactory",
         "IPartOfSpeech",
         "IPartOfSpeechFactory",
@@ -51317,8 +52184,8 @@
       ],
       "methods": [
         {
-          "description": "Add a subcategory to a part of speech.\n",
-          "example": "            >>> posOps = POSOperations(project)\n            >>> noun = posOps.Find(\"Noun\")\n            >>> proper_noun = posOps.AddSubcategory(noun, \"Proper Noun\", \"PN\")\n            >>> print(posOps.GetName(proper_noun))\n            Proper Noun\n",
+          "description": "Add a subcategory to a part of speech.\n\nThin wrapper over Create with parent=pos_or_hvo; all creation\nlogic (including the \"GOLD:...\" catalog path) lives on Create.\n",
+          "example": "            >>> posOps = POSOperations(project)\n            >>> noun = posOps.Find(\"Noun\")\n            >>> proper_noun = posOps.AddSubcategory(noun, \"Proper Noun\", \"PN\")\n            >>> print(posOps.GetName(proper_noun))\n            Proper Noun\n\n            >>> proper_noun = posOps.AddSubcategory(noun, \"Proper Noun\", \"PN\", \"GOLD:Noun\")\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -51366,6 +52233,12 @@
               "description": "Short abbreviation for the subcategory.",
               "name": "abbreviation",
               "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional catalog identifier for linguistic databases (e.g., \"GOLD:Noun\"). Defaults to None.",
+              "name": "catalogSourceId",
+              "type": "str, optional"
             }
           ],
           "raises": [
@@ -51375,7 +52248,7 @@
           ],
           "return_type": "IPartOfSpeech",
           "returns": "IPartOfSpeech: The newly created subcategory object. ",
-          "signature": "AddSubcategory(pos_or_hvo, name, abbreviation)",
+          "signature": "AddSubcategory(pos_or_hvo, name, abbreviation, catalogSourceId=None)",
           "summary": "Add a subcategory to a part of speech.",
           "usage_hint": "creation"
         },
@@ -51493,8 +52366,8 @@
           "usage_hint": null
         },
         {
-          "description": "Create a new part of speech.\n",
-          "example": "            >>> posOps = POSOperations(project)\n            >>> noun = posOps.Create(\"Noun\", \"N\")\n            >>> print(posOps.GetName(noun))\n            Noun\n\n            >>> proper_noun = posOps.Create(\"Proper Noun\", \"PN\", \"GOLD:Noun\")\n            >>> print(posOps.GetAbbreviation(proper_noun))\n            PN\n",
+          "description": "Create a new part of speech.\n\nThis is the canonical creation path for both top-level categories\nand subcategories; AddSubcategory delegates to it.\n",
+          "example": "            >>> posOps = POSOperations(project)\n            >>> noun = posOps.Create(\"Noun\", \"N\")\n            >>> print(posOps.GetName(noun))\n            Noun\n\n            >>> proper_noun = posOps.Create(\"Proper Noun\", \"PN\", \"GOLD:Noun\")\n            >>> print(posOps.GetAbbreviation(proper_noun))\n            PN\n\n            >>> # A subcategory is just a Create with a parent\n            >>> proper = posOps.Create(\"Proper Noun\", \"PN\", parent=noun)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -51513,7 +52386,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If name or abbreviation is empty, or if a POS"
+                "when": "_ParameterError: If name or abbreviation is empty, or if a"
               }
             ],
             "notes": [
@@ -51542,23 +52415,29 @@
               "description": "Optional catalog identifier for linguistic databases (e.g., \"GOLD:Noun\"). Defaults to None.",
               "name": "catalogSourceId",
               "type": "str, optional"
+            },
+            {
+              "default": null,
+              "description": "Optional parent IPartOfSpeech object or HVO. If None (default), creates a top-level category; if given, creates a subcategory of that parent. Defaults to None.",
+              "name": "parent",
+              "type": ""
             }
           ],
           "raises": [
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If name or abbreviation is None.",
-            "FP_ParameterError: If name or abbreviation is empty, or if a POS",
-            "with this name already exists."
+            "FP_ParameterError: If name or abbreviation is empty, or if a",
+            "top-level POS with this name already exists."
           ],
           "return_type": "IPartOfSpeech",
           "returns": "IPartOfSpeech: The newly created POS object. ",
-          "signature": "Create(name, abbreviation, catalogSourceId=None)",
+          "signature": "Create(name, abbreviation, catalogSourceId=None, parent=None)",
           "summary": "Create a new part of speech.",
           "usage_hint": "creation"
         },
         {
           "description": "Create an inflectional affix slot owned by a part of speech.\n\nAccess via FLExProject as ``project.POS.CreateAffixSlot``. The new\nslot is attached to ``IPartOfSpeech.AffixSlotsOC`` before its Name\nor Optional is written. Place it on a template with\n``project.MorphRules.AddSlotToTemplate``.\n",
-          "example": "            >>> verb = project.POS.Find(\"Verb\")\n            >>> slot = project.POS.CreateAffixSlot(verb, \"PossConcord\", optional=False)\n\n        See Also:\n            GetAffixSlots",
+          "example": "            >>> verb = project.POS.Find(\"Verb\")\n            >>> slot = project.POS.CreateAffixSlot(verb, \"PossConcord\", optional=False)\n            >>> slot.name\n            'PossConcord'\n\n        See Also:\n            GetAffixSlots",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -51584,8 +52463,8 @@
               "Creates new object - requires write access"
             ],
             "success": {
-              "description": "IMoInflAffixSlot: The newly created affix slot.",
-              "type": "IMoInflAffixSlot"
+              "description": "AffixSlot: A wrapper around the newly created IMoInflAffixSlot, exposing ``.name`` (str), ``.optional`` (bool), and ``.affixes``, while still proxying raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) through to the underlying IMoInflAffixSlot for backward compatibility. Pass it directly to ``MorphRules.AddSlotToTemplate`` or ``MSA.SetInflAffMsaSlots``; both unwrap it automatically.",
+              "type": "AffixSlot"
             }
           },
           "parameters": [
@@ -51613,8 +52492,8 @@
             "FP_NullParameterError: If pos or name is None.",
             "FP_ParameterError: If name is empty."
           ],
-          "return_type": "IMoInflAffixSlot",
-          "returns": "IMoInflAffixSlot: The newly created affix slot. ",
+          "return_type": "AffixSlot",
+          "returns": "AffixSlot: A wrapper around the newly created IMoInflAffixSlot, exposing ``.name`` (str), ``.optional`` (bool), and ``.affixes``, while still proxying raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) through to the underlying IMoInflAffixSlot for backward compatibility. Pass it directly to ``MorphRules.AddSlotToTemplate`` or ``MSA.SetInflAffMsaSlots``; both unwrap it automatically. ",
           "signature": "CreateAffixSlot(pos, name, optional=False)",
           "summary": "Create an inflectional affix slot owned by a part of speech.",
           "usage_hint": "creation"
@@ -51860,7 +52739,7 @@
           "description": "Get all affix slots associated with a part of speech.\n",
           "element_source_property": "AffixSlotsOC",
           "element_type": "IMoInflAffixSlot",
-          "example": "            >>> posOps = POSOperations(project)\n            >>> verb = posOps.Find(\"Verb\")\n            >>> slots = posOps.GetAffixSlots(verb)\n            >>> for slot in slots:\n            ...     print(slot.Name)\n            Tense\n            Aspect\n            Mood\n",
+          "example": "            >>> posOps = POSOperations(project)\n            >>> verb = posOps.Find(\"Verb\")\n            >>> slots = posOps.GetAffixSlots(verb)\n            >>> for slot in slots:\n            ...     print(slot.name)\n            Tense\n            Aspect\n            Mood\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -51879,7 +52758,7 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of affix slot objects (empty list if none).",
+              "description": "list: List of AffixSlot wrapper objects (empty list if none). Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes`` (the IMoInflAffMsa objects filling the slot), and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) through to the underlying IMoInflAffixSlot for backward compatibility with existing callers.",
               "type": "list"
             }
           },
@@ -51895,9 +52774,61 @@
             "FP_NullParameterError: If pos_or_hvo is None."
           ],
           "return_type": "list",
-          "returns": "list: List of affix slot objects (empty list if none). ",
+          "returns": "list: List of AffixSlot wrapper objects (empty list if none). Each wrapper exposes ``.name`` (str), ``.optional`` (bool), and ``.affixes`` (the IMoInflAffMsa objects filling the slot), and still proxies raw LCM member access (``.Name``, ``.Optional``, ``.Hvo``) through to the underlying IMoInflAffixSlot for backward compatibility with existing callers. ",
           "signature": "GetAffixSlots(pos_or_hvo)",
           "summary": "Get all affix slots associated with a part of speech.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get the inflectional-affix MSAs that fill an affix slot.\n",
+          "example": "            >>> posOps = POSOperations(project)\n            >>> slot = posOps.CreateAffixSlot(verb, \"Tense\")\n            >>> project.MSA.SetInflAffMsaSlots(sense, [slot])\n            >>> affixes = posOps.GetAffixesInSlot(slot)\n            >>> len(affixes)\n            1\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetAffixesInSlot",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If slot_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If slot_or_hvo does not resolve to an"
+              },
+              {
+                "exception": "IMoInflAffixSlot",
+                "when": "."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "list: IMoInflAffMsa objects whose SlotsRC contains this slot (empty list if none).",
+              "type": "list"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IMoInflAffixSlot object, its HVO, or an AffixSlot wrapper.",
+              "name": "slot_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If slot_or_hvo is None.",
+            "FP_ParameterError: If slot_or_hvo does not resolve to an",
+            "IMoInflAffixSlot."
+          ],
+          "return_type": "list",
+          "returns": "list: IMoInflAffMsa objects whose SlotsRC contains this slot (empty list if none). ",
+          "signature": "GetAffixesInSlot(slot_or_hvo)",
+          "summary": "Get the inflectional-affix MSAs that fill an affix slot.",
           "usage_hint": "retrieval"
         },
         {
@@ -52248,6 +53179,66 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Get the name of an inflectional affix slot.\n\nRead-side pair for ``CreateAffixSlot`` (issue #542).\n``IMoInflAffixSlot.Name`` is an ``IMultiUnicode``, not a string;\nthis method reads it and returns plain text.\n",
+          "example": "            >>> posOps = POSOperations(project)\n            >>> verb = posOps.Find(\"Verb\")\n            >>> slot = posOps.CreateAffixSlot(verb, \"Tense\")\n            >>> posOps.GetSlotName(slot)\n            'Tense'\n\n        See Also:\n            SetSlotName, IsSlotOptional, GetAffixesInSlot",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetSlotName",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty string when field is not set",
+              "value": "\"\""
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If slot_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If slot_or_hvo does not resolve to an"
+              },
+              {
+                "exception": "IMoInflAffixSlot",
+                "when": "."
+              }
+            ],
+            "notes": [
+              "Flexicon handles '***' placeholder automatically, returns ''"
+            ],
+            "success": {
+              "description": "str: The slot name, or empty string if not set (FLEx's ``***`` null marker is normalized to empty).",
+              "type": "str"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IMoInflAffixSlot object, its HVO, or an AffixSlot wrapper (from ``GetAffixSlots`` or ``AffixTemplate.prefix_slots``/etc.).",
+              "name": "slot_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If slot_or_hvo is None.",
+            "FP_ParameterError: If slot_or_hvo does not resolve to an",
+            "IMoInflAffixSlot."
+          ],
+          "return_type": "str",
+          "returns": "str: The slot name, or empty string if not set (FLEx's ``***`` null marker is normalized to empty). ",
+          "signature": "GetSlotName(slot_or_hvo, wsHandle=None)",
+          "summary": "Get the name of an inflectional affix slot.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Get the subcategories of a part of speech.\n",
           "element_source_property": "SubPossibilitiesOS",
           "element_type": "ICmPossibility",
@@ -52334,6 +53325,55 @@
           "signature": "GetSyncableProperties(item)",
           "summary": "Get dictionary of syncable properties for cross-project synchronization.",
           "usage_hint": "retrieval"
+        },
+        {
+          "description": "Check whether an inflectional affix slot may be left empty.\n",
+          "example": "            >>> posOps = POSOperations(project)\n            >>> slot = posOps.CreateAffixSlot(verb, \"PossConcord\", optional=True)\n            >>> posOps.IsSlotOptional(slot)\n            True\n\n        See Also:\n            SetSlotOptional, GetSlotName",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "IsSlotOptional",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If slot_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If slot_or_hvo does not resolve to an"
+              },
+              {
+                "exception": "IMoInflAffixSlot",
+                "when": "."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "bool: True if the slot is optional, False if obligatory (FLEx's default for a newly-created slot).",
+              "type": "bool"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IMoInflAffixSlot object, its HVO, or an AffixSlot wrapper.",
+              "name": "slot_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If slot_or_hvo is None.",
+            "FP_ParameterError: If slot_or_hvo does not resolve to an",
+            "IMoInflAffixSlot."
+          ],
+          "return_type": "bool",
+          "returns": "bool: True if the slot is optional, False if obligatory (FLEx's default for a newly-created slot). ",
+          "signature": "IsSlotOptional(slot_or_hvo)",
+          "summary": "Check whether an inflectional affix slot may be left empty.",
+          "usage_hint": "validation"
         },
         {
           "description": "Remove a subcategory from a part of speech.\n",
@@ -52621,6 +53661,126 @@
           "returns": "",
           "signature": "SetName(pos_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a part of speech.",
+          "usage_hint": "modification"
+        },
+        {
+          "description": "Set the name of an inflectional affix slot.\n",
+          "example": "            >>> posOps = POSOperations(project)\n            >>> slot = posOps.CreateAffixSlot(verb, \"Tense\")\n            >>> posOps.SetSlotName(slot, \"Aspect\")\n\n        See Also:\n            GetSlotName, IsSlotOptional, SetSlotOptional",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "SetSlotName",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If slot_or_hvo or name is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If name is empty, or slot_or_hvo does not"
+              }
+            ],
+            "notes": [
+              "Modifies existing data - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IMoInflAffixSlot object, its HVO, or an AffixSlot wrapper.",
+              "name": "slot_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "The new name.",
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_NullParameterError: If slot_or_hvo or name is None.",
+            "FP_ParameterError: If name is empty, or slot_or_hvo does not",
+            "resolve to an IMoInflAffixSlot."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "SetSlotName(slot_or_hvo, name, wsHandle=None)",
+          "summary": "Set the name of an inflectional affix slot.",
+          "usage_hint": "modification"
+        },
+        {
+          "description": "Set whether an inflectional affix slot may be left empty.\n",
+          "example": "            >>> posOps = POSOperations(project)\n            >>> slot = posOps.CreateAffixSlot(verb, \"PossConcord\")\n            >>> posOps.SetSlotOptional(slot, True)\n\n        See Also:\n            IsSlotOptional, SetSlotName",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "SetSlotOptional",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If slot_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If slot_or_hvo does not resolve to an"
+              },
+              {
+                "exception": "IMoInflAffixSlot",
+                "when": "."
+              }
+            ],
+            "notes": [
+              "Modifies existing data - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IMoInflAffixSlot object, its HVO, or an AffixSlot wrapper.",
+              "name": "slot_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "True to make the slot optional, False to make it obligatory.",
+              "name": "optional",
+              "type": "bool"
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_NullParameterError: If slot_or_hvo is None.",
+            "FP_ParameterError: If slot_or_hvo does not resolve to an",
+            "IMoInflAffixSlot."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "SetSlotOptional(slot_or_hvo, optional)",
+          "summary": "Set whether an inflectional affix slot may be left empty.",
           "usage_hint": "modification"
         },
         {
@@ -52966,6 +54126,50 @@
           "returns": "EnumerableWrapper[IStTxtPara]: Each paragraph object in the text. ",
           "signature": "GetAll(text_or_hvo)",
           "summary": "Get all paragraphs in a text.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get the text that owns a paragraph.\n\nRetrieves the IText object that contains the paragraph via the\nparagraph's StText owner.\n",
+          "example": "            >>> text = project.Texts.Create(\"Genesis\")\n            >>> para = project.Paragraphs.Create(text, \"In the beginning...\")\n            >>> owner = project.Paragraphs.GetOwningText(para)\n            >>> assert owner.Hvo == text.Hvo\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetOwningText",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If paragraph_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the paragraph does not exist or has no owner."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IText: The text object that owns the paragraph.",
+              "type": "IText"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Either an IStTxtPara object or its HVO (integer).",
+              "name": "paragraph_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If paragraph_or_hvo is None.",
+            "FP_ParameterError: If the paragraph does not exist or has no owner."
+          ],
+          "return_type": "IText",
+          "returns": "IText: The text object that owns the paragraph. ",
+          "signature": "GetOwningText(paragraph_or_hvo)",
+          "summary": "Get the text that owns a paragraph.",
           "usage_hint": "retrieval"
         },
         {
@@ -55941,7 +57145,7 @@
           "returns": "IFsFeatStruc: The populated feature structure, attached to ``owner``'s C1-resolved owning property. ",
           "signature": "MakeFeatStruc(specs, owner=None, slot=None)",
           "summary": "Build an IFsFeatStruc populated from user-facing specs.",
-          "usage_hint": null
+          "usage_hint": "creation"
         },
         {
           "description": "Set the abbreviation of a phonological feature or value.\n\nFor values, the abbreviation is typically ``+`` or ``-``.",
@@ -59575,7 +60779,7 @@
           "returns": "IPhFeatureConstraint: The newly created feature constraint. ",
           "signature": "MakeConstraint(feature_or_hvo)",
           "summary": "Create an alpha-feature constraint variable bound to a feature.",
-          "usage_hint": null
+          "usage_hint": "creation"
         },
         {
           "description": "Set the description of a phonological rule.\n",
@@ -70177,6 +71381,50 @@
           "returns": "list: List of note objects associated with the segment. ",
           "signature": "GetNotes(segment_or_hvo)",
           "summary": "Get all notes associated with a segment.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get the paragraph that owns a segment.\n\nRetrieves the ``IStTxtPara`` object that contains the segment via the\ntyped owner chain (issue #521).\n",
+          "example": "            >>> para = project.Paragraphs.Create(text, \"Hello world.\")\n            >>> seg = project.Segments.AppendSentence(para, \"Second sentence.\")\n            >>> owner = project.Segments.GetOwningParagraph(seg)\n            >>> assert owner.Hvo == para.Hvo\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetOwningParagraph",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If segment_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the segment does not exist or has no owner."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IStTxtPara: The paragraph that owns the segment.",
+              "type": "IStTxtPara"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The ISegment object or HVO.",
+              "name": "segment_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If segment_or_hvo is None.",
+            "FP_ParameterError: If the segment does not exist or has no owner."
+          ],
+          "return_type": "IStTxtPara",
+          "returns": "IStTxtPara: The paragraph that owns the segment. ",
+          "signature": "GetOwningParagraph(segment_or_hvo)",
+          "summary": "Get the paragraph that owns a segment.",
           "usage_hint": "retrieval"
         },
         {
@@ -81762,7 +83010,7 @@
     "categories": {
       "discourse": 7,
       "general": 41,
-      "grammar": 18,
+      "grammar": 19,
       "lexicon": 15,
       "lists": 8,
       "notebook": 7,
@@ -81771,7 +83019,7 @@
       "system": 7,
       "texts": 10
     },
-    "files_analyzed": 94,
+    "files_analyzed": 95,
     "lcm_interfaces_used": [
       "CellarPropertyType",
       "CellarPropertyTypeFilter",
@@ -81884,6 +83132,7 @@
       "IMoForm",
       "IMoInflAffMsa",
       "IMoInflAffMsaFactory",
+      "IMoInflAffixSlot",
       "IMoInflAffixSlotFactory",
       "IMoInflAffixTemplateFactory",
       "IMoInflClass",
@@ -82006,12 +83255,12 @@
       "YesNoCancel"
     ],
     "mapping_types": {
-      "composite": 108,
+      "composite": 102,
       "convenience": 208,
-      "direct": 594,
-      "pure_python": 671
+      "direct": 609,
+      "pure_python": 682
     },
-    "methods_with_return_type": 993,
+    "methods_with_return_type": 1012,
     "top_level_exports": [
       "APIHelpFile",
       "AgentOperations",
@@ -82114,8 +83363,8 @@
       "version",
       "wrap"
     ],
-    "total_classes": 121,
-    "total_methods": 1581,
-    "total_properties": 164
+    "total_classes": 122,
+    "total_methods": 1601,
+    "total_properties": 168
   }
 }

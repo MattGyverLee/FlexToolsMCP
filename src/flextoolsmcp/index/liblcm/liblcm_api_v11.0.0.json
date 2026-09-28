@@ -74071,6 +74071,10 @@
           {
             "class": "ConstChartOperations",
             "methods": []
+          },
+          {
+            "class": "DiscourseOperations",
+            "methods": []
           }
         ],
         "flexlibs_stable": null
@@ -98705,6 +98709,13 @@
           "type": "IEnumerable"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "POSOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [
@@ -107190,6 +107201,10 @@
       ],
       "python_wrappers": {
         "flexlibs_2": [
+          {
+            "class": "AffixSlot",
+            "methods": []
+          },
           {
             "class": "AffixTemplate",
             "methods": []
@@ -141028,6 +141043,10 @@
       ],
       "python_wrappers": {
         "flexlibs_2": [
+          {
+            "class": "AffixSlot",
+            "methods": []
+          },
           {
             "class": "AffixTemplate",
             "methods": []

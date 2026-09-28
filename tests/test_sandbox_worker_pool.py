@@ -287,6 +287,8 @@ async def test_evict_project_drops_only_that_project(config):
         # B's worker is still there for reuse.
         worker2, reused = await checkout(pool, key_b, config)
         assert reused is True and worker2 is worker_b
+        assert await pool.checkin(key_b, worker2, project_name="B",
+                                 entry_key="entry-b") is True
     finally:
         await pool.aclose()
 

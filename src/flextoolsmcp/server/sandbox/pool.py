@@ -216,6 +216,12 @@ class SandboxWorkerPool:
     ) -> None:
         self._idle: Dict[tuple, List[_PooledWorker]] = {}
         self._guard = threading.Lock()
+        #: Workers currently checked out. `aclose()` reaps these too: a
+        #: borrower that drops a worker without checking it back in (or
+        #: closing it) must not leak the process past the pool's life.
+        #: Same ownership as `WorkerPool`, which reaps every worker it
+        #: spawned.
+        self._checked_out: Set[ParseWorkerClient] = set()
         self._idle_timeout = idle_timeout
         self._sweep_interval = sweep_interval
         #: The loop workers were spawned on; captured on first async use.
@@ -254,6 +260,8 @@ class SandboxWorkerPool:
                 if await self._is_usable(worker):
                     worker.clear_run_listeners()
                     worker.set_stderr_sink(None)
+                    with self._guard:
+                        self._checked_out.add(worker)
                     return worker, True
                 _log.info(
                     "Discarding a pooled sandbox worker for %r that did not "
@@ -262,6 +270,8 @@ class SandboxWorkerPool:
                     await worker.aclose()
         worker = await self._spawn(project_name, spawn, stub=stub,
                                    parse_delay=parse_delay)
+        with self._guard:
+            self._checked_out.add(worker)
         return worker, False
 
     async def checkin(
@@ -295,6 +305,7 @@ class SandboxWorkerPool:
                         return False
             worker.clear_run_listeners()
             worker.set_stderr_sink(None)
+            self._checked_out.discard(worker)
             self._idle.setdefault(key, []).append(
                 _PooledWorker(
                     worker=worker,
@@ -457,7 +468,12 @@ class SandboxWorkerPool:
             return sum(len(entries) for entries in self._idle.values())
 
     async def aclose(self) -> None:
-        """Reap every idle worker and stop the sweeper. Idempotent."""
+        """Reap every worker the pool knows about, idle or checked out.
+
+        Idempotent. A borrower holding a checked-out worker across `aclose`
+        gets it closed underneath it; `ParseWorkerClient.aclose` is
+        idempotent, so the borrower's own teardown stays safe.
+        """
         if self._closed:
             return
         self._closed = True
@@ -473,6 +489,10 @@ class SandboxWorkerPool:
                 for entry in entries
             ]
             self._idle.clear()
+            # Idle and checked-out are disjoint: checkout removes from idle,
+            # checkin removes from checked-out.
+            workers.extend(self._checked_out)
+            self._checked_out.clear()
         for worker in workers:
             with contextlib.suppress(Exception):
                 await worker.aclose()

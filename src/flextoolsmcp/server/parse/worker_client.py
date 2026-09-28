@@ -332,6 +332,12 @@ class ParseWorkerClient:
             if proc.returncode is None and proc.stdin is not None:
                 proc.stdin.write((json.dumps({"type": "shutdown"}) + "\n").encode())
                 await proc.stdin.drain()
+        if proc.stdin is not None:
+            # The polite shutdown is best-effort, but the stdin pipe must be
+            # closed either way: an open stdin transport outlives the event
+            # loop, and its __del__ then calls write_eof() on the closed
+            # loop (PytestUnraisableExceptionWarning, #242).
+            with contextlib.suppress(Exception):
                 proc.stdin.close()
 
         with contextlib.suppress(asyncio.TimeoutError, Exception):
@@ -374,6 +380,12 @@ class ParseWorkerClient:
             return
         self._closed = True
         proc, self._proc = self._proc, None
+        if proc is not None and proc.stdin is not None:
+            # A terminated worker never reads stdin again; leave the pipe
+            # open and its transport outlives the event loop, whose __del__
+            # then calls write_eof() on the closed loop (#242).
+            with contextlib.suppress(Exception):
+                proc.stdin.close()
         if proc is not None and proc.returncode is None:
             _kill_process_tree(proc.pid)
             with contextlib.suppress(Exception):

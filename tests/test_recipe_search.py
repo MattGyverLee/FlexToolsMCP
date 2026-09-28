@@ -241,9 +241,12 @@ class TestSearchResponse:
     def test_top_row_records_validated_compact_rows_do_not(self):
         # Positive case: a clear winner served with code records its entities.
         kernel.session_state.validated_apis.clear()
-        payload = self._search("Move semantic domain")
+        # "Move semantic domain" tied add- and remove-semantic-domains once the
+        # remove recipe shipped. This query has a clear winner with no legacy
+        # attachment, so the code stays inline on recipes[0].
+        payload = self._search("reorder affix templates")
         top = payload["recipes"][0]
-        assert "code" in top, f"expected code for Move query, got {top.get('id')}"
+        assert "code" in top, f"expected code for reorder query, got {top.get('id')}"
         validated = set(kernel.session_state.validated_apis)
         for e in top.get("entities", []):
             assert e in validated

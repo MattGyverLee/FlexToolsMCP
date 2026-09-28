@@ -331,6 +331,22 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-28T05:57:38.997Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T045",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T08:46:57.708Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T043",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T08:47:01.081Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -778,7 +794,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T033",
+  "currentTask": "T043",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1007,9 +1023,25 @@
       "files": [
         "src/flextoolsmcp/recipe_validator.py"
       ]
+    },
+    "T045": {
+      "status": "DONE",
+      "did": "Set-allomorph-environments dry-run verified on Sena 3 (shipped defaults change nothing)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/set-allomorph-environments.py",
+        "specs/unified-recipes/evidence/set-allomorph-environments.md"
+      ]
+    },
+    "T043": {
+      "status": "DONE",
+      "did": "create-entries-idempotent live-verified on Sena 3 with same-session cleanup (zzRecipeTestYahya created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/create-entries-idempotent.py",
+        "specs/unified-recipes/evidence/create-entries-idempotent.md"
+      ]
     }
   },
-  "last_action": "T043-T050-dry-leg-done-live-writes-queued-next-round",
+  "last_action": "T043+T045 done live pilot, T044 next",
   "verified": [
     {
       "what": "full-lean-suite-green-4268-passed-5-skipped-2-xfailed"

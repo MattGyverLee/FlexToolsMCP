@@ -26,7 +26,7 @@ import difflib
 import re
 import sys
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Optional, Sequence
 
 if __package__:
     from .recipe_files import find_scrub_lines, render_draft

@@ -25,7 +25,6 @@ Helpers below resolve function names flexibly so the tests pin behavior,
 not spelling. T022 should provide at least one name per group.
 """
 
-import hashlib
 import importlib
 import json
 import os

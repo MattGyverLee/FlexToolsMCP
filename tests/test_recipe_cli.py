@@ -14,11 +14,8 @@ Contract under test (src/flextoolsmcp/recipe_cli.py):
   `match_terms` / `notes` (human must fill them).
 """
 
-import json
-import re
 from pathlib import Path
 
-import pytest
 
 
 def _import_cli():
@@ -69,7 +66,6 @@ def test_promote_default_out_dir_under_tmp_home(tmp_path, monkeypatch, capsys):
     fake_home = tmp_path / "home"
     fake_home.mkdir()
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
-    import os
 
     monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(store))
     rec = _make_local_record(store, PROMOTE_CODE)
@@ -86,7 +82,6 @@ def test_promote_out_flag(tmp_path, monkeypatch):
     store = tmp_path / "store"
     store.mkdir()
     outdir = tmp_path / "drafts"
-    import os
 
     monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(store))
     rec = _make_local_record(store, PROMOTE_CODE)

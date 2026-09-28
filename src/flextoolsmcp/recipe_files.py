@@ -127,7 +127,7 @@ def _split_docstring(text: str, filename: str) -> Tuple[Dict[str, Any], str]:
     try:
         tree = ast.parse(text)
     except SyntaxError as e:
-        raise ValueError(f"{filename}: malformed file: SyntaxError: {e}")
+        raise ValueError(f"{filename}: malformed file: SyntaxError: {e}") from e
     if (
         not tree.body
         or not isinstance(tree.body[0], ast.Expr)
@@ -199,8 +199,8 @@ def parse_recipe_file(path: Path) -> Dict[str, Any]:
 def _params_block_lines(code: str) -> Optional[List[str]]:
     lines = code.splitlines()
     try:
-        start = next(i for i, l in enumerate(lines) if l.strip() == PARAMS_START)
-        end = next(i for i, l in enumerate(lines) if l.strip() == PARAMS_END)
+        start = next(i for i, ln in enumerate(lines) if ln.strip() == PARAMS_START)
+        end = next(i for i, ln in enumerate(lines) if ln.strip() == PARAMS_END)
     except StopIteration:
         return None
     if end <= start:

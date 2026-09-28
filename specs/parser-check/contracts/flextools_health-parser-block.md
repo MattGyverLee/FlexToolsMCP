@@ -3,6 +3,8 @@
 **Checkpoint:** CP1 | **Annotation:** `READ_ONLY_SAFE` | **Contract version:**
 `tool-responses/1.0` (additive; no bump)
 
+Updated 2026-09-27 (issue #167): sandbox components follow the CP5 re-plan; the `hc` tool is retired and replaced with FieldWorks' bundled `fieldworks_hermitcrab` and `GenerateHCConfig.exe`.
+
 A new top-level `parser` key on the existing `flextools_health` response. Every
 existing key is unchanged. Shape is copied verbatim from SPEC 10.2.
 
@@ -19,9 +21,10 @@ existing key is unchanged. Shape is copied verbatim from SPEC 10.2.
   "detected": {
     "parser_core_version": null,
     "lcmodel_install_path": null,
-    "hc_tool_version": null,
-    "hc_path": null,
-    "generate_hc_config_path": null
+    "fieldworks_hermitcrab_path": null,
+    "generate_hc_config_path": null,
+    "fieldworks_hermitcrab_version": null,
+    "generate_hc_config_version": null
   }
 }
 ```
@@ -45,11 +48,11 @@ when `absent`, `{agent_guid, active_engine}`.
 
 ## `sandbox.components`
 
-An **array**, not a singular value like `parser_tool_missing` -- the two tools fail
+An **array**, not a singular value like `parser_tool_missing` -- the two components fail
 independently and a caller must know which one to install:
 
 ```json
-[{"component": "hc", "found": false, "expected_path": "..."},
+[{"component": "fieldworks_hermitcrab", "found": false, "expected_path": "..."},
  {"component": "GenerateHCConfig.exe", "found": true, "expected_path": "..."}]
 ```
 
@@ -69,12 +72,13 @@ independently and a caller must know which one to install:
 - **`active_engine` is informational only** -- it echoes `ActiveParser` when a project
   is open, else `null`, and is never a status input. The mismatch gate lives in the
   per-call preflight.
-- **`detected.parser_core_version` never decides.** No code path may compare it to a
-  floor. Reported because it is the first thing worth knowing in a bug report.
-- **`hc` detection must be bounded.** `dotnet tool list -g` runs with a timeout; a
-  slow or hanging call reports the component as not found with the reason recorded,
-  and never blocks the health response. (SPEC open question 8 left this unspecified;
-  CP1 specifies it.)
+- **`detected.parser_core_version` and version fields never decide.** No code path may compare
+  them to a floor. Reported because they are the first things worth knowing in a bug report.
+- **Sandbox component detection is filesystem-only.** CP5 re-plan: FieldWorks' bundled
+  HermitCrab engine (`SIL.Machine.Morphology.HermitCrab.dll`) and `GenerateHCConfig.exe`
+  are located via a plain directory check in the resolved FieldWorks install, never
+  spawned or loaded; detection is cheap and deterministic. No process is executed and
+  no assembly is loaded, so health stays fast.
 - **No new detection logic in `diagnostic_health.py`.** It composes
   `parser_probe.ParserDetector`'s output and reshapes it. That module's docstring is a
   contract other code and tests rely on.
@@ -89,7 +93,8 @@ Copied from SPEC 10.2. No rung ever names a tool whose spine is `unavailable`.
 |---|---|---|---|
 | `read: unavailable` | "install/repair FieldWorks so ParserCore is reachable" | none (external) | n/a |
 | `write: unavailable`, `read: ready` | "use read-only Try A Word; filing unavailable" | `flextools_try_word` | inline |
-| `sandbox.components[hc].found=false` | "install the hc dotnet tool" | none (external) | n/a |
+| `sandbox.components[fieldworks_hermitcrab].found=false` | "repair or reinstall FieldWorks (SIL.Machine.Morphology.HermitCrab.dll missing)" | none (external) | n/a |
+| `sandbox.components[GenerateHCConfig.exe].found=false` | "repair or reinstall FieldWorks (GenerateHCConfig.exe missing)" | none (external) | n/a |
 | `sandbox: unavailable` (either component) | never propose `flextools_parse_sandbox` | -- | -- |
 | `write: unavailable`, `signal: parser_agent_missing` | "this project has never run HermitCrab; run it once from FLEx's Parser menu, then retry filing" | `flextools_try_word` | inline |
 | `active_engine` mismatch | "project is on {configured_engine}; HC tools refused" | none (external) | n/a |
@@ -118,14 +123,14 @@ The rungs are emitted as a list at the response's top level, in a
 block, whose key set is copied verbatim from SPEC 10.2 and is exactly the five
 keys shown above. Every CP1 rung carries `tool: null`: the only rows with a tool
 to name name `flextools_try_word`. `flextools_parse_sandbox` is never named while
-either sandbox component is missing. The `GenerateHCConfig.exe`-missing state has
-no action row of its own (the table gives it only the negative rule); the fact is
-carried by `sandbox.components`. The `active_engine` mismatch row never fires from
+either sandbox component is missing. The `active_engine` mismatch row never fires from
 health at CP1, since health never opens a project and `active_engine` is always
 `null`; that gate lives in the per-call preflight.
 
-The install hint for `hc` is literally
-`dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool` (SPEC H1). `hc` is a
-dotnet **global tool**, located via PATH / `dotnet tool list -g` with a config
-override -- *not* `%LOCALAPPDATA%\HermitCrabTool\hc.dll`, which is what the
-contributed script wrongly assumed.
+As of CP5 (FR-004, FR-005), both missing-component rows carry the same repair hint:
+`GenerateHCConfig.exe ships with FieldWorks 9; repair or reinstall FieldWorks.`
+Both components are located in the resolved FieldWorks directory and are discovered
+via filesystem check only -- no process is spawned, no assembly is loaded, and the
+discovery never blocks or times out. Whether an engine that is present actually loads
+is a sandbox-worker question, not a health-time question (surfaces on the sandbox's
+first `parse` instead).

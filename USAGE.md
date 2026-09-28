@@ -75,6 +75,10 @@ DEPRECATED: use `flextools_list_recipes(source="local")`. Same `limit` input and
 
 ### Parser Check
 
+For the field-linguist walkthrough of these tools (try a word, parse a
+text, read the diff, file results, use a sandbox), see
+[docs/PARSER-GUIDE.md](docs/PARSER-GUIDE.md).
+
 | Tool | Description |
 |------|-------------|
 | `flextools_try_word` | Does this word parse, and if not, why not? |

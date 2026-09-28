@@ -191,6 +191,7 @@ def _write_jsonl_line(
 
     record: Dict[str, Any] = {
         "ts": stash.get("ts") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "kind": "run_module",
         "op_id": op_id,
         "seq": seq,
         "project": stash.get("project", ""),
@@ -218,6 +219,41 @@ def _write_jsonl_line(
     if rbc is not None:
         record["reflection_bypass_count"] = rbc
 
+    append_jsonl_record(record, log_dir_fn=log_dir_fn)
+
+
+def is_run_module_record(record: Dict[str, Any]) -> bool:
+    """True for a `run_module` telemetry record, false for a `parse` one.
+
+    Issue #167 (parser-check CP6): `operations.jsonl` now carries both
+    `"kind": "run_module"` records (this module) and `"kind": "parse"`
+    records (`handlers/parse_telemetry.py`), sharing one file. A record
+    written before `"kind"` existed (a pre-#167 legacy line) has no `"kind"`
+    key at all and is treated as `"run_module"` for backward compatibility
+    -- this mirrors the same default `compute_jsonl_statistics()` already
+    used inline before this helper existed.
+
+    This is the single source of truth every OTHER reader of
+    operations.jsonl should call instead of re-deriving
+    `record.get("kind", "run_module") == "run_module"` inline (audited in
+    issue #167's follow-up: `diagnostic_report.py`, `diagnostic_health.py`).
+    `scripts/green_report.py` is the one exception -- it is STDLIB ONLY by
+    design (no dependency on the `flextoolsmcp` package) and keeps a small
+    local copy of this exact check instead of importing it.
+    """
+    return record.get("kind", "run_module") == "run_module"
+
+
+def append_jsonl_record(record: Dict[str, Any], *, log_dir_fn: Any) -> None:
+    """Append one already-built record to operations.jsonl, rotating first.
+
+    Factored out of `_write_jsonl_line` (issue #167 / parser-check CP6) so the
+    parse-tool telemetry hook (`handlers/parse_telemetry.py`) can append its
+    own records through the SAME file, rotation and error-swallowing path
+    instead of re-implementing it. Every record written this way should carry
+    a `"kind"` field ("run_module" or "parse") so `compute_jsonl_statistics`
+    can tell them apart and `handle_get_operation_logs` is never miscounted.
+    """
     try:
         log_dir = log_dir_fn()
         jsonl_path = _get_jsonl_path(log_dir)
@@ -391,8 +427,22 @@ def compute_jsonl_statistics(log_dir: Path) -> Dict[str, Any]:
     The turns-to-green metric set (median + p90) is kept field-for-field
     consistent with scripts/green_report.py so the in-server stats block and
     the CLI report agree on names and values for the same JSONL input (#66).
+
+    Issue #167 (parser-check CP6): `operations.jsonl` now also carries
+    `"kind": "parse"` records from the parse-tool telemetry hook
+    (`handlers/parse_telemetry.py`). Those are a different population --
+    they have no `user_intent` / `session_id` turn structure and would
+    otherwise be folded into `group_records_by_session`'s legacy fallback
+    (empty `session_id` -> grouped by empty/absent `user_intent`), inflating
+    or corrupting the run_module green-rate and reject-code stats below.
+    Every record written by `_write_jsonl_line` carries `"kind": "run_module"`
+    (added alongside this filter); a record with no `"kind"` key at all is a
+    pre-#167 legacy line and is treated as `"run_module"` for backward
+    compatibility. Only `"run_module"` records feed this function's
+    analytics -- parse records are excluded here, not deleted, so a future
+    parse-specific stats block can still read them from the same file.
     """
-    records = _load_jsonl_records(log_dir)
+    records = [r for r in _load_jsonl_records(log_dir) if is_run_module_record(r)]
     if not records:
         return {
             "first_pass_green_rate": None,

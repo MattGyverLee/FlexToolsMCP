@@ -140,8 +140,8 @@ extend-exclude = [
 ]
 
 # Lint-widening step 1 (issue #67): full F (pyflakes) + E4/E7 on top of the
-# fatal-only floor. E9/F63/F7/F82 remain a subset, so pre-commit's fatal-only
-# gate still matches.
+# fatal-only floor. The pre-commit ruff hook reads this same config, so local
+# commits and CI lint enforce identical rules.
 # Lint-widening step 2 (issue #67): add B (flake8-bugbear) -- catches likely
 # bugs like mutable default args, function calls in default args, and bare
 # `raise` inside `except` (losing the original traceback context).

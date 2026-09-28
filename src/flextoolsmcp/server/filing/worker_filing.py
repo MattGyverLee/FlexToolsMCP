@@ -497,7 +497,9 @@ class FilingBackend(_RealBackend):
                     "hint": (
                         "The HermitCrab parser agent was not found by its GUID. Open the "
                         "project in FieldWorks with the HC parser active and run Try a "
-                        "Word once so FieldWorks creates it, then retry."
+                        "Word once so FieldWorks creates it. Then call "
+                        "flextools_parse_text(apply=true) without confirmed: it "
+                        "re-checks the agent and files nothing until you confirm."
                     ),
                 },
             ) from exc

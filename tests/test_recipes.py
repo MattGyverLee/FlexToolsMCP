@@ -18,7 +18,8 @@ import json
 import pytest
 
 from flextoolsmcp.curated_recipes import CURATED_RECIPES
-from flextoolsmcp.recipe_validator import validate_all
+from flextoolsmcp.recipe_files import load_recipe_library
+from flextoolsmcp.recipe_validator import validate_all, validate_recipe
 from flextoolsmcp.server import APIIndex, get_index_dir
 from flextoolsmcp.server.recipes import find_recipe_for_search, find_recipes_for_examples
 from flextoolsmcp.server import kernel
@@ -178,3 +179,164 @@ class TestVerifiedVersion:
         from flextoolsmcp.curated_recipes import FLEXICON_VERIFIED_VERSION
 
         assert FLEXICON_VERIFIED_VERSION == api_index.flexicon_version
+
+
+# ---------------------------------------------------------------------------
+# Unified-recipes T029: shipped validator checks (FR-040, FR-041, FR-044,
+# FR-050..053, SC-003). Each recipe below must FAIL validate_recipe with
+# shipped=True for exactly one reason.
+# ---------------------------------------------------------------------------
+
+def _shipped_recipe(code, **overrides):
+    recipe = {
+        "id": "seed-shipped",
+        "intent": "seed",
+        "match_terms": ["seed"],
+        "entities": ["LexEntry"],
+        "operations": ["read"],
+        "requires_write": False,
+        "code": code,
+        "notes": "seed",
+        "origin": "test",
+        "source": "curated",
+        "verified_against": {"flexicon": "4.11.0", "verified_by": "preflight"},
+    }
+    recipe.update(overrides)
+    return recipe
+
+
+CLEAN_SHIPPED_CODE = (
+    "for entry in project.LexEntry.GetAll():\n"
+    "    headword = project.LexEntry.GetHeadword(entry)\n"
+    "    report.Info(headword)\n"
+)
+
+
+class TestShippedValidatorChecks:
+    def test_clean_recipe_passes_shipped(self, api_index):
+        result = validate_recipe(_shipped_recipe(CLEAN_SHIPPED_CODE), api_index, shipped=True)
+        assert result["passed"], result["issues"]
+
+    def test_bad_params_block_fails(self, api_index):
+        code = (
+            "# --- PARAMS ---\n"
+            "COUNT = 10 + \n"
+            "# --- END PARAMS ---\n" + CLEAN_SHIPPED_CODE
+        )
+        result = validate_recipe(_shipped_recipe(code), api_index, shipped=True)
+        assert not result["passed"]
+        assert any("PARAMS" in issue for issue in result["issues"])
+
+    def test_unclosed_params_block_fails(self, api_index):
+        code = "# --- PARAMS ---\nCOUNT = 10\n" + CLEAN_SHIPPED_CODE
+        result = validate_recipe(_shipped_recipe(code), api_index, shipped=True)
+        assert not result["passed"]
+        assert any("PARAMS" in issue for issue in result["issues"])
+
+    def test_unguarded_write_fails(self, api_index):
+        code = (
+            "for entry in project.LexEntry.GetAll():\n"
+            "    project.LexEntry.Delete(entry)\n"
+        )
+        result = validate_recipe(
+            _shipped_recipe(code, requires_write=True), api_index, shipped=True
+        )
+        assert not result["passed"]
+        assert any("modifyAllowed" in issue for issue in result["issues"])
+
+    def test_deprecated_member_fails(self, api_index):
+        code = (
+            "for entry in project.LexEntry.GetAll():\n"
+            "    x = entry.DoNotUseForParsing\n"
+            "    report.Info(str(x))\n"
+        )
+        result = validate_recipe(_shipped_recipe(code), api_index, shipped=True)
+        assert not result["passed"]
+        assert any("deprecat" in issue.lower() for issue in result["issues"])
+
+    def test_guid_literal_fails(self, api_index):
+        code = CLEAN_SHIPPED_CODE + "guid = '12345678-1234-1234-1234-1234567890ab'\n"
+        result = validate_recipe(_shipped_recipe(code), api_index, shipped=True)
+        assert not result["passed"]
+        assert any("GUID" in issue or "scrub" in issue.lower() for issue in result["issues"])
+
+    def test_user_path_fails(self, api_index):
+        code = CLEAN_SHIPPED_CODE + "# data lived at C:\\Users\\someone\\data\n"
+        result = validate_recipe(_shipped_recipe(code), api_index, shipped=True)
+        assert not result["passed"]
+        assert any("scrub" in issue.lower() or "path" in issue.lower() for issue in result["issues"])
+
+    @pytest.mark.parametrize("name", ["Claude-Swahili", "Target"])
+    def test_forbidden_default_names_fail(self, api_index, name):
+        code = CLEAN_SHIPPED_CODE + f"PROJECT = '{name}'\n"
+        result = validate_recipe(_shipped_recipe(code), api_index, shipped=True)
+        assert not result["passed"]
+        assert any("scrub" in issue.lower() or name in issue for issue in result["issues"])
+
+    def test_print_call_fails(self, api_index):
+        code = CLEAN_SHIPPED_CODE + "print(headword)\n"
+        result = validate_recipe(_shipped_recipe(code), api_index, shipped=True)
+        assert not result["passed"]
+        assert any("print" in issue.lower() for issue in result["issues"])
+
+
+# FR-050 batch: at least 12 of the 16 first-batch recipes ship (T034..T051).
+FIRST_BATCH_IDS = [
+    "parser-coverage",
+    "lexicon-form-lookup",
+    "entry-parser-detail",
+    "wordform-analyses",
+    "form-usage-before-edit",
+    "affix-templates-and-slots",
+    "phonological-rules",
+    "wordform-case-variants",
+    "create-entries-idempotent",
+    "create-entry-like-comparator",
+    "set-allomorph-environments",
+    "add-inflectional-affix",
+    "add-allomorph",
+    "create-text-from-lines",
+    "create-variant-entries",
+    "affix-template-setup",
+]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="needs recipe batch T034-T051: only parser-coverage ships so far",
+)
+def test_first_batch_count():
+    shipped = set(CURATED_RECIPES)
+    have = [rid for rid in FIRST_BATCH_IDS if rid in shipped]
+    assert len(have) >= 12, f"only {len(have)} of 16 batch recipes ship: {sorted(have)}"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="needs Sena 3 verification T041+: file recipes still preflight-only",
+)
+def test_shipped_file_recipes_have_sena3_verification():
+    file_recipes, _errors = load_recipe_library()
+    assert file_recipes, "no file recipes ship yet"
+    for recipe_id, recipe in file_recipes.items():
+        verified_by = (recipe.get("verified_against") or {}).get("verified_by")
+        assert verified_by in ("sena3-read", "sena3-dryrun", "sena3-live"), (
+            f"{recipe_id} verified_by={verified_by!r}; FR-044 requires a "
+            "Sena 3 run (sena3-read / sena3-dryrun / sena3-live)"
+        )
+
+
+def test_vernacular_recipes_normalize():
+    # FR-051: shipped file recipes comparing vernacular text MUST
+    # NFC-normalize both sides (unicodedata.normalize).
+    file_recipes, _errors = load_recipe_library()
+    for recipe_id, recipe in file_recipes.items():
+        blob = (
+            recipe.get("intent", "")
+            + " " + " ".join(recipe.get("match_terms", []))
+            + " " + recipe.get("notes", "")
+        ).lower()
+        if "vernacular" in blob or "nfc" in blob or "nfd" in blob:
+            assert "normalize" in recipe["code"], (
+                f"{recipe_id} touches vernacular text but never normalizes it"
+            )

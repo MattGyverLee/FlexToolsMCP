@@ -198,8 +198,9 @@ class ParseWorkerClient:
     ) -> None:
         self.project_name = project_name
         #: CP5: start the worker in `--sandbox` mode instead of opening
-        #: `project_name`. A sandbox worker is never pooled (it is spawned
-        #: by `SandboxClient`, outside `WorkerPool`).
+        #: `project_name`. A sandbox worker is never in `WorkerPool`; the
+        #: `SandboxClient` spawns it directly, or checks one out of the
+        #: `SandboxWorkerPool` (CP5 Phase 11, #242).
         self._sandbox = sandbox
         #: CP5: also hand each stderr line here (the sandbox run keeps its
         #: worker's diagnostics as `sandbox/worker-stderr.txt`).
@@ -389,6 +390,35 @@ class ParseWorkerClient:
         )
 
     # -- the channel ------------------------------------------------------
+
+    def set_stderr_sink(self, sink: Optional[Callable[[str], None]]) -> None:
+        """Swap where worker stderr lines go (CP5 Phase 11, #242).
+
+        A pooled sandbox worker is handed from run to run; each run's
+        diagnostics must land in ITS OWN record, so the sink is swapped at
+        checkout and cleared at checkin. `_drain_stderr` reads the attribute
+        per line, so the swap is safe against the running drain task.
+        """
+        self._stderr_sink = sink
+
+    def clear_run_listeners(self) -> None:
+        """Drop every run's `stage`/`cancelled` listener (CP5 Phase 11, #242).
+
+        A pooled worker outlives its runs; without this it would accumulate
+        one dead closure per run it ever served (the runner already does the
+        equivalent for project workers in its `finally`).
+        """
+        self._run_listeners.clear()
+
+    @property
+    def has_pending_requests(self) -> bool:
+        """Whether any request is still awaiting this worker's answer.
+
+        A worker with requests in flight is never admitted to the sandbox
+        pool: handing it over would misattribute their answers to the next
+        run.
+        """
+        return bool(self._pending)
 
     async def _read_message(self) -> Optional[dict[str, Any]]:
         """One protocol line, or None at EOF. Malformed lines are skipped.

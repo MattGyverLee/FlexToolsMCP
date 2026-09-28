@@ -23,7 +23,8 @@ WHAT ONE RUN DOES
                 front. Then the id-map gate (an invalid sidecar is refused
                 BEFORE anything is spawned), the Morpher parameters (D3), and
                 one `--sandbox` parse worker for the run
-                (`ParseWorkerClient` with a `SandboxSpawn`; never pooled).
+                (`ParseWorkerClient` with a `SandboxSpawn`, checked out of the
+                `SandboxWorkerPool` when one is configured -- Phase 11, #242).
   parse_word()  one word to the worker, one structured result back
                 (contracts/sandbox-worker.md section 4), turned into the
                 `results.jsonl` line (`classify`). A worker that dies
@@ -59,7 +60,17 @@ import logging
 import time
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from ..parse.worker_client import (
     ParseWorkerClient,
@@ -68,6 +79,9 @@ from ..parse.worker_client import (
     WorkerStartupError,
 )
 from . import cache, classify, engine, lcm_ids, script, workdir
+
+if TYPE_CHECKING:  # the pool is imported lazily at runtime (no import cycle)
+    from .pool import SandboxWorkerPool
 
 __all__ = [
     "SANDBOX_ROLE",
@@ -225,7 +239,14 @@ class SandboxRunError(WorkerError):
 
 
 class SandboxClient:
-    """One sandbox run: one config, one `--sandbox` worker process."""
+    """One sandbox run: one config, one `--sandbox` worker process.
+
+    The worker is checked out of the `SandboxWorkerPool` when one is
+    configured (Phase 11, #242) -- a warm idle worker for the same
+    (config, id-map, parameters) key is reused, otherwise a fresh worker is
+    spawned -- and checked back in by `finalize()` when the run was healthy.
+    Without a pool every run spawns its own worker, as before.
+    """
 
     def __init__(
         self,
@@ -235,12 +256,16 @@ class SandboxClient:
         record: Any,
         wordforms: List[str],
         launch: Union[SandboxLaunch, Mapping[str, Any]],
+        sandbox_pool: Optional["SandboxWorkerPool"] = None,
     ) -> None:
         self.project_name = project_name
         self.run_id = run_id
         self._record = record
         self._wordforms = list(wordforms)
         self._launch = SandboxLaunch.from_value(launch)
+        #: Phase 11 (#242): the idle-worker pool, owned by the runner. None
+        #: keeps the original spawn-per-run behaviour (unit tests).
+        self._sandbox_pool = sandbox_pool
         self._sandbox_dir = Path(record.sandbox_path(script.RUN_JSON)).parent
         self._listeners: Dict[str, Callable[[Dict[str, Any]], None]] = {}
         self._mode = self._launch.mode
@@ -342,25 +367,85 @@ class SandboxClient:
             project=self.project_name,
             named_sandbox=self._launch.named,
         )
-        worker = ParseWorkerClient(
-            self.project_name,
-            stub=self._launch.worker_stub,
-            parse_delay=self._launch.worker_parse_delay,
-            sandbox=spawn,
-            stderr_sink=self._stderr_lines.append,
-        )
-        worker.listen_to_run(self.run_id, self._on_worker_message)
+        # Phase 11 (#242): reuse a warm idle worker for this exact
+        # (config, id-map, parameters) key when the pool has one.
+        self._pool_key: Optional[tuple] = None
+        self._pool_entry_key: Optional[str] = None
+        self._reused_worker = False
         try:
-            await worker.start()
+            if self._sandbox_pool is not None:
+                self._pool_key = self._make_pool_key(
+                    config, id_map, parameters)
+                self._pool_entry_key = (
+                    self._entry.key if self._entry is not None else None)
+                worker, self._reused_worker = await self._sandbox_pool.checkout(
+                    self._pool_key,
+                    project_name=self.project_name,
+                    spawn=spawn,
+                    stub=self._launch.worker_stub,
+                    parse_delay=self._launch.worker_parse_delay,
+                )
+                # A pooled worker arrives with no sink and no listeners
+                # (cleared at checkin); a fresh one was just spawned.
+                worker.set_stderr_sink(self._stderr_lines.append)
+            else:
+                worker = ParseWorkerClient(
+                    self.project_name,
+                    stub=self._launch.worker_stub,
+                    parse_delay=self._launch.worker_parse_delay,
+                    sandbox=spawn,
+                    stderr_sink=self._stderr_lines.append,
+                )
+                await worker.start()
         except WorkerStartupError as exc:
             raise SandboxRunError(
                 f"The sandbox parse worker did not start: {exc}",
                 error_code="parser_job_failed",
                 facts={"failure": "crashed", "log_path": str(self._sandbox_dir / _STDERR)},
             ) from exc
+        worker.listen_to_run(self.run_id, self._on_worker_message)
         self._worker = worker
         self._launched_at = time.monotonic()
         self._watchdog_task = asyncio.ensure_future(self._watchdog())
+
+    def _make_pool_key(
+        self,
+        config: Path,
+        id_map: Optional[Path],
+        parameters: Dict[str, Any],
+    ) -> tuple:
+        """This run's `SandboxWorkerPool` key (T116).
+
+        Project-cache runs key on the cache entry's key (which already
+        fingerprints the fwdata, the generator and HCPARSE_VERSION);
+        named sandboxes key on the config path plus file signatures, so an
+        in-place user edit changes the key. Both hash the resolved
+        parameters by content -- the worker reads `--hc-params` from a
+        per-run file, so its path is useless as a key. The `--engine-dir`
+        and `--parse-delay` spawn arguments join the key, so a worker is
+        never reused for a run that would start it differently.
+        """
+        from . import pool as pool_mod
+
+        if self._launch.named:
+            return pool_mod.compute_pool_key(
+                kind="named",
+                config_path=str(config),
+                id_map_path=str(id_map) if id_map is not None else None,
+                parameters=parameters,
+                engine_dir=self._launch.engine_dir,
+                parse_delay=self._launch.worker_parse_delay,
+                stub=self._launch.worker_stub,
+            )
+        entry_key = self._entry.key if self._entry is not None else None
+        return pool_mod.compute_pool_key(
+            kind="cache",
+            entry_key=entry_key,
+            parameters=parameters,
+            engine_dir=self._launch.engine_dir,
+            parse_delay=self._launch.worker_parse_delay,
+            stub=self._launch.worker_stub,
+        )
 
     async def parse_word(
         self,
@@ -550,16 +635,54 @@ class SandboxClient:
             if self._gen_task is not None and not self._gen_task.done():
                 self._gen_task.cancel()
             self._stop_watchdog()
-            if self._worker is not None:
-                await self._worker.aclose()
-            if self._worker is not None or self._stderr_lines:
+            # Detach first: a checked-in worker belongs to the pool, and the
+            # runner's aclose() backstop must not reap it.
+            worker, self._worker = self._worker, None
+            if worker is not None:
+                if self._can_pool(worker):
+                    await self._checkin_worker(worker)
+                else:
+                    await worker.aclose()
+            if worker is not None or self._stderr_lines:
                 self._write_stderr()
             if self._results:
                 self._write_output()
-            if self._worker is not None:
-                self._fold_outcome()
+            if worker is not None:
+                self._fold_outcome(worker)
         finally:
             self._delete_copy()
+
+    def _can_pool(self, worker: ParseWorkerClient) -> bool:
+        """Whether `worker` may go back to the `SandboxWorkerPool` (T118).
+
+        Only a worker that actually loaded a grammar is admitted: a worker
+        that never loaded would re-read its per-run `--hc-params`/`--id-map`
+        files at a later load, and those live under THIS run's record. Load
+        failure is excluded the same way (and the worker backend's
+        `_failure` is sticky -- every later parse would fail identically). A
+        cancelled, watchdog-killed or crashed run is never pooled: its
+        worker may be in an unknown state.
+        """
+        if self._sandbox_pool is None or self._pool_key is None:
+            return False
+        if self._cancelled or self._watchdog_fired or self._crashed or self._killed:
+            return False
+        if self._baseline is None:
+            return False
+        return worker.is_running()
+
+    async def _checkin_worker(self, worker: ParseWorkerClient) -> None:
+        assert self._sandbox_pool is not None and self._pool_key is not None
+        accepted = await self._sandbox_pool.checkin(
+            self._pool_key,
+            worker,
+            project_name=self.project_name,
+            entry_key=self._pool_entry_key,
+        )
+        if not accepted:
+            # The pool refused (closed, dead, or requests in flight) -- the
+            # worker is ours to close.
+            await worker.aclose()
 
     async def aclose(self) -> None:
         """Make sure nothing outlives the run: the process, the watchdog, the copy."""
@@ -876,8 +999,13 @@ class SandboxClient:
         with contextlib.suppress(Exception):
             self._record.write_sandbox_file(_OUTPUT, render_results(self._results))
 
-    def _fold_outcome(self) -> None:
-        """The worker's outcome into `meta.sandbox.worker` and `run.json`."""
+    def _fold_outcome(self, worker: ParseWorkerClient) -> None:
+        """The worker's outcome into `meta.sandbox.worker` and `run.json`.
+
+        `worker` is passed explicitly because `finalize()` detaches it before
+        folding: a checked-in (pooled) worker is still alive, so its
+        `exit_code` is None here -- honest, and `reused_worker` says why.
+        """
         in_flight = self._in_flight_index if (self._watchdog_fired or self._cancelled) else None
         in_flight_word = None
         if in_flight is not None and 0 <= in_flight < len(self._wordforms):
@@ -905,7 +1033,7 @@ class SandboxClient:
         duration = None
         if self._launched_at is not None:
             duration = int((time.monotonic() - self._launched_at) * 1000)
-        exit_code = self._worker.exit_code if self._worker is not None else None
+        exit_code = worker.exit_code
         worker_section = {
             "exit_code": exit_code,
             "timed_out": self._watchdog_fired,
@@ -916,6 +1044,9 @@ class SandboxClient:
             "counters": counters_state,
             "engine_counters": engine_counters,
             "counter_agreement": agreement,
+            # Phase 11 (#242): the mechanism SC-006 is asserted on.
+            "reused_worker": self._reused_worker,
+            "worker_pid": worker.worker_pid,
         }
         baseline = self._baseline or {}
         with contextlib.suppress(Exception):

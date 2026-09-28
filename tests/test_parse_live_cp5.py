@@ -725,16 +725,24 @@ async def test_s4_parse_words(sandbox_home, hc_scratch):
 
 
 async def test_s5_warm_cache(sandbox_home, hc_scratch):
-    """S5: a repeat reuses the cache and takes at most half the cold wall time
-    (SC-006). Both warm runs reuse the cache; the faster of the two is the
-    one compared, since a warm run is dominated by the worker's own start
-    (process, CLR, engine load) and one sample is at the mercy of the box.
-    On a small grammar that start is close to the generation it saves, and
-    this stays red until a warm sandbox worker is reused (#242)."""
+    """S5: a repeat run reuses the cache AND the warm sandbox worker (SC-006).
+
+    SC-006 (revised 2026-09-28, #242) is asserted on the mechanism, not on a
+    wall-clock ratio: the warm runs must record `reused_worker: true` with
+    the same `worker_pid` as the cold run -- the same worker process, no new
+    spawn and no grammar reload. The timing check is only a sanity bound
+    (warm strictly faster than cold): the old 2x bar was a noisy proxy for
+    reuse, and "warm faster than cold" alone is already true without any
+    pooling, so neither is the criterion.
+    """
     from flextoolsmcp.server.sandbox import cache as sandbox_cache
 
     words = _s4_words()
     guard = ProjectGuard(hc_scratch.folder)
+
+    def _worker(response):
+        return ((_record_json(response, "sandbox", "run.json") or {}).get("worker") or {})
+
     async with live_runner(sandbox_home):
         sandbox_cache.invalidate(hc_scratch.name)
         t0 = time.monotonic()
@@ -746,29 +754,45 @@ async def test_s5_warm_cache(sandbox_home, hc_scratch):
             warm = await _parse(hc_scratch.name, words)
             warm_runs.append((time.monotonic() - t1, warm))
     _assert_s4_shape(cold, words)
+
+    cold_worker = _worker(cold)
+    cold_pid = cold_worker.get("worker_pid")
+    assert isinstance(cold_pid, int), cold_worker
+    assert cold_worker.get("reused_worker") is False, cold_worker
+    cold_gen = (cold.get("_submitted") or cold).get("generation") or {}
+    assert cold_gen.get("reused_cache") is False, cold_gen
+
     for _, warm in warm_runs:
         _assert_s4_shape(warm, words)
         warm_gen = (warm.get("_submitted") or warm).get("generation") or {}
         assert warm_gen.get("reused_cache") is True, warm_gen
-    cold_gen = (cold.get("_submitted") or cold).get("generation") or {}
-    assert cold_gen.get("reused_cache") is False, cold_gen
+        w = _worker(warm)
+        assert w.get("reused_worker") is True, w
+        assert w.get("worker_pid") == cold_pid, (w, cold_pid)
+
     warm_wall = min(wall for wall, _ in warm_runs)
     assert _work_entries() == []
     guard.check()
 
-    # Recorded before the ratio is judged, so a miss is on file too.
+    reused = all(
+        _worker(w).get("reused_worker") is True
+        and _worker(w).get("worker_pid") == cold_pid
+        for _, w in warm_runs)
+    # Recorded before the timing is judged, so a miss is on file too.
     await _evidence(
         "S5", "warm-cache", project=hc_scratch.name, source=HC_PROJECT, hashes=[guard],
         responses={"cold": cold, "warm": warm_runs[0][1]},
         observations={"cold_wall_seconds": cold_wall,
                       "warm_wall_seconds": [wall for wall, _ in warm_runs],
-                      "ratio": cold_wall / warm_wall if warm_wall else None,
+                      "cold_worker_pid": cold_pid,
+                      "warm_worker_pids": [_worker(w).get("worker_pid") for _, w in warm_runs],
+                      "reused_worker": [_worker(w).get("reused_worker") for _, w in warm_runs],
                       "worker_duration_ms": [
-                          ((_record_json(w, "sandbox", "run.json") or {}).get("worker") or {})
-                          .get("duration_ms") for _, w in warm_runs]},
-        needs_human=warm_wall > cold_wall / 2,
+                          _worker(w).get("duration_ms") for _, w in warm_runs]},
+        needs_human=(not reused) or warm_wall >= cold_wall,
     )
-    assert warm_wall <= cold_wall / 2, (cold_wall, [wall for wall, _ in warm_runs])
+    assert reused, "the warm runs did not reuse the cold run's worker"
+    assert warm_wall < cold_wall, (cold_wall, [wall for wall, _ in warm_runs])
 
 
 # ===========================================================================

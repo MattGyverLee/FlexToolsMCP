@@ -154,7 +154,7 @@ def _fresh_module_state():
 
 
 @pytest.fixture
-def e2e(tmp_path, sandbox_root, fake_project, fake_generator, monkeypatch):
+async def e2e(tmp_path, sandbox_root, fake_project, fake_generator, monkeypatch):
     """The real handler, runner, client, script and worker process; a fake
     generator, project and engine."""
     monkeypatch.setenv("FAKE_PYTHON", sys.executable)
@@ -188,6 +188,9 @@ def e2e(tmp_path, sandbox_root, fake_project, fake_generator, monkeypatch):
         yield env
     finally:
         parse_handler.set_runner(None)
+        # Phase 11 (#242): reap the runner's SandboxWorkerPool -- idle
+        # workers stay warm past their run.
+        await runner.aclose()
         if sys.platform == "win32":
             for pid in processes_with(str(tmp_path)):
                 _kill_tree(pid)

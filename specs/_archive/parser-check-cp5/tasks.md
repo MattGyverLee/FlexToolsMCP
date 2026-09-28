@@ -1060,10 +1060,73 @@ filed (with maintainer approval) or explicitly recorded as still blocked.
 
 ---
 
+## Phase 11: warm sandbox workers (#242)
+
+SC-006 (revised 2026-09-28): a second run against an unchanged grammar must reuse the
+already-warm sandbox worker -- same process, no new spawn, no grammar reload -- and finish
+faster than a cold run. Reuse is asserted on the mechanism (the run record names the reused
+worker process), not on a wall-clock ratio: the 2x bar was a noisy proxy for reuse, and
+"warm faster than cold" alone is already true without any pooling, so neither is the
+criterion. The worker side needs no change: `_SandboxBackend.release()` already keeps the
+Morpher for the process's life, and `_send_baseline_once` already re-sends the held grammar's
+baseline once per new run_id, so a warm run's record stays complete with no wire change.
+
+- [x] **T116** [US2] Add `src/flextoolsmcp/server/sandbox/pool.py` with `SandboxWorkerPool`.
+  Pool key: project-cache runs `(entry.key, sha256(canonical params JSON))` -- the entry key
+  already fingerprints the fwdata, generator versions and `HCPARSE_VERSION`; named sandboxes
+  `(config path, config mtime_ns/size, id-map path, id-map mtime_ns/size,
+  sha256(canonical params JSON), named=True)` so an in-place user edit changes the key.
+  As built, both key shapes also carry the `--engine-dir` and `--parse-delay` spawn
+  arguments, and checkin refuses a worker that is already parked (a double checkin would
+  hand one process to two runs, F-13).
+  Exclusive checkout under the pool lock (concurrent same-key runs still get separate
+  workers, F-13); a checked-out worker found dead is discarded and replaced. Checkin only
+  of idle, healthy, grammar-loaded workers. `evict_project(project)`,
+  `evict_keys(entry_keys)`, an idle-timeout sweeper task, and `aclose()` (ask-then-kill,
+  like `WorkerPool`). A weak registry of live pools so `cache.invalidate`/`cache.prune`
+  can notify without the pool being threaded through their callers · `src/flextoolsmcp/server/sandbox/pool.py`
+- [x] **T117** [US2] `ParseWorkerClient` hand-over support: `set_stderr_sink()` and
+  `clear_run_listeners()` (one `prepare_for_reuse()`), asserting no pending requests at
+  hand-over · `src/flextoolsmcp/server/parse/worker_client.py`
+- [x] **T118** [US2] `SandboxClient`: accept the pool (optional; None keeps today's
+  spawn-per-run behaviour), check out in `start()` after the config and parameters resolve,
+  check in from `finalize()` only when the run was healthy, the worker is alive, and a
+  `load_baseline` was received (a worker that never loaded is closed -- it would otherwise
+  re-read its per-run params file at a later load). Record `worker.reused_worker` and
+  `worker.worker_pid` in `run.json` / `meta.sandbox.worker`. Never pool after a load
+  failure (the backend's `_failure` poisons every later parse identically), a cancel, a
+  watchdog kill, or a mid-list crash. Null `self._worker` at checkin so the runner's
+  `aclose()` backstop cannot reap a pooled worker · `src/flextoolsmcp/server/sandbox/client.py`
+- [x] **T119** [US2] `ParseRunner` owns the `SandboxWorkerPool` (constructor param defaulting
+  to a fresh pool, stub flag flows through), passes it to each `SandboxClient`, and closes
+  it in `aclose()` · `src/flextoolsmcp/server/parse/runner.py`
+- [x] **T120** [US2] Eviction wiring: `cache.invalidate(project)` notifies live pools
+  (`evict_project`); `cache.prune(project)` notifies with its deleted keys (`evict_keys`).
+  Lazy import inside the functions (no new import cycle), log-and-continue on failure: a
+  cache must never break a caller · `src/flextoolsmcp/server/sandbox/cache.py`
+- [x] **T121** [US2] Update `contracts/sandbox-worker.md`: the "not pooled, not reused"
+  statement becomes the pooling rule -- pooled idle workers keyed as in T116, evicted on
+  cache invalidation/prune and idle timeout, never across a key change · `specs/parser-check-cp5/contracts/sandbox-worker.md`
+- [x] **T122** [P] Unit tests (`--stub --sandbox` workers, no FieldWorks): reuse across runs
+  (same pid, `reused_worker: true`), key change on in-place config edit, eviction on
+  invalidate/prune, idle-timeout reap, no checkin after load failure / cancel / watchdog
+  kill, stderr isolation between runs, and `aclose()` not reaping a checked-in worker ·
+  `tests/test_sandbox_worker_pool.py`
+- [x] **T123** [US2] Rework `test_s5_warm_cache` for the revised SC-006: keep the
+  `reused_cache` assertions; assert warm runs record `reused_worker: true` with the same
+  `worker_pid` as the cold run, and `warm_wall < cold_wall` (mechanism first, timing as a
+  sanity check); update the docstring and `needs_human`; the evidence file records either
+  way · `tests/test_parse_live_cp5.py`, `specs/parser-check-cp5/evidence/s5-warm-cache.json`
+
+**Checkpoint**: S5 is green on the live grammar by mechanism assertion; the evidence file is
+recorded; the pool's unit tests cover every eviction and no-pool path.
+
+---
+
 ## Dependencies & Execution Order
 
 **Phase order**: Setup (1) → Foundational (2) → US1 (3) → US2 (4) → US3 (5) → US4 (6) → US5 (7) →
-US6 (8) → Polish (9) → **Re-plan (10)**.
+US6 (8) → Polish (9) → **Re-plan (10)** → **Warm workers (11, #242)**.
 - US1 and US2 are the MVP.
 - US3 needs US2's cache and client.
 - US4 needs US2's client and US3's store module.

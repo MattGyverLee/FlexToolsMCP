@@ -1,0 +1,5 @@
+# Run self-trace — local diagnostic, read only by the doctor.
+.trace.jsonl
+
+# speckit round logs -- local only (scripts/speckit_git.py).
+rounds/

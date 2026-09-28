@@ -1,0 +1,1018 @@
+{
+  "workflow": "companion",
+  "specName": "unified-recipes",
+  "branch": "unified-recipes",
+  "selectedAt": "2026-09-28T02:36:57.227Z",
+  "currentStep": "implement",
+  "status": "implementing",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "user",
+      "at": "2026-09-28T02:40:02.821Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-28T02:44:46.584Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-28T02:47:28.321Z"
+    },
+    {
+      "step": "plan",
+      "substep": "research",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T02:55:04.153Z"
+    },
+    {
+      "step": "plan",
+      "substep": "design",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T02:58:51.408Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-28T04:01:04.613Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-28T04:02:42.365Z"
+    },
+    {
+      "step": "tasks",
+      "substep": "generate",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:05:30.669Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-28T04:18:18.960Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-28T04:19:54.409Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T001",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:25:32.030Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T002",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:26:43.414Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T003",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:26:47.534Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T004",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:26:52.277Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T005",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:26:56.157Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T006",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:49:54.532Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T007",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:49:58.887Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T008",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:50:03.283Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T009",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:50:08.726Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T010",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:50:13.940Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T011",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T04:50:17.471Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:07:40.409Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:07:48.073Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:07:51.944Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:07:56.113Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:08:00.168Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:08:04.654Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:08:08.807Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:37:56.663Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:03.866Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:08.019Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:12.598Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:16.846Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:21.017Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:30.390Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T026",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:37.880Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T027",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:42.478Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T028",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:46.539Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T030",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:57:16.153Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T031",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:57:30.340Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T032",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:57:34.679Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T033",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:57:38.997Z"
+    }
+  ],
+  "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
+  "coverage": {
+    "FR-001": {
+      "title": "Shipped recipes loadable from one-file-per-recipe sources under recipe_library/",
+      "tasks": [
+        "T005",
+        "T006",
+        "T008"
+      ]
+    },
+    "FR-002": {
+      "title": "Recipe file metadata docstring of key: value lines; code is the rest of the file",
+      "tasks": [
+        "T006",
+        "T008"
+      ]
+    },
+    "FR-003": {
+      "title": "Loader derives params from the PARAMS block",
+      "tasks": [
+        "T006",
+        "T008"
+      ]
+    },
+    "FR-004": {
+      "title": "File recipes merged into CURATED_RECIPES; id collision raises at import",
+      "tasks": [
+        "T006",
+        "T010"
+      ]
+    },
+    "FR-005": {
+      "title": "Library directory is wheel package data and excluded from pyright",
+      "tasks": [
+        "T002",
+        "T003",
+        "T004",
+        "T006",
+        "T073"
+      ]
+    },
+    "FR-006": {
+      "title": "FLEXICON_VERIFIED_VERSION bumped to the index-target flexicon version (4.11.0)",
+      "tasks": [
+        "T007",
+        "T010"
+      ]
+    },
+    "FR-010": {
+      "title": "skeleton_storage replaced by local_recipes storing to recipes.jsonl with env overrides",
+      "tasks": [
+        "T019",
+        "T022",
+        "T026"
+      ]
+    },
+    "FR-012": {
+      "title": "Local recipe record fields; entities from this code's AST only",
+      "tasks": [
+        "T019",
+        "T020",
+        "T022",
+        "T023"
+      ]
+    },
+    "FR-013": {
+      "title": "Identity is a comment/whitespace-insensitive fingerprint; repeats update, not duplicate",
+      "tasks": [
+        "T019",
+        "T022"
+      ]
+    },
+    "FR-014": {
+      "title": "Capture never raises or fails the op",
+      "tasks": [
+        "T019",
+        "T022"
+      ]
+    },
+    "FR-015": {
+      "title": "One-time legacy skeletons.jsonl migration with intent recovery; legacy file untouched",
+      "tasks": [
+        "T019",
+        "T022"
+      ]
+    },
+    "FR-016": {
+      "title": "Local store capped at 2,000 rows",
+      "tasks": [
+        "T019",
+        "T022"
+      ]
+    },
+    "FR-020": {
+      "title": "One ranked search over shipped and local recipes (weighted bags, IDF, boosts)",
+      "tasks": [
+        "T012",
+        "T015",
+        "T024"
+      ]
+    },
+    "FR-021": {
+      "title": "search_by_capability adds recipes, recipes_count, recipes_ambiguous; clear-winner code gate",
+      "tasks": [
+        "T012",
+        "T016"
+      ]
+    },
+    "FR-022": {
+      "title": "Existing results[0].recipe attachment unchanged",
+      "tasks": [
+        "T013",
+        "T015",
+        "T016"
+      ]
+    },
+    "FR-023": {
+      "title": "find_examples includes local recipes; skeletons_from_your_sessions kept, deprecated",
+      "tasks": [
+        "T021",
+        "T025"
+      ]
+    },
+    "FR-024": {
+      "title": "New tool flextools_list_recipes with query/source/requires_write/limit/recipe_id",
+      "tasks": [
+        "T052",
+        "T055",
+        "T056",
+        "T057",
+        "T058",
+        "T059",
+        "T060"
+      ]
+    },
+    "FR-025": {
+      "title": "flextools_list_skeletons remains a deprecated alias",
+      "tasks": [
+        "T052",
+        "T057",
+        "T058"
+      ]
+    },
+    "FR-027": {
+      "title": "Tool descriptions and server instructions guide recipe use and PARAMS",
+      "tasks": [
+        "T014",
+        "T017",
+        "T018",
+        "T053"
+      ]
+    },
+    "FR-030": {
+      "title": "Console script flextools-mcp-recipe promote writes a draft recipe file",
+      "tasks": [
+        "T002",
+        "T061",
+        "T063"
+      ]
+    },
+    "FR-031": {
+      "title": "promote flags GUIDs, Windows user paths and project names for scrubbing",
+      "tasks": [
+        "T061",
+        "T063"
+      ]
+    },
+    "FR-032": {
+      "title": "extract_patterns docs and comments point at the local-recipe store",
+      "tasks": [
+        "T062",
+        "T064"
+      ]
+    },
+    "FR-040": {
+      "title": "Every shipped recipe passes validate_recipe in CI",
+      "tasks": [
+        "T029",
+        "T033"
+      ]
+    },
+    "FR-041": {
+      "title": "Validator checks PARAMS, write guard, deprecated members (curated and index), scrub",
+      "tasks": [
+        "T029",
+        "T030",
+        "T032",
+        "T033"
+      ]
+    },
+    "FR-042": {
+      "title": "Every shipped read recipe run unchanged on Sena 3 with evidence",
+      "tasks": [
+        "T034",
+        "T035",
+        "T036",
+        "T037",
+        "T038",
+        "T039",
+        "T040",
+        "T041"
+      ]
+    },
+    "FR-043": {
+      "title": "Every shipped write recipe dry-run on Sena 3; live write for object creation, with hash/mtime",
+      "tasks": [
+        "T043",
+        "T044",
+        "T045",
+        "T046",
+        "T047",
+        "T048",
+        "T049",
+        "T050"
+      ]
+    },
+    "FR-044": {
+      "title": "verified_against records flexicon version and verified_by",
+      "tasks": [
+        "T029",
+        "T041",
+        "T051"
+      ]
+    },
+    "FR-050": {
+      "title": "First batch includes the 16 listed tasks",
+      "tasks": [
+        "T011",
+        "T034",
+        "T035",
+        "T036",
+        "T037",
+        "T038",
+        "T039",
+        "T040",
+        "T043",
+        "T044",
+        "T045",
+        "T046",
+        "T047",
+        "T048",
+        "T049",
+        "T050"
+      ]
+    },
+    "FR-051": {
+      "title": "Ported recipes use current flexicon, GUID/comparator lookups, NFC, report.* only",
+      "tasks": [
+        "T029",
+        "T033",
+        "T034",
+        "T043"
+      ]
+    },
+    "FR-052": {
+      "title": "Blocked recipes may defer; complete at >=12 of 16",
+      "tasks": [
+        "T029",
+        "T051"
+      ]
+    },
+    "FR-053": {
+      "title": "Recipe notes carry repeated don't-do-this lessons",
+      "tasks": [
+        "T038",
+        "T044",
+        "T050"
+      ]
+    },
+    "FR-060": {
+      "title": "USAGE, CLAUDE, README, RECIPES.md and CHANGELOG updated",
+      "tasks": [
+        "T065",
+        "T066",
+        "T067",
+        "T068",
+        "T069",
+        "T070",
+        "T071",
+        "T073"
+      ]
+    },
+    "FR-061": {
+      "title": "Tests cover loader, capture, migration, ranked search battery, list_recipes, alias, tool list",
+      "tasks": [
+        "T006",
+        "T012",
+        "T019",
+        "T052",
+        "T053"
+      ]
+    },
+    "FR-062": {
+      "title": "Suites run with -m not requires_flex; live checks on Sena 3 only",
+      "tasks": [
+        "T001",
+        "T073"
+      ]
+    },
+    "FR-011": {
+      "title": "Whole code captured as one local recipe when user_intent set and >=4 real lines",
+      "tasks": [
+        "T019",
+        "T020",
+        "T022",
+        "T023"
+      ]
+    },
+    "FR-026": {
+      "title": "Serving a recipe records its entities as validated discovery",
+      "tasks": [
+        "T012",
+        "T016",
+        "T052",
+        "T058"
+      ]
+    },
+    "FR-045": {
+      "title": "Validator keeps raw LibLCM minimal (detect_raw_lcm_access, bridge wrappers, notes, ratchet)",
+      "tasks": [
+        "T031",
+        "T032",
+        "T033",
+        "T042",
+        "T051"
+      ]
+    }
+  },
+  "size": "oversized",
+  "classification": {
+    "projectedFiles": 35,
+    "projectedTasks": 45,
+    "scopeSignal": "larger",
+    "verdict": "oversized"
+  },
+  "context": [
+    "area: src/flextoolsmcp/curated_recipes.py, server/recipes.py, server/skeleton_storage.py, handlers/execution.py",
+    "area: MCPlayground flex-parse-fixup lib/ scripts (primary recipe source)",
+    "constraint: contracts append-only until tool-responses/2.0 (constitution IV)",
+    "constraint: Sena 3 only for verification; never Claude-Swahili",
+    "constraint: flexicon index target is 4.11.0 (release 2.14.0)"
+  ],
+  "intent": "Unify skeletons and curated snippets into one searchable 'recipes' concept (shipped + locally captured), and ship a verified first batch of real grammar/lexicon recipes.",
+  "expectations": [
+    "Embedding-based recipe ranking (possible follow-up)",
+    "Fixing preflight issues #277-#280 (handled separately)",
+    "Fixing flexicon API gaps #542-#547 (handled by another agent)",
+    "Uploading or auto-shipping local recipes; only promote + human review moves code into the package",
+    "Any verification against Claude-Swahili"
+  ],
+  "concerns": [
+    {
+      "note": "lex-domain: InflectionClassRA-restore after SetStemMsaPos (FR-053) is single-session evidence; prove in affix-template-setup Sena 3 run before notes assert it"
+    },
+    {
+      "note": "lex-domain: define deprecation advisory block shape for success responses in TOOL-CONTRACT.md (FR-025)"
+    },
+    {
+      "note": "lex-domain: extend TOOL-CONTRACT deprecation timeline to cover tool/key deprecations (FR-023/FR-025)"
+    },
+    {
+      "note": "lex-domain: flexicon #542-#547 already shipped per flexicon CHANGELOG; recipes can use the new APIs instead of raw-LCM fallbacks"
+    }
+  ],
+  "approach": "Add a one-file-per-recipe library (metadata docstring + PARAMS block) parsed by a new recipe_files.py and merged into CURATED_RECIPES; replace skeleton_storage with server/local_recipes.py capturing whole snippets keyed by a normalized fingerprint, with one-time legacy migration. One lexical ranker in server/recipes.py feeds new additive recipes keys, flextools_list_recipes, and a deprecated list_skeletons alias; the first batch is ported to flexicon 4.11.0 and verified on Sena 3.",
+  "decisions": [
+    {
+      "decision": "Keep results[0].recipe on the old first-match function; new ranked scorer only feeds the new recipes key",
+      "why": "FR-022 byte-identical back-compat by construction",
+      "rejected": "Point the old attachment at the new ranker"
+    },
+    {
+      "decision": "New rows use source shipped|local; internal dict and results[0].recipe keep source curated",
+      "why": "Append-only contract and common-patterns/2.0 schema unchanged",
+      "rejected": "Rename curated to shipped everywhere"
+    },
+    {
+      "decision": "recipe_library is package data read via importlib.resources, never imported",
+      "why": "Files reference runner-injected names; keeps pyright/import inert",
+      "rejected": "Importable package or JSON-encoded recipes"
+    },
+    {
+      "decision": "Malformed recipe file is skipped+logged; id collision raises at import",
+      "why": "Server must start, but a collision can only be a CI-caught packaging bug",
+      "rejected": "Raise on every loader error"
+    },
+    {
+      "decision": "Local store rewritten atomically (temp+os.replace) with tokenize-based fingerprint and 2000-row cap",
+      "why": "Repeats update in place; tokenize handles # in strings",
+      "rejected": "Append-only JSONL or SQLite"
+    },
+    {
+      "decision": "Legacy migration regroups skeleton defs by op_id into one body per run",
+      "why": "Restores Main with its helpers; 54% of entries were unrunnable split",
+      "rejected": "Migrate each def separately"
+    },
+    {
+      "decision": "Add first-ever server instructions via build_server(instructions=...), tested under installed mcp",
+      "why": "FR-027 names server instructions; none exist today",
+      "rejected": "Tool descriptions only"
+    },
+    {
+      "decision": "PARAMS descriptions from trailing, above-line, or inside-value comments",
+      "why": "No harvested script uses trailing comments",
+      "rejected": "Trailing comments only"
+    },
+    {
+      "decision": "Rebase feat/unified-recipes onto main 2.14.0 before implementing",
+      "why": "Worktree predates #278/#280/#277 fixes and 4.11.0 indexes",
+      "rejected": "Implement on stale branch or on main"
+    },
+    {
+      "decision": "Rank recipes by weighted term bags (task > code identifiers > object names) with IDF weighting and an alias table",
+      "why": "Basic object access is easy to reproduce; recipes earn their place on the task and on hard-to-find calls, and IDF makes common words like entry cheap without a hand-kept list",
+      "rejected": "Flat word overlap, or a hard-coded down-weighted object list"
+    },
+    {
+      "decision": "recipes[0] carries code only for a clear winner, and never duplicates results[0].recipe code (code_at pointer); ambiguous queries get compact rows plus recipes_ambiguous and recipes_hint",
+      "why": "Avoid spending a code body on a coin flip; SC-005 caps a response at one code body",
+      "rejected": "Always attach code to the top row (original FR-021)"
+    },
+    {
+      "decision": "Validator treats a member as deprecated if the flexicon index marks it, as well as the curated list (recipes only; run-time preflight unchanged)",
+      "why": "Curated list holds one family while the index has nine deprecated methods; pyright cannot see deprecations with no stubs",
+      "rejected": "Pyright reportDeprecated, or hand-adding the methods to the curated list"
+    },
+    {
+      "decision": "FR-045 detect_raw_lcm_access: fail on raw LCM where the inverted bridge index shows a flexicon wrapper; otherwise require a flexicon-gap or raw-lcm note; ratcheting raw_lcm_lines header",
+      "why": "Minimal LibLCM, index-driven; flexicon gap fixes automatically flag the recipes to update",
+      "rejected": "Comment convention only, or a ban on raw LCM"
+    },
+    {
+      "decision": "strict-xfail-markers-for-batch-tests-until-T034-T051-ship"
+    }
+  ],
+  "step_summaries": {
+    "plan": {
+      "summary": "Full plan: recipe_files loader + recipe_library data dir, local_recipes store with migration, unified ranker + list_recipes tool + deprecated aliases, promote CLI, >=12 Sena-3-verified recipes",
+      "key_finding": "No server instructions exist and capture runs after the ops-log stash is popped, so user_intent/project must come from handle_run_module locals; worktree must be rebased since #278 is already fixed on main"
+    },
+    "tasks": {
+      "summary": "73 tasks in 8 phases (Setup, Foundational, US1-US5, Polish); US3 ports 16 recipes with Sena 3 evidence, 7 live writes need a human"
+    }
+  },
+  "unattended": true,
+  "currentTask": "T033",
+  "task_summaries": {
+    "T001": {
+      "status": "DONE",
+      "did": "Rebased feat/unified-recipes onto main 5cc03f0, copied specs artifacts into worktree, baseline 4156 passed 3 skipped",
+      "files": [
+        "specs/unified-recipes/"
+      ]
+    },
+    "T002": {
+      "status": "DONE",
+      "did": "Added recipe_library package data, flextools-mcp-recipe console script, ruff exclude",
+      "files": [
+        "pyproject.toml"
+      ]
+    },
+    "T003": {
+      "status": "DONE",
+      "did": "Added graft src/flextoolsmcp/recipe_library to MANIFEST.in",
+      "files": [
+        "MANIFEST.in"
+      ]
+    },
+    "T004": {
+      "status": "DONE",
+      "did": "Excluded src/flextoolsmcp/recipe_library from pyright",
+      "files": [
+        "pyrightconfig.json"
+      ]
+    },
+    "T005": {
+      "status": "DONE",
+      "did": "Created empty recipe_library data dir and evidence/README.md with R14 protocol and deferred table",
+      "files": [
+        "src/flextoolsmcp/recipe_library/",
+        "specs/unified-recipes/evidence/README.md"
+      ]
+    },
+    "T006": {
+      "status": "DONE",
+      "did": "Loader, merge, collision and packaging tests in tests/test_recipe_files.py (16 tests pass)",
+      "files": [
+        "tests/test_recipe_files.py"
+      ]
+    },
+    "T007": {
+      "status": "DONE",
+      "did": "Verified-version test: FLEXICON_VERIFIED_VERSION matches index flexicon version",
+      "files": [
+        "tests/test_recipes.py"
+      ]
+    },
+    "T008": {
+      "status": "DONE",
+      "did": "Built recipe_files.py: header/PARAMS parser, loader, code_terms, scrub, draft renderer",
+      "files": [
+        "src/flextoolsmcp/recipe_files.py"
+      ]
+    },
+    "T009": {
+      "status": "DONE",
+      "did": "Added recipe response keys KEY_RECIPES/COUNT/RECIPE/AMBIGUOUS/HINT/SKELETONS plus __all__ exports",
+      "files": [
+        "src/flextoolsmcp/server/response_keys.py"
+      ]
+    },
+    "T010": {
+      "status": "DONE",
+      "did": "Merged load_recipe_library into CURATED_RECIPES with collision raise; version 4.11.0",
+      "files": [
+        "src/flextoolsmcp/curated_recipes.py"
+      ]
+    },
+    "T011": {
+      "status": "DONE",
+      "did": "Seed parser-coverage recipe with full header and PARAMS COUNT",
+      "files": [
+        "src/flextoolsmcp/recipe_library/parser-coverage.py"
+      ]
+    },
+    "T012": {
+      "status": "DONE",
+      "did": "Ranking + response + battery tests in tests/test_recipe_search.py (44 tests pass)",
+      "files": [
+        "tests/test_recipe_search.py"
+      ]
+    },
+    "T013": {
+      "status": "DONE",
+      "did": "Frozen legacy attachment test in tests/test_recipes.py",
+      "files": [
+        "tests/test_recipes.py"
+      ]
+    },
+    "T014": {
+      "status": "DONE",
+      "did": "Server-instructions tests in tests/test_server_instructions.py",
+      "files": [
+        "tests/test_server_instructions.py"
+      ]
+    },
+    "T015": {
+      "status": "DONE",
+      "did": "Unified ranked search in server/recipes.py (R10 scorer, rows, code gate)",
+      "files": [
+        "src/flextoolsmcp/server/recipes.py"
+      ]
+    },
+    "T016": {
+      "status": "DONE",
+      "did": "Search handler adds recipes keys, code_at dedup, validated recording",
+      "files": [
+        "src/flextoolsmcp/server/handlers/api.py"
+      ]
+    },
+    "T017": {
+      "status": "DONE",
+      "did": "SERVER_INSTRUCTIONS plus search/find_examples/run_module guidance",
+      "files": [
+        "src/flextoolsmcp/server/tool_definitions.py"
+      ]
+    },
+    "T018": {
+      "status": "DONE",
+      "did": "Pass instructions through build_server on both mcp majors",
+      "files": [
+        "src/flextoolsmcp/mcp_compat.py",
+        "src/flextoolsmcp/server.py"
+      ]
+    },
+    "T019": {
+      "status": "DONE",
+      "did": "Ported skeleton tests to test_local_recipes.py with path/fingerprint/cap/migration/recall coverage",
+      "files": [
+        "tests/test_local_recipes.py"
+      ]
+    },
+    "T020": {
+      "status": "DONE",
+      "did": "Handler capture tests via stub executor in test_local_recipe_capture.py",
+      "files": [
+        "tests/test_local_recipe_capture.py"
+      ]
+    },
+    "T021": {
+      "status": "DONE",
+      "did": "find_examples local + deprecation tests appended to test_recipe_search.py",
+      "files": [
+        "tests/test_recipe_search.py"
+      ]
+    },
+    "T022": {
+      "status": "DONE",
+      "did": "Built server/local_recipes.py store with fingerprint/capture/cap/migration",
+      "files": [
+        "src/flextoolsmcp/server/local_recipes.py"
+      ]
+    },
+    "T023": {
+      "status": "DONE",
+      "did": "Rewired capture to whole-code local_recipes.capture in execution.py",
+      "files": [
+        "src/flextoolsmcp/server/handlers/execution.py"
+      ]
+    },
+    "T024": {
+      "status": "DONE",
+      "did": "Plugged local store into ranked search via explicit handler load",
+      "files": [
+        "src/flextoolsmcp/server/recipes.py"
+      ]
+    },
+    "T025": {
+      "status": "DONE",
+      "did": "find_examples serves local recipes with skeletons deprecation",
+      "files": [
+        "src/flextoolsmcp/server/handlers/api.py"
+      ]
+    },
+    "T026": {
+      "status": "DONE",
+      "did": "Deleted skeleton_storage and repointed catalog to local_recipes",
+      "files": [
+        "src/flextoolsmcp/server/skeleton_storage.py",
+        "tests/test_skeleton_storage.py",
+        "src/flextoolsmcp/server/handlers/catalog.py"
+      ]
+    },
+    "T027": {
+      "status": "DONE",
+      "did": "Fixed stale skeleton-closet comment in file_utils.py",
+      "files": [
+        "src/flextoolsmcp/file_utils.py"
+      ]
+    },
+    "T028": {
+      "status": "DONE",
+      "did": "Pattern audit for session-provenance bug in evidence/pattern-audit.md",
+      "files": [
+        "specs/unified-recipes/evidence/pattern-audit.md"
+      ]
+    },
+    "T030": {
+      "status": "DONE",
+      "did": "Index-driven deprecation tests (R17): index-deprecated GetLanguage fails via validate_recipe, run-time preflight unchanged",
+      "files": [
+        "tests/test_validators_deprecation_index.py"
+      ]
+    },
+    "T031": {
+      "status": "DONE",
+      "did": "Raw-LCM gate tests (R18): PhoneEnvRC names GetPhoneEnv, notes override, Duplicate/Delete never suggested, ratchet",
+      "files": [
+        "tests/test_raw_lcm_gate.py"
+      ]
+    },
+    "T032": {
+      "status": "DONE",
+      "did": "detect_deprecated_members(api_index) index path plus detect_print_calls and detect_raw_lcm_access with bridge inversion",
+      "files": [
+        "src/flextoolsmcp/server/validators.py"
+      ]
+    },
+    "T033": {
+      "status": "DONE",
+      "did": "validate_recipe shipped flag: PARAMS, modifyAllowed guard, index deprecation, scrub, print ban, raw-LCM ratchet",
+      "files": [
+        "src/flextoolsmcp/recipe_validator.py"
+      ]
+    }
+  },
+  "last_action": "T043-T050-dry-leg-done-live-writes-queued-next-round",
+  "verified": [
+    {
+      "what": "full-lean-suite-green-4268-passed-5-skipped-2-xfailed"
+    }
+  ]
+}

@@ -6,15 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Collect 'skeletons' of working tasks that might be
-reusable, so that the MCP will learn the user's ways. I honestly don't know if
-the skeletons are really being referenced when we search for capabilities. ...
-Some should 'graduate' to the release for other users, though we may need to
-make them more generic." Follow-ups: "3 tasks: harvest some useful generic
-recipes and choose some to distribute, make recipes more discoverable ... I
-don't think there's value of distinguishing recipes and skeletons, but recipes
-is probably the better word." "The MCPlayground skills should be GOLDEN." "The
-MCPlayground files also show how to make reusable scripts with parameters."
+**Input**: User description: "Collect 'skeletons' of working tasks that might be reusable, so that the MCP will learn the user's ways. I honestly don't know if the skeletons are really being referenced when we search for capabilities. Some should 'graduate' to the release for other users, though we may need to make them more generic." Follow-ups: "3 tasks: harvest some useful generic recipes and choose some to distribute, make recipes more discoverable. I don't think there's value of distinguishing recipes and skeletons, but recipes is probably the better word." "The MCPlayground skills should be GOLDEN." "The MCPlayground files also show how to make reusable scripts with parameters."
 
 **Tier**: Full - per `.specify/memory/constitution.md` v1.0.0. The change
 crosses a published contract (tool list, response keys) and ships recipes that
@@ -27,9 +19,9 @@ Local-recipe capture writes only to `~/.flextoolsmcp/`, never to a project.
 
 **Related issues**: flexicon #542-#547 (API gaps found by the harvest; fixed
 separately by another agent). FlexToolsMCP #277 (preflight reflection bypass),
-#278 (`ClassName`-guard false positive), #279 (top-level `Main()` double run),
-#280 (`write_certification` misses `MakeFeatStruc`). Original closet: #24;
-recipes: #52; `user_intent`: #18.
+issue #278 (`ClassName`-guard false positive), issue #279 (top-level `Main()`
+double run), issue #280 (`write_certification` misses `MakeFeatStruc`).
+Original closet: #24; recipes: #52; `user_intent`: #18.
 
 ---
 
@@ -143,7 +135,14 @@ check the expected recipe is in the top 3.
    searched, **Then** `recipes` is empty and method results are unchanged.
 3. **Given** the pre-existing test query "list all entries with their
    glosses", **When** searched, **Then** `results[0].recipe` is still
-   attached exactly as before (back-compat).
+   attached exactly as before (back-compat), and its code is not repeated in
+   `recipes`.
+4. **Given** the object-only query "entry", **When** searched, **Then**
+   `recipes` holds up to 3 compact rows with no `code`, and
+   `recipes_ambiguous` is true.
+5. **Given** the query "phone environments on an allomorph", **When**
+   searched, **Then** a recipe whose code uses `PhoneEnv` ranks in the top 3
+   (a match through function and property names).
 
 ---
 
@@ -313,7 +312,8 @@ needs human editing.
 - **FR-005**: The library directory MUST be package data in the wheel and
   excluded from pyright (the files reference runner-injected names).
 - **FR-006**: `FLEXICON_VERIFIED_VERSION` MUST be bumped to the flexicon
-  version the batch is verified against (4.10.0 at time of writing).
+  version the batch is verified against, which MUST equal the flexicon
+  version the shipped MCP indexes target (4.11.0 as of release 2.14.0).
 
 **Local recipes (replace the skeleton closet)**
 
@@ -344,12 +344,28 @@ needs human editing.
 **Search and discovery**
 
 - **FR-020**: `server/recipes.py` MUST provide one ranked search over shipped
-  and local recipes, scoring query words against `intent`, `match_terms`,
-  `entities`, `id` (with simple normalization: case, punctuation, plural
-  `-s`), boosting shipped recipes and local recipes with higher `use_count`.
+  and local recipes. It scores query words against these fields, weighted
+  from highest to lowest:
+  1. task text: `match_terms` phrases, then `intent` words;
+  2. function and property names used in the recipe's code, extracted by
+     AST and split on camelCase and underscores, with a small alias table
+     (for example `env` = environment, `msa` = grammatical info);
+  3. object names (`entities`, and object words in `id`), weighted lowest.
+
+  Each word is weighted by how rare it is across the recipe set (IDF-style),
+  so a word shared by most recipes (for example "entry") contributes little.
+  Normalization covers case, punctuation and plural `-s`. Shipped recipes,
+  and local recipes with a higher `use_count`, get a boost.
 - **FR-021**: `flextools_search_by_capability` MUST add `recipes` (up to 3
-  rows) and `recipes_count` to its response. The first row carries full
-  `code`; the others are compact rows (no `code`).
+  rows), `recipes_count` and `recipes_ambiguous` to its response. The first
+  row carries full `code` only when it is a clear winner: its score is above a
+  minimum, at least 1.5 times the second row's, and not reached through object
+  names alone. Otherwise every row is compact (no `code`),
+  `recipes_ambiguous` is true, and the response carries a hint to refine the
+  query or fetch one with `flextools_list_recipes(recipe_id=...)`. A response
+  never carries the same recipe's code twice: when the winner is also
+  attached at `results[0].recipe`, the `recipes[0]` row stays compact and
+  points at that attachment (`code_at: "results[0].recipe"`).
 - **FR-022**: The existing `results[0].recipe` attachment MUST keep working
   unchanged (append-only contract).
 - **FR-023**: `flextools_find_examples` MUST include matching local recipes in
@@ -385,11 +401,27 @@ needs human editing.
 
 - **FR-040**: Every shipped recipe MUST pass `recipe_validator.validate_recipe`
   in CI (existing gate, extended to file recipes).
-- **FR-041**: The validator MUST also check: PARAMS block parses; every
-  shipped recipe with `requires_write` guards writes with `if modifyAllowed:`;
-  no recipe uses a curated-deprecated member (e.g. `DoNotUseForParsing`); no
-  shipped recipe contains a GUID literal, a Windows user path, or the names
-  `Claude-Swahili`/`Target` as defaults.
+- **FR-041**: The validator MUST also check:
+  - the PARAMS block parses;
+  - every shipped recipe with `requires_write` guards writes with
+    `if modifyAllowed:`;
+  - no recipe uses a deprecated member. A member counts as deprecated if it
+    is curated as deprecated (for example `DoNotUseForParsing`) or if the
+    flexicon index marks it deprecated (a deprecation flag or docstring);
+  - no shipped recipe contains a GUID literal, a Windows user path, or the
+    names `Claude-Swahili`/`Target` as defaults.
+- **FR-045**: The validator MUST keep raw LibLCM use minimal
+  (`detect_raw_lcm_access`). It flags these forms of raw access: casts to
+  `I*` interfaces, `*OA`/`*OS`/`*OC`/`*RA`/`*RS`/`*RC` property access,
+  `project.project`, `ServiceLocator`, and `ClassName` dispatch. For each one:
+  (a) where the flexicon bridge index shows a flexicon wrapper for that
+  property, the recipe fails and the message names the wrapper;
+  (b) otherwise the line MUST carry `# flexicon gap: <issue>` or
+  `# raw-lcm: <reason>`, or the recipe fails. A `raw-lcm:` note may override a
+  wrong wrapper suggestion from (a), but only with a stated reason. Each
+  shipped recipe's header records `raw_lcm_lines`, and a test fails when the
+  count in the code exceeds it. This is a style gate. The note never relaxes
+  a write-safety or casting check.
 - **FR-042**: Every shipped READ recipe MUST have been run unchanged (default
   params, or params set to Sena 3 data) on **Sena 3** via `run_module`, with
   no errors; evidence recorded under `specs/unified-recipes/evidence/`.
@@ -496,7 +528,9 @@ needs human editing.
 - **SC-004**: Migrated local store is at least 50% smaller than the legacy
   `skeletons.jsonl` row count, with no remaining entry under 5 lines.
 - **SC-005**: A compact recipe row averages under 400 characters; a search
-  response with 3 recipes adds at most one full code body.
+  response carries at most one full code body in total, counting
+  `results[0].recipe`, and none for an ambiguous or object-only query (for
+  example "entry").
 - **SC-006**: No response key or tool present before this change disappears
   (contract test).
 

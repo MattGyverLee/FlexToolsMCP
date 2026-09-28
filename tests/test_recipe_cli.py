@@ -163,7 +163,9 @@ def test_promote_scrub_lines(tmp_path, monkeypatch, capsys):
     out, _ = capsys.readouterr()
     assert "scrub before shipping" in out.lower()
     assert "12345678-1234-1234-1234-123456789abc"[:8] in out
-    assert "C:" in out or "Users" in out
+    # The user-path line itself must be flagged. Matching "C:" anywhere in
+    # `out` passed on Windows only via the printed draft path.
+    assert "L3: p = " in out
 
 
 def test_promote_scrub_project_name(tmp_path, monkeypatch, capsys):

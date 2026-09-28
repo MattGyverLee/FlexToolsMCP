@@ -69,7 +69,9 @@ GUID_RE = re.compile(
     r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"
     r"-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
 )
-USER_PATH_RE = re.compile(r"[A-Za-z]:\\Users\\[^\s\"']*")
+# Recipe code is Python source, so a path may appear escaped ("C:\\Users\\x"),
+# raw (r"C:\Users\x") or with forward slashes -- accept all three separators.
+USER_PATH_RE = re.compile(r"[A-Za-z]:(?:\\{1,2}|/)Users(?:\\{1,2}|/)[^\s\"']*")
 
 PARAMS_START = "# --- PARAMS ---"
 PARAMS_END = "# --- END PARAMS ---"

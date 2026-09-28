@@ -77,6 +77,7 @@ if __package__:
         session_state,
     )
     from .server.tool_definitions import TOOLS as TOOL_DEFINITIONS
+    from .server.tool_definitions import SERVER_INSTRUCTIONS
     from .server.dispatch import get_tool_handler
     from .server.versioning import (
         detect_installed_library_version,
@@ -94,6 +95,7 @@ else:
         session_state,
     )
     from server.tool_definitions import TOOLS as TOOL_DEFINITIONS
+    from server.tool_definitions import SERVER_INSTRUCTIONS
     from server.dispatch import get_tool_handler
     from server.versioning import (
         detect_installed_library_version,
@@ -1100,8 +1102,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 # mcp_compat.build_server -- decorators on 1.x, constructor-injected
 # on_list_tools=/on_call_tool= on 2.x). Must follow the definitions above;
 # version= is passed explicitly for serverInfo parity (2.x defaults it to "").
+# instructions= carries the unified-recipes server instructions (FR-027).
 _server_init_begin = _time_module.time()
-server = build_server("flextools-mcp", list_tools, call_tool)
+server = build_server("flextools-mcp", list_tools, call_tool,
+                      instructions=SERVER_INSTRUCTIONS)
 _server_init_done = _time_module.time()
 
 async def main():

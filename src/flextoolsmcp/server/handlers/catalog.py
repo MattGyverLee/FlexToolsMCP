@@ -19,9 +19,9 @@ from ..models import (
 )
 
 try:
-    from .. import skeleton_storage
+    from .. import local_recipes
 except ImportError:
-    from server import skeleton_storage
+    from server import local_recipes
 
 try:
     from ..response_keys import (
@@ -203,16 +203,25 @@ async def handle_list_projects(args: dict) -> list[TextContent]:
 async def handle_list_skeletons(
     args: ListSkeletonsInput | dict,
 ) -> list[TextContent]:
-    """List captured skeleton helpers from the storage closet (issue #24).
+    """List local recipes in the legacy skeleton row shape (US2, deprecated alias).
 
-    Read-only: enumerates JSONL entries on disk, most-recent-first, no
-    filtering beyond ``limit``. For entity-aware retrieval, see
-    ``flextools_find_examples`` -- it weaves skeletons into normal examples.
+    Read-only: enumerates recipes.jsonl on disk, most-recent-first, no
+    filtering beyond ``limit``.
     """
     # Support both Pydantic model and dict (legacy dispatch paths).
     limit = args.limit if hasattr(args, "limit") else (args or {}).get("limit", 100)
     try:
-        entries = skeleton_storage.list_all_skeletons(limit=limit)
+        rows = local_recipes.list_local_recipes(limit=limit)
+        entries = [{
+            "name": r.get("id"),
+            "source": r.get("code"),
+            "entities": r.get("entities", []),
+            "user_intent": r.get("intent"),
+            "captured_at": r.get("last_used", ""),
+            "op_id": (r.get("op_ids", [""])[-1] if r.get("op_ids") else ""),
+            "session_id": "",
+            "duration_ms": 0,
+        } for r in rows]
     except Exception as exc:
         # Log before returning -- otherwise the .log has no trace of the
         # failure and the only signal is the error JSON in the MCP response.
@@ -235,6 +244,6 @@ async def handle_list_skeletons(
     return [TextContent(type="text", text=json.dumps({
         "count": len(entries),
         "limit": limit,
-        "storage_path": str(skeleton_storage.get_skeleton_path()),
+        "storage_path": str(local_recipes.get_recipe_path()),
         "skeletons": entries,
     }, indent=2))]

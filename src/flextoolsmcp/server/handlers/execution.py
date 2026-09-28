@@ -61,11 +61,11 @@ except ImportError:
         is_stateless_client_mode,
     )
 
-# Skeleton storage closet (issue #24): persist helper defs from successful ops.
+# Local recipe store (unified-recipes US2): persist whole successful snippets.
 try:
-    from .. import skeleton_storage
+    from .. import local_recipes
 except ImportError:
-    from server import skeleton_storage
+    from server import local_recipes
 
 try:
     from ..constants import EXECUTION_API_MODE
@@ -1764,61 +1764,30 @@ def _resolve_for_auto_discovery(
     return qualifying
 
 
-def _entities_used_in_session(session_state_obj) -> List[str]:
-    """Best-effort: collect entity names this session has touched.
-
-    Issue #24 skeleton capture wants a list of entity names so a future
-    ``find_skeletons(entity_names=['ILexSense'])`` query can surface the
-    helper. We blend ``validated_apis`` (entities the assistant called
-    get_object_api on) with the entity-half of ``discovered_apis`` keys
-    (``Entity.Method`` form). De-duplicated, order-stable.
-    """
-    seen: set = set()
-    out: List[str] = []
-    try:
-        for v in session_state_obj.validated_apis:
-            if v and v not in seen:
-                seen.add(v)
-                out.append(v)
-        for api_key in session_state_obj.discovered_apis:
-            if "." in api_key:
-                head = api_key.split(".", 1)[0]
-                if head and head not in seen:
-                    seen.add(head)
-                    out.append(head)
-    except Exception:
-        # Defensive: session_state could be missing fields in odd code paths.
-        return []
-    return out
-
-
 def _capture_skeletons_after_success(
     code: str,
     op_id: str,
     duration_s: float,
+    *,
+    user_intent: Optional[str] = None,
+    project_name: Optional[str] = None,
+    is_mutating_script: bool = False,
 ) -> None:
-    """Persist top-level def helpers from a successful op to the closet.
+    """Persist the whole successful snippet as one local recipe (US2).
 
-    Wrapped in try/except so capture failure never breaks the op. The op
-    has already succeeded by the time we reach here.
+    Replaces the per-def skeleton closet: the store derives entities from
+    this code's AST (never the ambient session), dedupes by fingerprint,
+    and never raises. The op has already succeeded by the time we reach here.
     """
     try:
-        # user_intent: issue #18 may eventually add this to RunModuleInput.
-        # Until then it's always None; the field exists in the schema so the
-        # tool already supports future intent passing without re-wiring.
-        user_intent = None
-
-        skeleton_storage.capture_from_code(
+        local_recipes.capture(
             code,
-            entities_used=_entities_used_in_session(session_state),
             user_intent=user_intent,
+            project=project_name,
+            is_mutating_script=is_mutating_script,
             op_id=op_id,
-            session_id=getattr(session_state, "session_id", "") or "",
-            duration_ms=int(duration_s * 1000),
         )
     except Exception:
-        # Belt-and-suspenders: capture_from_code already swallows, but the
-        # session_state access above could raise in a corrupted state.
         pass
 
 
@@ -5486,10 +5455,14 @@ MODULE_CODE = {code}
             # Issue #28: a successful op resets the retry-loop detector --
             # by definition we've broken whatever loop we were stuck in.
             session_state.reset_op_signals()
-            # Issue #24: capture top-level helper defs from successful ops
-            # into the skeleton closet so they survive across sessions.
+            # US2: capture the whole snippet as one local recipe.
             # Best-effort; failures here MUST NOT fail the op.
-            _capture_skeletons_after_success(code, op_id, duration_s)
+            _capture_skeletons_after_success(
+                code, op_id, duration_s,
+                user_intent=user_intent,
+                project_name=project_name,
+                is_mutating_script=is_mutating_script,
+            )
             # Issue #46: attach auto-fix metadata when rewrites were applied.
             # Both fields are written atomically via this helper so neither can
             # be committed to the response without the other being set.

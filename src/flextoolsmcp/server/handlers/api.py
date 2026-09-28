@@ -46,6 +46,7 @@ try:
         KEY_INSTANCE_ATTRIBUTES,
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
+        KEY_RECIPES, KEY_RECIPES_COUNT, KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -81,6 +82,7 @@ except ImportError:
         KEY_INSTANCE_ATTRIBUTES,
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
+        KEY_RECIPES, KEY_RECIPES_COUNT, KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -94,11 +96,11 @@ try:
 except ImportError:
     import curated_deprecations
 
-# Skeleton storage closet (issue #24): surface prior-session helpers in find_examples.
+# Local recipe store (unified-recipes US2): surface prior-session recipes in find_examples.
 try:
-    from .. import skeleton_storage
+    from .. import local_recipes
 except ImportError:
-    from server import skeleton_storage
+    from server import local_recipes
 
 # Type note: api_index is initialized by server.py before any handlers are called
 
@@ -1567,6 +1569,28 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         for entity in matched_recipe.get("entities", []):
             session_state.record_validated_api(entity)
 
+    # Unified recipes (FR-021, FR-026): ranked `recipes` over shipped + local.
+    # The legacy attachment above is untouched (FR-022); when the winner is
+    # the same recipe, its row stays compact with code_at pointing at the
+    # legacy attachment so a response never carries the same code twice.
+    # US2: local rows come from the on-disk store (never raises).
+    try:
+        from ..recipes import search_recipes as _search_recipes
+    except ImportError:
+        from server.recipes import search_recipes as _search_recipes
+
+    _legacy_id = matched_recipe.get("id") if matched_recipe else None
+    try:
+        _local_rows = local_recipes.load_local_recipes()
+    except Exception:
+        _local_rows = []
+    _recipe_result = _search_recipes(
+        query, local_recipes=_local_rows, legacy_recipe_id=_legacy_id)
+    _recipe_rows = _recipe_result.get("recipes", [])
+    if _recipe_rows and "code" in _recipe_rows[0]:
+        for entity in _recipe_rows[0].get("entities", []):
+            session_state.record_validated_api(entity)
+
     result = {
         KEY_QUERY: query,
         KEY_API_MODE: api_mode,
@@ -1582,7 +1606,12 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         # Multi-step worked-example recipes matching the same query.
         "worked_examples": matched_patterns,
         "worked_examples_count": len(matched_patterns),
+        KEY_RECIPES: _recipe_rows,
+        KEY_RECIPES_COUNT: _recipe_result.get("recipes_count", 0),
+        KEY_RECIPES_AMBIGUOUS: _recipe_result.get("recipes_ambiguous", False),
     }
+    if _recipe_result.get("recipes_hint") is not None:
+        result[KEY_RECIPES_HINT] = _recipe_result["recipes_hint"]
     if deprecation_redirects:
         result[KEY_DEPRECATION_REDIRECTS] = deprecation_redirects
 
@@ -1667,28 +1696,44 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         max_results=max_results,
     )
 
-    # Issue #24: surface helpers captured from prior successful sessions.
+    # US2: surface local recipes captured from prior successful sessions.
     # Filter by the requested object_type when provided; otherwise return
     # the most-recent few across all entities so the user still sees them.
     skeletons_from_sessions: list = []
     try:
-        skeleton_entities = [object_type] if object_type else None
-        captured = skeleton_storage.find_skeletons(
-            entity_names=skeleton_entities,
-            limit=3,
-        )
-        for entry in captured:
-            captured_at = entry.get("captured_at", "")
-            # Short date prefix (YYYY-MM-DD) for human attribution.
-            date_str = captured_at[:10] if captured_at else "an earlier session"
+        local_rows = []
+        try:
+            local_rows = local_recipes.load_local_recipes()
+        except Exception:
+            local_rows = []
+
+        def _entity_match(entities, wanted):
+            if not wanted:
+                return True
+            wl = wanted.lower()
+            for e in entities or []:
+                el = str(e).lower()
+                if wl in el or el in wl:
+                    return True
+            return False
+
+        if object_type:
+            filtered = [r for r in local_rows
+                        if _entity_match(r.get("entities", []), object_type)]
+        else:
+            filtered = list(local_rows)
+        filtered.sort(key=lambda r: str(r.get("last_used", "")), reverse=True)
+        for entry in filtered[:3]:
+            last_used = entry.get("last_used", "") or ""
+            date_str = last_used[:10] if last_used else "an earlier session"
             skeletons_from_sessions.append({
-                KEY_NAME: entry.get("name"),
-                "source": entry.get("source"),
-                "captured_at": captured_at,
+                KEY_NAME: entry.get("id"),
+                "source": entry.get("code"),
+                "captured_at": last_used,
                 "attribution": f"captured from your prior session on {date_str}",
             })
     except Exception:
-        # Defensive: skeleton retrieval must never fail find_examples.
+        # Defensive: local retrieval must never fail find_examples.
         skeletons_from_sessions = []
 
     # Issue #52: operation_type/object_type filters also search curated
@@ -1704,6 +1749,28 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         object_type=object_type or "",
         max_results=max_results,
     )
+    # US2: add matching local recipes to the existing recipes list.
+    try:
+        local_rows = local_recipes.load_local_recipes()
+        ot_lower = (object_type or "").lower() or None
+        op_lower = (operation_type or "").lower() or None
+        if ot_lower or op_lower:
+            for rec in local_rows:
+                if len(matched_recipes) >= max_results:
+                    break
+                if ot_lower:
+                    ents = [str(e).lower() for e in rec.get("entities", []) or []]
+                    if not any(ot_lower in e or e in ot_lower for e in ents):
+                        continue
+                if op_lower:
+                    ops = [str(o).lower() for o in rec.get("operations", ["read"]) or ["read"]]
+                    if not any(op_lower in o or o in op_lower for o in ops):
+                        continue
+                if any(m.get("id") == rec.get("id") for m in matched_recipes):
+                    continue
+                matched_recipes.append({**rec, "id": rec.get("id")})
+    except Exception:
+        pass
     for recipe in matched_recipes:
         for entity in recipe.get("entities", []):
             session_state.record_validated_api(entity)
@@ -1721,14 +1788,18 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         # Distinct from per-method docstring examples above.
         "worked_examples": matched_patterns,
         "worked_examples_count": len(matched_patterns),
-        # Curated recipes matching operation_type/object_type filters.
+        # Curated + local recipes matching operation_type/object_type filters.
         "recipes": matched_recipes,
         "recipes_count": len(matched_recipes),
     }
     if skeletons_from_sessions:
-        # Closet entries under a separate key so they're clearly distinguished
-        # from the standard documented examples and worked_examples.
+        # Legacy key stays for back-compat; points at local recipes now.
         response["skeletons_from_your_sessions"] = skeletons_from_sessions
+        response["deprecation"] = {
+            "deprecated": "skeletons_from_your_sessions",
+            "replacement": "recipes (source=\"local\")",
+            "removal": "tool-responses/2.0",
+        }
     # Curated deprecations: asking for examples of a deprecated member (or
     # its intent) gets the replacement example instead.
     deprecation_redirects = _deprecation_redirects(method_name, [])

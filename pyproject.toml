@@ -92,6 +92,7 @@ flextools-mcp = "flextoolsmcp.server:run"
 # with FieldWorks it warms all three indexes; without FieldWorks/pythonnet the
 # LibLCM scan is skipped gracefully and the shipped LibLCM index is kept.
 flextools-mcp-refresh = "flextoolsmcp.refresh:main"
+flextools-mcp-recipe = "flextoolsmcp.recipe_cli:main"
 
 [tool.setuptools]
 include-package-data = true
@@ -109,7 +110,7 @@ where = ["src"]
 # packaged hcparse.ps1 (parser-check CP5, FR-022) is launched from the installed
 # package by the sandbox spine, so it must ship in the wheel too.
 [tool.setuptools.package-data]
-flextoolsmcp = ["index/**/*", "templates/**/*", "scripts/*.ps1", "VERSION", "py.typed"]
+flextoolsmcp = ["index/**/*", "templates/**/*", "recipe_library/*.py", "scripts/*.ps1", "VERSION", "py.typed"]
 
 # Archived old index versions are kept in the repo for local diffing but must
 # not bloat the installed wheel. The `index/**/*` glob above would otherwise
@@ -127,6 +128,7 @@ flextoolsmcp = ["index/archive/**", "index/**/archive/**"]
 extend-exclude = [
     ".claude",
     "src/flextoolsmcp/templates",
+    "src/flextoolsmcp/recipe_library",
     # Vendored spec-kit companion tooling -- same reason as .claude above: not
     # part of the shipped package, and not ours to restyle. It was failing the
     # CI `ruff check .` step, which nothing noticed because the test step ahead

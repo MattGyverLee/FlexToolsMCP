@@ -2,6 +2,8 @@
 graft src/flextoolsmcp/index
 # Ship the FlexTools module templates (back flextools_get_module_template).
 graft src/flextoolsmcp/templates
+# Ship the one-file-per-recipe library (parsed statically, never imported).
+graft src/flextoolsmcp/recipe_library
 # Ship the packaged HermitCrab driver script (parser-check CP5 sandbox spine).
 recursive-include src/flextoolsmcp/scripts *.ps1
 include VERSION

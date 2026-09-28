@@ -141,6 +141,15 @@ class TestSearchByCapabilityRecipeAttachment:
         recipe_count = sum(1 for r in results if "recipe" in r)
         assert recipe_count == 1
 
+    def test_attachment_identical_to_pre_change(self):
+        # FR-022: the legacy results[0].recipe attachment is byte-identical
+        # to the pre-change shape: {"id": ..., **CURATED_RECIPES[id]}.
+        payload = self._search("list all entries with their glosses")
+        recipe = payload["results"][0]["recipe"]
+        expected = {"id": "list-entries-with-glosses",
+                    **CURATED_RECIPES["list-entries-with-glosses"]}
+        assert recipe == expected
+
     def test_unrelated_query_attaches_no_recipe(self):
         payload = self._search("frobnicate the discourse chart widgets")
         results = payload["results"]
@@ -162,3 +171,10 @@ class TestFindExamplesRecipes:
         payload = self._find_examples()
         assert payload["recipes"] == []
         assert payload["recipes_count"] == 0
+
+
+class TestVerifiedVersion:
+    def test_verified_version_matches_index_target(self, api_index):
+        from flextoolsmcp.curated_recipes import FLEXICON_VERIFIED_VERSION
+
+        assert FLEXICON_VERIFIED_VERSION == api_index.flexicon_version

@@ -34,7 +34,7 @@ if __package__:
 else:
     from curated_deprecations import CURATED_DEPRECATIONS
 
-FLEXICON_VERIFIED_VERSION = "4.2.1"
+FLEXICON_VERIFIED_VERSION = "4.11.0"
 
 CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
     "list-entries-with-glosses": {
@@ -634,3 +634,21 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
         "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "preflight"},
     },
 }
+
+
+# Merge one-file-per-recipe sources (unified-recipes Phase 2, FR-004).
+# File recipes are merged into CURATED_RECIPES so every existing consumer
+# (server/recipes.py, extract_patterns.py, tests) sees them. An id
+# collision raises at import time; a malformed file is skipped with one
+# logged error and the server still starts (research R5).
+if __package__:
+    from .recipe_files import load_recipe_library, merge_recipes
+else:
+    from recipe_files import load_recipe_library, merge_recipes
+
+_FILE_RECIPES, _RECIPE_ERRORS = load_recipe_library()
+CURATED_RECIPES = merge_recipes(
+    CURATED_RECIPES,
+    _FILE_RECIPES,
+    default_flexicon_version=FLEXICON_VERIFIED_VERSION,
+)

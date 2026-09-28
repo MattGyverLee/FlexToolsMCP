@@ -1,5 +1,8 @@
 """Scan harvested recipe sources for raw LibLCM access; classify vs flexicon bridge index."""
-import ast, json, re, sys
+import ast
+import json
+import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -19,15 +22,18 @@ lcm = json.load(open(IDX / "liblcm" / "liblcm_api_v11.0.0.json", encoding="utf-8
 lcm_members = defaultdict(set)  # member name -> interfaces declaring it
 for ename, e in lcm.items():
     for p in e.get("properties", []) or []:
-        if p.get("name"): lcm_members[p["name"]].add(ename)
+        if p.get("name"):
+            lcm_members[p["name"]].add(ename)
     for m in e.get("methods", []) or []:
-        if m.get("name"): lcm_members[m["name"]].add(ename)
+        if m.get("name"):
+            lcm_members[m["name"]].add(ename)
 
 bridge = json.load(open(IDX / "python" / "flexicon_lcm_bridge_v4.11.0.json", encoding="utf-8"))["by_method"]
 prop_to_fx = defaultdict(set)
 BAD = re.compile(r"\.(Duplicate|Delete|__\w+__|Copy\w*|_\w+)$")
 for meth, v in bridge.items():
-    if BAD.search(meth): continue
+    if BAD.search(meth):
+        continue
     props = set(v.get("properties_accessed", []) or []) | set((v.get("inline") or {}).get("properties_accessed", []) or [])
     for p in props:
         prop_to_fx[p.split(" ")[0]].add(meth)
@@ -51,7 +57,8 @@ def is_flexicon_chain(node):
     n = node
     parts = []
     while isinstance(n, ast.Attribute):
-        parts.append(n.attr); n = n.value
+        parts.append(n.attr)
+        n = n.value
     if isinstance(n, ast.Name) and n.id == "project":
         parts.reverse()
         if parts and parts[0] == "project":
@@ -82,7 +89,9 @@ for fname, rid in SCRIPTS.items():
             elif re.search(r"(OA|OS|OC|RA|RS|RC)$", a):
                 key, kind = a, "member"
         if key:
-            r = rows[key]; r["kind"] = kind; r["recipes"].add(rid)
+            r = rows[key]
+            r["kind"] = kind
+            r["recipes"].add(rid)
             r["lines"].append(f"{fname}:{node.lineno}")
 
 out = []

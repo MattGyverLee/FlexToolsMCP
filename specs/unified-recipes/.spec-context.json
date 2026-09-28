@@ -347,6 +347,14 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-28T08:47:01.081Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T044",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T08:56:30.300Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -794,7 +802,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T043",
+  "currentTask": "T044",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1038,6 +1046,14 @@
       "files": [
         "src/flextoolsmcp/recipe_library/create-entries-idempotent.py",
         "specs/unified-recipes/evidence/create-entries-idempotent.md"
+      ]
+    },
+    "T044": {
+      "status": "DONE",
+      "did": "create-entry-like-comparator live-verified on Sena 3 with same-session cleanup (zzRecipeTestLike created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/create-entry-like-comparator.py",
+        "specs/unified-recipes/evidence/create-entry-like-comparator.md"
       ]
     }
   },

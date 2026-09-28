@@ -17,7 +17,6 @@ def _import_extract():
 
 def test_mined_notes_point_at_local_recipes(tmp_path):
     mod = _import_extract()
-    from pathlib import Path
 
     log_dir = tmp_path / "logs"
     log_dir.mkdir()
@@ -46,9 +45,6 @@ def test_mined_notes_point_at_local_recipes(tmp_path):
 
 def test_mine_help_points_at_local_recipes():
     mod = _import_extract()
-    import argparse
-    import io
-    from contextlib import redirect_stdout
 
     parser_help = None
     # The module's main() wires --mine-operations-log; its help text must

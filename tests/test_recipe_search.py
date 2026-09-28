@@ -12,14 +12,12 @@ the QUERY_BATTERY (top-3 rate >= 0.9).
 
 import asyncio
 import json
-import math
 
 import pytest
 
 from flextoolsmcp.curated_recipes import CURATED_RECIPES
 from flextoolsmcp.recipe_files import extract_code_terms
 from flextoolsmcp.server import kernel
-from flextoolsmcp.server.kernel import get_api_index
 from flextoolsmcp.server import recipes as recipe_search
 
 

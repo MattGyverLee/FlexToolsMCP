@@ -18,7 +18,8 @@ Sena 3, the designated test project. Unattended runs perform it (constitution
 I, Sena 3 exception): assert the project is `Sena 3`, dry-run first, touch
 only `zzRecipeTest` objects, clean up in the same session, and record pre/post
 evidence (R14). No task ever targets Claude-Swahili; a live write that would
-need any other project stops as `needs-human`.
+need any other project stops as `needs-human`. Every run goes through
+`flextools_run_module`, never a direct `FLExProject` open (R14).
 
 ---
 
@@ -187,15 +188,15 @@ Each recipe task: port to flexicon 4.11.0 (cite the `get_object_api` / `search_b
 - [x] **T043** [P] [US3] `create-entries-idempotent` from `w_create_entries.py` (validate every POS before any write; skip existing lf+gloss+POS). Dry run + live write **(live)** with `zzRecipeTest` objects and cleanup · `src/flextoolsmcp/recipe_library/create-entries-idempotent.py`, `specs/unified-recipes/evidence/create-entries-idempotent.md`
 - [x] **T044** [P] [US3] `create-entry-like-comparator` from `w_create_stem_like.py` (restore `InflectionClassRA` after `SetStemMsaPos`). Dry run + live write **(live)** · `src/flextoolsmcp/recipe_library/create-entry-like-comparator.py`, `specs/unified-recipes/evidence/create-entry-like-comparator.md`
 - [x] **T045** [P] [US3] `set-allomorph-environments` from `w_set_allomorph_env.py` (existing environments only). Dry run · `src/flextoolsmcp/recipe_library/set-allomorph-environments.py`, `specs/unified-recipes/evidence/set-allomorph-environments.md`
-- [ ] **T046** [P] [US3] `add-inflectional-affix` from `w_add_affix.py`. Dry run + live write **(live)** · `src/flextoolsmcp/recipe_library/add-inflectional-affix.py`, `specs/unified-recipes/evidence/add-inflectional-affix.md`
-- [ ] **T047** [P] [US3] `add-allomorph` from `w_add_allomorph.py`. Dry run + live write **(live)** · `src/flextoolsmcp/recipe_library/add-allomorph.py`, `specs/unified-recipes/evidence/add-allomorph.md`
-- [ ] **T048** [P] [US3] `create-text-from-lines` from logs (Ron): one paragraph per line; warn if the title exists rather than delete-and-recreate. Dry run + live write **(live)**; add its ledger rows in T051 · `src/flextoolsmcp/recipe_library/create-text-from-lines.py`, `specs/unified-recipes/evidence/create-text-from-lines.md`
-- [ ] **T049** [P] [US3] `create-variant-entries` from logs (Ron). Dry run + live write **(live)** · `src/flextoolsmcp/recipe_library/create-variant-entries.py`, `specs/unified-recipes/evidence/create-variant-entries.md`
-- [ ] **T050** [P] [US3] `affix-template-setup` from developer op `op-142307019-033`: POS subcategory, template, existing slots, repoint stem MSAs restoring inflection class. Dry run + live write **(live)** · `src/flextoolsmcp/recipe_library/affix-template-setup.py`, `specs/unified-recipes/evidence/affix-template-setup.md`
+- [x] **T046** [P] [US3] `add-inflectional-affix` from `w_add_affix.py`. Dry run + live write **(live)** · `src/flextoolsmcp/recipe_library/add-inflectional-affix.py`, `specs/unified-recipes/evidence/add-inflectional-affix.md`
+- [x] **T047** [P] [US3] `add-allomorph` from `w_add_allomorph.py`. Dry run + live write **(live)** · `src/flextoolsmcp/recipe_library/add-allomorph.py`, `specs/unified-recipes/evidence/add-allomorph.md`
+- [x] **T048** [P] [US3] `create-text-from-lines` from logs (Ron): one paragraph per line; warn if the title exists rather than delete-and-recreate. Dry run + live write **(live)**; add its ledger rows in T051 · `src/flextoolsmcp/recipe_library/create-text-from-lines.py`, `specs/unified-recipes/evidence/create-text-from-lines.md`
+- [x] **T049** [P] [US3] `create-variant-entries` from logs (Ron). Dry run + live write **(live)** · `src/flextoolsmcp/recipe_library/create-variant-entries.py`, `specs/unified-recipes/evidence/create-variant-entries.md`
+- [x] **T050** [P] [US3] `affix-template-setup` from developer op `op-142307019-033`: POS subcategory, template, existing slots, repoint stem MSAs restoring inflection class. Dry run + live write **(live)** · `src/flextoolsmcp/recipe_library/affix-template-setup.py`, `specs/unified-recipes/evidence/affix-template-setup.md`
 
 **⟶ Wait for Wave 6, then Wave 7 (single):**
 
-- [ ] **T051** [US3] Ledger join for the write recipes (rows for recipes 14..16 added; every kept gap has an issue number), and list any deferred recipe with its blocking issue in `evidence/README.md` (FR-052). Confirm at least 12 of the 16 shipped · `specs/unified-recipes/raw-lcm-ledger.md`, `specs/unified-recipes/evidence/README.md`
+- [x] **T051** [US3] Ledger join for the write recipes (rows for recipes 14..16 added; every kept gap has an issue number), and list any deferred recipe with its blocking issue in `evidence/README.md` (FR-052). Confirm at least 12 of the 16 shipped · `specs/unified-recipes/raw-lcm-ledger.md`, `specs/unified-recipes/evidence/README.md`
 
 **Checkpoint**: T029..T031 pass over the shipped set; at least 12 recipes have Sena 3 evidence; US3 acceptance 1..3 hold. Re-run T012 with the Phase 5 battery entries unskipped (the battery must now hit at least 90%).
 

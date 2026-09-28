@@ -157,6 +157,26 @@ class TestOtherRawForms:
         assert check["has_raw"], snippet
 
 
+class TestAcronymNamesAreNotRaw:
+    # project.POS and GetAllAffixTemplatesForPOS end in "OS" but are
+    # flexicon names, not LCM *OS properties (upper-case letter before the
+    # suffix).
+    def test_pos_accessor_and_for_pos_method_not_flagged(self, api_index):
+        code = (
+            "verb = project.POS.Find('Verb')\n"
+            "for t in project.MorphRules.GetAllAffixTemplatesForPOS(verb):\n"
+            "    report.Info(project.POS.GetName(verb))\n"
+        )
+        check = detect_raw_lcm_access(code, None, api_index)
+        assert check["count"] == 0, check["findings"]
+
+    def test_code_terms_keep_pos(self):
+        from flextoolsmcp.recipe_files import extract_code_terms
+
+        terms = extract_code_terms("x = project.POS.GetName(p)\n")
+        assert "pos" in terms and "speech" in terms, terms
+
+
 class TestRawLcmLineRatchet:
     def _two_line_code(self):
         return (

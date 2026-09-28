@@ -7,9 +7,10 @@ recipe keeps raw LCM with a `# flexicon gap: <issue>` note, and a flexicon
 issue is filed). This is the working list behind FR-045 and research R18.
 
 - **Source scanned**: the 13 MCPlayground `flex-parse-fixup/scripts/lib/`
-  scripts mapped to FR-050 recipes 1-13. Recipes 14-16 (`create-text-from-lines`,
-  `create-variant-entries`, `affix-template-setup`) come from logs, not
-  files; add their rows when they are written.
+  scripts mapped to FR-050 recipes 1-13, plus the log sources for recipes
+  14-16 (`create-text-from-lines`, `create-variant-entries`,
+  `affix-template-setup`, all with `raw_lcm_lines: 0, 0, 3`). All 16 rows
+  are now joined (T042 read join + T051 write join).
 - **Classified against**: flexicon 4.11.0 index (`flexicon_api_v4.11.0.json`)
   and bridge index (`flexicon_lcm_bridge_v4.11.0.json`); LibLCM 11.0.0 index.
 - **Regenerate**: `python specs/unified-recipes/tools/scan_raw_lcm.py > scan.json`
@@ -56,6 +57,9 @@ Recipe abbreviations:
 | env | set-allomorph-environments |
 | aff | add-inflectional-affix |
 | allo | add-allomorph |
+| txt | create-text-from-lines |
+| vnt | create-variant-entries |
+| setup | affix-template-setup |
 
 ---
 
@@ -102,7 +106,7 @@ Recipe abbreviations:
 | # | Raw access | Recipes | Sites | Needed flexicon API | Issue | Status |
 |---|---|---|---|---|---|---|
 | B1 | Phonological rule internals not covered by the `PhonologicalRule` / `PhonologicalContext` wrappers (which already give `input_contexts`, `output_specs`, `direction`, segment and natural class, so `StrucDescOS` / `StrucChangeOS` / `RightHandSidesOS` are rewrites through the wrapper): `LeftContextOA` / `RightContextOA` (getters; only setters exist), `ExclRuleFeatsRC`, `ReqRuleFeatsRC`, `InputPOSesRC`, `FeatureStructureRA`, `MemberRA`, `MembersRS`, `Minimum` / `Maximum` (iteration context), `Disabled` (phon rule; only `MorphRule.IsDisabled` exists) | phon | 16 | a phonological-rule reader: `PhonologicalRule.GetInput/GetOutput/GetLeftContext/GetRightContext/GetRequiredFeatures/GetExcludedFeatures/GetInputPOSes/IsDisabled`, plus `DescribeRule(rule)` | flexicon#572 | filed |
-| B2 | `InflectionClassRA` on a stem MSA (read and write) | cre, like, det | 7 | `MSA.GetInflectionClass(msa)` / `MSA.SetInflectionClass(msa, icl)`. Needed so the "restore inflection class after `SetStemMsaPos`" lesson (FR-053) can be written in flexicon | flexicon#573 | filed |
+| B2 | `InflectionClassRA` on a stem MSA (read and write) | cre, like, det, setup | 7 + 3 | `MSA.GetInflectionClass(msa)` / `MSA.SetInflectionClass(msa, icl)`. Needed so the "restore inflection class after `SetStemMsaPos`" lesson (FR-053) can be written in flexicon | flexicon#573 | filed |
 | B3 | ~~`PrefixSlotsRS` / `SuffixSlotsRS` on an affix template~~ | tpl | 2 | **Covered**: the `AffixTemplate` wrapper (from `MorphRule.GetAllAffixTemplatesForPOS`) has `prefix_slots` / `suffix_slots`; slot name and optional via `POS.GetSlotName` / `IsSlotOptional` (flexicon#542, closed). Treat as a rewrite | flexicon#542 | closed, confirm at port |
 | B4 | `ProdRestrictRC` (MSA exception "features") | det | 1 | `MSA.GetProdRestrictions(msa)`. Not `LexEntry.GetRestrictions`, which is the Restrictions *text* field | flexicon#574 | filed |
 | B5 | `LongName` on an MSA (display) | aff, tpl, cre, like, det, look | subset of 7 | `MSA.GetLongName(msa)` plus `MSA.GetMSAType(msa)` (which also removes most `ClassName` dispatch) | flexicon#575 | filed |
@@ -160,3 +164,23 @@ Read-recipe residue after the port: only `entry-parser-detail` keeps raw LCM
 `ProdRestrictRC`, flexicon#574). Both gaps were already filed, so no read
 recipe ships with a `TODO-file` row. `phonological-rules` dropped its B1
 reads instead of keeping them (the contexts wait for flexicon#572).
+
+## E. Write-recipe join (T051, 2026-09-28)
+
+Write recipes ported against flexicon 4.11.0, validator green including the
+raw-LCM gate, live-verified on Sena 3 (T043-T050). No new gap was filed:
+every kept raw line maps to an already-filed B row.
+
+| Recipe | `raw_lcm_lines` | Kept raw | Maps to | Verified |
+|---|---|---|---|---|
+| `create-entries-idempotent` (cre) | 3 | `IMoStemMsa` + `InflectionClassRA` read/save/restore | B2 flexicon#573 | sena3-live `op-034537057-003` + cleanup `op-034546624-004` |
+| `create-entry-like-comparator` (like) | 3 | `IMoStemMsa` + `InflectionClassRA` read/save/restore | B2 flexicon#573 | sena3-live |
+| `set-allomorph-environments` (env) | 0 | none; `project.project`/`EnvironmentsOS`/`StringRepresentation`/`LexemeFormOA`/`AlternateFormsOS`/`PhoneEnvRC`/`ClassName` all rewrite through wrappers (write side `AddPhoneEnv`/`RemovePhoneEnv`) | A rows, confirmed | sena3-dryrun `op-033503938-002` (defaults change nothing) |
+| `add-inflectional-affix` (aff) | 0 | none; POS/slots via `MSA.GetAll` wrappers + `GetInflAffMsaSlots` (B6 closed); longname via `LexEntry.GetLongName`, not `MSA.LongName` (#575 avoided) | A + B6 closed | sena3-live `op-095753733-003` + cleanup `op-095802864-004` |
+| `add-allomorph` (allo) | 0 | none; environments via `Environments.GetAll` + `GetStringRepresentation`, allomorphs via `Allomorphs.*` | A rows, confirmed | sena3-live `op-095920614-006` + cleanup `op-095930467-007` |
+| `create-text-from-lines` (txt) | 0 | none; title/text through `Texts.*`/`Paragraphs.*` only (no `StText` wrapper in 4.11.0) | — | sena3-live `op-100018193-008` + cleanup `op-100030948-010` |
+| `create-variant-entries` (vnt) | 0 | none; type via `Variants.FindType`, link via `Variants.Create`/`AddComponentLexeme` | — | sena3-live `op-100128509-011` + cleanup `op-100140923-013` |
+| `affix-template-setup` (setup) | 3 | `IMoStemMsa` + `InflectionClassRA` save/restore (FR-053); template/slots through `MorphRules` + `POS.GetSlotName` wrappers, MSAs keyed by `.concrete` (D1) | B2 flexicon#573; B3/#542 and B6/#543 rewrite confirmations | sena3-live `op-100340869-014` + cleanup `op-100351904-015` |
+
+No `TODO-file` rows remain for a shipped recipe. Batch count: 16 of 16
+FR-050 ids ship (12 required); 0 deferred.

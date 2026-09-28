@@ -1233,7 +1233,10 @@ def detect_print_calls(code: str, tree: Optional[ast.AST] = None) -> dict:
     }
 
 
-_LCM_PROPERTY_SUFFIX_RE = re.compile(r"\w+(OA|OS|OC|RA|RS|RC)$")
+# The suffix must follow a lowercase letter or digit: LCM properties read
+# LexemeFormOA / PhoneEnvRC, while flexicon names such as project.POS or
+# GetAllAffixTemplatesForPOS end in an upper-case acronym and are not raw.
+_LCM_PROPERTY_SUFFIX_RE = re.compile(r"\w*[a-z0-9](OA|OS|OC|RA|RS|RC)$")
 _INTERFACE_CAST_RE = re.compile(r"^I[A-Z]\w+$")
 _FLEXICON_GAP_NOTE_RE = re.compile(r"#\s*flexicon\s+gap\s*:\s*#\d+")
 _RAW_LCM_NOTE_RE = re.compile(r"#\s*raw-lcm\s*:\s*\S+")

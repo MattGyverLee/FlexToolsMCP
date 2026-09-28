@@ -355,6 +355,54 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-28T08:56:30.300Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T046",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T14:58:53.004Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T047",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:00:06.459Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T048",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:01:15.471Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T049",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:02:24.622Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T050",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:04:43.134Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T051",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:08:09.342Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -802,7 +850,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T044",
+  "currentTask": "T051",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1054,6 +1102,55 @@
       "files": [
         "src/flextoolsmcp/recipe_library/create-entry-like-comparator.py",
         "specs/unified-recipes/evidence/create-entry-like-comparator.md"
+      ]
+    },
+    "T046": {
+      "status": "DONE",
+      "did": "add-inflectional-affix live-verified on Sena 3 with same-session cleanup (zzRecipeTestAff created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/add-inflectional-affix.py",
+        "specs/unified-recipes/evidence/add-inflectional-affix.md"
+      ]
+    },
+    "T047": {
+      "status": "DONE",
+      "did": "add-allomorph live-verified on Sena 3 with same-session cleanup (zzRecipeTestAllo added and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/add-allomorph.py",
+        "specs/unified-recipes/evidence/add-allomorph.md"
+      ]
+    },
+    "T048": {
+      "status": "DONE",
+      "did": "create-text-from-lines live-verified on Sena 3 with same-session cleanup (zzRecipeTest Lines created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/create-text-from-lines.py",
+        "specs/unified-recipes/evidence/create-text-from-lines.md"
+      ]
+    },
+    "T049": {
+      "status": "DONE",
+      "did": "create-variant-entries live-verified on Sena 3 with same-session cleanup (zzRecipeTestVar created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/create-variant-entries.py",
+        "specs/unified-recipes/evidence/create-variant-entries.md"
+      ]
+    },
+    "T050": {
+      "status": "DONE",
+      "did": "affix-template-setup live-verified on Sena 3 with same-session cleanup (zzRecipeTestTemplate created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/affix-template-setup.py",
+        "specs/unified-recipes/evidence/affix-template-setup.md"
+      ]
+    },
+    "T051": {
+      "status": "DONE",
+      "did": "Ledger join for write recipes: B2 extended, E table added, 16 of 16 ship with 0 deferred, batch xfail removed",
+      "files": [
+        "specs/unified-recipes/raw-lcm-ledger.md",
+        "specs/unified-recipes/evidence/README.md",
+        "tests/test_recipes.py"
       ]
     }
   },

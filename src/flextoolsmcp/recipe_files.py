@@ -89,7 +89,7 @@ CODE_ALIASES: Dict[str, List[str]] = {
     "occurrence": ["frequency", "count"],
 }
 
-_LCM_SUFFIX_RE = re.compile(r"(OA|OS|OC|RA|RS|RC)$")
+_LCM_SUFFIX_RE = re.compile(r"(?<=[a-z0-9])(OA|OS|OC|RA|RS|RC)$")
 _MUTATION_PREFIX_RE = re.compile(r"^(Get|Set|Add|Remove|Create)(?=[A-Z]|$)")
 
 

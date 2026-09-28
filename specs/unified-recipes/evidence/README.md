@@ -26,7 +26,11 @@ Live writes (recipes that create or delete objects) additionally record:
 - the cleanup's own pre/post hash
 
 Live writes need a human present (constitution I, "no unattended destructive
-writes"). An unattended run stops with `needs-human`.
+writes"), except the Sena 3 test-project exception used by this batch:
+tasks.md's live-write rule lets unattended runs perform live writes on Sena 3
+only (assert `Sena 3`, dry-run first, `zzRecipeTest` objects, same-session
+cleanup, pre/post evidence through `flextools_run_module`). Any other project
+stops with `needs-human`.
 
 Each recipe sets `verified_against:
 {"flexicon": "4.11.0", "verified_by": "sena3-read" | "sena3-dryrun" |
@@ -39,4 +43,10 @@ flexicon issue. The batch ships when at least 12 of the 16 are verified.
 
 | recipe id | reason deferred | blocking issue |
 |---|---|---|
-| _(none yet)_ | | |
+| _(none — 16 of 16 ship; T051 join 2026-09-28)_ | | |
+
+Batch join (T051): all 16 FR-050 ids load via `load_recipe_library()` with
+no errors, pass `validate_recipe(..., shipped=True)`, and carry Sena 3
+evidence (`sena3-read` for read recipes, `sena3-dryrun` for
+`set-allomorph-environments`, `sena3-live` for the 7 object-creating write
+recipes). 0 deferred, 12-required threshold exceeded.

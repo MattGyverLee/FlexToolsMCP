@@ -77,6 +77,11 @@ hooks:
         when live verification did not actually happen -- an unrun verification
         is not a pass.
 
-        UNATTENDED RUNS: if a live write would be required and no human is
-        watching, do NOT perform it. Stop and report that the spurt must end
-        with status needs_human.
+        UNATTENDED RUNS: live verification writes on Sena 3 (the designated
+        test project) MAY proceed with no human watching, per constitution I:
+        assert the project name is Sena 3, dry-run first, touch only objects
+        the run creates (zzRecipeTest prefix), clean them up in the same
+        session, and record pre/post evidence. Any other live write that would
+        be required with no human watching -- above all on a work project such
+        as Claude-Swahili -- do NOT perform. Stop and report that the spurt
+        must end with status needs_human.

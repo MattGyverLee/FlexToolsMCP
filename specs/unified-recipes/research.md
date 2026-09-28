@@ -380,7 +380,10 @@ live writes: Sena 3 is the designated test project, excepted from constitution
 I's "no unattended destructive writes" (1.1.0). A live write on any other
 project stops with `needs-human`. The project path is resolved through
 `flextools_list_projects` and the name is asserted to be `Sena 3` before any
-run.
+run. Every run -- read, dry run, or live write -- goes through
+`flextools_run_module`; a round never opens the project directly
+(`FLExProject().OpenProject`, `FLExInitialize`) or copies `.fwdata` by hand.
+A failing `run_module` is reported as BLOCKED with its error and op_id.
 
 **Rationale**: FR-042..FR-044. The standing rules are that Sena 3 is the test
 project and Claude-Swahili is never a target.

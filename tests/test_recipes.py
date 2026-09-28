@@ -57,6 +57,19 @@ class TestRecipePreflight:
         failures = validate_all(CURATED_RECIPES, api_index)
         assert failures == {}, json.dumps(failures, indent=2)
 
+    def test_shipped_file_recipes_pass_shipped_gate(self, api_index):
+        # FR-040/FR-041/FR-045: file recipes also clear the shipped-only
+        # checks (PARAMS, scrub, print ban, raw-LCM gate and ratchet).
+        api_index.ensure_flexicon_bridge_loaded()
+        file_recipes, errors = load_recipe_library()
+        assert errors == []
+        failures = {}
+        for recipe_id, recipe in file_recipes.items():
+            result = validate_recipe(recipe, api_index, shipped=True)
+            if not result["passed"]:
+                failures[recipe_id] = result
+        assert failures == {}, json.dumps(failures, indent=2)
+
     def test_curated_recipes_are_all_marked_curated(self):
         # Guard against accidentally shipping a mined candidate: every entry
         # in CURATED_RECIPES must be source="curated", never "mined".
@@ -301,20 +314,12 @@ FIRST_BATCH_IDS = [
 ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="needs recipe batch T034-T051: only parser-coverage ships so far",
-)
 def test_first_batch_count():
     shipped = set(CURATED_RECIPES)
     have = [rid for rid in FIRST_BATCH_IDS if rid in shipped]
     assert len(have) >= 12, f"only {len(have)} of 16 batch recipes ship: {sorted(have)}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="needs Sena 3 verification T041+: file recipes still preflight-only",
-)
 def test_shipped_file_recipes_have_sena3_verification():
     file_recipes, _errors = load_recipe_library()
     assert file_recipes, "no file recipes ship yet"
@@ -340,3 +345,49 @@ def test_vernacular_recipes_normalize():
             assert "normalize" in recipe["code"], (
                 f"{recipe_id} touches vernacular text but never normalizes it"
             )
+
+
+class _FakeReport:
+    def __init__(self):
+        self.info, self.warnings = [], []
+
+    def Info(self, msg, ref=None):
+        self.info.append(msg)
+
+    def Warning(self, msg, ref=None):
+        self.warnings.append(msg)
+
+
+class _FakeOps:
+    def __init__(self, **methods):
+        self.__dict__.update(methods)
+
+
+def test_lexicon_lookup_finds_nfd_form():
+    # US3 acceptance 2: a lexeme form stored decomposed (NFD) is found by a
+    # composed (NFC) query. Runs the shipped recipe code against a fake
+    # project; Sena 3 has no decomposed vernacular forms to test live.
+    import unicodedata
+
+    recipes, _errors = load_recipe_library()
+    code = recipes["lexicon-form-lookup"]["code"]
+    stored = unicodedata.normalize("NFD", "café")
+    assert stored != "café"
+    entry = object()
+    project = _FakeOps(
+        LexEntry=_FakeOps(
+            GetAll=lambda: [entry],
+            GetLexemeForm=lambda e: stored,
+            GetHeadword=lambda e: stored,
+            GetSenses=lambda e: [],
+            GetMorphType=lambda e: "stem",
+        ),
+        Allomorphs=_FakeOps(GetAll=lambda e: [], GetForm=lambda a: ""),
+        Senses=_FakeOps(GetGloss=lambda s: "", GetPartOfSpeech=lambda s: ""),
+        BuildGotoURL=lambda obj: "",
+    )
+    code = code.replace('KEYS = ["lekerer", "rekerer", "cibubu"]', 'KEYS = ["café"]')
+    report = _FakeReport()
+    exec(compile(code, "lexicon-form-lookup.py", "exec"), {"project": project, "report": report})
+    assert len(report.info) == 1, report.info
+    assert report.warnings == []

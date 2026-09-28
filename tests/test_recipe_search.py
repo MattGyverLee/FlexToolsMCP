@@ -302,7 +302,13 @@ QUERY_BATTERY = [
     ("audit inflectional affix MSA slots", "audit-repair-infl-aff-msa-slots", False),
     # Phase-5 recipes: skipped until they ship.
     ("list the affix templates and slots for verbs", "affix-templates-and-slots", True),
-    ("phone environments on an allomorph", "phonological-rules", True),
+    ("phone environments on an allomorph", "set-allomorph-environments", True),
+    ("list the phonological rules", "phonological-rules", True),
+    ("does this form exist in the lexicon", "lexicon-form-lookup", True),
+    ("how is this entry modelled for the parser", "entry-parser-detail", True),
+    ("existing analyses of a word", "wordform-analyses", True),
+    ("who uses this allomorph before I delete it", "form-usage-before-edit", True),
+    ("capitalized variants of a wordform", "wordform-case-variants", True),
 ]
 
 

@@ -1,10 +1,10 @@
 # Evidence: create-text-from-lines
 
-- **Verified by**: `sena3-dryrun` (live write pending: text create + delete still to run)
-- **Project**: Sena 3 (asserted with `flextools_list_projects`; session `flextools_start(project_name="Sena 3", write_enabled=False)`)
+- **Verified by**: `sena3-live`
+- **Project**: Sena 3 (asserted with `flextools_list_projects`; session `flextools_start(project_name="Sena 3", write_enabled=True)`)
 - **flexicon**: 4.11.0 (installed = index, exact match)
-- **Run**: `flextools_run_module`, recipe PARAMS-plus-code as shipped except the file docstring header, read-only (modifyAllowed=False)
-- **op_id**: `op-033529928-005`
+- **Run**: `flextools_run_module`, recipe PARAMS-plus-code as shipped except the file docstring header; dry run read-only plus live write with same-session cleanup
+- **op_id**: `op-100018193-008` (live create), `op-100030948-010` (verify + cleanup delete), dry `op-033529928-005`
 - **Params**: defaults (`TITLE = "zzRecipeTest Lines"`, `LINES = ["zzRecipeTest line one", "zzRecipeTest line two"]`)
 - **Date**: 2026-09-28
 - **raw_lcm_lines**: 0
@@ -12,15 +12,20 @@
 ## Report excerpt
 
 ```text
-(dry run) would create text 'zzRecipeTest Lines' with 2 paragraph(s)
+created text 'zzRecipeTest Lines' with 2 paragraph(s)
+verify paras=2
+  para: zzRecipeTest line one
+  para: zzRecipeTest line two
+deleted zzRecipeTest Lines
 ```
 
 ## Notes
 
-Dry run only. The recipe creates a text, so FR-043 also requires a live
-write on Sena 3 (create `zzRecipeTest Lines` with 2 paragraphs, verify
-contents, delete it, verify it is gone) with pre/post `.fwdata` hash --
-still pending. Title-exists check compares NFC on both `GetName` and
+Live write on Sena 3 with same-session cleanup (constitution I Sena 3
+exception). Live created `zzRecipeTest Lines` guid
+`d9fb9a30-1261-4ebb-820e-efc0bb613cc5` with 2 paragraphs
+(`op-100018193-008`), verified contents, then `Texts.Delete` removed it
+(`op-100030948-010`). Title-exists check compares NFC on both `GetName` and
 `GetTitle` and warns instead of delete-and-recreate. No `StText` wrapper
 exists in flexicon 4.11.0 (confirmed via `get_object_api` miss); the recipe
 reaches paragraphs through `project.Texts.*` / `project.Paragraphs.*` only.
@@ -31,10 +36,12 @@ reaches paragraphs through `project.Texts.*` / `project.Paragraphs.*` only.
 
 | | SHA-256 | mtime |
 |---|---|---|
-| before | `076f0c165257ec118ed19799f57e65f00faae0fa28d0c69bb812abe826c9b131` | 2026-09-27T18:10:56 |
-| after | `076f0c165257ec118ed19799f57e65f00faae0fa28d0c69bb812abe826c9b131` | 2026-09-27T18:10:56 |
+| before | `C62D859E487E9FC2CB864712CAEE1079ECE0C1A20529564F3E36491635EB23D3` | 2026-09-28T14:59:34Z |
+| after live + cleanup | `011E23272DAF57A20674A477D0666F81FC896B77EB96D13070DF7E13637F00A4` | 2026-09-28T15:00:34Z |
 
-Unchanged, so this run left the file untouched.
+Size stayed 55,939,810 bytes; the hash moved because the live create plus
+delete touched the database, then cleanup removed the test object. A fresh
+`zzRecipeTest` scan after cleanup is recorded with the batch join.
 
 ## Port
 

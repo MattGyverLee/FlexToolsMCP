@@ -20,6 +20,15 @@ on:
   workflow_dispatch: {}   # allow manual runs from the Actions tab
 
 jobs:
+  test:
+    name: Full test matrix
+    # py3.10/3.12 x mcp 1.27.0/latest.  Push/PR CI runs only the py3.12 /
+    # latest cell for speed, so this is where the other three cells gate a
+    # release.
+    uses: ./.github/workflows/test.yml
+    with:
+      full_matrix: true
+
   build:
     name: Build distributions
     runs-on: ubuntu-latest
@@ -101,7 +110,7 @@ jobs:
 
   publish:
     name: Publish to PyPI
-    needs: [build, smoke]
+    needs: [test, build, smoke]
     runs-on: ubuntu-latest
     # The environment must match the trusted-publisher config on PyPI.
     environment:

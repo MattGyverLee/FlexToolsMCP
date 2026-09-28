@@ -50,8 +50,11 @@ git push && git push origin vX.Y.Z
 > dispatch the existing tag instead:
 > `gh workflow run publish.yml --ref vX.Y.Z`.
 
-The tag push triggers the workflow: it builds the wheel + sdist, runs
-`twine check`, and publishes to PyPI. Watch it under the repo's **Actions** tab.
+The tag push triggers the workflow: it runs the full py3.10/3.12 x mcp
+1.27.0/latest test matrix (push/PR CI only runs the py3.12 / latest cell),
+builds the wheel + sdist, runs `twine check`, and publishes to PyPI. To catch
+a matrix failure before tagging, dispatch it on main first:
+`gh workflow run test.yml --ref main`. Watch it under the repo's **Actions** tab.
 `workflow_dispatch` also lets you run it manually from that tab.
 
 ## Manual release

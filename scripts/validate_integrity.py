@@ -359,6 +359,14 @@ def check_output_models():
     try:
         from flextoolsmcp.tool_output_validation import run_output_model_validation
     except ImportError as exc:
+        # pre-commit runs this in an isolated env without runtime deps; skip on
+        # a missing third-party module like the server check does.  CI installs
+        # them, so the gate still runs there.  A missing first-party module is
+        # a real break.
+        missing = (getattr(exc, "name", "") or "").split(".")[0]
+        if missing and missing != "flextoolsmcp":
+            print(f"  tool output models: '{missing}' not installed, skipping (DEGRADED)")
+            return True
         print(f"OUTPUT MODEL ERROR: could not import tool_output_validation: {exc}", file=sys.stderr)
         return False
 

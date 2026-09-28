@@ -1,15 +1,69 @@
 name: Test
 
-# Runs on every push and pull_request.
-# Keeps main green without gating releases (publish.yml fires on tags only).
+# Two tiers:
+#   fast  -- push / pull_request: one Windows job (py3.12, mcp latest) plus the
+#            Linux smoke job, in parallel.  Keeps branch feedback quick.
+#   full  -- the py3.10/3.12 x mcp 1.27.0/latest matrix.  Runs weekly, on
+#            manual dispatch, and as a gate inside publish.yml (workflow_call)
+#            so nothing reaches PyPI without it.  The weekly run keeps the gap
+#            between "a commit broke the 1.x path" and "we noticed" to days,
+#            not a whole release cycle.
 
 on:
   push:
+    # Feature branches get their CI via pull_request; main via push.  Tags are
+    # excluded automatically (branches filter) -- publish.yml runs the full
+    # matrix for those.
+    branches: [main]
+    paths:
+      - "**"
+      # Spec prose / agent config churn every speckit round and runs no code...
+      - "!specs/**"
+      - "!.specify/**"
+      - "!.claude/**"
+      # ...except the parts tests read (contract tables, evidence fixtures,
+      # companion scripts).  Keep this list in sync with tests/ -- grep for
+      # `"specs" /` and `".specify" /`.
+      - "specs/*/contracts/**"
+      - "specs/*/evidence/**"
+      - ".specify/extensions/**"
   pull_request:
+    paths:
+      - "**"
+      # Spec prose / agent config churn every speckit round and runs no code...
+      - "!specs/**"
+      - "!.specify/**"
+      - "!.claude/**"
+      # ...except the parts tests read (contract tables, evidence fixtures,
+      # companion scripts).  Keep this list in sync with tests/ -- grep for
+      # `"specs" /` and `".specify" /`.
+      - "specs/*/contracts/**"
+      - "specs/*/evidence/**"
+      - ".specify/extensions/**"
+  schedule:
+    - cron: "0 5 * * 1"   # 05:00 UTC every Monday: full matrix on main
+  workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: "Run the full py x mcp matrix"
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      full_matrix:
+        type: boolean
+        default: true
+
+# A newer push supersedes the in-flight run for the same branch/PR.  head_ref
+# makes a PR's runs share one group.  Scheduled runs get their own group so a
+# push to main cannot cancel the weekly full matrix.
+concurrency:
+  group: test-${{ github.event_name == 'schedule' && 'schedule' || github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Windows matrix — full test surface, ruff lint, coverage gate
+  # Windows -- full test surface, ruff lint, coverage gate
   # ---------------------------------------------------------------------------
   test:
     name: test (py${{ matrix.python-version }}, mcp ${{ matrix.mcp }}, windows)
@@ -17,12 +71,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
         # Issue #83: dual mcp 1.x/2.x support means two live registration
-        # paths -- the suite must run under both pins or the untested branch
-        # rots. "1.27.0" is the oldest supported 1.x floor; "latest" resolves
-        # the capped range (2.x today).
-        mcp: ["1.27.0", "latest"]
+        # paths -- the full tier must run under both pins or the untested
+        # branch rots. "1.27.0" is the oldest supported 1.x floor; "latest"
+        # resolves the capped range (2.x today).  The fast tier runs only the
+        # py3.12 / latest cell.
+        python-version: ${{ fromJSON((inputs.full_matrix || github.event_name == 'schedule') && '["3.10", "3.12"]' || '["3.12"]') }}
+        mcp: ${{ fromJSON((inputs.full_matrix || github.event_name == 'schedule') && '["1.27.0", "latest"]' || '["latest"]') }}
 
     steps:
       - uses: actions/checkout@v7
@@ -30,6 +85,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install package and dev dependencies
         run: pip install -e .[dev]
@@ -72,19 +129,18 @@ jobs:
           -q
 
   # ---------------------------------------------------------------------------
-  # Linux smoke job — verifies the pure-Python test surface passes without
+  # Linux smoke job -- verifies the pure-Python test surface passes without
   # a live FieldWorks installation.  Per STABILITY-SURVEY sec 1: "All tests
   # runnable without live FieldWorks (pure Python, mock-friendly)."
   # Tests that require real FLEx data (test_script_certification, which loads
   # a live flexicon index from index/python/) are deselected via the
   # `requires_flex` marker; see pytest.ini for marker registration.
+  # Runs in parallel with the Windows job (it used to wait on it via `needs`,
+  # which serialized the two and doubled wall-clock time).
   # ---------------------------------------------------------------------------
   test-linux:
     name: test (py3.12, ubuntu, no-flex)
     runs-on: ubuntu-latest
-    # Only run when the Windows matrix passes — linux is a smoke gate, not
-    # a replacement.
-    needs: test
 
     steps:
       - uses: actions/checkout@v7
@@ -92,12 +148,14 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install package and dev dependencies
         run: pip install -e .[dev]
 
       - name: Run pytest (skip requires_flex tests)
-        # No coverage gate here — the Windows job owns the floor.
+        # No coverage gate here -- the Windows job owns the floor.
         # --continue-on-collection-errors: see the Windows job's comment --
         # a single module-level import break must degrade to per-test
         # failures, not silently zero out the whole run.

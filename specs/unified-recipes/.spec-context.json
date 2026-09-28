@@ -163,6 +163,142 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-28T04:50:17.471Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:07:40.409Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:07:48.073Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:07:51.944Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:07:56.113Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:08:00.168Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:08:04.654Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:08:08.807Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:37:56.663Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:03.866Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:08.019Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:12.598Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:16.846Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:21.017Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:30.390Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T026",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:37.880Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T027",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:42.478Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T028",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T05:38:46.539Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -607,7 +743,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T011",
+  "currentTask": "T028",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -686,6 +822,129 @@
       "files": [
         "src/flextoolsmcp/recipe_library/parser-coverage.py"
       ]
+    },
+    "T012": {
+      "status": "DONE",
+      "did": "Ranking + response + battery tests in tests/test_recipe_search.py (44 tests pass)",
+      "files": [
+        "tests/test_recipe_search.py"
+      ]
+    },
+    "T013": {
+      "status": "DONE",
+      "did": "Frozen legacy attachment test in tests/test_recipes.py",
+      "files": [
+        "tests/test_recipes.py"
+      ]
+    },
+    "T014": {
+      "status": "DONE",
+      "did": "Server-instructions tests in tests/test_server_instructions.py",
+      "files": [
+        "tests/test_server_instructions.py"
+      ]
+    },
+    "T015": {
+      "status": "DONE",
+      "did": "Unified ranked search in server/recipes.py (R10 scorer, rows, code gate)",
+      "files": [
+        "src/flextoolsmcp/server/recipes.py"
+      ]
+    },
+    "T016": {
+      "status": "DONE",
+      "did": "Search handler adds recipes keys, code_at dedup, validated recording",
+      "files": [
+        "src/flextoolsmcp/server/handlers/api.py"
+      ]
+    },
+    "T017": {
+      "status": "DONE",
+      "did": "SERVER_INSTRUCTIONS plus search/find_examples/run_module guidance",
+      "files": [
+        "src/flextoolsmcp/server/tool_definitions.py"
+      ]
+    },
+    "T018": {
+      "status": "DONE",
+      "did": "Pass instructions through build_server on both mcp majors",
+      "files": [
+        "src/flextoolsmcp/mcp_compat.py",
+        "src/flextoolsmcp/server.py"
+      ]
+    },
+    "T019": {
+      "status": "DONE",
+      "did": "Ported skeleton tests to test_local_recipes.py with path/fingerprint/cap/migration/recall coverage",
+      "files": [
+        "tests/test_local_recipes.py"
+      ]
+    },
+    "T020": {
+      "status": "DONE",
+      "did": "Handler capture tests via stub executor in test_local_recipe_capture.py",
+      "files": [
+        "tests/test_local_recipe_capture.py"
+      ]
+    },
+    "T021": {
+      "status": "DONE",
+      "did": "find_examples local + deprecation tests appended to test_recipe_search.py",
+      "files": [
+        "tests/test_recipe_search.py"
+      ]
+    },
+    "T022": {
+      "status": "DONE",
+      "did": "Built server/local_recipes.py store with fingerprint/capture/cap/migration",
+      "files": [
+        "src/flextoolsmcp/server/local_recipes.py"
+      ]
+    },
+    "T023": {
+      "status": "DONE",
+      "did": "Rewired capture to whole-code local_recipes.capture in execution.py",
+      "files": [
+        "src/flextoolsmcp/server/handlers/execution.py"
+      ]
+    },
+    "T024": {
+      "status": "DONE",
+      "did": "Plugged local store into ranked search via explicit handler load",
+      "files": [
+        "src/flextoolsmcp/server/recipes.py"
+      ]
+    },
+    "T025": {
+      "status": "DONE",
+      "did": "find_examples serves local recipes with skeletons deprecation",
+      "files": [
+        "src/flextoolsmcp/server/handlers/api.py"
+      ]
+    },
+    "T026": {
+      "status": "DONE",
+      "did": "Deleted skeleton_storage and repointed catalog to local_recipes",
+      "files": [
+        "src/flextoolsmcp/server/skeleton_storage.py",
+        "tests/test_skeleton_storage.py",
+        "src/flextoolsmcp/server/handlers/catalog.py"
+      ]
+    },
+    "T027": {
+      "status": "DONE",
+      "did": "Fixed stale skeleton-closet comment in file_utils.py",
+      "files": [
+        "src/flextoolsmcp/file_utils.py"
+      ]
+    },
+    "T028": {
+      "status": "DONE",
+      "did": "Pattern audit for session-provenance bug in evidence/pattern-audit.md",
+      "files": [
+        "specs/unified-recipes/evidence/pattern-audit.md"
+      ]
     }
-  }
+  },
+  "last_action": "Phase 4 US2 done T019-T028; 4234 passed 5 skipped; next T029"
 }

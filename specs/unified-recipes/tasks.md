@@ -74,24 +74,24 @@ response-key registry. No story work starts until this phase is done.
 
 **Wave 1 (independent):**
 
-- [ ] **T012** [P] [US1] Ranking tests: normalization (case, punctuation, plural), bag weights (task word > code word > object word on crafted fixtures), IDF (a word in every fixture recipe contributes about 0), `code_terms` + alias table (`PhoneEnvRC` gives phone + environment), shipped and `use_count` boosts, null-intent penalty, "frobnicate the widgets" returns `[]`; response tests `test_search_response_recipes_keys`, `test_clear_winner_gets_code`, `test_object_only_query_no_code`, `test_close_scores_no_code`, `test_no_duplicate_code_with_legacy_attachment` (`code_at`), `test_hint_present_iff_ambiguous`, `test_top_row_records_validated_compact_rows_do_not`, `test_compact_row_size_budget` (mean < 400 chars), `test_battery_at_most_one_code_body`; `QUERY_BATTERY` (at least 20 entries, including the US1 acceptance queries) with `test_battery_top3_rate >= 0.9`. Battery entries whose recipe lands in Phase 5 are marked and skipped until it exists (FR-020, FR-021, FR-026, FR-061, SC-001, SC-005) · `tests/test_recipe_search.py`
-- [ ] **T013** [P] [US1] `test_attachment_identical_to_pre_change`: frozen `results[0].recipe` dict for "list all entries with their glosses" (FR-022) · `tests/test_recipes.py`
-- [ ] **T014** [P] [US1] Server-instructions round trip under the installed mcp: instructions carry the "check `recipes` first", PARAMS and `source="existing"` guidance (FR-027) · `tests/test_server_instructions.py`
+- [x] **T012** [P] [US1] Ranking tests: normalization (case, punctuation, plural), bag weights (task word > code word > object word on crafted fixtures), IDF (a word in every fixture recipe contributes about 0), `code_terms` + alias table (`PhoneEnvRC` gives phone + environment), shipped and `use_count` boosts, null-intent penalty, "frobnicate the widgets" returns `[]`; response tests `test_search_response_recipes_keys`, `test_clear_winner_gets_code`, `test_object_only_query_no_code`, `test_close_scores_no_code`, `test_no_duplicate_code_with_legacy_attachment` (`code_at`), `test_hint_present_iff_ambiguous`, `test_top_row_records_validated_compact_rows_do_not`, `test_compact_row_size_budget` (mean < 400 chars), `test_battery_at_most_one_code_body`; `QUERY_BATTERY` (at least 20 entries, including the US1 acceptance queries) with `test_battery_top3_rate >= 0.9`. Battery entries whose recipe lands in Phase 5 are marked and skipped until it exists (FR-020, FR-021, FR-026, FR-061, SC-001, SC-005) · `tests/test_recipe_search.py`
+- [x] **T013** [P] [US1] `test_attachment_identical_to_pre_change`: frozen `results[0].recipe` dict for "list all entries with their glosses" (FR-022) · `tests/test_recipes.py`
+- [x] **T014** [P] [US1] Server-instructions round trip under the installed mcp: instructions carry the "check `recipes` first", PARAMS and `source="existing"` guidance (FR-027) · `tests/test_server_instructions.py`
 
 ### Implementation
 
 **⟶ Wait for the tests wave, then Wave 2 (single):**
 
-- [ ] **T015** [US1] Unified ranked search in `server/recipes.py`: normalize both sources to the internal Recipe shape (data-model section 1), weighted bags, IDF over the recipe set, boosts, null-intent penalty, the clear-winner gate (minimum score, 1.5x the runner-up, not objects-only), compact vs full row shapes, and a pluggable local-recipe provider (empty until US2). Keep the old `results[0].recipe` attachment function separate and untouched (R10) · `src/flextoolsmcp/server/recipes.py`
+- [x] **T015** [US1] Unified ranked search in `server/recipes.py`: normalize both sources to the internal Recipe shape (data-model section 1), weighted bags, IDF over the recipe set, boosts, null-intent penalty, the clear-winner gate (minimum score, 1.5x the runner-up, not objects-only), compact vs full row shapes, and a pluggable local-recipe provider (empty until US2). Keep the old `results[0].recipe` attachment function separate and untouched (R10) · `src/flextoolsmcp/server/recipes.py`
 
 **⟶ Wait for Wave 2, then Wave 3 (independent):**
 
-- [ ] **T016** [P] [US1] `handle_search_by_capability`: add `recipes`, `recipes_count`, `recipes_ambiguous` and the hint; set `code_at: "results[0].recipe"` when the winner is already attached; record only the served top row's entities as validated (FR-021, FR-022, FR-026) · `src/flextoolsmcp/server/handlers/api.py`
-- [ ] **T017** [P] [US1] Add `SERVER_INSTRUCTIONS` (R11) and update the `search_by_capability` / `run_module` descriptions to say "check `recipes` before composing code; edit PARAMS values only; run with `source="existing"` when only PARAMS changed" (FR-027) · `src/flextoolsmcp/server/tool_definitions.py`
+- [x] **T016** [P] [US1] `handle_search_by_capability`: add `recipes`, `recipes_count`, `recipes_ambiguous` and the hint; set `code_at: "results[0].recipe"` when the winner is already attached; record only the served top row's entities as validated (FR-021, FR-022, FR-026) · `src/flextoolsmcp/server/handlers/api.py`
+- [x] **T017** [P] [US1] Add `SERVER_INSTRUCTIONS` (R11) and update the `search_by_capability` / `run_module` descriptions to say "check `recipes` before composing code; edit PARAMS values only; run with `source="existing"` when only PARAMS changed" (FR-027) · `src/flextoolsmcp/server/tool_definitions.py`
 
 **⟶ Wait for Wave 3, then Wave 4 (single):**
 
-- [ ] **T018** [US1] Pass `instructions=SERVER_INSTRUCTIONS` to `build_server`, compatible with mcp 1.x and 2.x through the compat shim (FR-027) · `src/flextoolsmcp/server.py`
+- [x] **T018** [US1] Pass `instructions=SERVER_INSTRUCTIONS` to `build_server`, compatible with mcp 1.x and 2.x through the compat shim (FR-027) · `src/flextoolsmcp/server.py`
 
 **Checkpoint**: T012..T014 pass on the current recipe set (Phase 5 battery entries skipped); US1 acceptance 1..5 hold for recipes that exist.
 
@@ -107,30 +107,30 @@ response-key registry. No story work starts until this phase is done.
 
 **Wave 1 (independent):**
 
-- [ ] **T019** [P] [US2] Port `test_skeleton_storage.py` into `test_local_recipes.py` and add: path resolution (`FLEXTOOLSMCP_RECIPE_DIR`, the `FLEXTOOLSMCP_SKELETON_DIR` fallback, default); `test_record_fields`; `test_entities_from_this_code_only`; `test_repeat_updates_not_duplicates` (comment and whitespace variants); `test_op_ids_capped_at_5`; `test_projects_union`; `test_capture_never_raises`; `test_legacy_migration_*` (grouping by op_id, intent from the ops log, trivial/short bodies dropped, duplicates merged, legacy bytes hash-unchanged, missing ops log gives null intent); `test_migration_shrinks_fixture` (309-row-shaped fixture, at least 50% smaller); `test_cap_2000_drops_least_used_oldest`; `test_paraphrase_finds_local_after_restart` (FR-010..016, SC-002, SC-004) · `tests/test_local_recipes.py`
-- [ ] **T020** [P] [US2] Handler-level capture tests through `handle_run_module` with a stub executor: captured with intent and at least 4 real lines; not captured for a 2-line probe, an empty intent, or a failed run; `requires_write` only when write-enabled and mutating (FR-011, FR-012) · `tests/test_local_recipe_capture.py`
-- [ ] **T021** [P] [US2] `test_find_examples_includes_local`, `test_skeletons_key_still_emitted_with_deprecation` (FR-023) · `tests/test_recipe_search.py`
+- [x] **T019** [P] [US2] Port `test_skeleton_storage.py` into `test_local_recipes.py` and add: path resolution (`FLEXTOOLSMCP_RECIPE_DIR`, the `FLEXTOOLSMCP_SKELETON_DIR` fallback, default); `test_record_fields`; `test_entities_from_this_code_only`; `test_repeat_updates_not_duplicates` (comment and whitespace variants); `test_op_ids_capped_at_5`; `test_projects_union`; `test_capture_never_raises`; `test_legacy_migration_*` (grouping by op_id, intent from the ops log, trivial/short bodies dropped, duplicates merged, legacy bytes hash-unchanged, missing ops log gives null intent); `test_migration_shrinks_fixture` (309-row-shaped fixture, at least 50% smaller); `test_cap_2000_drops_least_used_oldest`; `test_paraphrase_finds_local_after_restart` (FR-010..016, SC-002, SC-004) · `tests/test_local_recipes.py`
+- [x] **T020** [P] [US2] Handler-level capture tests through `handle_run_module` with a stub executor: captured with intent and at least 4 real lines; not captured for a 2-line probe, an empty intent, or a failed run; `requires_write` only when write-enabled and mutating (FR-011, FR-012) · `tests/test_local_recipe_capture.py`
+- [x] **T021** [P] [US2] `test_find_examples_includes_local`, `test_skeletons_key_still_emitted_with_deprecation` (FR-023) · `tests/test_recipe_search.py`
 
 ### Implementation
 
 **⟶ Wait for the tests wave, then Wave 2 (single):**
 
-- [ ] **T022** [US2] Build `server/local_recipes.py`: store path resolution, fingerprint (comments and blank lines removed, whitespace normalized), capture with upsert (`use_count`, `last_used`, `op_ids` last 5, `projects` union), entities from this code's AST via `validators._accessor_to_ops_map` plus `I*` names (R8), atomic rewrite with `os.replace`, UTF-8 JSONL with `ensure_ascii=False`, 2,000-row cap, one-time legacy migration from `skeletons.jsonl` with intent recovery from `logs/operations.jsonl` (R7, R9), never raises (FR-010..016) · `src/flextoolsmcp/server/local_recipes.py`
+- [x] **T022** [US2] Build `server/local_recipes.py`: store path resolution, fingerprint (comments and blank lines removed, whitespace normalized), capture with upsert (`use_count`, `last_used`, `op_ids` last 5, `projects` union), entities from this code's AST via `validators._accessor_to_ops_map` plus `I*` names (R8), atomic rewrite with `os.replace`, UTF-8 JSONL with `ensure_ascii=False`, 2,000-row cap, one-time legacy migration from `skeletons.jsonl` with intent recovery from `logs/operations.jsonl` (R7, R9), never raises (FR-010..016) · `src/flextoolsmcp/server/local_recipes.py`
 
 **⟶ Wait for Wave 2, then Wave 3 (independent):**
 
-- [ ] **T023** [P] [US2] Rewire capture: pass the whole code, `user_intent`, project name and `is_mutating_script` to `local_recipes.capture`; remove per-`def` capture and `_entities_used_in_session` (FR-011, FR-012) · `src/flextoolsmcp/server/handlers/execution.py`
-- [ ] **T024** [P] [US2] Plug `local_recipes` into the ranker's local provider (T015 seam) · `src/flextoolsmcp/server/recipes.py`
+- [x] **T023** [P] [US2] Rewire capture: pass the whole code, `user_intent`, project name and `is_mutating_script` to `local_recipes.capture`; remove per-`def` capture and `_entities_used_in_session` (FR-011, FR-012) · `src/flextoolsmcp/server/handlers/execution.py`
+- [x] **T024** [P] [US2] Plug `local_recipes` into the ranker's local provider (T015 seam) · `src/flextoolsmcp/server/recipes.py`
 
 **⟶ Wait for Wave 3, then Wave 4 (independent):**
 
-- [ ] **T025** [P] [US2] `handle_find_examples`: add matching local recipes to the existing `recipes` list; keep emitting `skeletons_from_your_sessions` with a `deprecation` notice naming `tool-responses/2.0` (FR-023) · `src/flextoolsmcp/server/handlers/api.py`
-- [ ] **T026** [P] [US2] Delete `server/skeleton_storage.py` and `tests/test_skeleton_storage.py`; repoint every remaining import to `local_recipes` (Grep for `skeleton_storage`) · `src/flextoolsmcp/server/skeleton_storage.py`, `tests/test_skeleton_storage.py`
-- [ ] **T027** [P] [US2] Fix the stale skeleton-closet comment · `src/flextoolsmcp/file_utils.py`
+- [x] **T025** [P] [US2] `handle_find_examples`: add matching local recipes to the existing `recipes` list; keep emitting `skeletons_from_your_sessions` with a `deprecation` notice naming `tool-responses/2.0` (FR-023) · `src/flextoolsmcp/server/handlers/api.py`
+- [x] **T026** [P] [US2] Delete `server/skeleton_storage.py` and `tests/test_skeleton_storage.py`; repoint every remaining import to `local_recipes` (Grep for `skeleton_storage`) · `src/flextoolsmcp/server/skeleton_storage.py`, `tests/test_skeleton_storage.py`
+- [x] **T027** [P] [US2] Fix the stale skeleton-closet comment · `src/flextoolsmcp/file_utils.py`
 
 **⟶ Wait for Wave 4, then Wave 5 (single):**
 
-- [ ] **T028** [US2] Pattern audit (sweep-pattern skill) for the shaped bug "provenance taken from the ambient session instead of the artifact": check at least `op_telemetry` `auto_discovered` and the `extract_patterns` mining evidence; write the sibling list into `evidence/pattern-audit.md` for the PR body · `specs/unified-recipes/evidence/pattern-audit.md`
+- [x] **T028** [US2] Pattern audit (sweep-pattern skill) for the shaped bug "provenance taken from the ambient session instead of the artifact": check at least `op_telemetry` `auto_discovered` and the `extract_patterns` mining evidence; write the sibling list into `evidence/pattern-audit.md` for the PR body · `specs/unified-recipes/evidence/pattern-audit.md`
 
 **Checkpoint**: T019..T021 pass; US2 acceptance 1..4 hold; the US1 tests still pass with local recipes included.
 

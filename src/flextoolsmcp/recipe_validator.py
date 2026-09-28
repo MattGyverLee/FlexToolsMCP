@@ -50,9 +50,9 @@ in CI), the validator ALSO checks:
 import ast
 from typing import Any, Dict, List
 
-try:
+if __package__:
     from .recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
-except ImportError:
+else:
     from recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
 
 if __package__:

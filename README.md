@@ -155,8 +155,10 @@ See [SETUP.md](SETUP.md#connecting-to-ai-assistants) for Claude Code, Antigravit
 
 **Note:** Each AI tool has different MCP configuration syntax. See SETUP.md for your specific tool.
 
-**User data** lives under `~/.flextoolsmcp/` (logs, saved skeletons, cached
-models, and any runtime-refreshed indexes) — it persists across upgrades.
+**User data** lives under `~/.flextoolsmcp/` (logs, `recipes.jsonl`, `recipe-drafts/`
+promote output, cached models, and any runtime-refreshed indexes) — it persists
+across upgrades. Override the recipe location with `FLEXTOOLSMCP_RECIPE_DIR`
+(`FLEXTOOLSMCP_SKELETON_DIR` still works as a fallback).
 
 ### 3. Two Python environments (important)
 

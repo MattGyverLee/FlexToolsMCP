@@ -5,6 +5,38 @@
 Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
+### Tool contract
+
+New tool `flextools_list_recipes` (`READ_ONLY_SAFE`; `query` / `source` /
+`requires_write` / `limit` / `recipe_id`): lists ranked recipe rows without
+`recipe_id`, or the full recipe with `recipe_id`. All additive: the contract
+stays at `tool-responses/1.x`, and no existing response shape changes.
+
+`flextools_search_by_capability` gains `recipes`, `recipes_count`,
+`recipes_ambiguous` and `recipes_hint` (present only when ambiguous).
+`recipes[0]` carries `code` only for a clear winner, and never duplicates
+`results[0].recipe` code (compact row with a `code_at` pointer instead), per
+the SC-005 invariant that a response carries at most one `code` body.
+
+`flextools_find_examples` appends matching local recipes as compact rows
+(`source: "local"`, shipped rows first, still bounded by `max_results`), with
+`recipes_count` updated to match.
+
+One new error code lands: `recipe_not_found` (unknown `recipe_id`, carrying
+`recipe_id`, up to 3 `closest_matches`, and a `hint` naming
+`flextools_list_recipes(query=...)`). The hand-maintained error code count in
+`docs/TOOL-CONTRACT.md` moves from 43 to 44 accordingly.
+
+Two deprecations, both with removal at `tool-responses/2.0`:
+`skeletons_from_your_sessions` (replacement: `recipes` with
+`source="local"`, surfaced via a `deprecation` key on `find_examples`) and
+`flextools_list_skeletons` (replacement:
+`flextools_list_recipes(source="local")`, surfaced via a top-level
+`deprecation` key; description starts with `DEPRECATED:`).
+
+Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
+4.11.0.
+
 ### Fixed
 
 ### Other

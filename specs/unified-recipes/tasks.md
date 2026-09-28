@@ -268,21 +268,21 @@ Each recipe task: port to flexicon 4.11.0 (cite the `get_object_api` / `search_b
 
 **Wave 1 (independent, different files):**
 
-- [ ] **T065** [P] New `docs/RECIPES.md`: file format, PARAMS, local capture, promotion, verification rules (FR-060) · `docs/RECIPES.md`
-- [ ] **T066** [P] USAGE.md tool reference: add `flextools_list_recipes`, mark `flextools_list_skeletons` deprecated (FR-060) · `USAGE.md`
-- [ ] **T067** [P] Replace the skeleton-closet paragraph with the recipes workflow (FR-060) · `CLAUDE.md`
-- [ ] **T068** [P] Update the user-data line (`recipes.jsonl`, `recipe-drafts/`) (FR-060) · `README.md`
-- [ ] **T069** [P] Add the `recipes`/`recipes_count`/`recipes_ambiguous`/`deprecation` keys, the `recipe_not_found` code, and the deprecation timeline entries · `docs/TOOL-CONTRACT.md`
-- [ ] **T070** [P] Point script-generation guidance at recipes and PARAMS · `docs/FLEXTOOLS-STYLE-GUIDE.md`
-- [ ] **T071** [P] CHANGELOG "Tool contract" entry: new tool, new keys, new error code, deprecations with removal at `tool-responses/2.0` (FR-060) · `CHANGELOG.md`
+- [x] **T065** [P] New `docs/RECIPES.md`: file format, PARAMS, local capture, promotion, verification rules (FR-060) · `docs/RECIPES.md`
+- [x] **T066** [P] USAGE.md tool reference: add `flextools_list_recipes`, mark `flextools_list_skeletons` deprecated (FR-060) · `USAGE.md`
+- [x] **T067** [P] Replace the skeleton-closet paragraph with the recipes workflow (FR-060) · `CLAUDE.md`
+- [x] **T068** [P] Update the user-data line (`recipes.jsonl`, `recipe-drafts/`) (FR-060) · `README.md`
+- [x] **T069** [P] Add the `recipes`/`recipes_count`/`recipes_ambiguous`/`deprecation` keys, the `recipe_not_found` code, and the deprecation timeline entries · `docs/TOOL-CONTRACT.md`
+- [x] **T070** [P] Point script-generation guidance at recipes and PARAMS · `docs/FLEXTOOLS-STYLE-GUIDE.md`
+- [x] **T071** [P] CHANGELOG "Tool contract" entry: new tool, new keys, new error code, deprecations with removal at `tool-responses/2.0` (FR-060) · `CHANGELOG.md`
 
 **⟶ Wait for Wave 1, then Wave 2 (single):**
 
-- [ ] **T072** Full refresh (`python -m flextoolsmcp.refresh`) to regenerate `common_patterns` with the file recipes merged; commit the regenerated index (constitution III) · `src/flextoolsmcp/index/common_patterns_flexicon-v4.11.0.json`
+- [x] **T072** Full refresh (`python -m flextoolsmcp.refresh`) to regenerate `common_patterns` with the file recipes merged; commit the regenerated index (constitution III) · `src/flextoolsmcp/index/common_patterns_flexicon-v4.11.0.json`
 
 **⟶ Wait for Wave 2, then Wave 3 (single):**
 
-- [ ] **T073** Validate against the Success Criteria: `.venv\Scripts\python -m pytest -q -m "not requires_flex"` (whole suite, including the battery for SC-001 and the size/code-body budgets for SC-005), `python scripts/validate_integrity.py server`, pre-commit, and a wheel build asserting the `recipe_library/*.py` count (FR-005). Record the one-off SC-004 measurement on the developer store in `evidence/README.md` · repository root, `specs/unified-recipes/evidence/README.md`
+- [x] **T073** Validate against the Success Criteria: `.venv\Scripts\python -m pytest -q -m "not requires_flex"` (whole suite, including the battery for SC-001 and the size/code-body budgets for SC-005), `python scripts/validate_integrity.py server`, pre-commit, and a wheel build asserting the `recipe_library/*.py` count (FR-005). Record the one-off SC-004 measurement on the developer store in `evidence/README.md` · repository root, `specs/unified-recipes/evidence/README.md`
 
 ---
 

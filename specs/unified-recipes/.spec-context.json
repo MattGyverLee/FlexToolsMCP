@@ -507,6 +507,78 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-28T15:45:41.111Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T068",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:48:35.600Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T067",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:48:54.090Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T070",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:01.266Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T066",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:10.779Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T071",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:18.198Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T065",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:43.403Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T069",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:45.986Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T072",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:52:34.736Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T073",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T16:05:54.174Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -959,7 +1031,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T064",
+  "currentTask": "T073",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1356,6 +1428,69 @@
       "did": "extract_patterns points at local-recipe store; index recipes carry params",
       "files": [
         "src/flextoolsmcp/extract_patterns.py"
+      ]
+    },
+    "T068": {
+      "status": "DONE",
+      "did": "README user-data line points at recipes.jsonl and recipe-drafts",
+      "files": [
+        "README.md"
+      ]
+    },
+    "T067": {
+      "status": "DONE",
+      "did": "CLAUDE.md skeleton-closet replaced with recipes workflow",
+      "files": [
+        "CLAUDE.md"
+      ]
+    },
+    "T070": {
+      "status": "DONE",
+      "did": "STYLE-GUIDE points generation at recipes and PARAMS",
+      "files": [
+        "docs/FLEXTOOLS-STYLE-GUIDE.md"
+      ]
+    },
+    "T066": {
+      "status": "DONE",
+      "did": "USAGE.md adds list_recipes, deprecates list_skeletons",
+      "files": [
+        "USAGE.md"
+      ]
+    },
+    "T071": {
+      "status": "DONE",
+      "did": "CHANGELOG tool-contract entry for recipes release",
+      "files": [
+        "CHANGELOG.md"
+      ]
+    },
+    "T065": {
+      "status": "DONE",
+      "did": "New docs/RECIPES.md with format/PARAMS/capture/promotion/verification",
+      "files": [
+        "docs/RECIPES.md"
+      ]
+    },
+    "T069": {
+      "status": "DONE",
+      "did": "TOOL-CONTRACT adds recipe keys, recipe_not_found, deprecation timeline",
+      "files": [
+        "docs/TOOL-CONTRACT.md"
+      ]
+    },
+    "T072": {
+      "status": "DONE",
+      "did": "Full refresh regenerated common_patterns with file recipes merged (recipes key, 1323 insertions)",
+      "files": [
+        "src/flextoolsmcp/index/common_patterns_flexicon-v4.11.0.json"
+      ]
+    },
+    "T073": {
+      "status": "DONE",
+      "did": "lean suite 4333 passed/3 skipped green; integrity server OK; pre-commit green except isolated-env pydantic gap (hook entry exit 0 in project venv); wheel 16 recipe_library files; SC-004 live store 42.6pct MIXED, fixture tests green",
+      "files": [
+        "specs/unified-recipes/evidence/README.md"
       ]
     }
   },

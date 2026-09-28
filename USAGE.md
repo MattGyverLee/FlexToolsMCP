@@ -41,7 +41,20 @@ server itself. Response shapes and error codes are in
 |------|-------------|
 | `flextools_list_categories` | List API categories (lexicon, grammar, texts, wordform, reversal, etc.) |
 | `flextools_list_entities_in_category` | List the entities in a category with summaries |
-| `flextools_list_skeletons` | List captured "skeleton" helpers that survived prior sessions |
+| `flextools_list_recipes` | Browse shipped and local recipes (READ_ONLY_SAFE); unified recipe store |
+| `flextools_list_skeletons` | DEPRECATED alias of `flextools_list_recipes(source="local")` -- removal in tool-responses/2.0 |
+
+#### `flextools_list_recipes` (new, READ_ONLY_SAFE)
+
+Args: `query` (ranked search when given; otherwise shipped first by id, then local by `last_used` desc), `source` (`all` \| `shipped` \| `local`, default `all`), `requires_write` (bool \| null, default null = no filter), `limit` (default 50, clamped 1..200), `recipe_id` (default null; when set, the other filters are ignored and the full recipe is returned).
+
+Success without `recipe_id`: `{"recipes": [<compact row>, ...], "recipes_count": N, "total": M, "source": "all", "storage_path": "...recipes.jsonl"}` (compact rows carry no `code`). Success with `recipe_id`: `{"recipe": <full recipe with code>}`.
+
+Errors: `recipe_not_found` (unknown `recipe_id`; details in order: `recipe_id`, `closest_matches` up to 3 nearest ids, `hint` naming `flextools_list_recipes(query=...)`).
+
+#### `flextools_list_skeletons` (DEPRECATED alias)
+
+DEPRECATED: use `flextools_list_recipes(source="local")`. Same `limit` input and `count` / `limit` / `storage_path` / `skeletons` keys (rows come from local recipes; `storage_path` now points at `recipes.jsonl`), plus top-level `deprecation: {"deprecated": "flextools_list_skeletons", "replacement": "flextools_list_recipes(source=\"local\")", "removal": "tool-responses/2.0"}`. Removal in tool-responses/2.0.
 
 ### Module Creation & Execution
 

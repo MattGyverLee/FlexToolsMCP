@@ -28,22 +28,28 @@ import sys
 from pathlib import Path
 from typing import List, Optional, Sequence
 
-try:
+if __package__:
     from .recipe_files import find_scrub_lines, render_draft
-except ImportError:
+else:
     from recipe_files import find_scrub_lines, render_draft  # type: ignore
 
-try:
-    from .server import local_recipes as _local_recipes
-except ImportError:
+if __package__:
+    try:
+        from .server import local_recipes as _local_recipes
+    except ImportError:
+        _local_recipes = None  # type: ignore
+else:
     try:
         from server import local_recipes as _local_recipes  # type: ignore
     except ImportError:
         _local_recipes = None  # type: ignore
 
-try:
-    from .curated_recipes import CURATED_RECIPES as _CURATED
-except ImportError:
+if __package__:
+    try:
+        from .curated_recipes import CURATED_RECIPES as _CURATED
+    except ImportError:
+        _CURATED = {}  # type: ignore
+else:
     try:
         from curated_recipes import CURATED_RECIPES as _CURATED  # type: ignore
     except ImportError:
@@ -73,9 +79,12 @@ def _shipped_ids() -> set:
         ids.update(dict(_CURATED or {}).keys())
     except Exception:
         pass
-    try:
-        from .recipe_files import load_recipe_library
-    except Exception:
+    if __package__:
+        try:
+            from .recipe_files import load_recipe_library
+        except Exception:
+            return ids
+    else:
         try:
             from recipe_files import load_recipe_library  # type: ignore
         except Exception:

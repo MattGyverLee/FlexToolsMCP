@@ -50,3 +50,25 @@ no errors, pass `validate_recipe(..., shipped=True)`, and carry Sena 3
 evidence (`sena3-read` for read recipes, `sena3-dryrun` for
 `set-allomorph-environments`, `sena3-live` for the 7 object-creating write
 recipes). 0 deferred, 12-required threshold exceeded.
+
+## SC-004 one-off (T073)
+
+Date: 2026-09-28. Machine: developer Windows box
+(`C:\Users\thoua\.flextoolsmcp\`).
+
+- Legacy store: `skeletons.jsonl`, 319 rows (valid JSON).
+- Developer store: `recipes.jsonl`, 183 rows, all with `migrated: true`
+  (one-time migration output; zero post-migration captures on this machine).
+- Reduction: (319 − 183) / 319 = **42.6%** — below the 50% SC-004 bar on
+  the live store. Note the legacy file kept growing after the migration
+  (`skeletons.jsonl` mtime 2026-09-28 10:03 is newer than `recipes.jsonl`
+  mtime 00:25; spec corpus was 309 rows on 2026-09-25), so the live ratio
+  understates the migration itself.
+- No-short-entries clause: min non-blank non-comment code lines across the
+  183 migrated rows is 5; **0 rows under 5 lines** — passes.
+- Normative proof: `tests/test_local_recipes.py::test_migration_shrinks_fixture`
+  (309-row-shaped fixture, asserts ≥ 50% smaller) plus the `test_cap_2000*`
+  and `test_legacy_migration_*` tests all pass in the T073 lean-suite run.
+
+Verdict: MIXED — size clause 42.6% on the live developer store (< 50%),
+no-short-entries clause passes, automated fixture/cap/migration tests green.

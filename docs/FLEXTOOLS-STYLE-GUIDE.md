@@ -75,6 +75,10 @@ This pairs with the `user_intent` parameter on `flextools_run_module` (see issue
 
 When generating FLExTools scripts, **match the form to the task**: bare snippet for exploration and one-shots, full module (template from `flextools_get_module_template`) when the code is being saved or run from the FlexTools GUI. The MCP tool `flextools_run_module()` executes both shapes against the same execution environment.
 
+### 0. Check recipes before composing new code
+
+Before composing code from scratch, check `recipes` in `flextools_search_by_capability` (0..3 ranked hits), or call `flextools_list_recipes` (filter by `query` / `requires_write`; fetch full code with `recipe_id=...`). If a recipe fits, reuse it: edit only the values inside `# --- PARAMS --- ... # --- END PARAMS ---` (e.g. `COMPARATORS` / `NEW` in `create-entries-idempotent.py`) and leave everything outside PARAMS untouched. A PARAMS-only reuse runs with `source="existing"`. Write recipes (`requires_write: true`) need a dry run first, then `write_enabled` plus confirmation. Always pass `user_intent` to `flextools_run_module` so a successful run is remembered as a local recipe. New recipes should pass `validate_recipe` (PARAMS block, `modifyAllowed` guard, deprecation, scrub, print ban, raw-LCM gate). See `docs/RECIPES.md`.
+
 ### 1. Choose the Right Flavor
 
 ```python

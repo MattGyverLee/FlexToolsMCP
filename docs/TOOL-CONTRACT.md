@@ -203,6 +203,18 @@ Stability promise: `error_code` strings and all existing keys are
 major version and receive a CHANGELOG entry under the heading
 **"Tool contract"**.
 
+Additional deprecations under this promise (unified-recipes, still
+`tool-responses/1.x` — nothing removed):
+
+- `skeletons_from_your_sessions` (on `flextools_find_examples` success
+  responses) is **deprecated**. Replacement: `recipes` rows with
+  `source: "local"`. Removal: `tool-responses/2.0`.
+- `flextools_list_skeletons` (tool) is a **deprecated alias** for
+  `flextools_list_recipes(source="local")`. Its input (`limit`) and
+  top-level keys (`count`, `limit`, `storage_path`, `skeletons`) are
+  unchanged; `storage_path` now points at `recipes.jsonl`. Removal:
+  `tool-responses/2.0`.
+
 ---
 
 ## Upgrade instructions
@@ -608,6 +620,87 @@ repeated on later calls. Write gating is unchanged: this is advisory only.
 Built by `adopt_resolved_project()` in `flextoolsmcp/project_adoption.py`,
 attached in `response_utils.build_response_with_context()` and
 `response_utils.error_response()`.
+
+---
+
+## Recipe keys (unified-recipes)
+
+Additive only — no old key or tool was removed. All keys below are
+optional top-level success keys (absent when not applicable), following
+the same additive-optional pattern as `update_notice` /
+`workspace_notice` / `diagnostic_report` / `inherited_from`. Adding them
+did **not** bump the contract version.
+
+| Key | Type | Tools | Meaning |
+|---|---|---|---|
+| `recipes` | list | `flextools_search_by_capability`, `flextools_find_examples`, `flextools_list_recipes` | Ranked recipe rows (0..3 on search; bounded by `max_results` on find_examples). Full recipe (has `code`) vs compact row (no `code`) per-tool rules below. |
+| `recipes_count` | int | `flextools_search_by_capability`, `flextools_find_examples`, `flextools_list_recipes` | `len(recipes)` |
+| `recipes_ambiguous` | bool | `flextools_search_by_capability` | `true` when `recipes` is non-empty and there is no clear winner (includes object-only queries such as "entry") |
+| `recipes_hint` | string | `flextools_search_by_capability` | Present only when `recipes_ambiguous` is `true`. Example: `"Several recipes match; refine the query or fetch one with flextools_list_recipes(recipe_id=...)"` |
+| `recipe` | object | `flextools_list_recipes(recipe_id=...)` | The single full recipe requested |
+| `deprecation` | object | `flextools_find_examples`, `flextools_list_skeletons` | Deprecation advisory; shape below |
+| `skeletons_from_your_sessions` | list | `flextools_find_examples` | **Deprecated** legacy rows derived from local recipes (see data-model section 5). Still emitted when non-empty. Replacement: `recipes` rows with `source: "local"`. Removal: `tool-responses/2.0` |
+
+Key registry: `KEY_RECIPES = "recipes"`, `KEY_RECIPES_COUNT =
+"recipes_count"`, `KEY_RECIPE = "recipe"`, `KEY_RECIPES_AMBIGUOUS =
+"recipes_ambiguous"`, `KEY_RECIPES_HINT = "recipes_hint"`, `KEY_DEPRECATION
+= "deprecation"`, `KEY_SKELETONS_FROM_YOUR_SESSIONS =
+"skeletons_from_your_sessions"` (`server/response_keys.py`).
+
+**`flextools_search_by_capability`.** `recipes` holds 0..3 rows, ranked.
+`recipes[0]` is a **full recipe** (has `code`) only for a clear winner;
+otherwise all rows are **compact** (no `code`). If the winner is the
+recipe already attached at `results[0].recipe`, `recipes[0]` is compact
+and adds `code_at: "results[0].recipe"`. Always present; `[]` when
+nothing scores. `results[0].recipe`, `worked_examples` /
+`worked_examples_count`, and every other existing key are unchanged.
+
+**SC-005 at-most-one-code-body invariant.** Across `results[0].recipe`
+and `recipes`, a response carries **at most one `code` body**.
+
+**`flextools_find_examples`.** `recipes` keeps its current shipped
+entries (same shape as today); matching **local** recipes are appended
+as compact rows with `source: "local"`, filtered by the same
+`object_type` / `operation_type` rules (shipped rows first; length still
+bounded by `max_results`). `recipes_count` is updated to match. When
+`skeletons_from_your_sessions` is present, the response also carries:
+
+```json
+{"deprecated": "skeletons_from_your_sessions",
+ "replacement": "recipes (source=\"local\")",
+ "removal": "tool-responses/2.0"}
+```
+
+**`flextools_list_recipes`.** Success without `recipe_id`:
+
+```json
+{"recipes": ["<compact row>", "..."], "recipes_count": 12, "total": 40,
+ "source": "all", "storage_path": "C:\\Users\\...\\.flextoolsmcp\\recipes.jsonl"}
+```
+
+Success with `recipe_id`:
+
+```json
+{"recipe": "<full recipe>"}
+```
+
+An unknown `recipe_id` raises `recipe_not_found` — see the error-code
+table (detail fields **in this order**: `recipe_id` (required string —
+the id that was asked for), `closest_matches` (list — up to 3 nearest
+ids by difflib), `hint` (required string — names
+`flextools_list_recipes(query=...)`)). Golden fixture:
+`tests/golden/responses/recipe_not_found.json`. The error-code count
+text ("one of the 44 codes") already includes it.
+
+**`flextools_list_skeletons` (deprecated alias).** Input (`limit`) and
+top-level keys (`count`, `limit`, `storage_path`, `skeletons`) are
+unchanged. It adds a top-level `deprecation`:
+
+```json
+{"deprecated": "flextools_list_skeletons",
+ "replacement": "flextools_list_recipes(source=\"local\")",
+ "removal": "tool-responses/2.0"}
+```
 
 ---
 

@@ -146,7 +146,7 @@ response-key registry. No story work starts until this phase is done.
 
 **Wave 1 (independent):**
 
-- [ ] **T029** [P] [US3] Validator tests: a bad PARAMS block, an unguarded write, `DoNotUseForParsing`, a GUID, a user path, and `Claude-Swahili` / `Target` defaults each fail; a `print` call fails (`detect_print_calls`); the shipped set passes (`test_all_curated_recipes_pass_preflight` now covers file recipes); `test_shipped_file_recipes_have_sena3_verification`; `test_first_batch_count` (at least 12 of the 16 ids); `test_vernacular_recipes_normalize` (FR-040, FR-041, FR-044, FR-050..053, SC-003) · `tests/test_recipes.py`
+- [x] **T029** [P] [US3] Validator tests: a bad PARAMS block, an unguarded write, `DoNotUseForParsing`, a GUID, a user path, and `Claude-Swahili` / `Target` defaults each fail; a `print` call fails (`detect_print_calls`); the shipped set passes (`test_all_curated_recipes_pass_preflight` now covers file recipes); `test_shipped_file_recipes_have_sena3_verification`; `test_first_batch_count` (at least 12 of the 16 ids); `test_vernacular_recipes_normalize` (FR-040, FR-041, FR-044, FR-050..053, SC-003) · `tests/test_recipes.py`
 - [x] **T030** [P] [US3] Index-driven deprecation: a seeded recipe calling an index-deprecated flexicon method fails through `validate_recipe`; the run-time preflight (no `api_index`) is unchanged (FR-041, R17) · `tests/test_validators_deprecation_index.py`
 - [x] **T031** [P] [US3] Raw-LCM gate: `PhoneEnvRC` with no note fails and names `AllomorphOperations.GetPhoneEnv`; an unwrapped property fails without a note and passes with `# flexicon gap: #NNN` or `# raw-lcm: reason`; `raw-lcm:` overrides a wrapper suggestion; `Duplicate` / `Delete` are never suggested; interface cast, `project.project`, `ServiceLocator` and `ClassName` comparison are each flagged; count above `raw_lcm_lines` fails and below passes; bridge inversion tested against the real 4.11.0 bridge file (FR-045, R18) · `tests/test_raw_lcm_gate.py`
 
@@ -166,18 +166,18 @@ Each recipe task: port to flexicon 4.11.0 (cite the `get_object_api` / `search_b
 
 **⟶ Wait for Wave 3, then Wave 4 — read recipes (independent):**
 
-- [ ] **T034** [P] [US3] `lexicon-form-lookup` (NFC on both sides; US3 acceptance 2) from `lexicon_lookup.py` · `src/flextoolsmcp/recipe_library/lexicon-form-lookup.py`, `specs/unified-recipes/evidence/lexicon-form-lookup.md`
-- [ ] **T035** [P] [US3] `entry-parser-detail` from `entry_detail.py` · `src/flextoolsmcp/recipe_library/entry-parser-detail.py`, `specs/unified-recipes/evidence/entry-parser-detail.md`
-- [ ] **T036** [P] [US3] `wordform-analyses` from `wordform_analyses.py` · `src/flextoolsmcp/recipe_library/wordform-analyses.py`, `specs/unified-recipes/evidence/wordform-analyses.md`
-- [ ] **T037** [P] [US3] `form-usage-before-edit` from `allomorph_refs.py` · `src/flextoolsmcp/recipe_library/form-usage-before-edit.py`, `specs/unified-recipes/evidence/form-usage-before-edit.md`
-- [ ] **T038** [P] [US3] `affix-templates-and-slots` from `templates_slots_envs.py` (note: don't cast flexicon wrappers such as `AffixTemplate` to LCM interfaces) · `src/flextoolsmcp/recipe_library/affix-templates-and-slots.py`, `specs/unified-recipes/evidence/affix-templates-and-slots.md`
-- [ ] **T039** [P] [US3] `phonological-rules` from `phon_rules.py` (known flexicon gap: raw LCM with a filed-issue note, or defer per FR-052) · `src/flextoolsmcp/recipe_library/phonological-rules.py`, `specs/unified-recipes/evidence/phonological-rules.md`
-- [ ] **T040** [P] [US3] `wordform-case-variants` from `find_variants.py` · `src/flextoolsmcp/recipe_library/wordform-case-variants.py`, `specs/unified-recipes/evidence/wordform-case-variants.md`
-- [ ] **T041** [P] [US3] Verify the seed `parser-coverage` on Sena 3 and record evidence (the file itself is T011) · `src/flextoolsmcp/recipe_library/parser-coverage.py`, `specs/unified-recipes/evidence/parser-coverage.md`
+- [x] **T034** [P] [US3] `lexicon-form-lookup` (NFC on both sides; US3 acceptance 2) from `lexicon_lookup.py` · `src/flextoolsmcp/recipe_library/lexicon-form-lookup.py`, `specs/unified-recipes/evidence/lexicon-form-lookup.md`
+- [x] **T035** [P] [US3] `entry-parser-detail` from `entry_detail.py` · `src/flextoolsmcp/recipe_library/entry-parser-detail.py`, `specs/unified-recipes/evidence/entry-parser-detail.md`
+- [x] **T036** [P] [US3] `wordform-analyses` from `wordform_analyses.py` · `src/flextoolsmcp/recipe_library/wordform-analyses.py`, `specs/unified-recipes/evidence/wordform-analyses.md`
+- [x] **T037** [P] [US3] `form-usage-before-edit` from `allomorph_refs.py` · `src/flextoolsmcp/recipe_library/form-usage-before-edit.py`, `specs/unified-recipes/evidence/form-usage-before-edit.md`
+- [x] **T038** [P] [US3] `affix-templates-and-slots` from `templates_slots_envs.py` (note: don't cast flexicon wrappers such as `AffixTemplate` to LCM interfaces) · `src/flextoolsmcp/recipe_library/affix-templates-and-slots.py`, `specs/unified-recipes/evidence/affix-templates-and-slots.md`
+- [x] **T039** [P] [US3] `phonological-rules` from `phon_rules.py` (known flexicon gap: raw LCM with a filed-issue note, or defer per FR-052) · `src/flextoolsmcp/recipe_library/phonological-rules.py`, `specs/unified-recipes/evidence/phonological-rules.md`
+- [x] **T040** [P] [US3] `wordform-case-variants` from `find_variants.py` · `src/flextoolsmcp/recipe_library/wordform-case-variants.py`, `specs/unified-recipes/evidence/wordform-case-variants.md`
+- [x] **T041** [P] [US3] Verify the seed `parser-coverage` on Sena 3 and record evidence (the file itself is T011) · `src/flextoolsmcp/recipe_library/parser-coverage.py`, `specs/unified-recipes/evidence/parser-coverage.md`
 
 **⟶ Wait for Wave 4, then Wave 5 (single):**
 
-- [ ] **T042** [US3] Ledger join for the read recipes: move relied-on rewrite rows to `confirmed`, add new rows, and file a `MattGyverLee/flexicon` issue for every kept gap (no `TODO-file` rows for a shipped recipe) · `specs/unified-recipes/raw-lcm-ledger.md`
+- [x] **T042** [US3] Ledger join for the read recipes: move relied-on rewrite rows to `confirmed`, add new rows, and file a `MattGyverLee/flexicon` issue for every kept gap (no `TODO-file` rows for a shipped recipe) · `specs/unified-recipes/raw-lcm-ledger.md`
 
 **⟶ Then Wave 6 — write recipes (independent; dry run for each, live write (human) for the ones that create objects):**
 

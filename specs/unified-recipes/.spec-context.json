@@ -331,6 +331,86 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-28T05:57:38.997Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T029",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:12:52.435Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T034",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:33:22.357Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T035",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:33:22.637Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T036",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:33:22.941Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T037",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:33:23.253Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T038",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:33:23.568Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T039",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:33:23.862Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T040",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:33:24.160Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T041",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:33:24.492Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T042",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T06:34:44.581Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -695,6 +775,10 @@
     },
     {
       "note": "lex-domain: flexicon #542-#547 already shipped per flexicon CHANGELOG; recipes can use the new APIs instead of raw-LCM fallbacks"
+    },
+    {
+      "note": "Wave 4-5 work is uncommitted in C:/Github/FlexToolsMCP-recipes (feat/unified-recipes); commit before continuing. phonological-rules still needs the temp-rule run.",
+      "step": "implement"
     }
   ],
   "approach": "Add a one-file-per-recipe library (metadata docstring + PARAMS block) parsed by a new recipe_files.py and merged into CURATED_RECIPES; replace skeleton_storage with server/local_recipes.py capturing whole snippets keyed by a normalized fingerprint, with one-time legacy migration. One lexical ranker in server/recipes.py feeds new additive recipes keys, flextools_list_recipes, and a deprecated list_skeletons alias; the first batch is ported to flexicon 4.11.0 and verified on Sena 3.",
@@ -763,6 +847,16 @@
       "decision": "FR-045 detect_raw_lcm_access: fail on raw LCM where the inverted bridge index shows a flexicon wrapper; otherwise require a flexicon-gap or raw-lcm note; ratcheting raw_lcm_lines header",
       "why": "Minimal LibLCM, index-driven; flexicon gap fixes automatically flag the recipes to update",
       "rejected": "Comment convention only, or a ban on raw LCM"
+    },
+    {
+      "decision": "User approved live writes on Sena 3 for Wave 6 (zzRecipeTest objects, pre/post hash, same-session cleanup)",
+      "why": "asked 2026-09-28 before T043-T050",
+      "rejected": "dry runs only"
+    },
+    {
+      "decision": "User approved a temporary zzRecipeTest phonological rule to exercise phonological-rules (Sena 3 has 0 rules), then delete it",
+      "why": "T039 was verified only on the empty path",
+      "rejected": "keep empty-path evidence"
     }
   ],
   "step_summaries": {
@@ -775,7 +869,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T033",
+  "currentTask": "T042",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1004,7 +1098,96 @@
       "files": [
         "src/flextoolsmcp/recipe_validator.py"
       ]
+    },
+    "T029": {
+      "status": "DONE",
+      "did": "Shipped-gate validator tests; file recipes pass shipped=True; batch-count and Sena 3 tests xfail(strict) until recipes land",
+      "files": [
+        "tests/test_recipes.py"
+      ]
+    },
+    "T034": {
+      "status": "DONE",
+      "did": "lexicon-form-lookup ported (NFC both sides, Allomorphs.GetAll), Sena 3 read op-012501907-007; NFD acceptance covered offline",
+      "files": [
+        "src/flextoolsmcp/recipe_library/lexicon-form-lookup.py",
+        "specs/unified-recipes/evidence/lexicon-form-lookup.md",
+        "tests/test_recipes.py"
+      ]
+    },
+    "T035": {
+      "status": "DONE",
+      "did": "entry-parser-detail ported to MSA wrappers; raw_lcm_lines 3 (#573/#574); Sena 3 read op-012629118-009",
+      "files": [
+        "src/flextoolsmcp/recipe_library/entry-parser-detail.py",
+        "specs/unified-recipes/evidence/entry-parser-detail.md"
+      ]
+    },
+    "T036": {
+      "status": "DONE",
+      "did": "wordform-analyses ported (WfiAnalyses/WfiMorphBundles, approval composite); Sena 3 read op-012654623-010",
+      "files": [
+        "src/flextoolsmcp/recipe_library/wordform-analyses.py",
+        "specs/unified-recipes/evidence/wordform-analyses.md"
+      ]
+    },
+    "T037": {
+      "status": "DONE",
+      "did": "form-usage-before-edit ported (owning-entry GUID match, approval status); Sena 3 read op-012724856-012",
+      "files": [
+        "src/flextoolsmcp/recipe_library/form-usage-before-edit.py",
+        "specs/unified-recipes/evidence/form-usage-before-edit.md"
+      ]
+    },
+    "T038": {
+      "status": "DONE",
+      "did": "affix-templates-and-slots ported to AffixTemplate/AffixSlot wrappers; fixed *OS raw-LCM false positive on project.POS (3 sites + test); Sena 3 read op-012947744-017",
+      "files": [
+        "src/flextoolsmcp/recipe_library/affix-templates-and-slots.py",
+        "specs/unified-recipes/evidence/affix-templates-and-slots.md",
+        "src/flextoolsmcp/server/validators.py",
+        "src/flextoolsmcp/recipe_files.py",
+        "specs/unified-recipes/tools/scan_raw_lcm.py",
+        "tests/test_raw_lcm_gate.py"
+      ]
+    },
+    "T039": {
+      "status": "DONE",
+      "did": "phonological-rules shipped wrapper-only (contexts/exception feats await #572); Sena 3 has 0 rules so only the empty path ran, op-012743616-014",
+      "files": [
+        "src/flextoolsmcp/recipe_library/phonological-rules.py",
+        "specs/unified-recipes/evidence/phonological-rules.md"
+      ]
+    },
+    "T040": {
+      "status": "DONE",
+      "did": "wordform-case-variants ported (NFC casefold, analysis composite counts); Sena 3 read op-012703132-011",
+      "files": [
+        "src/flextoolsmcp/recipe_library/wordform-case-variants.py",
+        "specs/unified-recipes/evidence/wordform-case-variants.md"
+      ]
+    },
+    "T041": {
+      "status": "DONE",
+      "did": "parser-coverage verified on Sena 3 (157/6557, 2.4%) after adding the coverage % line; op-012434893-006",
+      "files": [
+        "src/flextoolsmcp/recipe_library/parser-coverage.py",
+        "specs/unified-recipes/evidence/parser-coverage.md",
+        "tests/test_recipe_search.py"
+      ]
+    },
+    "T042": {
+      "status": "DONE",
+      "did": "Ledger read join: 30 rewrite rows confirmed with real access paths, ClassName row resolved via MSA wrappers, new section D (4 port findings); kept gaps #573/#574 already filed",
+      "files": [
+        "specs/unified-recipes/raw-lcm-ledger.md"
+      ]
     }
   },
-  "last_action": "Phase 4 US2 done T019-T028; 4234 passed 5 skipped; next T029"
+  "last_action": "T029, T034-T042 done (8 read recipes verified on Sena 3); stopped before Wave 6 (T043) at user request; suite green, work uncommitted",
+  "verified": [
+    {
+      "what": "{\"what\": \"full non-FLEx suite in feat/unified-recipes worktree\", \"command\": \"..\\FlexToolsMCP\\.venv\\Scripts\\python -m pytest -q -m \\\"not requires_flex\\\"\", \"result\": \"4287 passed, 4 skipped, 1 xfailed (test_first_batch_count, 8 of 16 recipes)\", \"warnings\": []}"
+    }
+  ]
 }

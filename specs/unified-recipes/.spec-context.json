@@ -475,6 +475,38 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-28T15:34:22.694Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T061",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:45:22.120Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T062",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:45:27.546Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T063",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:45:34.385Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T064",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:45:41.111Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -927,7 +959,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T060",
+  "currentTask": "T064",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1295,6 +1327,35 @@
         "tests/test_response_contract.py",
         "tests/test_parser_error_models.py",
         "docs/TOOL-CONTRACT.md"
+      ]
+    },
+    "T061": {
+      "status": "DONE",
+      "did": "Promote CLI tests: out dir, overwrite, exit 2/3/4, scrub, draft parses but fails on match_terms/notes",
+      "files": [
+        "tests/test_recipe_cli.py"
+      ]
+    },
+    "T062": {
+      "status": "DONE",
+      "did": "Mined-notes and index-params tests: no skeleton closet, params carried",
+      "files": [
+        "tests/test_extract_patterns.py"
+      ]
+    },
+    "T063": {
+      "status": "DONE",
+      "did": "Built recipe_cli promote with exits 2/3/4, scrub lines, ASCII output, UTF-8 drafts; shipped match_terms/notes gate",
+      "files": [
+        "src/flextoolsmcp/recipe_cli.py",
+        "src/flextoolsmcp/recipe_validator.py"
+      ]
+    },
+    "T064": {
+      "status": "DONE",
+      "did": "extract_patterns points at local-recipe store; index recipes carry params",
+      "files": [
+        "src/flextoolsmcp/extract_patterns.py"
       ]
     }
   },

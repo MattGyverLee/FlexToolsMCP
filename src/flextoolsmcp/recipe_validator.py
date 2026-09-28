@@ -192,6 +192,19 @@ def validate_recipe(
         issues.append(print_calls["suggestion"])
 
     if shipped:
+        if not recipe.get("match_terms"):
+            issues.append(
+                "match_terms is empty: add query phrases so search can find this recipe"
+            )
+        notes_text = recipe.get("notes", "")
+        if (
+            not notes_text
+            or not str(notes_text).strip()
+            or str(notes_text).strip() == "TODO"
+        ):
+            issues.append(
+                "notes is empty or TODO: describe what the recipe does and its gotchas"
+            )
         for params_issue in _check_params_block(code):
             issues.append(params_issue)
         if requires_write and "if modifyAllowed:" not in code:

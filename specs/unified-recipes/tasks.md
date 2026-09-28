@@ -250,15 +250,15 @@ Each recipe task: port to flexicon 4.11.0 (cite the `get_object_api` / `search_b
 
 **Wave 1 (independent):**
 
-- [ ] **T061** [P] [US5] Default out dir under a tmp HOME, `--out`, refuses to overwrite without `--force`, exit codes 2/3/4, scrub lines for a GUID, `C:\Users\...` and a recorded project name, draft parses with `recipe_files` but fails validation on `match_terms` / `notes` (FR-030, FR-031) · `tests/test_recipe_cli.py`
-- [ ] **T062** [P] [US5] `test_mined_notes_point_at_local_recipes`: mined notes no longer say "skeleton closet" (FR-032) · `tests/test_extract_patterns.py`
+- [x] **T061** [P] [US5] Default out dir under a tmp HOME, `--out`, refuses to overwrite without `--force`, exit codes 2/3/4, scrub lines for a GUID, `C:\Users\...` and a recorded project name, draft parses with `recipe_files` but fails validation on `match_terms` / `notes` (FR-030, FR-031) · `tests/test_recipe_cli.py`
+- [x] **T062** [P] [US5] `test_mined_notes_point_at_local_recipes`: mined notes no longer say "skeleton closet" (FR-032) · `tests/test_extract_patterns.py`
 
 ### Implementation
 
 **⟶ Wait for the tests wave, then Wave 2 (independent):**
 
-- [ ] **T063** [P] [US5] `recipe_cli.py` with `promote <local-id> --id <new-id> [--out DIR] [--force]`, using the `recipe_files` draft renderer and scrub patterns; ASCII-only console output; UTF-8 draft files; nearest ids on exit 2 (R13, contracts section 7) · `src/flextoolsmcp/recipe_cli.py`
-- [ ] **T064** [P] [US5] Point `--mine-operations-log` docs and comments at the local-recipe store; carry `params` into the index (FR-032) · `src/flextoolsmcp/extract_patterns.py`
+- [x] **T063** [P] [US5] `recipe_cli.py` with `promote <local-id> --id <new-id> [--out DIR] [--force]`, using the `recipe_files` draft renderer and scrub patterns; ASCII-only console output; UTF-8 draft files; nearest ids on exit 2 (R13, contracts section 7) · `src/flextoolsmcp/recipe_cli.py`
+- [x] **T064** [P] [US5] Point `--mine-operations-log` docs and comments at the local-recipe store; carry `params` into the index (FR-032) · `src/flextoolsmcp/extract_patterns.py`
 
 **Checkpoint**: T061/T062 pass; US5 acceptance 1..2 hold.
 

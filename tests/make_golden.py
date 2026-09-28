@@ -198,6 +198,14 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "replacement_example": "entry.LexemeFormOA.IsAbstract = True",
         "next_steps": ["Set IsAbstract on the entry's forms (LexemeFormOA, AlternateFormsOS)"],
     },
+    # Unified-recipes FR-024: detail fields in contracts/tools.md s.3 order
+    # (recipe_id, closest_matches, hint).
+    "recipe_not_found": {
+        "message": "Unknown recipe_id 'alpha-reed'.",
+        "recipe_id": "alpha-reed",
+        "closest_matches": ["alpha-read"],
+        "hint": "No recipe 'alpha-reed'. Try flextools_list_recipes(query=...) to find one.",
+    },
     # Parser-check CP4 (FR-035): detail fields in contracts/tools.md s.2 order.
     "parser_filing_in_progress": {
         "message": "A filing job is already running on project 'Demo'.",

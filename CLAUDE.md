@@ -222,8 +222,22 @@ the code, run it from FlexTools' GUI, or share it. Cues that you're at the
 graduation step: "save this", "make it a module", "deploy", or the user
 gives the artifact a name.
 
-The skeleton-closet workflow (see issue #24) is the planned persistence
-path for working snippets; until it lands, fetch the template at save-time.
+### Recipes workflow (reusable scripts)
+
+Before composing code from scratch, check `recipes` in
+`flextools_search_by_capability`, or call `flextools_list_recipes` to
+browse (filter by `query`, `source`, `requires_write`; fetch full code
+with `recipe_id`). To reuse a recipe, edit only the values inside the
+`# --- PARAMS ---` / `# --- END PARAMS ---` block and run with
+`source="existing"` when nothing outside PARAMS changed. Write recipes
+(`requires_write: true`) need a dry run first (`modifyAllowed=False`),
+then `write_enabled` plus confirmation. Pass `user_intent` to
+`run_module` so a successful run (whole code, at least 4 non-blank,
+non-comment lines) is remembered as one local recipe in
+`~/.flextoolsmcp/recipes.jsonl` (fingerprinted; repeats bump
+`use_count`). Promote with `flextools-mcp-recipe promote <local-id>
+--id <new-id>` plus human review -- drafts go to
+`~/.flextoolsmcp/recipe-drafts/`, never straight into the package.
 
 The MCP still runs a `partial_module_structure` check at run time: code
 that defines `Main` but lacks the `docs` dict / `FlexToolsModule` binding

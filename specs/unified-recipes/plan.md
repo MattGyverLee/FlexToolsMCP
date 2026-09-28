@@ -51,7 +51,7 @@ Gate run before Phase 0 and again after Phase 1 design (result unchanged).
 
 | Principle | Assessment |
 |---|---|
-| I. Safety-First Write Path | **PASS.** Capture writes only to `~/.flextoolsmcp/`. Every shipped write recipe must guard writes with `if modifyAllowed:` (validator, FR-041). Each one is dry-run on Sena 3, and any recipe that creates objects gets a live run with pre/post evidence (R14). Nothing gets a validator exemption (spec edge case, #278). Live writes need a human present; an unattended run stops as `needs-human`. Recipes add no new write path to the server itself: they execute through the existing `run_module` ladder. |
+| I. Safety-First Write Path | **PASS.** Capture writes only to `~/.flextoolsmcp/`. Every shipped write recipe must guard writes with `if modifyAllowed:` (validator, FR-041). Each one is dry-run on Sena 3, and any recipe that creates objects gets a live run with pre/post evidence (R14). Nothing gets a validator exemption (spec edge case, #278). Unattended runs may do these live writes on Sena 3 only (constitution I test-project exception); any other project stops as `needs-human`. Recipes add no new write path to the server itself: they execute through the existing `run_module` ladder. |
 | II. Discovery Over Memory | **PASS.** Serving a recipe with code records its entities as validated discovery (FR-026, matching today's behaviour). Recipes are indexed building blocks. Porting uses `get_object_api` / `search_by_capability` against the 4.11.0 index, and the calls are cited in the evidence (R15). |
 | III. Self-Contained Extraction | **PASS.** `extract_patterns.py` merges `CURATED_RECIPES` into `common_patterns_flexicon-v4.11.0.json`. That index is regenerated in a full refresh and committed with the change. Recipe files are parsed statically (AST and tokenize) and never executed at load. |
 | IV. Append-Only Contracts | **PASS.** New keys only (`recipes`, `recipes_count`, `deprecation`) and one new tool. `results[0].recipe`, `skeletons_from_your_sessions` and `flextools_list_skeletons` stay in place, with deprecation notices naming `tool-responses/2.0`. The new error code `recipe_not_found` is appended. The CHANGELOG gets a "Tool contract" entry. A contract snapshot test pins SC-006. |
@@ -145,7 +145,7 @@ file at a time: validator green (including the FR-045 raw-LCM gate, so every
 raw-LCM line is either replaced by its flexicon wrapper or annotated), then
 Sena 3 evidence, then `verified_against` and `raw_lcm_lines` set. Each port also updates `raw-lcm-ledger.md`: rewrite rows it relied on
 move to `confirmed`, and any gap it keeps must have a filed flexicon issue
-number (no `TODO-file` rows may remain for a shipped recipe). Live writes need a human present (R14). Recipes blocked on a flexicon gap
+number (no `TODO-file` rows may remain for a shipped recipe). Live writes on Sena 3 may run unattended (R14). Recipes blocked on a flexicon gap
 either ship with the raw-LCM fallback plus an issue comment, or are deferred.
 The phase needs at least 12 of the 16.
 
@@ -215,7 +215,7 @@ Phase F write recipes: every recipe gets a dry run. Recipes that create or
 delete objects also get a live write on Sena 3 using `zzRecipeTest`-prefixed
 objects, with pre/post values, cleanup, and `.fwdata` hash and mtime recorded
 (R14). This is the evidence the `after_implement` lex-verification hook
-requires. A run with no human present stops at `needs-human`. Verification runs on Sena 3 only, never on Claude-Swahili (the work project).
+requires. Unattended runs perform these Sena 3 live writes (constitution I, Sena 3 exception). Verification runs on Sena 3 only, never on Claude-Swahili (the work project).
 
 ## Risks
 

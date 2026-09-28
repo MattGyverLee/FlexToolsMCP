@@ -46,7 +46,8 @@ entry in Complexity Tracking below.*
 - [ ] **I. Safety-First Write Path** - Does this feature touch a write path? If
       yes: read-only default preserved, `if modifyAllowed:` guard, pre-write
       backup, explicit confirmation, dry-run rehearsal, and no unattended
-      destructive write. No convenience flag relaxes a write-safety or casting
+      destructive write (live verification writes on the Sena 3 test project
+      excepted, per constitution I). No convenience flag relaxes a write-safety or casting
       check.
 - [ ] **II. Discovery Over Memory** - Any API surface this plan relies on is
       reachable through the indexes, not assumed from memory. Cross-flavor gaps

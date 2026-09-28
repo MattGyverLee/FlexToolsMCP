@@ -19,7 +19,7 @@ else:
     from json_utils import sort_json_arrays
 
 
-# Root for all user-writable state (logs, skeletons, refreshed index overlay).
+# Root for all user-writable state (logs, local recipes, refreshed index overlay).
 USER_DATA_DIR = Path.home() / ".flextoolsmcp"
 
 

@@ -1,6 +1,13 @@
 <!--
 SYNC IMPACT REPORT
-Version change: (none) -> 1.0.0
+Version change: 1.0.0 -> 1.1.0 (2026-09-28)
+Rationale: Principle I "No unattended destructive writes" expanded with a
+Sena 3 test-project exception for unattended live verification writes, so
+unattended speckit rounds can finish write-path verification. Propagated to
+.specify/extensions.yml (lex-verification hook) and
+.specify/templates/plan-template.md.
+
+Previous: (none) -> 1.0.0
 Rationale: Initial ratification. No prior constitution existed; `.specify/memory/`
 was absent and only the unfilled template was present. All content below is
 derived from rules already enforced in this repository (CI config, pre-commit
@@ -89,7 +96,13 @@ single gate may be load-bearing:
   proceed on warnings.
 - **No unattended destructive writes.** When a live destructive write is
   required and no human is watching, the run MUST stop and escalate rather than
-  proceed.
+  proceed. The one exception is the designated test project, **Sena 3**: an
+  unattended run MAY perform a live verification write there, provided the
+  project name is asserted to be `Sena 3` before the run, a dry run passed
+  first, the write touches only objects the run created (`zzRecipeTest`-style
+  prefix) and cleans them up in the same session, and pre/post evidence is
+  recorded. No exception ever covers a work project (Claude-Swahili or any
+  other).
 
 These are SAFETY properties, not SECURITY boundaries. They protect an honest
 user from an honest mistake. They are not designed to resist adversarial input,
@@ -324,4 +337,4 @@ Runtime development guidance lives in `CLAUDE.md`,
 `docs/FLEXTOOLS-STYLE-GUIDE.md`, `CONTRIBUTING.md`, and `docs/TOOL-CONTRACT.md`.
 Those documents describe how; this one describes what must remain true.
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-05 | **Last Amended**: 2026-09-22
+**Version**: 1.1.0 | **Ratified**: 2026-02-05 | **Last Amended**: 2026-09-28

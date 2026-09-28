@@ -310,6 +310,7 @@ def build_server(
     list_tools_fn: Callable[[], Awaitable[list]],
     call_tool_fn: Callable[[str, dict], Awaitable[list]],
     version: Optional[str] = None,
+    instructions: Optional[str] = None,
 ) -> Server:
     """Build an ``mcp.server.Server`` with tool handlers registered.
 
@@ -322,6 +323,9 @@ def build_server(
             :func:`resolve_server_version`. Passed explicitly because mcp 2.x
             defaults it to ``""`` while 1.x defaulted to the mcp library
             version -- explicit is parity on both, and more useful.
+        instructions: Optional server instructions string (unified-recipes
+            FR-027). Forwarded to ``Server(..., instructions=...)`` on both
+            majors through the compat shim.
 
     Returns:
         A ``Server`` with both handlers registered, on either major.
@@ -329,7 +333,7 @@ def build_server(
     server_version = version if version is not None else resolve_server_version()
 
     if not MCP2:
-        srv = _construct(name, server_version)
+        srv = _construct(name, server_version, instructions=instructions)
         # On 1.x the decorators are just registration callables -- applying
         # them explicitly is equivalent to the old ``@``-syntax. The 1.x
         # decorator pre-validates arguments itself, so no schema wiring here.
@@ -337,6 +341,9 @@ def build_server(
         srv.call_tool()(call_tool_fn)
         return srv
 
+    kwargs: dict = {}
+    if instructions is not None:
+        kwargs["instructions"] = instructions
     return _construct(
         name,
         server_version,
@@ -344,4 +351,5 @@ def build_server(
         on_call_tool=make_call_tool_handler(
             call_tool_fn, make_schema_provider(list_tools_fn)
         ),
+        **kwargs,
     )

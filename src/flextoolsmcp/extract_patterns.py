@@ -189,10 +189,39 @@ def extract_patterns(flexicon_path: Path) -> Dict[str, Any]:
         # automatically -- they land in a separate review file and only
         # join CURATED_RECIPES (and thus this section) after a human flips
         # their `source` to "curated".
-        "recipes": CURATED_RECIPES,
+        "recipes": _recipes_with_params(),
     }
 
     return result
+
+
+def _recipes_with_params() -> Dict[str, Any]:
+    """Return CURATED_RECIPES with every entry carrying a ``params`` list.
+
+    FR-032: the index carries each recipe's PARAMS so clients can render
+    them without re-parsing code. Dict recipes predate the PARAMS block;
+    derive their params from the code (usually ``[]``) when missing.
+    """
+    try:
+        if __package__:
+            from .recipe_files import parse_params
+        else:
+            from recipe_files import parse_params  # type: ignore
+    except Exception:
+        parse_params = None  # type: ignore
+    out: Dict[str, Any] = {}
+    for recipe_id, recipe in CURATED_RECIPES.items():
+        entry = dict(recipe)
+        if not isinstance(entry.get("params"), list):
+            params = []
+            if parse_params is not None:
+                try:
+                    params = parse_params(entry.get("code", ""))
+                except Exception:
+                    params = []
+            entry["params"] = params if isinstance(params, list) else []
+        out[recipe_id] = entry
+    return out
 
 
 def add_patterns_to_flexlibs(flexicon_path: Path, patterns: Dict):
@@ -272,8 +301,9 @@ def mine_operations_log(log_dir: Path) -> Dict[str, Any]:
     the executed code (only ``code_sha256``/``code_bytes``, for privacy and
     size reasons), so each cluster carries the evidence (count, op_ids,
     sha256 samples) a human reviewer needs to go find the real code (e.g.
-    via the session log or the skeleton closet) and hand-author or bless a
-    recipe -- it does NOT fabricate a ``code`` field.
+    via the session log or the local-recipe store at
+    ``~/.flextoolsmcp/recipes.jsonl`` via ``server.local_recipes``) and
+    hand-author or bless a recipe -- it does NOT fabricate a ``code`` field.
 
     Every emitted entry has ``source: "mined"`` and ``requires_human_review:
     True``. Promoting a cluster to a shipped recipe means hand-writing (or
@@ -326,7 +356,8 @@ def mine_operations_log(log_dir: Path) -> Dict[str, Any]:
                 f"Mined from {cluster['count']} outcome=ok operation(s) sharing this "
                 "user_intent. Code was NOT retained in telemetry (only "
                 "code_sha256/code_bytes) -- cross-reference op_ids against the "
-                "session log or skeleton closet to recover the actual code before "
+                "session log or the local-recipe store (recipes.jsonl via "
+                "server.local_recipes) to recover the actual code before "
                 "authoring a recipe."
             ),
             "source": "mined",
@@ -367,7 +398,9 @@ def main():
             "Instead of extracting docstring patterns, read operations.jsonl "
             "telemetry for outcome=ok ops with a user_intent, cluster by "
             "intent, and write candidate recipes (source: mined) to a review "
-            "file. Never ships automatically -- see --mined-output."
+            "file. Recover code via the local-recipe store "
+            "(recipes.jsonl/server.local_recipes). "
+            "Never ships automatically -- see --mined-output."
         ),
     )
     parser.add_argument(

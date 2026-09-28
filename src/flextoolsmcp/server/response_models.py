@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 42 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 44 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + raw_addcustomfield_write_risk + invalid_api_mode
   + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
@@ -19,7 +19,8 @@ Provides:
   + 2 parser-check CP5 codes: parser_config_failed, parse_sandbox_refused
   + 3 pre-handler dispatch codes (#243): session_not_initialized,
   unknown_tool, invalid_input
-  + deprecated_member (curated_deprecations.py))
+  + deprecated_member (curated_deprecations.py)
+  + recipe_not_found (unified-recipes FR-024))
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -898,8 +899,26 @@ class ParseSandboxRefusedDetail(BaseModel):
     free_bytes: Optional[int] = None
 
 
+class RecipeNotFoundDetail(BaseModel):
+    """Detail payload for recipe_not_found (unified-recipes FR-024).
+
+    Raised when ``flextools_list_recipes(recipe_id=...)`` names an id that
+    matches no shipped or local recipe. Field order is fixed -- ``recipe_id``
+    (the required string that was asked for), ``closest_matches`` (up to 3
+    nearest ids by difflib), ``hint`` (which names
+    ``flextools_list_recipes(query=...)``) -- and is asserted by
+    tests/test_list_recipes.py. Additive: the contract stays at
+    ``tool-responses/1.0``.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["recipe_not_found"] = "recipe_not_found"
+    recipe_id: str
+    closest_matches: List[str] = Field(default_factory=list)
+    hint: str
+
+
 # ---------------------------------------------------------------------------
-# Discriminated union over all 42 per-code detail models
+# Discriminated union over all 44 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -946,6 +965,7 @@ AnyDetail = Union[
     GrammarLoadUncleanDetail,
     ParserConfigFailedDetail,
     ParseSandboxRefusedDetail,
+    RecipeNotFoundDetail,
 ]
 
 

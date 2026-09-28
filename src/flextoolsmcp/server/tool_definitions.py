@@ -40,6 +40,7 @@ from .models import (
     FindWrappersForLcmInput,
     ResolveTypeInput,
     ListSkeletonsInput,
+    ListRecipesInput,
     PrepareReportInput,
     FlexToolsHealthInput,
     GrammarHealthInput,
@@ -92,6 +93,15 @@ READ_ONLY_SAFE = ToolAnnotations(
     idempotentHint=True,
     openWorldHint=False,
 )
+
+# Server instructions (unified-recipes FR-027, research R11). Passed as
+# `instructions=` to the MCP Server; the same four points, shortened, also
+# live in the search/find_examples/run_module descriptions for clients that
+# ignore instructions.
+SERVER_INSTRUCTIONS = """Before composing code, check `recipes` in flextools_search_by_capability, or call flextools_list_recipes.
+To reuse a recipe, edit only the values inside `# --- PARAMS ---` ... `# --- END PARAMS ---`. If nothing outside PARAMS changed, run it with `source="existing"`.
+Write recipes (`requires_write: true`) need a dry run first, then `write_enabled` plus confirmation.
+Pass `user_intent` to flextools_run_module so a successful run is remembered as a local recipe."""
 
 # ============================================================
 # All Tools (21 total -- this count drifts; see dispatch.ALL_TOOL_NAMES
@@ -163,7 +173,9 @@ Example queries:
 The search engine uses semantic understanding to find relevant APIs, including:
 - Flexicon wrapper classes (recommended, ~1400 methods with examples)
 - Direct LibLCM interfaces for advanced use
-- Navigation methods to move between related objects""",
+- Navigation methods to move between related objects
+
+Check `recipes` before composing code; edit PARAMS values only; run with `source="existing"` when only PARAMS changed.""",
         input_model=SearchCapabilityInput,
         annotations=READ_ONLY_SAFE,
         output_model=SearchByCapabilitySuccess,
@@ -189,7 +201,9 @@ Useful for understanding object relationships and writing traversal code.""",
 Search by:
 - method_name: Find examples using a specific method
 - operation_type: Find examples for 'create', 'read', 'update', 'delete', 'iterate', 'search'
-- object_type: Filter examples by entity type ('Entry', 'Sense', 'Example', etc.)""",
+- object_type: Filter examples by entity type ('Entry', 'Sense', 'Example', etc.)
+
+Check `recipes` before composing code; edit PARAMS values only; run with `source="existing"` when only PARAMS changed.""",
         input_model=FindExamplesInput,
         annotations=READ_ONLY_SAFE,
     ),
@@ -329,7 +343,9 @@ review the plan, then resubmit the same call with confirmed=True. Before the
 FIRST such confirmed mutating run per (session, project), an automatic backup
 of the project's .fwdata is taken (see the `backup` field in the response);
 opt out with backup_before_write=False. Read-only runs are unaffected by both
-`confirmed` and the backup step.""",
+`confirmed` and the backup step.
+
+Check `recipes` before composing code; edit PARAMS values only; run with `source="existing"` when only PARAMS changed.""",
         input_model=RunModuleInput,
         annotations=ToolAnnotations(
             readOnlyHint=False,
@@ -835,7 +851,9 @@ Returns substring suggestions on a miss to help recover from typos.""",
 
     "flextools_list_skeletons": ToolDef(
         name="flextools_list_skeletons",
-        description="""List captured "skeleton" helpers that survived prior sessions (issue #24).
+        description="""DEPRECATED: use flextools_list_recipes.
+
+List captured "skeleton" helpers that survived prior sessions (issue #24).
 
 Each successful flextools_run_module() call auto-captures top-level `def` functions to a
 JSONL "closet" on disk. This tool surfaces them so prior helpers (pos_abbr, get_words,
@@ -847,6 +865,21 @@ captured_at timestamp, and op_id. Most-recent-first; capped by `limit` (default 
 Tip: flextools_find_examples also surfaces these (under `skeletons_from_your_sessions`)
 when filtered by object_type.""",
         input_model=ListSkeletonsInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_list_recipes": ToolDef(
+        name="flextools_list_recipes",
+        description="""Browse shipped and local recipes (unified-recipes).
+
+Check `recipes` before composing code; edit PARAMS values only; run with `source="existing"` when only PARAMS changed.
+
+Without `recipe_id` returns compact rows only (no `code`): id, intent,
+source (shipped/local), requires_write, params, entities, use_count,
+last_used. With `recipe_id` returns the full recipe with `code`.
+Filter with `query` (ranked), `source` (all/shipped/local),
+`requires_write`, and `limit` (clamped 1..200).""",
+        input_model=ListRecipesInput,
         annotations=READ_ONLY_SAFE,
     ),
 

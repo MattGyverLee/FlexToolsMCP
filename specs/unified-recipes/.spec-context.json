@@ -335,82 +335,250 @@
     {
       "step": "implement",
       "substep": null,
-      "task": "T029",
+      "task": "T045",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:12:52.435Z"
+      "at": "2026-09-28T08:46:57.708Z"
     },
     {
       "step": "implement",
       "substep": null,
-      "task": "T034",
+      "task": "T043",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:33:22.357Z"
+      "at": "2026-09-28T08:47:01.081Z"
     },
     {
       "step": "implement",
       "substep": null,
-      "task": "T035",
+      "task": "T044",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:33:22.637Z"
+      "at": "2026-09-28T08:56:30.300Z"
     },
     {
       "step": "implement",
       "substep": null,
-      "task": "T036",
+      "task": "T046",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:33:22.941Z"
+      "at": "2026-09-28T14:58:53.004Z"
     },
     {
       "step": "implement",
       "substep": null,
-      "task": "T037",
+      "task": "T047",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:33:23.253Z"
+      "at": "2026-09-28T15:00:06.459Z"
     },
     {
       "step": "implement",
       "substep": null,
-      "task": "T038",
+      "task": "T048",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:33:23.568Z"
+      "at": "2026-09-28T15:01:15.471Z"
     },
     {
       "step": "implement",
       "substep": null,
-      "task": "T039",
+      "task": "T049",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:33:23.862Z"
+      "at": "2026-09-28T15:02:24.622Z"
     },
     {
       "step": "implement",
       "substep": null,
-      "task": "T040",
+      "task": "T050",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:33:24.160Z"
+      "at": "2026-09-28T15:04:43.134Z"
     },
     {
       "step": "implement",
       "substep": null,
-      "task": "T041",
+      "task": "T051",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:33:24.492Z"
+      "at": "2026-09-28T15:08:09.342Z"
     },
     {
       "step": "implement",
       "substep": null,
-      "task": "T042",
+      "task": "T052",
       "kind": "complete",
       "by": "ai",
-      "at": "2026-09-28T06:34:44.581Z"
+      "at": "2026-09-28T15:21:03.725Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T053",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:21:10.109Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T054",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:21:17.884Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T055",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:22:13.626Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T056",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:22:18.554Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T057",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:23:37.536Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T058",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:23:40.672Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T059",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:24:26.111Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T060",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:34:22.694Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T061",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:45:22.120Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T062",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:45:27.546Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T063",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:45:34.385Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T064",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:45:41.111Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T068",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:48:35.600Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T067",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:48:54.090Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T070",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:01.266Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T066",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:10.779Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T071",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:18.198Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T065",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:43.403Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T069",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:49:45.986Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T072",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:52:34.736Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T073",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T16:05:54.174Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -775,10 +943,6 @@
     },
     {
       "note": "lex-domain: flexicon #542-#547 already shipped per flexicon CHANGELOG; recipes can use the new APIs instead of raw-LCM fallbacks"
-    },
-    {
-      "note": "Wave 4-5 work is uncommitted in C:/Github/FlexToolsMCP-recipes (feat/unified-recipes); commit before continuing. phonological-rules still needs the temp-rule run.",
-      "step": "implement"
     }
   ],
   "approach": "Add a one-file-per-recipe library (metadata docstring + PARAMS block) parsed by a new recipe_files.py and merged into CURATED_RECIPES; replace skeleton_storage with server/local_recipes.py capturing whole snippets keyed by a normalized fingerprint, with one-time legacy migration. One lexical ranker in server/recipes.py feeds new additive recipes keys, flextools_list_recipes, and a deprecated list_skeletons alias; the first batch is ported to flexicon 4.11.0 and verified on Sena 3.",
@@ -849,14 +1013,12 @@
       "rejected": "Comment convention only, or a ban on raw LCM"
     },
     {
-      "decision": "User approved live writes on Sena 3 for Wave 6 (zzRecipeTest objects, pre/post hash, same-session cleanup)",
-      "why": "asked 2026-09-28 before T043-T050",
-      "rejected": "dry runs only"
+      "decision": "strict-xfail-markers-for-batch-tests-until-T034-T051-ship"
     },
     {
-      "decision": "User approved a temporary zzRecipeTest phonological rule to exercise phonological-rules (Sena 3 has 0 rules), then delete it",
-      "why": "T039 was verified only on the empty path",
-      "rejected": "keep empty-path evidence"
+      "decision": "list_recipes-uses-response_utils-envelope-while-skeletons-keeps-legacy-shape",
+      "why": "contracts-tools-s3-mandates-standard-envelope-for-new-tool-append-only-keeps-old-keys",
+      "rejected": "raw-json-dumps-for-new-tool"
     }
   ],
   "step_summaries": {
@@ -869,7 +1031,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T042",
+  "currentTask": "T073",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1099,95 +1261,248 @@
         "src/flextoolsmcp/recipe_validator.py"
       ]
     },
-    "T029": {
+    "T045": {
       "status": "DONE",
-      "did": "Shipped-gate validator tests; file recipes pass shipped=True; batch-count and Sena 3 tests xfail(strict) until recipes land",
+      "did": "Set-allomorph-environments dry-run verified on Sena 3 (shipped defaults change nothing)",
       "files": [
+        "src/flextoolsmcp/recipe_library/set-allomorph-environments.py",
+        "specs/unified-recipes/evidence/set-allomorph-environments.md"
+      ]
+    },
+    "T043": {
+      "status": "DONE",
+      "did": "create-entries-idempotent live-verified on Sena 3 with same-session cleanup (zzRecipeTestYahya created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/create-entries-idempotent.py",
+        "specs/unified-recipes/evidence/create-entries-idempotent.md"
+      ]
+    },
+    "T044": {
+      "status": "DONE",
+      "did": "create-entry-like-comparator live-verified on Sena 3 with same-session cleanup (zzRecipeTestLike created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/create-entry-like-comparator.py",
+        "specs/unified-recipes/evidence/create-entry-like-comparator.md"
+      ]
+    },
+    "T046": {
+      "status": "DONE",
+      "did": "add-inflectional-affix live-verified on Sena 3 with same-session cleanup (zzRecipeTestAff created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/add-inflectional-affix.py",
+        "specs/unified-recipes/evidence/add-inflectional-affix.md"
+      ]
+    },
+    "T047": {
+      "status": "DONE",
+      "did": "add-allomorph live-verified on Sena 3 with same-session cleanup (zzRecipeTestAllo added and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/add-allomorph.py",
+        "specs/unified-recipes/evidence/add-allomorph.md"
+      ]
+    },
+    "T048": {
+      "status": "DONE",
+      "did": "create-text-from-lines live-verified on Sena 3 with same-session cleanup (zzRecipeTest Lines created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/create-text-from-lines.py",
+        "specs/unified-recipes/evidence/create-text-from-lines.md"
+      ]
+    },
+    "T049": {
+      "status": "DONE",
+      "did": "create-variant-entries live-verified on Sena 3 with same-session cleanup (zzRecipeTestVar created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/create-variant-entries.py",
+        "specs/unified-recipes/evidence/create-variant-entries.md"
+      ]
+    },
+    "T050": {
+      "status": "DONE",
+      "did": "affix-template-setup live-verified on Sena 3 with same-session cleanup (zzRecipeTestTemplate created and deleted)",
+      "files": [
+        "src/flextoolsmcp/recipe_library/affix-template-setup.py",
+        "specs/unified-recipes/evidence/affix-template-setup.md"
+      ]
+    },
+    "T051": {
+      "status": "DONE",
+      "did": "Ledger join for write recipes: B2 extended, E table added, 16 of 16 ship with 0 deferred, batch xfail removed",
+      "files": [
+        "specs/unified-recipes/raw-lcm-ledger.md",
+        "specs/unified-recipes/evidence/README.md",
         "tests/test_recipes.py"
       ]
     },
-    "T034": {
+    "T052": {
       "status": "DONE",
-      "did": "lexicon-form-lookup ported (NFC both sides, Allomorphs.GetAll), Sena 3 read op-012501907-007; NFD acceptance covered offline",
+      "did": "List-recipes + skeletons-alias tests in tests/test_list_recipes.py (12 tests, fail-first confirmed)",
       "files": [
-        "src/flextoolsmcp/recipe_library/lexicon-form-lookup.py",
-        "specs/unified-recipes/evidence/lexicon-form-lookup.md",
-        "tests/test_recipes.py"
+        "tests/test_list_recipes.py"
       ]
     },
-    "T035": {
+    "T053": {
       "status": "DONE",
-      "did": "entry-parser-detail ported to MSA wrappers; raw_lcm_lines 3 (#573/#574); Sena 3 read op-012629118-009",
+      "did": "Tool-list + READ_ONLY + recipe-guidance tests in tests/test_mcp_tools.py",
       "files": [
-        "src/flextoolsmcp/recipe_library/entry-parser-detail.py",
-        "specs/unified-recipes/evidence/entry-parser-detail.md"
+        "tests/test_mcp_tools.py"
       ]
     },
-    "T036": {
+    "T054": {
       "status": "DONE",
-      "did": "wordform-analyses ported (WfiAnalyses/WfiMorphBundles, approval composite); Sena 3 read op-012654623-010",
+      "did": "Recipe-tools key-superset snapshot tests in tests/test_response_contract.py (SC-006)",
       "files": [
-        "src/flextoolsmcp/recipe_library/wordform-analyses.py",
-        "specs/unified-recipes/evidence/wordform-analyses.md"
+        "tests/test_response_contract.py"
       ]
     },
-    "T037": {
+    "T055": {
       "status": "DONE",
-      "did": "form-usage-before-edit ported (owning-entry GUID match, approval status); Sena 3 read op-012724856-012",
+      "did": "ListRecipesInput model (query/source/requires_write/limit/recipe_id) in server/models.py",
       "files": [
-        "src/flextoolsmcp/recipe_library/form-usage-before-edit.py",
-        "specs/unified-recipes/evidence/form-usage-before-edit.md"
+        "src/flextoolsmcp/server/models.py"
       ]
     },
-    "T038": {
+    "T056": {
       "status": "DONE",
-      "did": "affix-templates-and-slots ported to AffixTemplate/AffixSlot wrappers; fixed *OS raw-LCM false positive on project.POS (3 sites + test); Sena 3 read op-012947744-017",
+      "did": "RecipeNotFoundDetail model appended to AnyDetail union (43->44)",
       "files": [
-        "src/flextoolsmcp/recipe_library/affix-templates-and-slots.py",
-        "specs/unified-recipes/evidence/affix-templates-and-slots.md",
-        "src/flextoolsmcp/server/validators.py",
-        "src/flextoolsmcp/recipe_files.py",
-        "specs/unified-recipes/tools/scan_raw_lcm.py",
-        "tests/test_raw_lcm_gate.py"
+        "src/flextoolsmcp/server/response_models.py"
       ]
     },
-    "T039": {
+    "T057": {
       "status": "DONE",
-      "did": "phonological-rules shipped wrapper-only (contexts/exception feats await #572); Sena 3 has 0 rules so only the empty path ran, op-012743616-014",
+      "did": "flextools_list_recipes ToolDef + list_skeletons DEPRECATED description",
       "files": [
-        "src/flextoolsmcp/recipe_library/phonological-rules.py",
-        "specs/unified-recipes/evidence/phonological-rules.md"
+        "src/flextoolsmcp/server/tool_definitions.py"
       ]
     },
-    "T040": {
+    "T058": {
       "status": "DONE",
-      "did": "wordform-case-variants ported (NFC casefold, analysis composite counts); Sena 3 read op-012703132-011",
+      "did": "handle_list_recipes + skeletons alias deprecation in handlers/catalog.py",
       "files": [
-        "src/flextoolsmcp/recipe_library/wordform-case-variants.py",
-        "specs/unified-recipes/evidence/wordform-case-variants.md"
+        "src/flextoolsmcp/server/handlers/catalog.py"
       ]
     },
-    "T041": {
+    "T059": {
       "status": "DONE",
-      "did": "parser-coverage verified on Sena 3 (157/6557, 2.4%) after adding the coverage % line; op-012434893-006",
+      "did": "Registered list_recipes at dispatch touch points (constant, names, imports, routes)",
       "files": [
-        "src/flextoolsmcp/recipe_library/parser-coverage.py",
-        "specs/unified-recipes/evidence/parser-coverage.md",
-        "tests/test_recipe_search.py"
+        "src/flextoolsmcp/server/dispatch.py"
       ]
     },
-    "T042": {
+    "T060": {
       "status": "DONE",
-      "did": "Ledger read join: 30 rewrite rows confirmed with real access paths, ClassName row resolved via MSA wrappers, new section D (4 port findings); kept gaps #573/#574 already filed",
+      "did": "recipe_not_found golden fixture via make_golden --regen (43->44 codes)",
       "files": [
-        "specs/unified-recipes/raw-lcm-ledger.md"
+        "tests/make_golden.py",
+        "tests/golden/responses/recipe_not_found.json",
+        "tests/test_response_contract.py",
+        "tests/test_parser_error_models.py",
+        "docs/TOOL-CONTRACT.md"
+      ]
+    },
+    "T061": {
+      "status": "DONE",
+      "did": "Promote CLI tests: out dir, overwrite, exit 2/3/4, scrub, draft parses but fails on match_terms/notes",
+      "files": [
+        "tests/test_recipe_cli.py"
+      ]
+    },
+    "T062": {
+      "status": "DONE",
+      "did": "Mined-notes and index-params tests: no skeleton closet, params carried",
+      "files": [
+        "tests/test_extract_patterns.py"
+      ]
+    },
+    "T063": {
+      "status": "DONE",
+      "did": "Built recipe_cli promote with exits 2/3/4, scrub lines, ASCII output, UTF-8 drafts; shipped match_terms/notes gate",
+      "files": [
+        "src/flextoolsmcp/recipe_cli.py",
+        "src/flextoolsmcp/recipe_validator.py"
+      ]
+    },
+    "T064": {
+      "status": "DONE",
+      "did": "extract_patterns points at local-recipe store; index recipes carry params",
+      "files": [
+        "src/flextoolsmcp/extract_patterns.py"
+      ]
+    },
+    "T068": {
+      "status": "DONE",
+      "did": "README user-data line points at recipes.jsonl and recipe-drafts",
+      "files": [
+        "README.md"
+      ]
+    },
+    "T067": {
+      "status": "DONE",
+      "did": "CLAUDE.md skeleton-closet replaced with recipes workflow",
+      "files": [
+        "CLAUDE.md"
+      ]
+    },
+    "T070": {
+      "status": "DONE",
+      "did": "STYLE-GUIDE points generation at recipes and PARAMS",
+      "files": [
+        "docs/FLEXTOOLS-STYLE-GUIDE.md"
+      ]
+    },
+    "T066": {
+      "status": "DONE",
+      "did": "USAGE.md adds list_recipes, deprecates list_skeletons",
+      "files": [
+        "USAGE.md"
+      ]
+    },
+    "T071": {
+      "status": "DONE",
+      "did": "CHANGELOG tool-contract entry for recipes release",
+      "files": [
+        "CHANGELOG.md"
+      ]
+    },
+    "T065": {
+      "status": "DONE",
+      "did": "New docs/RECIPES.md with format/PARAMS/capture/promotion/verification",
+      "files": [
+        "docs/RECIPES.md"
+      ]
+    },
+    "T069": {
+      "status": "DONE",
+      "did": "TOOL-CONTRACT adds recipe keys, recipe_not_found, deprecation timeline",
+      "files": [
+        "docs/TOOL-CONTRACT.md"
+      ]
+    },
+    "T072": {
+      "status": "DONE",
+      "did": "Full refresh regenerated common_patterns with file recipes merged (recipes key, 1323 insertions)",
+      "files": [
+        "src/flextoolsmcp/index/common_patterns_flexicon-v4.11.0.json"
+      ]
+    },
+    "T073": {
+      "status": "DONE",
+      "did": "lean suite 4333 passed/3 skipped green; integrity server OK; pre-commit green except isolated-env pydantic gap (hook entry exit 0 in project venv); wheel 16 recipe_library files; SC-004 live store 42.6pct MIXED, fixture tests green",
+      "files": [
+        "specs/unified-recipes/evidence/README.md"
       ]
     }
   },
-  "last_action": "T029, T034-T042 done (8 read recipes verified on Sena 3); stopped before Wave 6 (T043) at user request; suite green, work uncommitted",
+  "last_action": "Phase 6 US4 done -- T052-T060, 4320 passed, commit 27b3a92 pushed",
   "verified": [
     {
-      "what": "{\"what\": \"full non-FLEx suite in feat/unified-recipes worktree\", \"command\": \"..\\FlexToolsMCP\\.venv\\Scripts\\python -m pytest -q -m \\\"not requires_flex\\\"\", \"result\": \"4287 passed, 4 skipped, 1 xfailed (test_first_batch_count, 8 of 16 recipes)\", \"warnings\": []}"
+      "what": "full-lean-suite-green-4268-passed-5-skipped-2-xfailed"
+    },
+    {
+      "what": "phase-6-full-lean-suite",
+      "command": "pytest-lean",
+      "result": "4320-passed-3-skipped"
     }
   ]
 }

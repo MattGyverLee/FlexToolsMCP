@@ -1015,7 +1015,9 @@ def build_reflection_bypass_rejection(check: dict) -> dict:
 # Deprecated members (curated_deprecations.py)
 # ============================================================
 
-def detect_deprecated_members(code: str, tree: Optional[ast.AST] = None) -> dict:
+def detect_deprecated_members(
+    code: str, tree: Optional[ast.AST] = None, api_index: Optional[Any] = None
+) -> dict:
     """Detect use of a curated-deprecated API member (read OR write).
 
     Driven by ``curated_deprecations.CURATED_DEPRECATIONS`` -- no member name
@@ -1033,6 +1035,13 @@ def detect_deprecated_members(code: str, tree: Optional[ast.AST] = None) -> dict
     ``getattr/setattr/hasattr/delattr(obj, "<name>")`` with a literal name.
     Unrelated identifiers that merely contain the name (``DoNotUseForParsingX``,
     a local variable called ``do_not_use_for_parsing``) are not flagged.
+
+    When ``api_index`` is given (unified-recipes R17, used only by
+    ``recipe_validator`` with ``shipped=True``), a member ALSO counts as
+    deprecated when its flexicon index entry carries a deprecation flag or a
+    deprecation marker in its description (``.. deprecated::`` or a leading
+    ``Deprecated``). The run-time preflight never passes ``api_index``, so
+    ``run_module`` refusals are unchanged by the index path.
 
     Returns:
         dict with:
@@ -1063,6 +1072,14 @@ def detect_deprecated_members(code: str, tree: Optional[ast.AST] = None) -> dict
         seen.add(key)
         findings.append(use)
 
+    if api_index is not None:
+        for use in _iter_index_deprecated_uses(tree, api_index):
+            key = (use["member"], use["line"], use["col_offset"])
+            if key in seen:
+                continue
+            seen.add(key)
+            findings.append(use)
+
     if not findings:
         return empty
 
@@ -1070,17 +1087,369 @@ def detect_deprecated_members(code: str, tree: Optional[ast.AST] = None) -> dict
     deprecations: Dict[str, Dict[str, Any]] = {}
     for f in findings:
         if f["deprecation_id"] not in deprecations:
-            deprecations[f["deprecation_id"]] = deprecation_record(f["deprecation_id"])
+            if f["deprecation_id"].startswith("index:"):
+                deprecations[f["deprecation_id"]] = {
+                    "id": f["deprecation_id"],
+                    "note": f.get("note", ""),
+                    "example": "",
+                }
+            else:
+                deprecations[f["deprecation_id"]] = deprecation_record(f["deprecation_id"])
 
     where = ", ".join(f"{f['expr']} (line {f['line']})" for f in findings[:5])
-    notes = " ".join(d["note"] for d in deprecations.values())
+    notes = " ".join(d["note"] for d in deprecations.values() if d.get("note"))
     first = next(iter(deprecations.values()))
     return {
         "has_deprecated": True,
         "findings": findings,
         "deprecations": deprecations,
-        "suggestion": f"Deprecated member(s) used: {where}. {notes}",
-        "example": first["example"],
+        "suggestion": f"Deprecated member(s) used: {where}. {notes}".strip(),
+        "example": first.get("example", ""),
+    }
+
+
+def _index_deprecated_methods(api_index: Any) -> Dict[str, List[Dict[str, Any]]]:
+    """Map flexicon method name -> index records flagged as deprecated (R17).
+
+    A method counts when its index entry sets ``deprecated`` OR its
+    description/summary carries a deprecation marker (``.. deprecated::`` or
+    a leading ``Deprecated``). Example text is never consulted.
+    """
+    flexicon = getattr(api_index, "flexicon", None)
+    if not flexicon:
+        return {}
+    entities = flexicon.get("entities", {}) if isinstance(flexicon, dict) else {}
+    deprecated: Dict[str, List[Dict[str, Any]]] = {}
+    for class_name, entity in entities.items():
+        if not isinstance(entity, dict):
+            continue
+        methods = entity.get("methods", [])
+        if isinstance(methods, dict):
+            methods = list(methods.values())
+        for method in methods or []:
+            if not isinstance(method, dict):
+                continue
+            name = method.get("name")
+            if not name:
+                continue
+            description = str(method.get("description") or "")
+            summary = str(method.get("summary") or "")
+            if method.get("deprecated") is True:
+                hit = True
+            else:
+                blob = f"{summary}\n{description}".strip()
+                hit = (
+                    ".. deprecated::" in blob
+                    or blob.lower().startswith("deprecated")
+                )
+            if hit:
+                deprecated.setdefault(name, []).append(
+                    {"class": class_name, "description": description or summary}
+                )
+    return deprecated
+
+
+def _dotted_expr(node: ast.AST) -> str:
+    """Best-effort dotted path for an Attribute/Name node (``a.b.c``)."""
+    parts: List[str] = []
+    current = node
+    while isinstance(current, ast.Attribute):
+        parts.append(current.attr)
+        current = current.value
+    if isinstance(current, ast.Name):
+        parts.append(current.id)
+    parts.reverse()
+    return ".".join(parts) if parts else ast.dump(node)
+
+
+def _iter_index_deprecated_uses(
+    tree: ast.AST, api_index: Any
+) -> Iterator[Dict[str, Any]]:
+    """Yield one finding per use of an index-deprecated flexicon method."""
+    try:
+        deprecated = _index_deprecated_methods(api_index)
+    except Exception:
+        return
+    if not deprecated:
+        return
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute):
+            continue
+        records = deprecated.get(node.attr)
+        if not records:
+            continue
+        owner = records[0]["class"]
+        member = f"{owner}.{node.attr}"
+        first_line = (records[0]["description"] or "").strip().splitlines()
+        note = first_line[0] if first_line else ""
+        yield {
+            "member": member,
+            "deprecation_id": f"index:{member}",
+            "access": "attribute",
+            "expr": _dotted_expr(node),
+            "line": getattr(node, "lineno", None),
+            "col_offset": getattr(node, "col_offset", None),
+            "note": note,
+        }
+
+
+def detect_print_calls(code: str, tree: Optional[ast.AST] = None) -> dict:
+    """Detect ``print()`` calls (unified-recipes FR-051).
+
+    Shipped recipes must report through ``report.*``, never ``print``. AST-
+    based, so comments and string literals never match.
+
+    Returns:
+        dict with:
+          has_print: bool
+          calls: [{line, col_offset}]
+          suggestion: human-readable message ("" when clean)
+    """
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return {"has_print": False, "calls": [], "suggestion": ""}
+    calls: List[Dict[str, Any]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == "print":
+            calls.append(
+                {"line": getattr(node, "lineno", None),
+                 "col_offset": getattr(node, "col_offset", None)}
+            )
+    if not calls:
+        return {"has_print": False, "calls": [], "suggestion": ""}
+    where = ", ".join(f"line {c['line']}" for c in calls[:5])
+    return {
+        "has_print": True,
+        "calls": calls,
+        "suggestion": (
+            f"print() call(s) at {where}: shipped recipes must report "
+            "through report.Info/report.Warning/report.Error, never print."
+        ),
+    }
+
+
+# The suffix must follow a lowercase letter or digit: LCM properties read
+# LexemeFormOA / PhoneEnvRC, while flexicon names such as project.POS or
+# GetAllAffixTemplatesForPOS end in an upper-case acronym and are not raw.
+_LCM_PROPERTY_SUFFIX_RE = re.compile(r"\w*[a-z0-9](OA|OS|OC|RA|RS|RC)$")
+_INTERFACE_CAST_RE = re.compile(r"^I[A-Z]\w+$")
+_FLEXICON_GAP_NOTE_RE = re.compile(r"#\s*flexicon\s+gap\s*:\s*#\d+")
+_RAW_LCM_NOTE_RE = re.compile(r"#\s*raw-lcm\s*:\s*\S+")
+
+
+def _bridge_property_map(bridge: Any) -> Dict[str, List[str]]:
+    """Invert the flexicon LCM bridge index: LCM property -> wrapper methods.
+
+    Reads ``by_method[*].properties_accessed`` (entries look like
+    ``PhoneEnvRC (ReferenceCollection)``) and inverts them once. Ranking
+    puts ``Get*``/``GetAll*`` reads first, then ``Add*``/``Set*``/
+    ``Remove*``/``Create*`` writes; ``Duplicate``, ``Delete``, ``__init__``
+    and ``Copy*`` are dropped as non-equivalents (R18).
+    """
+    if not isinstance(bridge, dict):
+        return {}
+    by_method = bridge.get("by_method", {})
+    if not isinstance(by_method, dict):
+        return {}
+    inverted: Dict[str, Set[str]] = {}
+    for qualified, entry in by_method.items():
+        if not isinstance(entry, dict):
+            continue
+        for prop in entry.get("properties_accessed") or []:
+            base = str(prop).split(" ")[0]
+            if base:
+                inverted.setdefault(base, set()).add(str(qualified))
+    ranked: Dict[str, List[str]] = {}
+    for base, qualified_names in inverted.items():
+        candidates: List[Tuple[int, str]] = []
+        for qualified in qualified_names:
+            method = qualified.split(".")[-1]
+            if method in ("Duplicate", "Delete", "__init__") or method.startswith("Copy"):
+                continue
+            if method.startswith("Get"):
+                rank = 0
+            elif method.startswith(("Add", "Set", "Remove", "Create")):
+                rank = 1
+            else:
+                rank = 2
+            candidates.append((rank, qualified))
+        candidates.sort(key=lambda item: (item[0], item[1]))
+        ranked[base] = [qualified for _, qualified in candidates]
+    return ranked
+
+
+def _line_notes(lines: List[str], lineno: int) -> Tuple[bool, bool]:
+    """Check a flagged line (and the line above) for R18 notes.
+
+    Returns (has_gap_note, has_raw_lcm_note). A gap note needs an issue
+    number (``# flexicon gap: #NNN``); a raw-lcm note needs a stated reason.
+    """
+    checked: List[str] = []
+    if 1 <= lineno <= len(lines):
+        checked.append(lines[lineno - 1])
+    if 2 <= lineno <= len(lines) + 1:
+        checked.append(lines[lineno - 2])
+    blob = "\n".join(checked)
+    return (
+        bool(_FLEXICON_GAP_NOTE_RE.search(blob)),
+        bool(_RAW_LCM_NOTE_RE.search(blob)),
+    )
+
+
+def detect_raw_lcm_access(
+    code: str,
+    tree: Optional[ast.AST] = None,
+    api_index: Optional[Any] = None,
+    bridge: Optional[Any] = None,
+) -> dict:
+    """Flag raw LibLCM use in recipe code (unified-recipes FR-045, R18).
+
+    Used ONLY by ``recipe_validator`` with ``shipped=True``: a style gate,
+    never a write-safety or casting check (a note never relaxes those).
+    Flags casts to ``I*`` interfaces, ``*OA``/``*OS``/``*OC``/``*RA``/
+    ``*RS``/``*RC`` property access, ``project.project``, ``ServiceLocator``
+    and ``ClassName`` dispatch. For each flagged line the flexicon bridge
+    index is consulted: where it shows a wrapper, the recipe fails and the
+    message names up to 3 wrappers; otherwise the line must carry a
+    ``# flexicon gap: #NNN`` or ``# raw-lcm: <reason>`` note (on the line or
+    the line above). A ``raw-lcm:`` note also overrides a wrapper
+    suggestion, with a stated reason.
+
+    Returns:
+        dict with:
+          has_raw: True when any flagged line lacks its required note
+          findings: one entry per failing line
+            {kind, expr, line, message, suggestions}
+          count: number of distinct flagged lines (noted or not)
+          flagged_lines: sorted distinct flagged line numbers
+          suggestion: combined human-readable message ("" when clean)
+    """
+    empty = {
+        "has_raw": False,
+        "findings": [],
+        "count": 0,
+        "flagged_lines": [],
+        "suggestion": "",
+    }
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return empty
+
+    if bridge is None and api_index is not None:
+        ensure = getattr(api_index, "ensure_flexicon_bridge_loaded", None)
+        if callable(ensure):
+            try:
+                ensure()
+            except Exception:
+                pass
+        bridge = getattr(api_index, "flexicon_lcm_bridge", None)
+    try:
+        prop_map = _bridge_property_map(bridge)
+    except Exception:
+        prop_map = {}
+
+    flagged: List[Dict[str, Any]] = []
+    for node in ast.walk(tree):
+        lineno = getattr(node, "lineno", None)
+        if not lineno:
+            continue
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if _INTERFACE_CAST_RE.match(node.func.id):
+                flagged.append(
+                    {"kind": "interface_cast", "expr": f"{node.func.id}(...)",
+                     "line": lineno, "detail": node.func.id}
+                )
+        elif isinstance(node, ast.Attribute):
+            attr = node.attr
+            if _LCM_PROPERTY_SUFFIX_RE.match(attr):
+                flagged.append(
+                    {"kind": "lcm_property", "expr": _dotted_expr(node),
+                     "line": lineno, "detail": attr}
+                )
+            elif attr == "project" and isinstance(node.value, ast.Name) \
+                    and node.value.id == "project":
+                flagged.append(
+                    {"kind": "project_project", "expr": "project.project",
+                     "line": lineno, "detail": attr}
+                )
+            elif attr == "ClassName":
+                flagged.append(
+                    {"kind": "class_name", "expr": _dotted_expr(node),
+                     "line": lineno, "detail": attr}
+                )
+        elif isinstance(node, ast.Name) and node.id == "ServiceLocator":
+            flagged.append(
+                {"kind": "service_locator", "expr": "ServiceLocator",
+                 "line": lineno, "detail": node.id}
+            )
+
+    if not flagged:
+        return empty
+
+    lines = code.splitlines()
+    flagged_lines = sorted({item["line"] for item in flagged})
+    findings: List[Dict[str, Any]] = []
+    seen_lines: Set[int] = set()
+    for item in sorted(flagged, key=lambda entry: entry["line"]):
+        line = item["line"]
+        if line in seen_lines:
+            continue
+        seen_lines.add(line)
+        has_gap, has_raw_note = _line_notes(lines, line)
+        suggestions: List[str] = []
+        message = ""
+        if item["kind"] == "lcm_property":
+            suggestions = prop_map.get(item["detail"], [])
+            if suggestions:
+                if has_raw_note:
+                    continue
+                names = " / ".join(suggestions[:3])
+                message = (
+                    f"{item['detail']} (line {line}): use {names} "
+                    f"-- or justify with a '# raw-lcm: <reason>' note"
+                )
+            elif not (has_gap or has_raw_note):
+                message = (
+                    f"{item['detail']} (line {line}): no flexicon wrapper -- "
+                    "carry a '# flexicon gap: #NNN' or '# raw-lcm: <reason>' "
+                    "note on this line or the line above"
+                )
+            else:
+                continue
+        elif not (has_gap or has_raw_note):
+            message = (
+                f"{item['expr']} (line {line}): raw LibLCM {item['kind']} -- "
+                "carry a '# flexicon gap: #NNN' or '# raw-lcm: <reason>' "
+                "note on this line or the line above"
+            )
+        else:
+            continue
+        findings.append(
+            {"kind": item["kind"], "expr": item["expr"], "line": line,
+             "message": message, "suggestions": suggestions}
+        )
+
+    if not findings:
+        return {
+            "has_raw": False,
+            "findings": [],
+            "count": len(flagged_lines),
+            "flagged_lines": flagged_lines,
+            "suggestion": "",
+        }
+    return {
+        "has_raw": True,
+        "findings": findings,
+        "count": len(flagged_lines),
+        "flagged_lines": flagged_lines,
+        "suggestion": "Raw LibLCM use: " + "; ".join(f["message"] for f in findings[:5]),
     }
 
 
@@ -1935,6 +2304,46 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
         if name and ret.endswith("Operations"):
             mapping[name] = ret
     return mapping
+
+
+_IFACE_NAME_RE = re.compile(r"\bI[A-Z][A-Za-z]+\b")
+
+
+def _param_accepted_ifaces(
+    api_index: Optional[Any],
+    ops_class: str,
+    method_name: str,
+    position: Optional[int],
+    keyword: Optional[str],
+    known_ifaces: Set[str],
+) -> List[str]:
+    """Interfaces one argument of ``<ops_class>.<method_name>`` is documented to take.
+
+    Read from the flexicon index parameter ``type`` and ``description`` (e.g.
+    SegmentOperations.GetAll's ``paragraph_or_hvo``: "The IStTxtPara object or
+    HVO."), keeping only names that are real LCM interfaces. An empty list
+    means the index doesn't say, so the caller falls back to the interface
+    implied by the Operations class name.
+    """
+    if api_index is None:
+        return []
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entity = (flexicon.get("entities") or {}).get(ops_class) or {}
+    for meth in entity.get("methods", []) or []:
+        if meth.get("name") != method_name:
+            continue
+        params = meth.get("parameters") or []
+        param = None
+        if keyword is not None:
+            param = next((p for p in params if p.get("name") == keyword), None)
+        elif position is not None and position < len(params):
+            param = params[position]
+        if not param:
+            return []
+        text = f"{param.get('type') or ''} {param.get('description') or ''}"
+        found = [n for n in _IFACE_NAME_RE.findall(text) if n in known_ifaces]
+        return list(dict.fromkeys(found))
+    return []
 
 
 # Issue #130: variables that hold a flexicon FLExProject facade -------------
@@ -7321,10 +7730,22 @@ def detect_casting_needs(
             if not _expected_iface:
                 continue
             _method_name = _node.func.attr
-            _call_args = list(_node.args) + [kw.value for kw in _node.keywords]
-            for _arg in _call_args:
+            _default_iface = _expected_iface
+            _call_args = [(_i, None, _a) for _i, _a in enumerate(_node.args)] + [
+                (None, kw.arg, kw.value) for kw in _node.keywords
+            ]
+            for _pos, _kw, _arg in _call_args:
                 if not isinstance(_arg, ast.Name):
                     continue  # inline cast (ILexEntry(c)) satisfies this
+                # Not every method takes its own class's object: e.g.
+                # SegmentOperations.GetAll(paragraph_or_hvo) takes the owning
+                # IStTxtPara. Prefer the interface(s) the index documents for
+                # this parameter over the class-name default.
+                _accepted = _param_accepted_ifaces(
+                    api_index, _ops_class, _method_name, _pos, _kw,
+                    set(_class_name_map.values()),
+                )
+                _expected_iface = _accepted[0] if _accepted else _default_iface
                 _binding = loop_element_types.get((_node.lineno, _arg.id))
                 if not _binding:
                     continue
@@ -7343,7 +7764,7 @@ def detect_casting_needs(
                 #     project.Senses.GetGloss(s)` where GetSenses.
                 # element_type == "ILexSense" == class_name_mapping
                 # ["LexSense"]) into a hard rejection.
-                if _element_type == _expected_iface:
+                if _element_type == _expected_iface or _element_type in _accepted:
                     continue
                 # Issue #121 remediation (defect 2): consult the SAME
                 # branch-aware cast machinery Rule A uses (via
@@ -7369,7 +7790,7 @@ def detect_casting_needs(
                         _arg.id,
                         _class_name_mapping,
                     )
-                    if _expected_iface in _guard_ifaces:
+                    if any(i in _guard_ifaces for i in (_accepted or [_expected_iface])):
                         continue
                 _dedupe_key = (_node.lineno, _arg.id, _method_name)
                 if _dedupe_key in _rule_b_seen:

@@ -79,7 +79,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 43 codes below |
+| `error_code` | string | one of the 44 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -152,6 +152,7 @@ authoritative. All detail fields are optional unless noted.
 | `grammar_load_unclean` | **In this order**: `signal` (required; `morpher_null` \| `new_load_errors` \| `eligible_forms_dropped`), `new_error_count` (required int), `baseline_error_count` (required int), `baseline_source` (required; `this_run` \| `absent` \| `prior_run:<run_id>`), `log_path` (string or null), then, appended after those five: `new_errors` (list), `dropped_entries` (list of `{entry_guid, headword}`), `baseline_eligible_count` (int or null), `eligible_count` (int or null). Raised by `flextools_parse_text(apply=true)` when the grammar did not load cleanly: the parser could not be built, this load logged errors the baseline did not, or fewer lexical forms are eligible to reach the grammar than in the baseline (which the loader does without logging anything). **There is no override**: the only way past `new_load_errors` or `eligible_forms_dropped` is a read-only `flextools_parse_text` of the same scope, which re-baselines. |
 | `parser_config_failed` | **In this order**: `exit_code` (int or null -- null when the generator never returned one: it timed out or could not be started), `stderr_tail` (required string -- the last 20 lines of the combined generator output, ASCII with non-ASCII escaped, capped at 4 KiB), `log_path` (required string -- the run's `sandbox/generate-config.log`), `run_id` (string or null -- null only when generation failed before a run existed, i.e. `flextools_parse_sandbox(action="create_sandbox")`), `next_step` (list of rungs -- CP6, FR-034: the static grammar scan plus a `flextools_health` check; not part of the raw detail model, but set by every emission site). Raised by `flextools_parse_sandbox` when `GenerateHCConfig.exe` did not produce a config. Generation is judged from its output, not its exit code: a run that exits 0 without the generator's `Writing completed.` line is a failure. |
 | `parse_sandbox_refused` | **In this order**: `reason` (required; `name_invalid` \| `sandbox_exists` \| `sandbox_not_found` \| `corpus_exists` \| `corpus_not_found` \| `corpus_invalid` \| `run_not_seedable` \| `insufficient_disk_space` \| `word_file_invalid` -- a closed enum, kept distinct because the remedies differ), `name` (string or null), `path` (string or null), `hint` (required string), `needed_bytes` (int or null), `free_bytes` (int or null -- these two are set only for `insufficient_disk_space`). The sandbox tool's own pre-run refusals; every one fires before a file is created. |
+| `recipe_not_found` | **In this order**: `recipe_id` (required string -- the id that was asked for), `closest_matches` (list -- up to 3 nearest ids by difflib), `hint` (required string -- names `flextools_list_recipes(query=...)`). Raised by `flextools_list_recipes(recipe_id=...)` for an unknown id. |
 
 ---
 
@@ -201,6 +202,18 @@ Stability promise: `error_code` strings and all existing keys are
 **append-only** within a major version. Removals and renames bump the
 major version and receive a CHANGELOG entry under the heading
 **"Tool contract"**.
+
+Additional deprecations under this promise (unified-recipes, still
+`tool-responses/1.x` — nothing removed):
+
+- `skeletons_from_your_sessions` (on `flextools_find_examples` success
+  responses) is **deprecated**. Replacement: `recipes` rows with
+  `source: "local"`. Removal: `tool-responses/2.0`.
+- `flextools_list_skeletons` (tool) is a **deprecated alias** for
+  `flextools_list_recipes(source="local")`. Its input (`limit`) and
+  top-level keys (`count`, `limit`, `storage_path`, `skeletons`) are
+  unchanged; `storage_path` now points at `recipes.jsonl`. Removal:
+  `tool-responses/2.0`.
 
 ---
 
@@ -607,6 +620,87 @@ repeated on later calls. Write gating is unchanged: this is advisory only.
 Built by `adopt_resolved_project()` in `flextoolsmcp/project_adoption.py`,
 attached in `response_utils.build_response_with_context()` and
 `response_utils.error_response()`.
+
+---
+
+## Recipe keys (unified-recipes)
+
+Additive only — no old key or tool was removed. All keys below are
+optional top-level success keys (absent when not applicable), following
+the same additive-optional pattern as `update_notice` /
+`workspace_notice` / `diagnostic_report` / `inherited_from`. Adding them
+did **not** bump the contract version.
+
+| Key | Type | Tools | Meaning |
+|---|---|---|---|
+| `recipes` | list | `flextools_search_by_capability`, `flextools_find_examples`, `flextools_list_recipes` | Ranked recipe rows (0..3 on search; bounded by `max_results` on find_examples). Full recipe (has `code`) vs compact row (no `code`) per-tool rules below. |
+| `recipes_count` | int | `flextools_search_by_capability`, `flextools_find_examples`, `flextools_list_recipes` | `len(recipes)` |
+| `recipes_ambiguous` | bool | `flextools_search_by_capability` | `true` when `recipes` is non-empty and there is no clear winner (includes object-only queries such as "entry") |
+| `recipes_hint` | string | `flextools_search_by_capability` | Present only when `recipes_ambiguous` is `true`. Example: `"Several recipes match; refine the query or fetch one with flextools_list_recipes(recipe_id=...)"` |
+| `recipe` | object | `flextools_list_recipes(recipe_id=...)` | The single full recipe requested |
+| `deprecation` | object | `flextools_find_examples`, `flextools_list_skeletons` | Deprecation advisory; shape below |
+| `skeletons_from_your_sessions` | list | `flextools_find_examples` | **Deprecated** legacy rows derived from local recipes (see data-model section 5). Still emitted when non-empty. Replacement: `recipes` rows with `source: "local"`. Removal: `tool-responses/2.0` |
+
+Key registry: `KEY_RECIPES = "recipes"`, `KEY_RECIPES_COUNT =
+"recipes_count"`, `KEY_RECIPE = "recipe"`, `KEY_RECIPES_AMBIGUOUS =
+"recipes_ambiguous"`, `KEY_RECIPES_HINT = "recipes_hint"`, `KEY_DEPRECATION
+= "deprecation"`, `KEY_SKELETONS_FROM_YOUR_SESSIONS =
+"skeletons_from_your_sessions"` (`server/response_keys.py`).
+
+**`flextools_search_by_capability`.** `recipes` holds 0..3 rows, ranked.
+`recipes[0]` is a **full recipe** (has `code`) only for a clear winner;
+otherwise all rows are **compact** (no `code`). If the winner is the
+recipe already attached at `results[0].recipe`, `recipes[0]` is compact
+and adds `code_at: "results[0].recipe"`. Always present; `[]` when
+nothing scores. `results[0].recipe`, `worked_examples` /
+`worked_examples_count`, and every other existing key are unchanged.
+
+**SC-005 at-most-one-code-body invariant.** Across `results[0].recipe`
+and `recipes`, a response carries **at most one `code` body**.
+
+**`flextools_find_examples`.** `recipes` keeps its current shipped
+entries (same shape as today); matching **local** recipes are appended
+as compact rows with `source: "local"`, filtered by the same
+`object_type` / `operation_type` rules (shipped rows first; length still
+bounded by `max_results`). `recipes_count` is updated to match. When
+`skeletons_from_your_sessions` is present, the response also carries:
+
+```json
+{"deprecated": "skeletons_from_your_sessions",
+ "replacement": "recipes (source=\"local\")",
+ "removal": "tool-responses/2.0"}
+```
+
+**`flextools_list_recipes`.** Success without `recipe_id`:
+
+```json
+{"recipes": ["<compact row>", "..."], "recipes_count": 12, "total": 40,
+ "source": "all", "storage_path": "C:\\Users\\...\\.flextoolsmcp\\recipes.jsonl"}
+```
+
+Success with `recipe_id`:
+
+```json
+{"recipe": "<full recipe>"}
+```
+
+An unknown `recipe_id` raises `recipe_not_found` — see the error-code
+table (detail fields **in this order**: `recipe_id` (required string —
+the id that was asked for), `closest_matches` (list — up to 3 nearest
+ids by difflib), `hint` (required string — names
+`flextools_list_recipes(query=...)`)). Golden fixture:
+`tests/golden/responses/recipe_not_found.json`. The error-code count
+text ("one of the 44 codes") already includes it.
+
+**`flextools_list_skeletons` (deprecated alias).** Input (`limit`) and
+top-level keys (`count`, `limit`, `storage_path`, `skeletons`) are
+unchanged. It adds a top-level `deprecation`:
+
+```json
+{"deprecated": "flextools_list_skeletons",
+ "replacement": "flextools_list_recipes(source=\"local\")",
+ "removal": "tool-responses/2.0"}
+```
 
 ---
 

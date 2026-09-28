@@ -86,7 +86,7 @@ for fname, rid in SCRIPTS.items():
                 key, kind = "ClassName", "dispatch"
             elif a in lcm_members and a not in GENERIC:
                 key, kind = a, "member"
-            elif re.search(r"(OA|OS|OC|RA|RS|RC)$", a):
+            elif re.search(r"(?<=[a-z0-9])(OA|OS|OC|RA|RS|RC)$", a):
                 key, kind = a, "member"
         if key:
             r = rows[key]

@@ -84,6 +84,10 @@ __all__ = [
     'KEY_LCM_NAME', 'KEY_COVERAGE', 'KEY_GAPS',
     # Curated deprecations (curated_deprecations.py)
     'KEY_DEPRECATED', 'KEY_DEPRECATION', 'KEY_DEPRECATED_MEMBERS', 'KEY_DEPRECATION_REDIRECTS',
+    # Recipes (unified-recipes contracts section 6)
+    'KEY_RECIPES', 'KEY_RECIPES_COUNT', 'KEY_RECIPE',
+    'KEY_RECIPES_AMBIGUOUS', 'KEY_RECIPES_HINT',
+    'KEY_SKELETONS_FROM_YOUR_SESSIONS',
     # Operation type constants
     'OP_CREATE', 'OP_READ', 'OP_UPDATE', 'OP_DELETE', 'OP_ITERATE', 'OP_SEARCH',
 ]
@@ -341,6 +345,15 @@ KEY_ADVISORY = "advisory"
 KEY_LCM_NAME = "lcm_name"
 KEY_COVERAGE = "coverage"
 KEY_GAPS = "gaps"
+
+# Recipes (unified-recipes contracts section 6). Handlers use these
+# constants instead of string literals.
+KEY_RECIPES = "recipes"
+KEY_RECIPES_COUNT = "recipes_count"
+KEY_RECIPE = "recipe"
+KEY_RECIPES_AMBIGUOUS = "recipes_ambiguous"
+KEY_RECIPES_HINT = "recipes_hint"
+KEY_SKELETONS_FROM_YOUR_SESSIONS = "skeletons_from_your_sessions"
 
 # Operation type constants
 OP_CREATE = "create"

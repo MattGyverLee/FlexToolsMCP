@@ -5,6 +5,6 @@
   "venvPath": "D:\\Apps\\anaconda3",
   "reportMissingImports": false,
   "reportMissingModuleSource": "warning",
-  "exclude": ["**/node_modules", "**/__pycache__", "build", "dist", "tests"],
+  "exclude": ["**/node_modules", "**/__pycache__", "build", "dist", "tests", "src/flextoolsmcp/recipe_library"],
   "extraPaths": ["src"]
 }

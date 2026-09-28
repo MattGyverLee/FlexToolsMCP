@@ -2306,6 +2306,46 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
     return mapping
 
 
+_IFACE_NAME_RE = re.compile(r"\bI[A-Z][A-Za-z]+\b")
+
+
+def _param_accepted_ifaces(
+    api_index: Optional[Any],
+    ops_class: str,
+    method_name: str,
+    position: Optional[int],
+    keyword: Optional[str],
+    known_ifaces: Set[str],
+) -> List[str]:
+    """Interfaces one argument of ``<ops_class>.<method_name>`` is documented to take.
+
+    Read from the flexicon index parameter ``type`` and ``description`` (e.g.
+    SegmentOperations.GetAll's ``paragraph_or_hvo``: "The IStTxtPara object or
+    HVO."), keeping only names that are real LCM interfaces. An empty list
+    means the index doesn't say, so the caller falls back to the interface
+    implied by the Operations class name.
+    """
+    if api_index is None:
+        return []
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entity = (flexicon.get("entities") or {}).get(ops_class) or {}
+    for meth in entity.get("methods", []) or []:
+        if meth.get("name") != method_name:
+            continue
+        params = meth.get("parameters") or []
+        param = None
+        if keyword is not None:
+            param = next((p for p in params if p.get("name") == keyword), None)
+        elif position is not None and position < len(params):
+            param = params[position]
+        if not param:
+            return []
+        text = f"{param.get('type') or ''} {param.get('description') or ''}"
+        found = [n for n in _IFACE_NAME_RE.findall(text) if n in known_ifaces]
+        return list(dict.fromkeys(found))
+    return []
+
+
 # Issue #130: variables that hold a flexicon FLExProject facade -------------
 #
 # `project` is the name the runner pre-injects, but flexicon 4.7.0 documents
@@ -7690,10 +7730,22 @@ def detect_casting_needs(
             if not _expected_iface:
                 continue
             _method_name = _node.func.attr
-            _call_args = list(_node.args) + [kw.value for kw in _node.keywords]
-            for _arg in _call_args:
+            _default_iface = _expected_iface
+            _call_args = [(_i, None, _a) for _i, _a in enumerate(_node.args)] + [
+                (None, kw.arg, kw.value) for kw in _node.keywords
+            ]
+            for _pos, _kw, _arg in _call_args:
                 if not isinstance(_arg, ast.Name):
                     continue  # inline cast (ILexEntry(c)) satisfies this
+                # Not every method takes its own class's object: e.g.
+                # SegmentOperations.GetAll(paragraph_or_hvo) takes the owning
+                # IStTxtPara. Prefer the interface(s) the index documents for
+                # this parameter over the class-name default.
+                _accepted = _param_accepted_ifaces(
+                    api_index, _ops_class, _method_name, _pos, _kw,
+                    set(_class_name_map.values()),
+                )
+                _expected_iface = _accepted[0] if _accepted else _default_iface
                 _binding = loop_element_types.get((_node.lineno, _arg.id))
                 if not _binding:
                     continue
@@ -7712,7 +7764,7 @@ def detect_casting_needs(
                 #     project.Senses.GetGloss(s)` where GetSenses.
                 # element_type == "ILexSense" == class_name_mapping
                 # ["LexSense"]) into a hard rejection.
-                if _element_type == _expected_iface:
+                if _element_type == _expected_iface or _element_type in _accepted:
                     continue
                 # Issue #121 remediation (defect 2): consult the SAME
                 # branch-aware cast machinery Rule A uses (via
@@ -7738,7 +7790,7 @@ def detect_casting_needs(
                         _arg.id,
                         _class_name_mapping,
                     )
-                    if _expected_iface in _guard_ifaces:
+                    if any(i in _guard_ifaces for i in (_accepted or [_expected_iface])):
                         continue
                 _dedupe_key = (_node.lineno, _arg.id, _method_name)
                 if _dedupe_key in _rule_b_seen:

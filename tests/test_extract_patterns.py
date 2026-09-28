@@ -17,7 +17,6 @@ def _import_extract():
 
 def test_mined_notes_point_at_local_recipes(tmp_path):
     mod = _import_extract()
-    from pathlib import Path
 
     log_dir = tmp_path / "logs"
     log_dir.mkdir()
@@ -45,21 +44,16 @@ def test_mined_notes_point_at_local_recipes(tmp_path):
 
 
 def test_mine_help_points_at_local_recipes():
-    mod = _import_extract()
-    import argparse
-    import io
-    from contextlib import redirect_stdout
-
-    parser_help = None
     # The module's main() wires --mine-operations-log; its help text must
     # not point at the skeleton closet.
     import subprocess
     import sys
+    from pathlib import Path
 
     proc = subprocess.run(
         [sys.executable, "-m", "flextoolsmcp.extract_patterns",
          "--mine-operations-log", "--help"],
-        capture_output=True, text=True, cwd="C:\\Github\\FlexToolsMCP-recipes",
+        capture_output=True, text=True, cwd=str(Path(__file__).resolve().parents[1]),
     )
     if proc.returncode == 0:
         assert "skeleton" not in proc.stdout.lower(), (

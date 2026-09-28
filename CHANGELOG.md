@@ -43,6 +43,18 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*
 
+- 27 new shipped recipes ported from real FLExTools 1.x modules (Matthew
+  Lee, Ron Lockwood) to flexicon: lexicon checks, grammar and phonology
+  inventories, interlinear text walks, and guarded bulk edits and cleanups.
+  Read recipes are verified on Sena 3; write recipes are verified by dry run
+  only. Remaining raw-LCM uses cite flexicon#574, #575, #577, #578, #580,
+  #581, #582 and #583.
+- Preflight casting Rule B (#121) now takes the expected interface from the
+  called parameter's index documentation, falling back to the Operations
+  class name. `project.Segments.GetAll(paragraph)` (it takes the owning
+  IStTxtPara) is no longer rejected, and neither are about 88 other flexicon
+  methods that take an owner or related object.
+
 ## [2.14.0] - 2026-09-27
 
 ### Headline: Flexicon 4.11.0 index, MCP 1.x/2.x dual support, preflight hardening

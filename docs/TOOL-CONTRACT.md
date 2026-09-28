@@ -79,7 +79,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 43 codes below |
+| `error_code` | string | one of the 44 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -152,6 +152,7 @@ authoritative. All detail fields are optional unless noted.
 | `grammar_load_unclean` | **In this order**: `signal` (required; `morpher_null` \| `new_load_errors` \| `eligible_forms_dropped`), `new_error_count` (required int), `baseline_error_count` (required int), `baseline_source` (required; `this_run` \| `absent` \| `prior_run:<run_id>`), `log_path` (string or null), then, appended after those five: `new_errors` (list), `dropped_entries` (list of `{entry_guid, headword}`), `baseline_eligible_count` (int or null), `eligible_count` (int or null). Raised by `flextools_parse_text(apply=true)` when the grammar did not load cleanly: the parser could not be built, this load logged errors the baseline did not, or fewer lexical forms are eligible to reach the grammar than in the baseline (which the loader does without logging anything). **There is no override**: the only way past `new_load_errors` or `eligible_forms_dropped` is a read-only `flextools_parse_text` of the same scope, which re-baselines. |
 | `parser_config_failed` | **In this order**: `exit_code` (int or null -- null when the generator never returned one: it timed out or could not be started), `stderr_tail` (required string -- the last 20 lines of the combined generator output, ASCII with non-ASCII escaped, capped at 4 KiB), `log_path` (required string -- the run's `sandbox/generate-config.log`), `run_id` (string or null -- null only when generation failed before a run existed, i.e. `flextools_parse_sandbox(action="create_sandbox")`). Raised by `flextools_parse_sandbox` when `GenerateHCConfig.exe` did not produce a config. Generation is judged from its output, not its exit code: a run that exits 0 without the generator's `Writing completed.` line is a failure. |
 | `parse_sandbox_refused` | **In this order**: `reason` (required; `name_invalid` \| `sandbox_exists` \| `sandbox_not_found` \| `corpus_exists` \| `corpus_not_found` \| `corpus_invalid` \| `run_not_seedable` \| `insufficient_disk_space` \| `word_file_invalid` -- a closed enum, kept distinct because the remedies differ), `name` (string or null), `path` (string or null), `hint` (required string), `needed_bytes` (int or null), `free_bytes` (int or null -- these two are set only for `insufficient_disk_space`). The sandbox tool's own pre-run refusals; every one fires before a file is created. |
+| `recipe_not_found` | **In this order**: `recipe_id` (required string -- the id that was asked for), `closest_matches` (list -- up to 3 nearest ids by difflib), `hint` (required string -- names `flextools_list_recipes(query=...)`). Raised by `flextools_list_recipes(recipe_id=...)` for an unknown id. |
 
 ---
 

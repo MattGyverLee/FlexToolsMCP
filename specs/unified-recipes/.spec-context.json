@@ -403,6 +403,78 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-28T15:08:09.342Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T052",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:21:03.725Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T053",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:21:10.109Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T054",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:21:17.884Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T055",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:22:13.626Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T056",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:22:18.554Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T057",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:23:37.536Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T058",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:23:40.672Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T059",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:24:26.111Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T060",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-28T15:34:22.694Z"
     }
   ],
   "telemetryInstanceId": "067c6046-73f4-4744-9a5d-dba6c1551f8c",
@@ -850,7 +922,7 @@
     }
   },
   "unattended": true,
-  "currentTask": "T051",
+  "currentTask": "T060",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1151,6 +1223,73 @@
         "specs/unified-recipes/raw-lcm-ledger.md",
         "specs/unified-recipes/evidence/README.md",
         "tests/test_recipes.py"
+      ]
+    },
+    "T052": {
+      "status": "DONE",
+      "did": "List-recipes + skeletons-alias tests in tests/test_list_recipes.py (12 tests, fail-first confirmed)",
+      "files": [
+        "tests/test_list_recipes.py"
+      ]
+    },
+    "T053": {
+      "status": "DONE",
+      "did": "Tool-list + READ_ONLY + recipe-guidance tests in tests/test_mcp_tools.py",
+      "files": [
+        "tests/test_mcp_tools.py"
+      ]
+    },
+    "T054": {
+      "status": "DONE",
+      "did": "Recipe-tools key-superset snapshot tests in tests/test_response_contract.py (SC-006)",
+      "files": [
+        "tests/test_response_contract.py"
+      ]
+    },
+    "T055": {
+      "status": "DONE",
+      "did": "ListRecipesInput model (query/source/requires_write/limit/recipe_id) in server/models.py",
+      "files": [
+        "src/flextoolsmcp/server/models.py"
+      ]
+    },
+    "T056": {
+      "status": "DONE",
+      "did": "RecipeNotFoundDetail model appended to AnyDetail union (43->44)",
+      "files": [
+        "src/flextoolsmcp/server/response_models.py"
+      ]
+    },
+    "T057": {
+      "status": "DONE",
+      "did": "flextools_list_recipes ToolDef + list_skeletons DEPRECATED description",
+      "files": [
+        "src/flextoolsmcp/server/tool_definitions.py"
+      ]
+    },
+    "T058": {
+      "status": "DONE",
+      "did": "handle_list_recipes + skeletons alias deprecation in handlers/catalog.py",
+      "files": [
+        "src/flextoolsmcp/server/handlers/catalog.py"
+      ]
+    },
+    "T059": {
+      "status": "DONE",
+      "did": "Registered list_recipes at dispatch touch points (constant, names, imports, routes)",
+      "files": [
+        "src/flextoolsmcp/server/dispatch.py"
+      ]
+    },
+    "T060": {
+      "status": "DONE",
+      "did": "recipe_not_found golden fixture via make_golden --regen (43->44 codes)",
+      "files": [
+        "tests/make_golden.py",
+        "tests/golden/responses/recipe_not_found.json",
+        "tests/test_response_contract.py",
+        "tests/test_parser_error_models.py",
+        "docs/TOOL-CONTRACT.md"
       ]
     }
   },

@@ -212,29 +212,29 @@ Each recipe task: port to flexicon 4.11.0 (cite the `get_object_api` / `search_b
 
 **Wave 1 (independent):**
 
-- [ ] **T052** [P] [US4] Each `source`, `requires_write`, `limit` clamp, `query` ordering, shipped-first default order, `recipe_id` returns the full recipe, no `code` without `recipe_id`, `recipe_not_found` shape and field order with `closest_matches`, `test_recipe_id_records_validated`, `test_list_skeletons_alias_shape_and_deprecation` (FR-024..026) · `tests/test_list_recipes.py`
-- [ ] **T053** [P] [US4] Add `flextools_list_recipes` to the tool list and `READ_ONLY_TOOLS`; `test_recipe_guidance_in_descriptions` (FR-027, FR-061) · `tests/test_mcp_tools.py`
-- [ ] **T054** [P] [US4] `test_recipe_tools_keys_superset`: pre-change key-set snapshot for the four tools; every old key present, new keys present (SC-006) · `tests/test_response_contract.py`
+- [x] **T052** [P] [US4] Each `source`, `requires_write`, `limit` clamp, `query` ordering, shipped-first default order, `recipe_id` returns the full recipe, no `code` without `recipe_id`, `recipe_not_found` shape and field order with `closest_matches`, `test_recipe_id_records_validated`, `test_list_skeletons_alias_shape_and_deprecation` (FR-024..026) · `tests/test_list_recipes.py`
+- [x] **T053** [P] [US4] Add `flextools_list_recipes` to the tool list and `READ_ONLY_TOOLS`; `test_recipe_guidance_in_descriptions` (FR-027, FR-061) · `tests/test_mcp_tools.py`
+- [x] **T054** [P] [US4] `test_recipe_tools_keys_superset`: pre-change key-set snapshot for the four tools; every old key present, new keys present (SC-006) · `tests/test_response_contract.py`
 
 ### Implementation
 
 **⟶ Wait for the tests wave, then Wave 2 (independent):**
 
-- [ ] **T055** [P] [US4] `ListRecipesInput` (`query`, `source`, `requires_write`, `limit`, `recipe_id`) · `src/flextoolsmcp/server/models.py`
-- [ ] **T056** [P] [US4] `recipe_not_found` error-detail model (appended error code) · `src/flextoolsmcp/server/response_models.py`
+- [x] **T055** [P] [US4] `ListRecipesInput` (`query`, `source`, `requires_write`, `limit`, `recipe_id`) · `src/flextoolsmcp/server/models.py`
+- [x] **T056** [P] [US4] `recipe_not_found` error-detail model (appended error code) · `src/flextoolsmcp/server/response_models.py`
 
 **⟶ Wait for Wave 2, then Wave 3 (independent):**
 
-- [ ] **T057** [P] [US4] `flextools_list_recipes` ToolDef; mark `flextools_list_skeletons` DEPRECATED in its description · `src/flextoolsmcp/server/tool_definitions.py`
-- [ ] **T058** [P] [US4] `handle_list_recipes` (compact rows, filters, `recipe_id` full recipe recording validated entities, `recipe_not_found`); `handle_list_skeletons` becomes an alias over local recipes in the old row shape plus `deprecation` (FR-024..026) · `src/flextoolsmcp/server/handlers/catalog.py`
+- [x] **T057** [P] [US4] `flextools_list_recipes` ToolDef; mark `flextools_list_skeletons` DEPRECATED in its description · `src/flextoolsmcp/server/tool_definitions.py`
+- [x] **T058** [P] [US4] `handle_list_recipes` (compact rows, filters, `recipe_id` full recipe recording validated entities, `recipe_not_found`); `handle_list_skeletons` becomes an alias over local recipes in the old row shape plus `deprecation` (FR-024..026) · `src/flextoolsmcp/server/handlers/catalog.py`
 
 **⟶ Wait for Wave 3, then Wave 4 (single):**
 
-- [ ] **T059** [US4] Register `list_recipes` at all five dispatch touch points · `src/flextoolsmcp/server/dispatch.py`
+- [x] **T059** [US4] Register `list_recipes` at all five dispatch touch points · `src/flextoolsmcp/server/dispatch.py`
 
 **⟶ Wait for Wave 4, then Wave 5 (single):**
 
-- [ ] **T060** [US4] Generate the `recipe_not_found` golden fixture with `make_golden.py` · `tests/golden/responses/recipe_not_found.json`
+- [x] **T060** [US4] Generate the `recipe_not_found` golden fixture with `make_golden.py` · `tests/golden/responses/recipe_not_found.json`
 
 **Checkpoint**: T052..T054 pass; US4 acceptance 1..3 hold.
 

@@ -1,0 +1,20 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "recipe_not_found",
+  "message": "Unknown recipe_id 'alpha-reed'.",
+  "recipe_id": "alpha-reed",
+  "closest_matches": [
+    "alpha-read"
+  ],
+  "hint": "No recipe 'alpha-reed'. Try flextools_list_recipes(query=...) to find one.",
+  "error": {
+    "code": "recipe_not_found",
+    "message": "Unknown recipe_id 'alpha-reed'.",
+    "recipe_id": "alpha-reed",
+    "closest_matches": [
+      "alpha-read"
+    ],
+    "hint": "No recipe 'alpha-reed'. Try flextools_list_recipes(query=...) to find one."
+  }
+}

@@ -8,6 +8,7 @@ These handlers provide listing and discovery of available APIs:
 - list_entities_in_category: List entities within a specific category
 """
 
+import difflib
 import json
 from collections import defaultdict
 from mcp.types import TextContent
@@ -49,6 +50,14 @@ try:
     from .api import active_sources_for_mode, ensure_active_sources_loaded
 except ImportError:
     from server.handlers.api import active_sources_for_mode, ensure_active_sources_loaded
+
+try:
+    from ...response_utils import build_response_with_context, error_response, json_response
+except ImportError:
+    try:
+        from response_utils import build_response_with_context, error_response, json_response
+    except ImportError:
+        from server.response_utils import build_response_with_context, error_response, json_response
 
 # Import with fallback support
 get_api_index = safe_import_api_index()
@@ -246,4 +255,186 @@ async def handle_list_skeletons(
         "limit": limit,
         "storage_path": str(local_recipes.get_recipe_path()),
         "skeletons": entries,
+        "deprecation": {
+            "deprecated": "flextools_list_skeletons",
+            "replacement": "flextools_list_recipes(source=\"local\")",
+            "removal": "tool-responses/2.0",
+        },
     }, indent=2))]
+
+
+# ============================================================
+# flextools_list_recipes (unified-recipes Phase 6, FR-024/FR-026)
+# ============================================================
+
+def _list_compact_params(params):
+    rows = []
+    for p in params or []:
+        if not isinstance(p, dict):
+            continue
+        default = str(p.get("default", ""))
+        if len(default) > 60:
+            default = default[:60] + "..."
+        rows.append({
+            "name": str(p.get("name", "")),
+            "default": default,
+            "description": str(p.get("description", "")),
+        })
+    return rows
+
+
+def _list_shipped_label(recipe: dict) -> str:
+    return "shipped" if str(recipe.get("source", "curated")) in ("curated", "shipped") else "local"
+
+
+def _list_compact_row(recipe_id: str, recipe: dict) -> dict:
+    label = _list_shipped_label(recipe)
+    return {
+        "id": recipe_id,
+        "intent": recipe.get("intent") or "",
+        "source": label,
+        "requires_write": bool(recipe.get("requires_write", False)),
+        "params": _list_compact_params(recipe.get("params", [])),
+        "entities": list(recipe.get("entities", []) or []),
+        "use_count": None if label == "shipped" else int(recipe.get("use_count", 0) or 0),
+        "last_used": None if label == "shipped" else recipe.get("last_used"),
+    }
+
+
+def _list_full_row(recipe_id: str, recipe: dict) -> dict:
+    row = _list_compact_row(recipe_id, recipe)
+    row["code"] = recipe.get("code", "")
+    row["notes"] = recipe.get("notes", "")
+    row["match_terms"] = list(recipe.get("match_terms", []) or [])
+    row["operations"] = list(recipe.get("operations", []) or [])
+    if recipe.get("origin") is not None:
+        row["origin"] = recipe.get("origin")
+    if recipe.get("verified_against") is not None:
+        row["verified_against"] = recipe.get("verified_against")
+    return row
+
+
+def _list_all_merged() -> dict:
+    """All recipes keyed by id: shipped first, then local (no overwrite)."""
+    try:
+        try:
+            from ...curated_recipes import CURATED_RECIPES as _shipped
+        except ImportError:
+            from curated_recipes import CURATED_RECIPES as _shipped
+    except ImportError:
+        _shipped = {}
+    merged = dict(_shipped or {})
+    try:
+        local_rows = local_recipes.load_local_recipes()
+    except Exception:
+        local_rows = []
+    for rec in local_rows or []:
+        rid = (rec or {}).get("id")
+        if rid and rid not in merged:
+            merged[rid] = rec
+    return merged
+
+
+async def handle_list_recipes(args) -> list[TextContent]:
+    """Browse shipped and local recipes (FR-024); one full recipe by id (FR-026).
+
+    Read-only: compact rows carry no `code` unless `recipe_id` is given.
+    Serving a full recipe records its entities as validated discovery.
+    Unknown ids give `recipe_not_found` with `closest_matches` + hint.
+    """
+    get_arg = (lambda k, d=None: getattr(args, k, d)) if hasattr(args, "query") or hasattr(args, "recipe_id") else (lambda k, d=None: (args or {}).get(k, d))
+    query = get_arg("query", None)
+    source = get_arg("source", None) or "all"
+    requires_write = get_arg("requires_write", None)
+    limit = get_arg("limit", None)
+    recipe_id = get_arg("recipe_id", None)
+    if limit is None:
+        limit = 50
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 50
+    limit = max(1, min(200, limit))
+
+    merged = _list_all_merged()
+
+    if recipe_id:
+        recipe = merged.get(recipe_id)
+        if recipe is None:
+            ids = list(merged.keys())
+            closest = difflib.get_close_matches(str(recipe_id), ids, n=3, cutoff=0.3)
+            hint = (
+                f"No recipe '{recipe_id}'. "
+                "Try flextools_list_recipes(query=...) to find one, "
+                "or list all ids without filters."
+            )
+            return error_response(
+                "recipe_not_found",
+                f"Unknown recipe_id '{recipe_id}'.",
+                recipe_id=str(recipe_id),
+                closest_matches=closest,
+                hint=hint,
+            )
+        for entity in recipe.get("entities", []) or []:
+            try:
+                session_state.record_validated_api(entity)
+            except Exception:
+                pass
+        return json_response(build_response_with_context(
+            {"recipe": _list_full_row(str(recipe_id), recipe)}))
+
+    if query:
+        try:
+            try:
+                from ..recipes import rank_recipes as _rank
+            except ImportError:
+                from server.recipes import rank_recipes as _rank
+            ranked = _rank(str(query), recipes=dict(merged))
+            ordered_ids = [r["id"] for r in ranked]
+        except Exception:
+            ordered_ids = []
+        # Ranked order; unknown ids (should not happen) appended in default order.
+        seen = set(ordered_ids)
+        for rid in merged:
+            if rid not in seen:
+                ordered_ids.append(rid)
+    else:
+        shipped_ids = sorted(rid for rid, r in merged.items()
+                             if _list_shipped_label(r) == "shipped")
+        try:
+            local_rows = local_recipes.load_local_recipes()
+        except Exception:
+            local_rows = []
+        local_by_id = {r.get("id"): r for r in local_rows or [] if (r or {}).get("id")}
+        local_ids = sorted(
+            (rid for rid in merged if _list_shipped_label(merged[rid]) == "local"),
+            key=lambda rid: str((local_by_id.get(rid) or {}).get("last_used", "")),
+            reverse=True,
+        )
+        ordered_ids = shipped_ids + local_ids
+
+    rows = []
+    for rid in ordered_ids:
+        recipe = merged.get(rid)
+        if recipe is None:
+            continue
+        if source != "all" and _list_shipped_label(recipe) != source:
+            continue
+        if requires_write is not None and bool(recipe.get("requires_write", False)) != bool(requires_write):
+            continue
+        rows.append((rid, recipe))
+
+    total = len(rows)
+    page = rows[:limit]
+    compact = [_list_compact_row(rid, recipe) for rid, recipe in page]
+    try:
+        storage_path = str(local_recipes.get_recipe_path())
+    except Exception:
+        storage_path = ""
+    return json_response(build_response_with_context({
+        "recipes": compact,
+        "recipes_count": len(compact),
+        "total": total,
+        "source": source,
+        "storage_path": storage_path,
+    }))

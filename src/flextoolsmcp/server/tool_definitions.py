@@ -40,6 +40,7 @@ from .models import (
     FindWrappersForLcmInput,
     ResolveTypeInput,
     ListSkeletonsInput,
+    ListRecipesInput,
     PrepareReportInput,
     FlexToolsHealthInput,
     GrammarHealthInput,
@@ -850,7 +851,9 @@ Returns substring suggestions on a miss to help recover from typos.""",
 
     "flextools_list_skeletons": ToolDef(
         name="flextools_list_skeletons",
-        description="""List captured "skeleton" helpers that survived prior sessions (issue #24).
+        description="""DEPRECATED: use flextools_list_recipes.
+
+List captured "skeleton" helpers that survived prior sessions (issue #24).
 
 Each successful flextools_run_module() call auto-captures top-level `def` functions to a
 JSONL "closet" on disk. This tool surfaces them so prior helpers (pos_abbr, get_words,
@@ -862,6 +865,21 @@ captured_at timestamp, and op_id. Most-recent-first; capped by `limit` (default 
 Tip: flextools_find_examples also surfaces these (under `skeletons_from_your_sessions`)
 when filtered by object_type.""",
         input_model=ListSkeletonsInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_list_recipes": ToolDef(
+        name="flextools_list_recipes",
+        description="""Browse shipped and local recipes (unified-recipes).
+
+Check `recipes` before composing code; edit PARAMS values only; run with `source="existing"` when only PARAMS changed.
+
+Without `recipe_id` returns compact rows only (no `code`): id, intent,
+source (shipped/local), requires_write, params, entities, use_count,
+last_used. With `recipe_id` returns the full recipe with `code`.
+Filter with `query` (ranked), `source` (all/shipped/local),
+`requires_write`, and `limit` (clamped 1..200).""",
+        input_model=ListRecipesInput,
         annotations=READ_ONLY_SAFE,
     ),
 

@@ -193,6 +193,11 @@ GOLDEN_REQUIRED_KEYS = {
         "_contract", "status", "error_code", "message", "error",
         "reason", "name", "path", "hint", "needed_bytes", "free_bytes",
     },
+    # Unified-recipes FR-024 (contracts/tools.md s.3 order).
+    "recipe_not_found": {
+        "_contract", "status", "error_code", "message", "error",
+        "recipe_id", "closest_matches", "hint",
+    },
 }
 
 
@@ -486,7 +491,8 @@ class TestParserCheckCP2bCodes:
         # #70 adds raw_addcustomfield_write_risk -> 41;
         # #279 adds top_level_main_invocation -> 42;
         # #277 adds reflection_bypass_detected -> 43.
-        assert union_size == 43, f"the detail union holds {union_size} models"
+        # unified-recipes adds recipe_not_found -> 44.
+        assert union_size == 44, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"
@@ -858,3 +864,125 @@ class TestMakeGolden:
             f"make_golden.py dry-run failed (stale fixtures):\n{result.stdout}\n{result.stderr}\n"
             "Run: python tests/make_golden.py --regen"
         )
+
+
+# ---------------------------------------------------------------------------
+# Unified-recipes FR-024..027, SC-006: recipe tool key supersets (T054)
+# ---------------------------------------------------------------------------
+
+# Pre-change key snapshots: every key present before unified-recipes must
+# still be present (append-only contract). New keys must also be present.
+RECIPE_TOOLS_KEY_SNAPSHOT = {
+    "search": {
+        "old": {"query", "results", "results_count", "worked_examples",
+                "worked_examples_count"},
+        "new": {"recipes", "recipes_count", "recipes_ambiguous"},
+    },
+    "find_examples": {
+        "old": {"examples", "results_count", "recipes", "recipes_count"},
+        "new": {"recipes", "recipes_count", "deprecation",
+                "skeletons_from_your_sessions"},
+    },
+    "list_skeletons": {
+        "old": {"count", "limit", "storage_path", "skeletons"},
+        "new": {"deprecation"},
+    },
+    "list_recipes": {
+        "old": set(),
+        "new": {"recipes", "recipes_count", "total", "source", "storage_path"},
+    },
+}
+
+
+class TestRecipeToolsKeysSuperset:
+    """SC-006: no response key disappears; new recipe keys exist."""
+
+    def _search_keys(self):
+        import asyncio
+        import importlib.util
+
+        server_py = Path(__file__).parent.parent / "src" / "flextoolsmcp" / "server.py"
+        spec = importlib.util.spec_from_file_location("_srv_contract", str(server_py))
+        assert spec and spec.loader
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        from flextoolsmcp.server import kernel as _kernel
+
+        try:
+            from flextoolsmcp.server import APIIndex, get_index_dir
+
+            _kernel.set_api_index(APIIndex.load(get_index_dir()))
+        except Exception:
+            pass
+        _kernel.session_state.configure(session_id="test-contract", api_mode="flexicon")
+        loop = asyncio.new_event_loop()
+        try:
+            out = loop.run_until_complete(
+                mod.call_tool("flextools_search_by_capability", {"query": "list entries"})
+            )
+            data = json.loads(out[0].text)
+        finally:
+            loop.close()
+        return set(data.keys())
+
+    def test_search_keys_superset(self):
+        keys = self._search_keys()
+        snap = RECIPE_TOOLS_KEY_SNAPSHOT["search"]
+        assert snap["old"] <= keys, f"search lost keys: {snap['old'] - keys}"
+        assert snap["new"] <= keys, f"search missing new keys: {snap['new'] - keys}"
+
+    def test_find_examples_keys_superset(self):
+        from flextoolsmcp.server.handlers import api as api_mod
+
+        assert hasattr(api_mod, "handle_find_examples")
+        # Static shape check: handler source must emit both old and new keys.
+        # Handlers use KEY_* constants, so accept the constant name, the
+        # literal value, or the bare key stem.
+        from flextoolsmcp.server import response_keys as _rk
+
+        src = Path(api_mod.__file__).read_text(encoding="utf-8")
+        key_to_constant = {
+            "examples": "KEY_EXAMPLES",
+            "results_count": "KEY_RESULTS_COUNT",
+            "recipes": "KEY_RECIPES",
+            "recipes_count": "KEY_RECIPES_COUNT",
+            "deprecation": "KEY_DEPRECATION",
+            "skeletons_from_your_sessions": "KEY_SKELETONS_FROM_YOUR_SESSIONS",
+        }
+        for key in (RECIPE_TOOLS_KEY_SNAPSHOT["find_examples"]["old"]
+                    | RECIPE_TOOLS_KEY_SNAPSHOT["find_examples"]["new"]):
+            const = key_to_constant.get(key, None)
+            literal = getattr(_rk, const, key) if const else key
+            assert (f'"{key}"' in src or f"'{key}'" in src or key in src
+                    or (const is not None and const in src)
+                    or literal in src), f"find_examples handler never mentions {key}"
+
+    def test_list_skeletons_keys_superset(self):
+        import asyncio
+
+        from flextoolsmcp.server.handlers import catalog as catalog_mod
+
+        loop = asyncio.new_event_loop()
+        try:
+            out = loop.run_until_complete(catalog_mod.handle_list_skeletons({"limit": 1}))
+            data = json.loads(out[0].text)
+        finally:
+            loop.close()
+        snap = RECIPE_TOOLS_KEY_SNAPSHOT["list_skeletons"]
+        assert snap["old"] <= set(data.keys())
+        assert snap["new"] <= set(data.keys())
+
+    def test_list_recipes_keys_present(self):
+        import asyncio
+
+        from flextoolsmcp.server.handlers import catalog as catalog_mod
+
+        assert hasattr(catalog_mod, "handle_list_recipes")
+        loop = asyncio.new_event_loop()
+        try:
+            out = loop.run_until_complete(catalog_mod.handle_list_recipes({}))
+            data = json.loads(out[0].text)
+        finally:
+            loop.close()
+        snap = RECIPE_TOOLS_KEY_SNAPSHOT["list_recipes"]
+        assert snap["new"] <= set(data.keys())

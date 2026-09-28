@@ -369,6 +369,37 @@ class ListSkeletonsInput(BaseModel):
     )
 
 
+class ListRecipesInput(BaseModel):
+    """Browse shipped and local recipes (unified-recipes FR-024).
+
+    Without `recipe_id` returns compact rows only (no `code`); with it,
+    the full recipe. When `query` is given rows are ranked with the search
+    scorer, otherwise shipped first (by id), then local (by `last_used` desc).
+    `limit` is clamped to 1..200 by the handler.
+    """
+    query: Optional[str] = Field(
+        default=None,
+        description="Ranked with the search scorer when given; otherwise the order "
+                    "is shipped first (by id), then local (by `last_used` desc)."
+    )
+    source: Literal["all", "shipped", "local"] = Field(
+        default="all",
+        description='Which recipes to list: "all" (default), "shipped" or "local".'
+    )
+    requires_write: Optional[bool] = Field(
+        default=None,
+        description="Filter when not null: only write recipes (true) or only read recipes (false)."
+    )
+    limit: int = Field(
+        default=50,
+        description="Maximum rows to return. Clamped to 1..200."
+    )
+    recipe_id: Optional[str] = Field(
+        default=None,
+        description="When set, the other filters are ignored and the full recipe is returned."
+    )
+
+
 class RunModuleInput(BaseModel):
     """Execute code (snippet or full module) against a FieldWorks project.
 

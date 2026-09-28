@@ -32,6 +32,7 @@ from .models import (
     FindWrappersForLcmInput,
     ResolveTypeInput,
     ListSkeletonsInput,
+    ListRecipesInput,
     PrepareReportInput,
     FlexToolsHealthInput,
     GrammarHealthInput,
@@ -86,6 +87,9 @@ TOOL_RESOLVE_TYPE = "flextools_resolve_type"
 # Skeleton storage closet (issue #24)
 TOOL_LIST_SKELETONS = "flextools_list_skeletons"
 
+# Unified recipes (FR-024): browse shipped + local recipes
+TOOL_LIST_RECIPES = "flextools_list_recipes"
+
 # Diagnostics tool (issue #56)
 TOOL_FLEXTOOLS_HEALTH = "flextools_health"
 
@@ -130,6 +134,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_FIND_WRAPPERS_FOR_LCM,
     TOOL_RESOLVE_TYPE,
     TOOL_LIST_SKELETONS,
+    TOOL_LIST_RECIPES,
     TOOL_PREPARE_REPORT,
     TOOL_FLEXTOOLS_HEALTH,
     TOOL_GRAMMAR_HEALTH,
@@ -166,6 +171,7 @@ def _import_handlers():
             handle_list_entities_in_category,
             handle_list_projects,
             handle_list_skeletons,
+            handle_list_recipes,
         )
         from .handlers.discovery import (
             handle_get_navigation_path,
@@ -218,6 +224,7 @@ def _import_handlers():
             handle_list_entities_in_category,
             handle_list_projects,
             handle_list_skeletons,
+            handle_list_recipes,
         )
         from server.handlers.discovery import (
             handle_get_navigation_path,
@@ -264,6 +271,7 @@ def _import_handlers():
         "handle_list_entities_in_category": handle_list_entities_in_category,
         "handle_list_projects": handle_list_projects,
         "handle_list_skeletons": handle_list_skeletons,
+        "handle_list_recipes": handle_list_recipes,
         "handle_get_navigation_path": handle_get_navigation_path,
         "handle_start_module": handle_start_module,
         "handle_run_module": handle_run_module,
@@ -298,6 +306,7 @@ handle_list_categories = _handlers["handle_list_categories"]
 handle_list_entities_in_category = _handlers["handle_list_entities_in_category"]
 handle_list_projects = _handlers["handle_list_projects"]
 handle_list_skeletons = _handlers["handle_list_skeletons"]
+handle_list_recipes = _handlers["handle_list_recipes"]
 handle_get_navigation_path = _handlers["handle_get_navigation_path"]
 handle_start_module = _handlers["handle_start_module"]
 handle_run_module = _handlers["handle_run_module"]
@@ -360,6 +369,9 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
 
     # Skeleton storage closet (issue #24)
     TOOL_LIST_SKELETONS: (handle_list_skeletons, ListSkeletonsInput),
+
+    # Unified recipes (FR-024)
+    TOOL_LIST_RECIPES: (handle_list_recipes, ListRecipesInput),
 
     # Diagnostic-report tools (CP3)
     TOOL_PREPARE_REPORT: (handle_prepare_report, PrepareReportInput),

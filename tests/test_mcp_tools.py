@@ -85,6 +85,7 @@ EXPECTED_TOOL_NAMES = [
     "flextools_get_wrapper_dependencies",
     "flextools_find_wrappers_for_lcm",
     "flextools_list_skeletons",
+    "flextools_list_recipes",
     "flextools_prepare_report",
     "flextools_health",
     "flextools_grammar_health",
@@ -133,6 +134,7 @@ READ_ONLY_TOOLS = [
     "flextools_get_wrapper_dependencies",
     "flextools_find_wrappers_for_lcm",
     "flextools_list_skeletons",
+    "flextools_list_recipes",
     "flextools_health",
     "flextools_grammar_health",
     "flextools_try_word",
@@ -770,6 +772,39 @@ class TestParseSandboxDescription(TestCase):
     def test_the_body_lists_both_new_refusal_codes(self):
         for code in ("parse_sandbox_refused", "parser_config_failed"):
             self.assertIn(code, self.description)
+
+
+class TestRecipeGuidanceInDescriptions(TestCase):
+    """Unified-recipes FR-027: tool descriptions guide recipe use and PARAMS."""
+
+    @classmethod
+    def setUpClass(cls):
+        from flextoolsmcp.server.tool_definitions import TOOLS
+
+        cls.tools = TOOLS
+
+    def test_search_points_at_recipes(self):
+        desc = self.tools["flextools_search_by_capability"].description
+        self.assertIn("recipes", desc.lower())
+        self.assertIn("PARAMS", desc)
+
+    def test_find_examples_points_at_recipes(self):
+        desc = self.tools["flextools_find_examples"].description
+        self.assertIn("recipes", desc.lower())
+        self.assertIn("PARAMS", desc)
+
+    def test_run_module_points_at_recipes(self):
+        desc = self.tools["flextools_run_module"].description
+        self.assertIn("recipes", desc.lower())
+        self.assertIn("PARAMS", desc)
+
+    def test_list_recipes_points_at_recipes(self):
+        desc = self.tools["flextools_list_recipes"].description
+        self.assertIn("recipes", desc.lower())
+
+    def test_list_skeletons_is_deprecated(self):
+        desc = self.tools["flextools_list_skeletons"].description
+        self.assertTrue(desc.startswith("DEPRECATED: use flextools_list_recipes."))
 
 
 if __name__ == "__main__":

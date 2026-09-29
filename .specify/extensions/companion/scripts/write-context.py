@@ -26,6 +26,7 @@ Stdlib only. Safe to run anywhere `python3` is available.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -122,6 +123,63 @@ from living_spec_fold import (  # noqa: E402,F401
     fold_living_spec,
 )
 import _console  # noqa: F401  (ASCII-safe stdout/stderr on non-UTF-8 consoles)
+
+
+# --------------------------------------------------------------------------- #
+# Output verbosity
+#
+# Every call's output lands in an agent's context window, and a single feature
+# makes dozens of these calls. By default a call reports itself briefly: paths
+# under the working directory are printed relative to it (the form the command
+# bodies already document, `specs/<NNN>-<slug>/.spec-context.json`), `--set`
+# names the keys it wrote rather than echoing their values back, and a usage
+# error prints a one-line usage instead of the whole flag list. Every line is
+# still printed — errors and warnings included; only their length changes.
+# `--verbose`, or SPECKIT_COMPANION_VERBOSE=1, restores the full output.
+# --------------------------------------------------------------------------- #
+
+VERBOSE_ENV = "SPECKIT_COMPANION_VERBOSE"
+_SHORT_USAGE = "%(prog)s [options]  (--help lists every flag)"
+
+
+def _verbose_requested(argv: list | None = None) -> bool:
+    argv = sys.argv[1:] if argv is None else argv
+    if "--verbose" in argv:
+        return True
+    return os.environ.get(VERBOSE_ENV, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+class _RelPaths:
+    """Stream wrapper that prints paths under the cwd relative to it.
+
+    Output only: what is written to disk, and what the self-trace records, keeps
+    the absolute path. A path outside the cwd is printed unchanged.
+    """
+
+    def __init__(self, real, base: Path | None = None):
+        self._real = real
+        text = str(base or Path.cwd())
+        parts = [re.escape(p) for p in re.split(r"[\\/]+", text) if p]
+        lead = r"[\\/]" if text[:1] in "\\/" else ""
+        flags = re.IGNORECASE if os.name == "nt" else 0
+        # Only a path that STARTS at the cwd: the lookbehind stops a match inside a
+        # longer path (e.g. `/mnt` + the cwd) from being spliced.
+        self._prefix = (
+            re.compile(r"(?<![^\s'\"(=])" + lead + r"[\\/]".join(parts) + r"[\\/]", flags)
+            if parts else None
+        )
+
+    def write(self, s):
+        if self._prefix is not None and isinstance(s, str):
+            s = self._prefix.sub("", s)
+        self._real.write(s)
+        return len(s)
+
+    def flush(self):
+        self._real.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
 
 
 def update_context(
@@ -316,7 +374,16 @@ def mark_spec_complete(feature_dir: Path, by: str) -> Path | None:
 
 
 def _main() -> int:
-    parser = argparse.ArgumentParser(description="Write/update a feature's .spec-context.json")
+    verbose = _verbose_requested()
+    parser = argparse.ArgumentParser(
+        description="Write/update a feature's .spec-context.json",
+        usage=None if verbose else _SHORT_USAGE,
+    )
+    parser.add_argument(
+        "--verbose", action="store_true",
+        help=f"Full output: absolute paths, --set values echoed, full usage on error "
+             f"(also {VERBOSE_ENV}=1). The default is a one-line summary per write.",
+    )
     parser.add_argument("--step", default="specify")
     parser.add_argument("--status", default="specified")
     parser.add_argument("--by", default="extension")
@@ -543,7 +610,8 @@ def _main() -> int:
             captured.append(f"[companion] Recorded classification in {target}")
         if args.set_pairs:
             target = set_fields(feature_dir, args.set_pairs)
-            captured.append(f"[companion] Set {', '.join(args.set_pairs)} in {target}")
+            shown = args.set_pairs if verbose else [str(p).split("=", 1)[0].strip() for p in args.set_pairs]
+            captured.append(f"[companion] Set {', '.join(shown)} in {target}")
         if args.batch:
             target, landed = apply_batch(feature_dir, args.batch, args.step)
             if target is not None:
@@ -837,7 +905,13 @@ def main() -> int:
     started = time.monotonic()
     out_buf, err_buf = io.StringIO(), io.StringIO()
     real_out, real_err = sys.stdout, sys.stderr
-    sys.stdout, sys.stderr = _Tee(real_out, out_buf), _Tee(real_err, err_buf)
+    # The trace buffers keep the unshortened text; only what reaches the console
+    # is brief.
+    show_out, show_err = (
+        (real_out, real_err) if _verbose_requested(argv)
+        else (_RelPaths(real_out), _RelPaths(real_err))
+    )
+    sys.stdout, sys.stderr = _Tee(show_out, out_buf), _Tee(show_err, err_buf)
     try:
         code = _main()
     finally:

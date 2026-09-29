@@ -25,7 +25,9 @@
 #
 
 import argparse
+import functools
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -39,6 +41,7 @@ STATUS_SCRIPT = COMPANION / "status-context.py"
 
 sys.path.insert(0, str(COMPANION))
 from task_sync import parse_task_markers  # noqa: E402  (companion's own parser)
+from speckit_git import sync_spec  # noqa: E402
 
 ROUND_RE = re.compile(r"^ROUND:\s*(DONE|COMPLETE|BLOCKED)\b\s*(.*)$", re.MULTILINE)
 PHASE_HEADING_RE = re.compile(r"^#{2,3}\s+(.*)$")
@@ -58,9 +61,13 @@ def resolve_feature_dir(arg):
 
 def status(feature_dir):
     """Run status-context.py and return the parsed RESOLUTION dict."""
+    root = feature_root(feature_dir)
+    # The script prints arrows; under a cp1252 console it fails to encode them
+    # and drops the RESOLUTION line, so force its stdout to UTF-8.
     out = subprocess.run(
-        [sys.executable, str(STATUS_SCRIPT), "--feature-dir", str(feature_dir)],
-        cwd=REPO, capture_output=True, text=True, encoding="utf-8",
+        [sys.executable, str(root / STATUS_SCRIPT.relative_to(REPO)), "--feature-dir", str(feature_dir)],
+        cwd=root, capture_output=True, text=True, encoding="utf-8",
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
     )
     for line in reversed(out.stdout.splitlines()):
         if line.startswith("RESOLUTION:"):
@@ -71,7 +78,7 @@ def status(feature_dir):
 def phase_of(feature_dir, task_id):
     """The tasks.md heading the given task sits under, or None."""
     try:
-        lines = (REPO / feature_dir / "tasks.md").read_text(encoding="utf-8").splitlines()
+        lines = (feature_root(feature_dir) / feature_dir / "tasks.md").read_text(encoding="utf-8").splitlines()
     except OSError:
         return None
     heading = None
@@ -86,7 +93,7 @@ def phase_of(feature_dir, task_id):
 
 def fingerprint(feature_dir, res):
     """What counts as progress: step/status moved, or more tasks checked."""
-    _, done = parse_task_markers(REPO / feature_dir / "tasks.md")
+    _, done = parse_task_markers(feature_root(feature_dir) / feature_dir / "tasks.md")
     return (res.get("currentStep"), res.get("status"), res.get("nextTask"), len(set(done)))
 
 
@@ -96,19 +103,53 @@ def round_label(res, feature_dir):
         return step, None
     task = res.get("nextTask")
     if not task:
-        all_ids, done = parse_task_markers(REPO / feature_dir / "tasks.md")
+        all_ids, done = parse_task_markers(feature_root(feature_dir) / feature_dir / "tasks.md")
         task = next((t for t in all_ids if t not in set(done)), None)
     return step, phase_of(feature_dir, task) if task else None
 
 
-def run_claude(claude, prompt, args):
+@functools.lru_cache(maxsize=None)
+def feature_worktree(feature_dir):
+    """The worktree whose branch is the feature branch, or None.
+
+    Matches `<name>` or `*/<name>` (e.g. feat/unified-recipes), skipping the
+    main checkout.
+    """
+    name = Path(feature_dir).name
+    try:
+        out = subprocess.run(["git", "worktree", "list", "--porcelain"], cwd=REPO,
+                             capture_output=True, text=True, encoding="utf-8").stdout
+    except OSError:
+        return None
+    path = None
+    for line in out.splitlines():
+        if line.startswith("worktree "):
+            path = Path(line[len("worktree "):])
+        elif line.startswith("branch ") and path and path.resolve() != REPO.resolve():
+            branch = line[len("branch "):].removeprefix("refs/heads/")
+            if branch == name or branch.endswith("/" + name):
+                return path
+    return None
+
+
+def feature_root(feature_dir):
+    """The checkout a feature's rounds run in: its worktree, else the main checkout.
+
+    The spec folder travels with the feature branch, so status, tasks.md and
+    round logs are read from here, and the round session runs here too --
+    relative paths then land in the worktree, never on main.
+    """
+    return feature_worktree(Path(feature_dir)) or REPO
+
+
+def run_claude(claude, prompt, args, root):
     cmd = [claude, "-p", "--output-format", "json", "--permission-mode", args.permission_mode]
     if args.model:
         cmd += ["--model", args.model]
     if args.max_budget_usd:
         cmd += ["--max-budget-usd", str(args.max_budget_usd)]
     # Prompt goes on stdin: avoids cmd.exe quoting when `claude` is a .cmd shim.
-    return subprocess.run(cmd, cwd=REPO, input=prompt, capture_output=True,
+    return subprocess.run(cmd, cwd=root, input=prompt, capture_output=True,
                           text=True, encoding="utf-8")
 
 
@@ -128,7 +169,7 @@ def main():
     if not claude and not args.dry_run:
         sys.exit("[ERROR] `claude` CLI not found on PATH")
 
-    log_dir = REPO / feature_dir / "rounds"
+    log_dir = feature_root(feature_dir) / feature_dir / "rounds"
     stalls, prev_fp = 0, None
     total_cost = 0.0
 
@@ -160,9 +201,12 @@ def main():
 
         print(f"[INFO] round {n}: {label} ...", flush=True)
         started = time.time()
-        proc = run_claude(claude, prompt, args)
+        proc = run_claude(claude, prompt, args, feature_root(feature_dir))
         log_dir.mkdir(exist_ok=True)
         (log_dir / f"round-{n:02d}-{step}.json").write_text(proc.stdout or proc.stderr, encoding="utf-8")
+        # Publish the spec folder on the feature branch after every round, whatever happened
+        # (scripts/speckit_git.py). Feature code is committed by the round.
+        print(f"      spec sync: {sync_spec(feature_dir, f'spec({feature_dir.name}): round {n} -- {label}')}")
 
         try:
             out = json.loads(proc.stdout)

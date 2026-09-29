@@ -7,7 +7,7 @@ access before writing (issue #223).
 `write_ladder.probe_write_access` is pure filesystem: it answers
 `held_by_other` for ANY Python process holding the project's fwdata lock,
 including this server's own idle parse/measurement worker. Filing
-(`handlers/parse.py`, `_held_by_own_read_worker` before this module existed)
+(`handlers/parse/filing.py`, `_held_by_own_read_worker` before this module existed)
 already told the two apart for its own writable open; `run_module`
 (`handlers/execution.py`) did not, which is the bug #223 reports -- the
 server's own idle worker was reported to the caller as a foreign process to
@@ -33,7 +33,7 @@ from typing import Any, Optional
 
 #: The verdict filing's plan uses when the probed holder turns out to be our
 #: own SHARED_ROLE read worker (contracts/tools.md row 8, FR-030). Kept here
-#: as the canonical spelling; `handlers/parse.py` re-exports it for callers
+#: as the canonical spelling; `handlers/parse/filing.py` re-exports it for callers
 #: that already import it from there.
 HELD_BY_OWN_READ_WORKER = "held_by_mcp_read_worker"
 
@@ -42,7 +42,7 @@ def busy_own_worker_run_note(run_ids: list) -> str:
     """` (run <id>)` for a refusal message, or `""` if no run id is known.
 
     Shared so the two busy-own-worker refusals (`handlers/execution.py`'s
-    `_release_own_worker_or_refuse`, `handlers/parse.py`'s
+    `_release_own_worker_or_refuse`, `handlers/parse/runs.py`'s
     `handle_flextools_parse_release`) format the run reference identically
     (#223 QC P2 -- the two messages had drifted into near-duplicates).
     """

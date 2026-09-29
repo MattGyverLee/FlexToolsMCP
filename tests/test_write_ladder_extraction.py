@@ -15,7 +15,7 @@ What this file proves:
   * no rung is re-implemented: an AST scan finds no direct call to
     `probe_project_access` / `perform_pre_write_backup` / `build_access_remedy`
     inside `handle_run_module`, inside the filing path of
-    `handlers/parse.py`, or anywhere in the `server/filing/` package. The one
+    `handlers/parse/`, or anywhere in the `server/filing/` package. The one
     place those leaves are called for a write decision is `write_ladder.py`.
 
 The behaviour of the rungs themselves is proven by the EXISTING ladder suite
@@ -203,14 +203,15 @@ def test_handle_run_module_calls_no_ladder_leaf_directly():
 
 
 def test_the_filing_path_calls_no_ladder_leaf_directly():
-    tree = ast.parse((SRC / "handlers" / "parse.py").read_text(encoding="utf-8"))
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        if "filing" not in node.name and node.name != "handle_flextools_parse_text":
-            continue
-        direct = _LADDER_LEAVES & set(_called_names(node))
-        assert not direct, f"{node.name} calls {sorted(direct)} directly; use write_ladder"
+    for path in sorted((SRC / "handlers" / "parse").glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if "filing" not in node.name and node.name != "handle_flextools_parse_text":
+                continue
+            direct = _LADDER_LEAVES & set(_called_names(node))
+            assert not direct, f"{node.name} calls {sorted(direct)} directly; use write_ladder"
 
 
 def test_the_filing_package_calls_no_ladder_leaf_directly():

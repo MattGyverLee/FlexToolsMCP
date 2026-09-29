@@ -187,7 +187,7 @@ def test_the_held_grammar_members_are_bound_too():
 @pytest.fixture
 def runner(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     instance = ParseRunner(
         pool=Pool(RecordingWorker()), record_dir=tmp_path / "runs", grace_window=30.0
@@ -212,7 +212,7 @@ async def test_the_grammar_scan_is_proposed_when_a_run_fails(tmp_path, monkeypat
     was no parse. This is the first checkpoint where it can.
     """
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     failing = ParseRunner(
         pool=Pool(RecordingWorker(fail_with=WorkerError("out of memory"))),
@@ -266,7 +266,7 @@ async def test_the_scan_is_not_proposed_on_a_still_running_run(tmp_path, monkeyp
     import asyncio
 
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
 
     class Slow(RecordingWorker):

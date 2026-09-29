@@ -272,7 +272,7 @@ def wired(worker, tmp_path, monkeypatch):
     into the same `project_not_found`.
     """
     monkeypatch.setattr(
-        parse_handler,
+        parse_handler.common,
         "_resolve_project",
         lambda name: (name or "Test Project", None),
     )
@@ -815,7 +815,7 @@ async def test_an_engine_mismatch_reaches_the_caller_as_its_own_refusal(
     }
 
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     refusing = RecordingWorker(fail_with=mismatch)
     parse_handler.set_runner(
@@ -855,7 +855,7 @@ async def test_an_unavailable_parser_refuses_as_parser_core_missing(
     }
 
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     parse_handler.set_runner(
         ParseRunner(
@@ -946,7 +946,7 @@ def test_no_parse_module_reaches_the_agent_probe():
     """
     roots = [
         REPO_ROOT / "src" / "flextoolsmcp" / "server" / "parse",
-        REPO_ROOT / "src" / "flextoolsmcp" / "server" / "handlers" / "parse.py",
+        REPO_ROOT / "src" / "flextoolsmcp" / "server" / "handlers" / "parse",
     ]
     offenders = []
     for root in roots:
@@ -1020,7 +1020,7 @@ async def test_an_unresolvable_piece_refuses_with_zero_parses(
     the first" would pass the `none` case alone.
     """
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     refusing = RecordingWorker(
         resolutions={
@@ -1080,7 +1080,7 @@ async def test_the_three_outcomes_get_three_different_hints(
     is why the HINTS are compared and not just the codes.
     """
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
 
     hints = {}
@@ -1256,7 +1256,7 @@ async def test_no_proposal_is_offered_from_a_cold_index(tmp_path, monkeypatch):
     asked to do would not be a courtesy.
     """
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
 
     cold = RecordingWorker(index_ready=False)
@@ -1292,7 +1292,7 @@ async def test_a_failing_identifier_spec_echoes_an_int_morph(worker, tmp_path, m
     the refusal unactionable.
     """
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     refusing = RecordingWorker(
         resolutions={
@@ -1326,7 +1326,7 @@ async def test_a_trace_whose_size_cannot_be_read_still_returns_a_result(wired, m
     filesystem.
     """
     monkeypatch.setattr(
-        parse_handler, "_trace_bytes", lambda handle, path: None
+        parse_handler.try_word, "_trace_bytes", lambda handle, path: None
     )
 
     payload = await call(word="makan", level="explain")

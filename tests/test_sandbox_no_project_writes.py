@@ -159,7 +159,7 @@ def e2e(tmp_path, sandbox_root, fake_project, fake_generator, monkeypatch):
     generator, project and engine."""
     monkeypatch.setenv("FAKE_PYTHON", sys.executable)
     monkeypatch.setattr(filing_paths, "projects_directory", lambda: fake_project.dir.parent)
-    monkeypatch.setattr(parse_handler, "_resolve_project", lambda name: (name or PROJECT, None))
+    monkeypatch.setattr(parse_handler.common, "_resolve_project", lambda name: (name or PROJECT, None))
 
     dll = tmp_path / "fw" / parser_probe.FIELDWORKS_HERMITCRAB_DLL
     engine_probe = parser_probe.EngineDiscovery(
@@ -173,7 +173,7 @@ def e2e(tmp_path, sandbox_root, fake_project, fake_generator, monkeypatch):
     monkeypatch.setattr(parser_probe, "discover_generate_hc_config", lambda *a, **k: ghc)
     # The worker runs as `--stub --sandbox`: everything but the engine calls.
     real_launch = parse_handler._sandbox_launch
-    monkeypatch.setattr(parse_handler, "_sandbox_launch",
+    monkeypatch.setattr(parse_handler.sandbox, "_sandbox_launch",
                         lambda plan: dict(real_launch(plan), worker_stub=True))
 
     def stub(**script):

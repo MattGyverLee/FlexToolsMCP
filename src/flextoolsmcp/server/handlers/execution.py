@@ -2897,7 +2897,7 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     `flextools_parse_text`'s shared read worker, or the bounded measurement
     worker) apart from a genuinely foreign Python process holding the same
     `.fwdata.lock`. Both report as `held_by_other`. Mirrors filing's own
-    handling of this (`handlers/parse.py:_held_by_own_read_worker` and the
+    handling of this (`handlers/parse/filing.py:_held_by_own_read_worker` and the
     release around L1700), generalized to any of the pool's roles and
     shared through `parse/own_worker.py` so the two write gates cannot
     answer "is this ours?" differently.
@@ -2991,7 +2991,7 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
 
     sharing = bool(decision.refusal.get("sharing_enabled"))
     if sharing:
-        # Mirror filing's confirmed gate (handlers/parse.py row 11): on a
+        # Mirror filing's confirmed gate (handlers/parse/filing.py row 11): on a
         # shared project our read worker coexists with a writable open, so
         # do not release it first -- the probe's `held_by_other` is our own
         # worker, not a foreign collision (issue #223, second repro).

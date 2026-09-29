@@ -635,7 +635,7 @@ async def test_a_sandbox_named_run_with_in_process_spine_is_not_filled(record_di
 
 async def test_a_long_sandbox_file_is_capped_and_says_so(record_dir, monkeypatch):
     """Like a raw trace (max_trace_chars): capped inline, the file path given."""
-    monkeypatch.setattr(parse_handler, "SANDBOX_LOG_MAX_CHARS", 10)
+    monkeypatch.setattr(parse_handler.run_log, "SANDBOX_LOG_MAX_CHARS", 10)
     record = _sandbox_record(record_dir, ["a"], results=["a"],
                              files={"worker-stderr.txt": _BANNER + _BLOCKS})
     payload = await _log(record.run_id, "hc_stdout")

@@ -637,7 +637,7 @@ async def test_aclose_runner_reaps_the_pool_and_is_idempotent():
         # worker on its way out.
         await parse_handler.aclose_runner()
         assert pool.closed == 1
-        assert parse_handler._runner is None
+        assert parse_handler.common._runner is None
     finally:
         parse_handler.set_runner(None)
 

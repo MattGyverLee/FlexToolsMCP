@@ -100,7 +100,7 @@ def worker():
 @pytest.fixture
 def wired(worker, tmp_path, monkeypatch):
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     parse_handler.set_runner(
         ParseRunner(pool=Pool(worker), record_dir=tmp_path / "runs", grace_window=30.0)
@@ -405,7 +405,7 @@ class HeldWorker(RecordingWorker):
 @pytest.fixture
 def make_runner(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     made = []
 

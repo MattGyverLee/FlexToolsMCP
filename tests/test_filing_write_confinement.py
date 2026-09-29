@@ -5,7 +5,7 @@ INVERSE confinement: exactly one module may open a project for writing in the
 parser area (parser-check CP4, FR-029, R-09; tasks.md T052).
 
 `test_parse_no_project_writes.py` proves the read spine never writes, over a
-FIXED scan set (`parse/`, `signals/`, `handlers/parse.py`). This file proves
+FIXED scan set (`parse/`, `signals/`, `handlers/parse/`). This file proves
 the other half: across the whole source tree, a writable open --
 `OpenProject(..., writeEnabled=True)` or a `writeEnabled=True` keyword
 anywhere -- appears in `server/filing/worker_filing.py` and nowhere else,

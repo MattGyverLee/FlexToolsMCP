@@ -39,7 +39,7 @@ REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from flextoolsmcp.server.handlers import parse as parse_handler  # noqa: E402
-from flextoolsmcp.server.parse import worker_main  # noqa: E402
+from flextoolsmcp.server.parse import worker_real_backend  # noqa: E402
 from flextoolsmcp.server.parse.runner import ParseRunner  # noqa: E402
 from flextoolsmcp.server.parse.worker_client import WorkerError  # noqa: E402
 
@@ -116,7 +116,7 @@ def test_the_worker_binds_only_members_that_exist_on_the_facade():
     a member the facade does not have fails at runtime on a live project
     and nowhere else.
     """
-    bound = _parser_attribute_names(worker_main)
+    bound = _parser_attribute_names(worker_real_backend)
 
     unknown = bound - FACADE_MEMBERS
     assert not unknown, (
@@ -156,7 +156,7 @@ def test_the_three_calls_the_worker_makes_are_named_in_the_facade_set():
     A worker that bound nothing at all would satisfy "binds only members
     that exist". These are the three FR-012 requires it to reach.
     """
-    bound = _parser_attribute_names(worker_main)
+    bound = _parser_attribute_names(worker_real_backend)
 
     for member in ("ParseWord", "TraceWordXml", "GetAvailability"):
         assert member in bound, (
@@ -173,7 +173,7 @@ def test_the_held_grammar_members_are_bound_too():
     repository would notice, and the held-grammar contract would quietly
     stop being exercised.
     """
-    bound = _parser_attribute_names(worker_main)
+    bound = _parser_attribute_names(worker_real_backend)
 
     assert "IsUpToDate" in bound, "currency is never confirmed"
     assert "Reload" in bound, "no explicit reload path is bound"

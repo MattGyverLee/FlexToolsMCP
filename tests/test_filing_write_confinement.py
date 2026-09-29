@@ -101,6 +101,7 @@ def test_the_filing_read_modules_make_no_write_call():
 
 def test_the_read_worker_still_opens_read_only():
     """FR-029: the read tools keep opening the project read-only."""
-    text = (SRC / "server" / "parse" / "worker_main.py").read_text(encoding="utf-8")
-    assert "writeEnabled=False" in text
-    assert _writable_opens(SRC / "server" / "parse" / "worker_main.py") == []
+    backend = SRC / "server" / "parse" / "worker_real_backend.py"
+    assert "writeEnabled=False" in backend.read_text(encoding="utf-8")
+    for worker in sorted((SRC / "server" / "parse").glob("worker_*.py")):
+        assert _writable_opens(worker) == [], worker.name

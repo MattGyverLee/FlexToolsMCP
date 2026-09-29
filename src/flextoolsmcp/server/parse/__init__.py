@@ -26,7 +26,10 @@ understand before editing anything here:
                       server never has a project open to read one from.
 
   Worker process (NEVER imported by the server process):
-    worker_main.py    the long-lived parse worker
+    worker_main.py    the long-lived parse worker's entry point, with its
+                      pieces in worker_protocol.py, worker_backend.py,
+                      worker_real_backend.py, worker_analysis.py,
+                      worker_sandbox_backend.py and worker_loop.py (#298)
 
 `worker_main.py` is addressed by dotted module path and launched through the
 existing `subprocess_helpers.run_script_async` family, exactly the way

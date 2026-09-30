@@ -87,19 +87,22 @@ class TestPartialModuleStructure(unittest.TestCase):
         self.assertFalse(result["is_partial_module"])
         self.assertFalse(result["has_main"])
 
-    def test_main_without_scaffolding_is_partial(self):
-        """Dennis's case: def Main but no docs/FlexToolsModule binding."""
+    def test_main_without_scaffolding_is_main_wrapped_snippet(self):
+        """Issue #303: def Main with NEITHER docs nor FlexToolsModule binding
+        is a Main-wrapped snippet -- it runs (advisory), it is not rejected."""
         code = (
             "def Main(project, report, modifyAllowed):\n"
             "    report.Info('hello')\n"
         )
         result = detect_partial_module_structure(code)
-        self.assertTrue(result["is_partial_module"])
+        self.assertFalse(result["is_partial_module"])
+        self.assertTrue(result["is_main_wrapped_snippet"])
         self.assertTrue(result["has_main"])
         missing_str = " ".join(result["missing_elements"])
         self.assertIn("docs", missing_str)
         self.assertIn("FlexToolsModule", missing_str)
-        self.assertTrue(result["suggestion"])
+        self.assertTrue(result["advisory"])
+        self.assertIn("FlexToolsModuleClass(Main, docs)", result["suggested_scaffold"])
 
     def test_main_with_docs_only_still_partial(self):
         """Has Main + docs but missing FlexToolsModule binding."""

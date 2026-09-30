@@ -478,9 +478,9 @@ class RunModuleInput(BaseModel):
     skip_module_check: bool = Field(
         default=False,
         description="If True, skip the partial-module structural check. "
-                    "Use when intentionally running module-shaped code (with `def Main`) "
-                    "that lacks docs/FlexToolsModule scaffolding -- e.g. quick tests of a "
-                    "Main-shaped function without bothering to fetch the full template."
+                    "Only half-modules are rejected (`def Main` plus exactly one of the "
+                    "docs dict / FlexToolsModule binding); pass this to run one as-is. "
+                    "`def Main` with neither piece runs as a snippet without it."
     )
     user_intent: Optional[str] = Field(
         default=None,

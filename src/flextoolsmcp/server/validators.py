@@ -477,22 +477,79 @@ def detect_module_structure(code: str) -> dict:
     }
 
 
+_DOCS_DICT_RE = re.compile(r'^\s*docs\s*=\s*\{', re.MULTILINE)
+_MODIFY_GUARD_RE = re.compile(r'\bif\s+(?:not\s+)?modifyAllowed\b')
+
+_SCAFFOLD_IMPORT = "from flextoolslib import *"
+_SCAFFOLD_BINDING = "FlexToolsModule = FlexToolsModuleClass(Main, docs)"
+
+
+def _scaffold_docs_block(modifies_db: bool) -> str:
+    """The canonical docs dict, matching flextools_get_module_template."""
+    return (
+        'docs = {FTM_Name        : "<Module name>",\n'
+        '        FTM_Version     : 1,\n'
+        f'        FTM_ModifiesDB  : {modifies_db},\n'
+        '        FTM_Synopsis    : "<One-line synopsis>",\n'
+        '        FTM_Description :\n'
+        '"""\n'
+        '<What the module does>\n'
+        '""" }'
+    )
+
+
+def build_module_scaffold(
+    code: str,
+    *,
+    include_docs: bool = True,
+    include_binding: bool = True,
+) -> str:
+    """Build a ready-to-paste FlexTools module scaffold for ``code`` (#303).
+
+    Mirrors the canonical form ``flextools_get_module_template`` emits: the
+    flextoolslib import (only if ``code`` lacks it), the docs dict before
+    ``def Main``, and the ``FlexToolsModule`` binding after it. Pass
+    ``include_docs`` / ``include_binding`` = False to leave out a piece the
+    code already has. ``FTM_ModifiesDB`` is True when the code guards writes
+    with ``if modifyAllowed:``.
+    """
+    parts: List[str] = []
+    if "from flextoolslib import" not in code:
+        parts.append("# At the top of the file:\n" + _SCAFFOLD_IMPORT)
+    if include_docs:
+        modifies_db = bool(_MODIFY_GUARD_RE.search(code))
+        parts.append(
+            "# Before def Main(...):\n" + _scaffold_docs_block(modifies_db)
+        )
+    if include_binding:
+        parts.append("# After def Main(...), at module level:\n" + _SCAFFOLD_BINDING)
+    return "\n\n".join(parts)
+
+
 def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = None) -> dict:
-    """Detect code that is module-shaped but missing scaffolding.
+    """Classify `def Main` code by how much FlexTools module scaffolding it has.
 
-    Fires when `def Main(...)` is present (the user is clearly authoring a
-    module) but the surrounding scaffolding (docs dict, FlexToolsModule
-    binding) is absent. Bare snippets without `Main` are not flagged --
-    they're a legitimate use of the unified runner.
+    Three outcomes when `def Main(...)` is present:
 
-    The signal we want to catch is Dennis's case: a multi-function file with
-    `def Main` that runs in the MCP runner only because the runner is
-    permissive, but would NOT load if saved as a real FlexTools module file.
+    * **Full module** (docs dict AND ``FlexToolsModuleClass(`` binding):
+      not flagged.
+    * **Main-wrapped snippet** (NEITHER piece; issue #303): not flagged.
+      The runner injects ``modifyAllowed`` and calls ``Main(project, report,
+      modifyAllowed)`` whenever Main is bound, scaffold or not, so the code
+      runs fine as a snippet. The scaffold only matters for saving it as a
+      real FlexTools module file, so the result carries an ``advisory`` and a
+      ready-to-paste ``suggested_scaffold`` instead of a rejection. Rejecting
+      here made weak models ping-pong between this gate and
+      ``unprotected_writes`` (add Main -> rejected, drop Main -> rejected).
+    * **Half-module** (exactly ONE piece): flagged (``is_partial_module``).
+      Someone started writing a module file and left it unfinished; it would
+      not load in FlexTools. ``suggested_scaffold`` holds the missing piece.
+
+    Bare snippets without `Main` are not flagged.
 
     The flextoolslib import is intentionally not checked: the MCP runner
     injects a synthetic flextoolslib module so the import is unnecessary in
-    this context. We only flag the parts that matter for `FlexToolsModule
-    = FlexToolsModuleClass(Main, docs)` to actually exist.
+    this context (it is included in ``suggested_scaffold`` when absent).
 
     Args:
         code: Source code string.
@@ -501,63 +558,82 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
 
     Returns:
         dict with:
-          is_partial_module: bool - has Main but missing scaffolding
+          is_partial_module: bool - half-module (reject)
+          is_main_wrapped_snippet: bool - Main with no scaffold (runs, advisory)
           has_main: bool - whether `def Main(...)` is present
-          missing_elements: list - what's missing (empty if not partial)
-          suggestion: str - one-line guidance for the AI
+          has_docs_dict / has_flextools_binding: bool
+          missing_elements: list - what's missing (empty for a full module)
+          suggestion: str - one-line guidance for the AI (half-module only)
+          advisory: str - non-blocking note (main-wrapped snippet only)
+          suggested_scaffold: str - ready-to-paste missing pieces ("" if none)
     """
-    has_main = False
+    result = {
+        "is_partial_module": False,
+        "is_main_wrapped_snippet": False,
+        "has_main": False,
+        "has_docs_dict": False,
+        "has_flextools_binding": False,
+        "missing_elements": [],
+        "suggestion": "",
+        "advisory": "",
+        "suggested_scaffold": "",
+    }
     if code_tree is None:
         try:
             code_tree = ast.parse(code)
         except SyntaxError:
-            return {
-                "is_partial_module": False,
-                "has_main": False,
-                "missing_elements": [],
-                "suggestion": "",
-            }
+            return result
 
-    for node in ast.walk(code_tree):
-        if isinstance(node, ast.FunctionDef) and node.name == "Main":
-            has_main = True
-            break
-
+    has_main = any(
+        isinstance(node, ast.FunctionDef) and node.name == "Main"
+        for node in ast.walk(code_tree)
+    )
     if not has_main:
-        return {
-            "is_partial_module": False,
-            "has_main": False,
-            "missing_elements": [],
-            "suggestion": "",
-        }
+        return result
+    result["has_main"] = True
+
+    has_docs = bool(_DOCS_DICT_RE.search(code))
+    has_binding = "FlexToolsModuleClass(" in code
+    result["has_docs_dict"] = has_docs
+    result["has_flextools_binding"] = has_binding
 
     missing = []
-    if not re.search(r'^\s*docs\s*=\s*\{', code, re.MULTILINE):
+    if not has_docs:
         missing.append("docs = {FTM_Name: ..., FTM_Synopsis: ..., FTM_ModifiesDB: ..., FTM_Description: ...}")
-    if "FlexToolsModuleClass(" not in code:
-        missing.append("FlexToolsModule = FlexToolsModuleClass(Main, docs)")
+    if not has_binding:
+        missing.append(_SCAFFOLD_BINDING)
+    result["missing_elements"] = missing
 
     if not missing:
-        return {
-            "is_partial_module": False,
-            "has_main": True,
-            "missing_elements": [],
-            "suggestion": "",
-        }
+        return result
 
-    suggestion = (
-        "Code defines `Main(...)` but is missing FlexTools module scaffolding. "
-        "If this is meant to be a saved FlexTools module file, call "
-        "flextools_get_module_template first and copy in the missing pieces. "
-        "If this is just a quick test, drop the `def Main:` wrapper and run the "
-        "body as a bare snippet, or pass skip_module_check=True to run it as-is."
+    scaffold = build_module_scaffold(
+        code, include_docs=not has_docs, include_binding=not has_binding
     )
-    return {
-        "is_partial_module": True,
-        "has_main": True,
-        "missing_elements": missing,
-        "suggestion": suggestion,
-    }
+    result["suggested_scaffold"] = scaffold
+
+    if not has_docs and not has_binding:
+        result["is_main_wrapped_snippet"] = True
+        result["advisory"] = (
+            "Code defines Main(...) but has no docs/FlexToolsModule scaffold; "
+            "it ran as a snippet (the runner calls Main(project, report, "
+            "modifyAllowed) itself). No change is needed to run it here. To "
+            "save it as a FlexTools module file, add the suggested_scaffold:\n"
+            + scaffold
+        )
+        return result
+
+    present = "docs dict" if has_docs else "FlexToolsModule binding"
+    absent = "FlexToolsModule binding" if has_docs else "docs dict"
+    result["is_partial_module"] = True
+    result["suggestion"] = (
+        f"Code defines `Main(...)` and has the {present} but not the "
+        f"{absent}, so it would not load as a FlexTools module file. Paste "
+        "in the suggested_scaffold (the missing piece), or pass "
+        "skip_module_check=True to run it as-is. (Code with `def Main` and "
+        "NEITHER scaffold piece is not rejected -- it runs as a snippet.)"
+    )
+    return result
 
 
 _TOP_LEVEL_MAIN_MESSAGE = (
@@ -6243,11 +6319,24 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     }
 
 
-def get_unprotected_write_guidance(cert: dict) -> dict:
+def get_unprotected_write_guidance(
+    cert: dict,
+    code: Optional[str] = None,
+    code_tree: Optional[ast.AST] = None,
+) -> dict:
     """Generate detailed guidance for fixing unprotected mutations.
+
+    Issue #303: the guidance states that ``modifyAllowed`` is predefined in
+    bare snippets and shows a bare-snippet fix (``bare_snippet_fix``), so a
+    model does not wrap the code in ``def Main`` just to get the name. When
+    ``code`` defines Main without the FlexTools scaffold,
+    ``main_wrapper_note`` says it runs as a snippet anyway, so the model does
+    not bounce between adding and removing Main.
 
     Args:
         cert: Result from certify_script_readonly() with unprotected mutations
+        code: Optional source, used only for the Main-wrapper note.
+        code_tree: Optional pre-parsed AST for ``code``.
 
     Returns:
         Guidance dict with examples and step-by-step instructions
@@ -6262,27 +6351,110 @@ def get_unprotected_write_guidance(cert: dict) -> dict:
     if unprotected_liblcm:
         mutations_found.extend([m['method'] + "()" for m in unprotected_liblcm])
 
-    return {
+    next_steps = [
+        "1. Wrap every mutation in `if modifyAllowed:` where it is -- "
+        "modifyAllowed is predefined in bare snippets, so no def Main is "
+        "needed (see bare_snippet_fix)",
+        "2. Move read-only logic before the if block",
+        "3. Add an else block to preview what would be changed",
+        "4. Re-run with the updated code",
+        "Optional: fetch a template above to see the pattern inside a full module file",
+    ]
+    guidance = {
         "error": "unprotected_mutations_detected",
         "message": f"Found {len(mutations_found)} unprotected mutation(s). Code cannot run until protected.",
         "mutations_found": mutations_found,
-        "why": "All write operations must be guarded with 'if modifyAllowed:' to prevent accidental data loss.",
+        "why": (
+            "All write operations must be guarded with 'if modifyAllowed:' to "
+            "prevent accidental data loss. modifyAllowed is predefined in bare "
+            "snippets (it mirrors write_enabled): you do NOT need a "
+            "def Main(...) wrapper to use it."
+        ),
         "fix_pattern": {
             "before": "project.LexEntry.SetLexemeForm(entry, 'new_form')",
             "after": "if modifyAllowed:\n    project.LexEntry.SetLexemeForm(entry, 'new_form')\n    report.Info('Updated entry')\nelse:\n    report.Info('(Would update entry to: new_form)')"
         },
+        "bare_snippet_fix": (
+            "# Bare snippet -- no def Main needed, modifyAllowed is predefined:\n"
+            "for entry in project.LexEntry.GetAll():\n"
+            "    if modifyAllowed:\n"
+            "        project.LexEntry.SetLexemeForm(entry, 'new_form')\n"
+            "        report.Info('Updated entry')\n"
+            "    else:\n"
+            "        report.Info('(Would update entry to: new_form)')"
+        ),
         "templates_to_review": [
             "flextools_get_module_template(flavor='flexicon') (recommended - best documented)",
             "flextools_get_module_template(flavor='flexlibs_stable') (for FieldWorks < 9.0)",
             "flextools_get_module_template(flavor='liblcm') (for advanced use cases)"
         ],
-        "next_steps": [
-            "1. Fetch a template above to see the if modifyAllowed: pattern in context",
-            "2. Update your code to wrap all mutations with: if modifyAllowed:",
-            "3. Move read-only logic before the if block",
-            "4. Add else block to preview what would be changed",
-            "5. Re-run with the updated code"
-        ]
+        "next_steps": next_steps,
+    }
+    if code is not None:
+        structure = detect_partial_module_structure(code, code_tree)
+        if structure.get("is_main_wrapped_snippet"):
+            note = (
+                "Your code defines Main(...) without the docs/FlexToolsModule "
+                "scaffold. That is fine: it runs as a snippet and Main "
+                "receives modifyAllowed. Keep the def Main wrapper (or drop "
+                "it) -- only the `if modifyAllowed:` guard is missing."
+            )
+            guidance["main_wrapper_note"] = note
+            next_steps.insert(0, "Note: " + note)
+    return guidance
+
+
+def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = None) -> dict:
+    """Build the partial_module_structure rejection (issue #303).
+
+    Shared by handle_run_module's live gate and validate_only's Gate 3 so the
+    two cannot drift. ``partial_check`` is a half-module result from
+    detect_partial_module_structure (``is_partial_module`` True). ``cert`` is
+    certify_script_readonly()'s result for the same code: when it reports
+    unprotected mutations the rejection names BOTH requirements (scaffold
+    AND ``if modifyAllowed:``) so a model fixing one does not bounce off the
+    other.
+
+    ``skip_module_check=True`` is the FIRST next step: it is the one-move way
+    out when the code only needs to run here.
+
+    Returns:
+        dict with message, next_steps, also_unprotected_writes (bool) and
+        mutations_found (list; empty when writes are guarded or absent).
+    """
+    mutations_found: List[str] = []
+    also_unprotected = bool(cert) and not cert.get("is_certified_readonly", True)
+    if also_unprotected:
+        mutations_found = get_unprotected_write_guidance(cert).get("mutations_found", [])
+
+    message = partial_check.get("suggestion", "")
+    next_steps = [
+        "1. To just run it here: pass skip_module_check=True (runs the code as-is)",
+        "2. To keep it as a module file: paste suggested_scaffold into your code "
+        "(flextools_get_module_template(flavor='flexicon') has the full canonical form)",
+    ]
+    if also_unprotected:
+        message += (
+            f" ALSO: {len(mutations_found)} unprotected mutation(s) must be "
+            "wrapped in `if modifyAllowed:` -- that is required either way, "
+            "with or without the scaffold or skip_module_check."
+        )
+        next_steps.append(
+            "3. Wrap every mutation in `if modifyAllowed:` (required in both "
+            "cases; mutations_found lists them)"
+        )
+        next_steps.append("4. Re-run flextools_run_module() with both fixes")
+    else:
+        next_steps.append("3. Re-run flextools_run_module()")
+    next_steps.append(
+        "Alternative: remove the partial scaffold piece; `def Main` with no "
+        "scaffold at all runs as a snippet"
+    )
+    return {
+        "message": message,
+        "next_steps": next_steps,
+        "also_unprotected_writes": also_unprotected,
+        "mutations_found": mutations_found,
     }
 
 

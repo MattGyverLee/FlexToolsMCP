@@ -215,6 +215,11 @@ class PartialModuleStructureDetail(BaseModel):
     has_main: Optional[bool] = None
     has_docs_dict: Optional[bool] = None
     has_flextools_binding: Optional[bool] = None
+    # Issue #303: ready-to-paste missing scaffold piece(s), and -- when the
+    # code also has unguarded writes -- the combined second requirement.
+    suggested_scaffold: Optional[str] = None
+    also_unprotected_writes: Optional[bool] = None
+    mutations_found: Optional[List[str]] = None
 
 
 class TopLevelMainInvocationDetail(BaseModel):

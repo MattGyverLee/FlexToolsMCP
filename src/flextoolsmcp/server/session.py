@@ -99,9 +99,20 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "message and fix the offending field before retrying."
     ),
     "partial_module_structure": (
-        "call flextools_get_module_template to get the full "
-        "Main/docs/FlexToolsModule scaffold, OR drop the def Main "
-        "wrapper entirely and submit the body as a bare snippet."
+        # Issue #303: only HALF-modules (one of docs / FlexToolsModule
+        # present) reject now; def Main with no scaffold runs as a snippet.
+        "the code has only half of the module scaffold. Pass "
+        "skip_module_check=True to run it as-is, or paste the rejection's "
+        "suggested_scaffold in. Any unguarded write still needs "
+        "`if modifyAllowed:` either way (modifyAllowed is predefined in "
+        "bare snippets too)."
+    ),
+    "unprotected_writes": (
+        # Issue #303: stop the add-Main / drop-Main ping-pong.
+        "wrap each mutation in `if modifyAllowed:` where it is. "
+        "modifyAllowed is predefined in bare snippets -- do not add or "
+        "remove a def Main wrapper to fix this (Main with no scaffold also "
+        "runs as a snippet)."
     ),
     "top_level_main_invocation": (
         "remove the module-level Main(...) call -- flextools_run_module "

@@ -327,6 +327,10 @@ async def test_project_is_byte_identical_after_every_terminal_path(e2e, path):
     assert_project_untouched(e2e.project, before)
     assert_work_empty()
     # Nothing the run started is still running (and so could still write).
+    # Phase 11 (#242): a successful run returns its worker to the idle
+    # pool, so reap the pool first -- what must not survive is a process
+    # the pool no longer owns.
+    await e2e.runner.aclose()
     deadline = time.monotonic() + 8
     alive = processes_with(str(e2e.tmp))
     while alive and time.monotonic() < deadline:

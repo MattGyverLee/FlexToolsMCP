@@ -76,7 +76,7 @@ except ImportError:
 try:
     from ..validators import (
         detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
-        detect_class_id_constant_error,
+        detect_class_id_constant_error, detect_non_castable_attribute_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
@@ -99,7 +99,7 @@ try:
 except ImportError:
     from server.validators import (
         detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
-        detect_class_id_constant_error,
+        detect_class_id_constant_error, detect_non_castable_attribute_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
@@ -5366,8 +5366,19 @@ MODULE_CODE = {code}
             # being told to "resubmit" for a preflight that can't catch a raw-LCM
             # attribute typo.
             native_did_you_mean = extract_python_did_you_mean(execution_result["error"])
+            # Issue #307: receivers no cast can fix (str, wrappers, service
+            # locators / factories / repositories) never get the cast hint;
+            # detect_polymorphic_error already declines them.
+            non_castable = detect_non_castable_attribute_error(execution_result["error"])
             if _skip_generic_attr_paths:
                 pass  # kclsid class-id constant handled above; nothing to add.
+            elif non_castable.get("is_service_lookup"):
+                # GetInstance<T>() & co.: the index-based name suggester would
+                # only offer a near-miss spelling of a lookup that can't work.
+                execution_result["error_type"] = "ServiceLookupAttributeError"
+                execution_result["object_type"] = non_castable["object_type"]
+                execution_result["property_name"] = non_castable["property_name"]
+                execution_result["help"] = non_castable["suggestion"]
             elif polymorphic_info["is_polymorphic_error"] and polymorphic_info.get("rewrite"):
                 execution_result["polymorphic_error_detected"] = True
                 execution_result["error_type"] = "PolymorphicAttributeError"
@@ -5395,6 +5406,10 @@ MODULE_CODE = {code}
                         f"'{polymorphic_info.get('object_type')}'. Python suggests "
                         f"'{native_did_you_mean}'. Replace it and re-run."
                     )
+                elif non_castable.get("is_non_castable"):
+                    execution_result["object_type"] = non_castable["object_type"]
+                    execution_result["property_name"] = non_castable["property_name"]
+                    execution_result["help"] = non_castable["suggestion"]
                 elif polymorphic_info["is_polymorphic_error"]:
                     # No concrete rewrite and no name suggestion: hand the model the
                     # fix directly (#122) rather than deferring to a stateless resubmit.

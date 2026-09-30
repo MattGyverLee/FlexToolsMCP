@@ -115,6 +115,21 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   names `project.UndoableOperation()` as the replacement, and no longer
   offers `project.Transaction()`, which opens no unit of work. The error-code
   count in `docs/TOOL-CONTRACT.md` moves from 44 to 45.
+- The casting preflight no longer rejects a guarded flexicon call inside a
+  comprehension
+  ([#308](https://github.com/MattGyverLee/FlexToolsMCP/issues/308)). Before,
+  `[project.LexEntry.GetHeadword(c) if c.ClassName == "LexEntry" else ... for
+  c in project.LexEntry.GetComplexFormComponents(e)]` was rejected. A
+  `c.ClassName` guard now counts in a conditional expression, in a
+  comprehension's `if` filter, and in a short-circuit `and`, the same way the
+  `if` statement from #278 does. A guard on one arm of a one-line conditional
+  no longer clears the other arm. Comprehension targets are now tracked in
+  every generator, including polymorphic LCM collections. A comprehension or
+  nested `for` that rebinds a name hides the outer polymorphic loop variable
+  of the same name. An unguarded call on a mixed collection is still
+  rejected, but now it comes with a `rewrite` wrapped in a ClassName guard,
+  and `pattern` holds the flagged call rather than the first 80 characters of
+  the line.
 - Runtime `AttributeError`s whose receiver no cast can fix no longer get the
   `PolymorphicAttributeError` cast hint
   ([#307](https://github.com/MattGyverLee/FlexToolsMCP/issues/307)). Plain

@@ -7,6 +7,8 @@ Capture rules through handle_run_module with a stub executor:
 - Captured with intent + at least 4 real lines on success.
 - Not captured for a 2-line probe, an empty intent, or a failed run.
 - requires_write only when write-enabled AND mutating.
+- Issue #309: swallowed-exception / trivial-output runs are not captured;
+  requires_write follows the run's write evidence (LCM action count).
 """
 
 import asyncio
@@ -66,6 +68,10 @@ def _stub_minimal(monkeypatch, tmp_path, execution_mod, project_discovery):
     except Exception:
         pass
     kernel.session_state.configure(session_id="test-capture", api_mode="flexicon")
+    # Never copy a real project from a unit test: stub the pre-write backup.
+    monkeypatch.setattr(
+        execution_mod, "perform_pre_write_backup",
+        lambda *_a, **_k: {"path": None, "created": False, "skipped_reason": "test"})
 
 
 GOOD_CODE = (
@@ -85,9 +91,12 @@ MUTATING_CODE = (
 )
 
 
+_INFO = [{"type": "info", "message": "gloss one", "ref": None}]
+
+
 def _success_result():
     return {
-        "success": True, "messages": [], "info_count": 1,
+        "success": True, "messages": list(_INFO), "info_count": 1,
         "warning_count": 0, "error_count": 0,
         "write_certification": {"performs_writes": False},
     }
@@ -181,7 +190,7 @@ def test_requires_write_only_when_mutating(monkeypatch, tmp_path):
     _stub_minimal(monkeypatch, tmp_path, execution_mod, project_discovery)
 
     monkeypatch.setattr(execution_mod, "run_script_async", _fake_ok(
-        {"success": True, "messages": [], "info_count": 0,
+        {"success": True, "messages": list(_INFO), "info_count": 1,
          "warning_count": 0, "error_count": 0,
          "write_certification": {"performs_writes": True}}))
     args = _base_args(MUTATING_CODE, "mutating run",
@@ -192,3 +201,85 @@ def test_requires_write_only_when_mutating(monkeypatch, tmp_path):
     assert payload.get("success") is True
     rows = _load_rows()
     assert rows and rows[0]["requires_write"] is True
+
+
+# ---------------------------------------------------------------------------
+# Issue #309: remember gate + requires_write from write evidence
+# ---------------------------------------------------------------------------
+
+SWALLOW_CODE = (
+    "for wf in project.Wordforms.GetAll():\n"
+    "    try:\n"
+    "        status = project.Wordforms.TryWord(wf)\n"
+    "    except Exception:\n"
+    "        status = 'No - Unknown issue'\n"
+    "    report.Info('Analyzed %s: %s' % (wf, status))\n"
+)
+
+
+def _run(execution_mod, args):
+    result = asyncio.new_event_loop().run_until_complete(
+        execution_mod.handle_run_module(args))
+    return json.loads(result[0].text)
+
+
+def test_not_captured_for_swallowed_exception(monkeypatch, tmp_path):
+    monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(tmp_path))
+    import flextoolsmcp.server.handlers.execution as execution_mod
+    import flextoolsmcp.server.project_discovery as project_discovery
+    _stub_minimal(monkeypatch, tmp_path, execution_mod, project_discovery)
+
+    monkeypatch.setattr(execution_mod, "run_script_async", _fake_ok(_success_result()))
+    payload = _run(execution_mod, _base_args(SWALLOW_CODE, "top 10 unparsed wordforms"))
+    assert payload.get("success") is True
+    assert _load_rows() == []
+
+
+def test_not_captured_for_trivial_repeated_messages(monkeypatch, tmp_path):
+    monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(tmp_path))
+    import flextoolsmcp.server.handlers.execution as execution_mod
+    import flextoolsmcp.server.project_discovery as project_discovery
+    _stub_minimal(monkeypatch, tmp_path, execution_mod, project_discovery)
+
+    msgs = [{"type": "info", "message": "Analyzed 000: No - Unknown issue", "ref": None}] * 24
+    res = _success_result()
+    res.update(messages=msgs, info_count=24)
+    monkeypatch.setattr(execution_mod, "run_script_async", _fake_ok(res))
+    payload = _run(execution_mod, _base_args(GOOD_CODE, "top 10 unparsed wordforms"))
+    assert payload.get("success") is True
+    assert _load_rows() == []
+
+
+def test_write_enabled_run_with_lcm_actions_requires_write(monkeypatch, tmp_path):
+    """Preflight saw no write, but LCM counted actions: store as a write."""
+    monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(tmp_path))
+    import flextoolsmcp.server.handlers.execution as execution_mod
+    import flextoolsmcp.server.project_discovery as project_discovery
+    _stub_minimal(monkeypatch, tmp_path, execution_mod, project_discovery)
+
+    res = _success_result()
+    res["lcm_undoable_action_count"] = 7
+    monkeypatch.setattr(execution_mod, "run_script_async", _fake_ok(res))
+    payload = _run(execution_mod, _base_args(GOOD_CODE, "repair cl.10 features",
+                                             write_enabled=True, confirmed=True))
+    assert payload.get("success") is True
+    rows = _load_rows()
+    assert rows and rows[0]["requires_write"] is True
+    assert rows[0]["operations"] == ["read", "write"]
+
+
+def test_write_enabled_run_with_zero_actions_stays_read(monkeypatch, tmp_path):
+    """A write-enabled session running read-only code that changed nothing."""
+    monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(tmp_path))
+    import flextoolsmcp.server.handlers.execution as execution_mod
+    import flextoolsmcp.server.project_discovery as project_discovery
+    _stub_minimal(monkeypatch, tmp_path, execution_mod, project_discovery)
+
+    res = _success_result()
+    res["lcm_undoable_action_count"] = 0
+    monkeypatch.setattr(execution_mod, "run_script_async", _fake_ok(res))
+    payload = _run(execution_mod, _base_args(GOOD_CODE, "list glosses",
+                                             write_enabled=True, confirmed=True))
+    assert payload.get("success") is True
+    rows = _load_rows()
+    assert rows and rows[0]["requires_write"] is False

@@ -10,6 +10,13 @@ fingerprint, with one-time legacy migration from skeletons.jsonl.
 Storage: UTF-8 JSONL (ensure_ascii=False), atomic rewrite via temp +
 os.replace, 2,000-row cap. Never raises; capture returns None on any
 failure or precondition miss.
+
+Issue #309: a run is only remembered when it looks like real work (see
+remember_rejection_reason), rows with the same intent + entities collapse
+into one, and requires_write comes from the run's write evidence (see
+derive_requires_write) rather than a default. Legacy rows stored as
+read-only are re-checked on load and flipped to write when the evidence
+says so, so a reused write recipe never skips the dry-run gate.
 """
 
 from __future__ import annotations
@@ -44,6 +51,8 @@ __all__ = [
     "fingerprint",
     "capture",
     "capture_from_code",
+    "remember_rejection_reason",
+    "derive_requires_write",
     "load_local_recipes",
     "load_all",
     "list_local_recipes",
@@ -293,6 +302,364 @@ def _extract_params(code: str) -> List[Dict[str, str]]:
 
 
 # ---------------------------------------------------------------------------
+# Remember gate (issue #309)
+# ---------------------------------------------------------------------------
+#
+# A run that "succeeded" is not necessarily worth remembering. Three cheap,
+# deliberately conservative checks decide; any hit means the run is not
+# stored (missing a recipe costs little, a fabricated one gets reused):
+#
+# 1. Swallowed exception that fabricates a result: a bare / `except
+#    Exception` / `except BaseException` handler that neither re-raises,
+#    nor reports via report.Error / report.Warning, nor uses the caught
+#    exception, but does produce a non-empty string literal (e.g.
+#    `status = "No - Unknown issue"`). Plain skip handlers (pass, continue,
+#    return None) are allowed -- shipped recipes use them for probes.
+# 2. Hard-coded source data: a for-loop iterates a literal table -- a
+#    list/tuple/set whose items are all tuples/lists of constants, at least
+#    one mixing a string with a number, e.g. [('000', 154091)] -- defined
+#    outside the PARAMS block. Rows like that are pasted query results, not
+#    data read from the project. Flat literal lists (filters, names) and
+#    anything inside PARAMS are not flagged.
+# 3. Trivial messages (only when the caller passes them): no report output
+#    at all; every message carries a failure marker ("unknown issue",
+#    "has no attribute", ...); or 3+ messages identical once digits are
+#    masked.
+
+_BROAD_EXC_NAMES = {"Exception", "BaseException"}
+_FAILURE_MARKER_RE = re.compile(
+    r"unknown issue|unknown error|has no attribute|"
+    r"traceback \(most recent|not implemented",
+    re.IGNORECASE,
+)
+_PARAMS_START_MARK = "# --- PARAMS ---"
+_PARAMS_END_MARK = "# --- END PARAMS ---"
+
+
+def _is_broad_handler(handler: ast.ExceptHandler) -> bool:
+    t = handler.type
+    if t is None:
+        return True
+    elts = t.elts if isinstance(t, ast.Tuple) else [t]
+    for e in elts:
+        name = e.id if isinstance(e, ast.Name) else (
+            e.attr if isinstance(e, ast.Attribute) else "")
+        if name in _BROAD_EXC_NAMES:
+            return True
+    return False
+
+
+def _handler_fabricates(handler: ast.ExceptHandler) -> bool:
+    has_string = False
+    for stmt in handler.body:
+        for n in ast.walk(stmt):
+            if isinstance(n, ast.Raise):
+                return False
+            if (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                    and n.func.attr in ("Error", "Warning")):
+                return False
+            if handler.name and isinstance(n, ast.Name) and n.id == handler.name:
+                return False
+            if (isinstance(n, ast.Constant) and isinstance(n.value, str)
+                    and n.value.strip()):
+                has_string = True
+    return has_string
+
+
+def _has_fabricating_handler(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ExceptHandler) and _is_broad_handler(node):
+            if _handler_fabricates(node):
+                return True
+    return False
+
+
+def _params_line_range(code: str) -> Optional[range]:
+    start = None
+    for i, line in enumerate(code.splitlines(), start=1):
+        s = line.strip()
+        if start is None and s.startswith(_PARAMS_START_MARK):
+            start = i
+        elif start is not None and s.startswith(_PARAMS_END_MARK):
+            return range(start, i + 1)
+    return None
+
+
+def _is_const(n: ast.AST) -> bool:
+    return isinstance(n, ast.Constant) or (
+        isinstance(n, ast.UnaryOp) and isinstance(n.operand, ast.Constant))
+
+
+def _is_number(n: ast.AST) -> bool:
+    if isinstance(n, ast.UnaryOp):
+        n = n.operand
+    return (isinstance(n, ast.Constant) and isinstance(n.value, (int, float))
+            and not isinstance(n.value, bool))
+
+
+def _is_literal_table(n: ast.AST) -> bool:
+    if not isinstance(n, (ast.List, ast.Tuple, ast.Set)) or not n.elts:
+        return False
+    mixed = False
+    for row in n.elts:
+        if not isinstance(row, (ast.Tuple, ast.List)) or not row.elts:
+            return False
+        if not all(_is_const(c) for c in row.elts):
+            return False
+        has_str = any(isinstance(c, ast.Constant) and isinstance(c.value, str)
+                      for c in row.elts)
+        if has_str and any(_is_number(c) for c in row.elts):
+            mixed = True
+    return mixed
+
+
+def _iterates_literal_table(code: str, tree: ast.AST) -> bool:
+    params = _params_line_range(code)
+
+    def _outside_params(n: ast.AST) -> bool:
+        return params is None or getattr(n, "lineno", 0) not in params
+
+    tables: set = set()
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Assign) and _is_literal_table(node.value)
+                and _outside_params(node)):
+            for tgt in node.targets:
+                if isinstance(tgt, ast.Name):
+                    tables.add(tgt.id)
+
+    def _is_table_ref(n: ast.AST) -> bool:
+        if isinstance(n, ast.Name):
+            return n.id in tables
+        if _is_literal_table(n):
+            return _outside_params(n)
+        # sorted(rows), enumerate(rows), list(rows), rows[:10]
+        if isinstance(n, ast.Call) and n.args:
+            return _is_table_ref(n.args[0])
+        if isinstance(n, ast.Subscript):
+            return _is_table_ref(n.value)
+        return False
+
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.For, ast.comprehension)) and _is_table_ref(node.iter):
+            return True
+    return False
+
+
+def _message_texts(messages: List[Any]) -> List[str]:
+    texts: List[str] = []
+    for m in messages:
+        t = m.get("message") if isinstance(m, dict) else m
+        if t is None:
+            continue
+        t = str(t).strip()
+        if t:
+            texts.append(t)
+    return texts
+
+
+def _trivial_messages_reason(messages: List[Any]) -> Optional[str]:
+    texts = _message_texts(messages)
+    if not texts:
+        return "no report output"
+    if all(_FAILURE_MARKER_RE.search(t) for t in texts):
+        return "every message reports an unknown/failed result"
+    if len(texts) >= 3 and len({re.sub(r"\d+", "#", t) for t in texts}) == 1:
+        return "identical repeated messages"
+    return None
+
+
+def remember_rejection_reason(code: str,
+                              messages: Optional[List[Any]] = None
+                              ) -> Optional[str]:
+    """Why a successful run should NOT be remembered, or None if it may be.
+
+    ``messages`` is the run's report message list; None means unknown and
+    skips the message checks (store-level callers without a run).
+    """
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return "code does not parse"
+    try:
+        if _has_fabricating_handler(tree):
+            return "broad except handler swallows the error and fabricates a result"
+        if _iterates_literal_table(code, tree):
+            return "source data is a hard-coded literal table"
+        if messages is not None:
+            return _trivial_messages_reason(list(messages))
+    except Exception:
+        return None
+    return None
+
+
+# ---------------------------------------------------------------------------
+# requires_write derivation (issue #309)
+# ---------------------------------------------------------------------------
+
+def _code_is_write_shaped(code: str) -> bool:
+    """Static write evidence, reusing the run_module write detectors.
+
+    True when the code reads ``modifyAllowed`` (a write guard, not just the
+    Main() parameter), when detect_cud_operations() flags a CUD call, or
+    when the index-based certifier (compute_is_mutating_script) finds any
+    mutation, guarded or not.
+    """
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Name) and node.id == "modifyAllowed"
+                and isinstance(node.ctx, ast.Load)):
+            return True
+    try:
+        try:
+            from . import validators as _v  # type: ignore
+        except ImportError:
+            import validators as _v  # type: ignore
+    except Exception:
+        return False
+    cud: Dict[str, Any] = {}
+    try:
+        cud = _v.detect_cud_operations(code) or {}
+        if cud.get("is_cud"):
+            return True
+    except Exception:
+        cud = {}
+    idx = None
+    try:
+        try:
+            from . import kernel as _k  # type: ignore
+        except ImportError:
+            import kernel as _k  # type: ignore
+        idx = _k.get_api_index()
+    except Exception:
+        idx = None
+    if idx is not None:
+        try:
+            cert = _v.certify_script_readonly(code, idx, tree)
+            if _v.compute_is_mutating_script(cert, cud):
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def derive_requires_write(
+    code: str,
+    *,
+    declared: bool = False,
+    write_enabled: Optional[bool] = None,
+    performs_writes: Optional[bool] = None,
+    lcm_undoable_action_count: Any = None,
+) -> bool:
+    """Decide requires_write from the run's write evidence; when in doubt, True.
+
+    - declared (the caller's is_mutating_script) or performs_writes -> True
+    - LCM recorded undoable actions (> 0) -> True (catches #280 index gaps)
+    - write_enabled run that reported no action count -> True
+    - code is write-shaped (_code_is_write_shaped) -> True
+    A write_enabled run whose LCM count was 0 and whose code shows no write
+    stays read-only, so a write-enabled session does not taint read recipes.
+    """
+    if declared or performs_writes is True:
+        return True
+    count: Optional[int] = None
+    if lcm_undoable_action_count is not None:
+        try:
+            count = int(lcm_undoable_action_count)
+        except (TypeError, ValueError):
+            count = None
+    if count is not None and count > 0:
+        return True
+    if write_enabled and count is None:
+        return True
+    return _code_is_write_shaped(code)
+
+
+def _norm_intent(intent: Any) -> str:
+    return re.sub(r"\s+", " ", str(intent or "")).strip().casefold().rstrip(".!? ")
+
+
+# ---------------------------------------------------------------------------
+# Legacy requires_write repair (issue #309)
+# ---------------------------------------------------------------------------
+#
+# Rows written before #309 (and rows migrated from skeletons.jsonl) could be
+# stored requires_write False although the run wrote. On load, any such row
+# whose code is write-shaped, or whose recorded op_ids include a
+# write_enabled run in operations.jsonl, is flipped to requires_write True
+# and tagged requires_write_repaired. The check is keyed on the file's
+# (mtime, size) so unchanged stores are not re-scanned on every load.
+
+_REPAIR_SEEN: Dict[str, Any] = {}
+
+
+def _stat_key(path: Path) -> Optional[tuple]:
+    try:
+        st = path.stat()
+        return (st.st_mtime_ns, st.st_size)
+    except OSError:
+        return None
+
+
+def _load_write_enabled_op_ids() -> set:
+    ids: set = set()
+    for p in _ops_log_candidates():
+        try:
+            if not p.exists():
+                continue
+            with p.open("r", encoding="utf-8") as fp:
+                for line in fp:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                    except Exception:
+                        continue
+                    if not isinstance(obj, dict) or not obj.get("write_enabled"):
+                        continue
+                    oid = obj.get("op_id") or obj.get("opId")
+                    if oid:
+                        ids.add(str(oid))
+        except Exception:
+            continue
+    return ids
+
+
+def _repair_write_flags(rows: List[Dict[str, Any]]) -> bool:
+    candidates = [r for r in rows if not bool(r.get("requires_write"))]
+    if not candidates:
+        return False
+    write_ops: Optional[set] = None
+    changed = False
+    for r in candidates:
+        evidence = _code_is_write_shaped(str(r.get("code") or ""))
+        if not evidence and r.get("op_ids"):
+            if write_ops is None:
+                write_ops = _load_write_enabled_op_ids()
+            evidence = any(str(o) in write_ops for o in r.get("op_ids") or [])
+        if evidence:
+            r["requires_write"] = True
+            r["operations"] = ["read", "write"]
+            r["requires_write_repaired"] = True
+            changed = True
+    return changed
+
+
+def _ensure_write_flags_locked(path: Path) -> None:
+    """Repair legacy write flags in place; caller holds _WRITE_LOCK."""
+    key = _stat_key(path)
+    if key is None or _REPAIR_SEEN.get(str(path)) == key:
+        return
+    rows = _read_rows(path)
+    if rows and _repair_write_flags(rows):
+        _atomic_write(path, rows)
+    _REPAIR_SEEN[str(path)] = _stat_key(path)
+
+
+# ---------------------------------------------------------------------------
 # Read / write
 # ---------------------------------------------------------------------------
 
@@ -351,6 +718,10 @@ def capture(
     is_mutating: bool = False,
     is_mutating_script: bool = False,
     mutating: bool = False,
+    write_enabled: Optional[bool] = None,
+    performs_writes: Optional[bool] = None,
+    lcm_undoable_action_count: Any = None,
+    messages: Optional[List[Any]] = None,
     op_id: str = "",
     op_ids: Optional[List[str]] = None,
     session_id: str = "",
@@ -367,11 +738,23 @@ def capture(
             ast.parse(code)
         except SyntaxError:
             return None
+        # Issue #309: swallowed-exception / hard-coded-data / trivial-output
+        # runs are not worth remembering.
+        if remember_rejection_reason(code, messages) is not None:
+            return None
         fp = fingerprint_code(code)
         rid = f"local-{fp}"
         entities = _entities_from_code(code)
         params = _extract_params(code)
-        mut = bool(requires_write or is_mutating or is_mutating_script or mutating)
+        # Issue #309: requires_write from the run's write evidence, not a
+        # default -- a reused write recipe must hit the dry-run gate.
+        mut = derive_requires_write(
+            code,
+            declared=bool(requires_write or is_mutating or is_mutating_script or mutating),
+            write_enabled=write_enabled,
+            performs_writes=performs_writes,
+            lcm_undoable_action_count=lcm_undoable_action_count,
+        )
         proj = project if project is not None else (project_name or "")
         now = _now_iso()
         with _WRITE_LOCK:
@@ -383,12 +766,25 @@ def capture(
                 path = get_recipe_path()
             except Exception:
                 return None
+            try:
+                _ensure_write_flags_locked(path)
+            except Exception:
+                pass
             rows = _read_rows(path)
             existing = None
             for r in rows:
                 if r.get("id") == rid:
                     existing = r
                     break
+            if existing is None:
+                # Issue #309: same intent + same entities is the same recipe,
+                # even when the code drifted (keeps the newest code).
+                key = _norm_intent(intent)
+                for r in rows:
+                    if (_norm_intent(r.get("intent")) == key
+                            and sorted(r.get("entities") or []) == entities):
+                        existing = r
+                        break
             if existing is not None:
                 existing["use_count"] = int(existing.get("use_count", 1) or 1) + 1
                 existing["last_used"] = now
@@ -400,6 +796,7 @@ def capture(
                 if proj:
                     projs.add(proj)
                 existing["projects"] = sorted(projs)
+                # Sticky: once any run of this recipe wrote, it stays a write.
                 if mut:
                     existing["requires_write"] = True
                     existing["operations"] = ["read", "write"]
@@ -411,11 +808,13 @@ def capture(
                     existing["params"] = params
                 if "operations" not in existing:
                     existing["operations"] = ["read", "write"] if bool(existing.get("requires_write")) else ["read"]
+                existing.setdefault("verified", False)
                 rows = _apply_cap(rows)
                 try:
                     _atomic_write(path, rows)
                 except Exception:
                     return None
+                _REPAIR_SEEN[str(path)] = _stat_key(path)
                 return dict(existing)
             record: Dict[str, Any] = {
                 "id": rid,
@@ -432,6 +831,8 @@ def capture(
                 "op_ids": [op_id] if op_id else [],
                 "source": "local",
                 "migrated": False,
+                # Auto-remembered, never human-reviewed (issue #309).
+                "verified": False,
                 "schema": _SCHEMA,
             }
             rows.append(record)
@@ -440,6 +841,7 @@ def capture(
                 _atomic_write(path, rows)
             except Exception:
                 return None
+            _REPAIR_SEEN[str(path)] = _stat_key(path)
             return dict(record)
     except Exception:
         return None
@@ -459,7 +861,17 @@ def load_local_recipes() -> List[Dict[str, Any]]:
     except Exception:
         pass
     try:
-        return _read_rows(get_recipe_path())
+        path = get_recipe_path()
+    except Exception:
+        return []
+    # Issue #309: flip legacy read-only rows that actually wrote.
+    try:
+        with _WRITE_LOCK:
+            _ensure_write_flags_locked(path)
+    except Exception:
+        pass
+    try:
+        return _read_rows(path)
     except Exception:
         return []
 

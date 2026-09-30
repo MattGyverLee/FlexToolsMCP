@@ -1772,19 +1772,33 @@ def _capture_skeletons_after_success(
     user_intent: Optional[str] = None,
     project_name: Optional[str] = None,
     is_mutating_script: bool = False,
+    execution_result: Optional[Dict[str, Any]] = None,
+    write_enabled: Optional[bool] = None,
+    messages: Optional[List[Any]] = None,
 ) -> None:
     """Persist the whole successful snippet as one local recipe (US2).
 
     Replaces the per-def skeleton closet: the store derives entities from
     this code's AST (never the ambient session), dedupes by fingerprint,
     and never raises. The op has already succeeded by the time we reach here.
+
+    Issue #309: the run's write evidence (write_enabled, the
+    write_certification verdict, LCM's undoable-action count) and its full
+    report messages go to the store, which derives requires_write from them
+    and refuses to remember swallowed-exception / trivial-output runs.
     """
     try:
+        result = execution_result or {}
+        write_cert = result.get("write_certification") or {}
         local_recipes.capture(
             code,
             user_intent=user_intent,
             project=project_name,
             is_mutating_script=is_mutating_script,
+            write_enabled=write_enabled,
+            performs_writes=write_cert.get("performs_writes"),
+            lcm_undoable_action_count=result.get("lcm_undoable_action_count"),
+            messages=messages,
             op_id=op_id,
         )
     except Exception:
@@ -5462,6 +5476,9 @@ MODULE_CODE = {code}
                 user_intent=user_intent,
                 project_name=project_name,
                 is_mutating_script=is_mutating_script,
+                execution_result=execution_result,
+                write_enabled=write_enabled,
+                messages=report_messages,
             )
             # Issue #46: attach auto-fix metadata when rewrites were applied.
             # Both fields are written atomically via this helper so neither can

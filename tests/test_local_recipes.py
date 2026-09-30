@@ -481,3 +481,241 @@ class TestRecall:
             "list the glosses of every entry", local_recipes=local_rows, limit=10)
         ids = [r["id"] for r in result.get("recipes", [])]
         assert rec["id"] in ids
+
+
+# ---------------------------------------------------------------------------
+# Issue #309: remember gate, intent+entities dedupe, requires_write evidence,
+# legacy write-flag repair, promote honours the corrected flag.
+# ---------------------------------------------------------------------------
+
+SWALLOW_CODE = (
+    "for wf in project.Wordforms.GetAll():\n"
+    "    try:\n"
+    "        status = project.Wordforms.TryWord(wf)\n"
+    "    except Exception:\n"
+    "        status = 'No - Unknown issue'\n"
+    "    report.Info('Analyzed %s: %s' % (wf, status))\n"
+)
+
+LITERAL_TABLE_CODE = (
+    "UNPARSED = [('000', 154091), ('abc', 12)]\n"
+    "for word, count in UNPARSED:\n"
+    "    wf = project.Wordforms.Find(word)\n"
+    "    report.Info('%s: %d' % (word, count))\n"
+)
+
+WRITE_CODE = (
+    "entries = project.LexEntry.GetAll()\n"
+    "for entry in entries:\n"
+    "    form = project.LexEntry.GetLexemeForm(entry)\n"
+    "    if form.endswith('-'):\n"
+    "        project.LexEntry.SetLexemeForm(entry, form.rstrip('-'))\n"
+)
+
+MSGS = [{"type": "info", "message": "gloss one"},
+        {"type": "info", "message": "gloss two"}]
+
+
+class TestRememberGate:
+    def test_swallowed_exception_not_remembered(self, isolated_recipe_dir):
+        mod = _import_local_recipes()
+        assert mod.remember_rejection_reason(SWALLOW_CODE) is not None
+        assert _call_capture(mod, code=SWALLOW_CODE, user_intent="top 10 unparsed",
+                             project="P", op_id="op-sw", messages=MSGS) is None
+
+    def test_skip_handlers_and_reported_errors_allowed(self, isolated_recipe_dir):
+        mod = _import_local_recipes()
+        skip = SWALLOW_CODE.replace("status = 'No - Unknown issue'", "continue")
+        reported = SWALLOW_CODE.replace(
+            "status = 'No - Unknown issue'",
+            "report.Warning('could not parse')\n        continue")
+        uses_exc = SWALLOW_CODE.replace(
+            "except Exception:\n        status = 'No - Unknown issue'",
+            "except Exception as e:\n        status = 'failed: ' + str(e)")
+        narrow = SWALLOW_CODE.replace("except Exception:", "except KeyError:")
+        for code in (skip, reported, uses_exc, narrow):
+            assert mod.remember_rejection_reason(code, MSGS) is None, code
+
+    def test_literal_table_not_remembered(self, isolated_recipe_dir):
+        mod = _import_local_recipes()
+        assert "literal" in (mod.remember_rejection_reason(LITERAL_TABLE_CODE) or "")
+        assert _call_capture(mod, code=LITERAL_TABLE_CODE, user_intent="top unparsed",
+                             project="P", op_id="op-lit", messages=MSGS) is None
+        # Direct iteration over an inline table is flagged too.
+        inline = LITERAL_TABLE_CODE.replace(
+            "for word, count in UNPARSED:",
+            "for word, count in sorted([('000', 154091)]):")
+        assert mod.remember_rejection_reason(inline) is not None
+
+    def test_literal_table_heuristic_is_conservative(self, isolated_recipe_dir):
+        mod = _import_local_recipes()
+        # Flat literal filter lists are fine.
+        flat = LITERAL_TABLE_CODE.replace(
+            "UNPARSED = [('000', 154091), ('abc', 12)]", "UNPARSED = ['000', 'abc']"
+        ).replace("for word, count in UNPARSED:", "for word in UNPARSED:\n    count = 0")
+        assert mod.remember_rejection_reason(flat) is None
+        # A table inside the PARAMS block is a tunable input, not fabricated data.
+        params = (
+            "# --- PARAMS ---\n"
+            "UNPARSED = [('000', 154091), ('abc', 12)]\n"
+            "# --- END PARAMS ---\n"
+        ) + LITERAL_TABLE_CODE.split("\n", 1)[1]
+        assert mod.remember_rejection_reason(params) is None
+
+    def test_trivial_messages_not_remembered(self, isolated_recipe_dir):
+        mod = _import_local_recipes()
+        repeated = [{"type": "info", "message": "Analyzed 000: No - Unknown issue"}] * 24
+        assert _call_capture(mod, code=SAMPLE_CODE, user_intent="x", project="P",
+                             op_id="op-t1", messages=repeated) is None
+        assert _call_capture(mod, code=SAMPLE_CODE, user_intent="x", project="P",
+                             op_id="op-t2", messages=[]) is None
+        failing = [{"type": "info", "message": "wf1: 'X' object has no attribute 'TryWord'"},
+                   {"type": "info", "message": "wf2: unknown error"}]
+        assert _call_capture(mod, code=SAMPLE_CODE, user_intent="x", project="P",
+                             op_id="op-t3", messages=failing) is None
+        # Distinct messages that merely share a template are real output.
+        varied = [{"type": "info", "message": f"entry {w}: 2 senses"} for w in ("a", "b", "c")]
+        assert _call_capture(mod, code=SAMPLE_CODE, user_intent="x", project="P",
+                             op_id="op-t4", messages=varied) is not None
+
+    def test_new_rows_marked_unverified(self, isolated_recipe_dir):
+        mod = _import_local_recipes()
+        rec = _call_capture(mod, code=SAMPLE_CODE, user_intent="glosses",
+                            project="P", op_id="op-v", messages=MSGS)
+        assert rec is not None and rec["verified"] is False
+
+
+class TestIntentEntitiesDedupe:
+    def test_same_intent_and_entities_collapse(self, isolated_recipe_dir):
+        mod = _import_local_recipes()
+        load = _load_fn(mod)
+        r1 = _call_capture(mod, code=SAMPLE_CODE, user_intent="Top 10 unparsed wordforms",
+                           project="P", op_id="op-1", messages=MSGS)
+        drifted = SAMPLE_CODE + "report.Info('done')\n"
+        r2 = _call_capture(mod, code=drifted, user_intent="top 10  unparsed wordforms.",
+                           project="P", op_id="op-2", messages=MSGS)
+        assert r1 is not None and r2 is not None
+        assert r2["id"] == r1["id"]
+        assert r2["use_count"] == 2
+        assert r2["code"] == drifted  # newest successful code wins
+        assert len(load()) == 1
+
+    def test_different_entities_do_not_collapse(self, isolated_recipe_dir):
+        mod = _import_local_recipes()
+        load = _load_fn(mod)
+        _call_capture(mod, code=SAMPLE_CODE, user_intent="same intent",
+                      project="P", op_id="op-1", messages=MSGS)
+        other = (
+            "texts = project.Texts.GetAll()\n"
+            "for t in texts:\n"
+            "    name = project.Texts.GetName(t)\n"
+            "    report.Info(name)\n"
+        )
+        _call_capture(mod, code=other, user_intent="same intent",
+                      project="P", op_id="op-2", messages=MSGS)
+        assert len(load()) == 2
+
+
+class TestRequiresWriteEvidence:
+    def test_derive_requires_write(self):
+        mod = _import_local_recipes()
+        d = mod.derive_requires_write
+        assert d(SAMPLE_CODE) is False
+        assert d(SAMPLE_CODE, declared=True) is True
+        assert d(SAMPLE_CODE, performs_writes=True) is True
+        assert d(SAMPLE_CODE, write_enabled=True, lcm_undoable_action_count=3) is True
+        # Write-enabled with no count reported: when in doubt, write.
+        assert d(SAMPLE_CODE, write_enabled=True) is True
+        # Write-enabled, LCM saw nothing, code reads only: stays read.
+        assert d(SAMPLE_CODE, write_enabled=True, lcm_undoable_action_count=0) is False
+        # Write-shaped code is a write even when the caller said otherwise.
+        assert d(WRITE_CODE, write_enabled=False) is True
+
+    def test_capture_stores_write_evidence(self, isolated_recipe_dir):
+        mod = _import_local_recipes()
+        rec = _call_capture(mod, code=SAMPLE_CODE, user_intent="repair features",
+                            project="P", op_id="op-w", requires_write=False,
+                            write_enabled=True, lcm_undoable_action_count=12,
+                            messages=MSGS)
+        assert rec["requires_write"] is True
+        assert rec["operations"] == ["read", "write"]
+        rec2 = _call_capture(mod, code=WRITE_CODE, user_intent="strip hyphens",
+                             project="P", op_id="op-w2", requires_write=False,
+                             messages=MSGS)
+        assert rec2["requires_write"] is True
+
+
+def _legacy_row(rid, code, op_ids=None, intent="legacy"):
+    return {
+        "id": rid, "intent": intent, "code": code, "entities": [],
+        "requires_write": False, "operations": ["read"], "params": [],
+        "projects": [], "first_used": "2026-09-01T00:00:00+00:00",
+        "last_used": "2026-09-01T00:00:00+00:00", "use_count": 1,
+        "op_ids": op_ids or [], "source": "local", "migrated": False,
+        "schema": "local-recipe/1",
+    }
+
+
+class TestLegacyWriteRepair:
+    def _seed(self, tmp_path, monkeypatch, rows, ops_lines=None):
+        monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(tmp_path))
+        monkeypatch.delenv("FLEXTOOLSMCP_SKELETON_DIR", raising=False)
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("FLEXTOOLSMCP_LOG_DIR", str(log_dir))
+        with (log_dir / "operations.jsonl").open("w", encoding="utf-8") as fp:
+            for line in ops_lines or []:
+                fp.write(json.dumps(line) + "\n")
+        with (tmp_path / "recipes.jsonl").open("w", encoding="utf-8") as fp:
+            for r in rows:
+                fp.write(json.dumps(r) + "\n")
+
+    def test_write_shaped_legacy_row_flipped_on_load(self, tmp_path, monkeypatch):
+        mod = _import_local_recipes()
+        self._seed(tmp_path, monkeypatch, [
+            _legacy_row("local-aaaaaaaaaaaa", WRITE_CODE, intent="Normalize allomorphs"),
+            _legacy_row("local-bbbbbbbbbbbb", SAMPLE_CODE, intent="list glosses"),
+        ])
+        rows = {r["id"]: r for r in _load_fn(mod)()}
+        fixed = rows["local-aaaaaaaaaaaa"]
+        assert fixed["requires_write"] is True
+        assert fixed["operations"] == ["read", "write"]
+        assert fixed["requires_write_repaired"] is True
+        assert rows["local-bbbbbbbbbbbb"]["requires_write"] is False
+        # Persisted, not just patched in memory.
+        on_disk = [json.loads(ln) for ln in
+                   (tmp_path / "recipes.jsonl").read_text(encoding="utf-8").splitlines()]
+        assert {r["id"]: r["requires_write"] for r in on_disk}["local-aaaaaaaaaaaa"] is True
+
+    def test_row_from_write_enabled_op_flipped(self, tmp_path, monkeypatch):
+        mod = _import_local_recipes()
+        self._seed(tmp_path, monkeypatch, [
+            _legacy_row("local-cccccccccccc", SAMPLE_CODE, op_ids=["op-w1"]),
+            _legacy_row("local-dddddddddddd", SAMPLE_CODE + "report.Info('x')\n",
+                        op_ids=["op-r1"]),
+        ], ops_lines=[{"op_id": "op-w1", "write_enabled": True},
+                      {"op_id": "op-r1", "write_enabled": False}])
+        rows = {r["id"]: r for r in _load_fn(mod)()}
+        assert rows["local-cccccccccccc"]["requires_write"] is True
+        assert rows["local-dddddddddddd"]["requires_write"] is False
+
+    def test_promote_honours_repaired_flag(self, tmp_path, monkeypatch):
+        import importlib
+        cli = importlib.import_module("flextoolsmcp.recipe_cli")
+        self._seed(tmp_path, monkeypatch, [
+            _legacy_row("local-eeeeeeeeeeee", WRITE_CODE, intent="Consolidate verb slots"),
+        ])
+        out = tmp_path / "drafts"
+        rc = cli.main(["promote", "local-eeeeeeeeeeee", "--id", "consolidate-slots",
+                       "--out", str(out)])
+        assert rc == 0
+        text = (out / "consolidate-slots.py").read_text(encoding="utf-8")
+        assert "requires_write: true" in text
+        assert 'operations: ["read", "write"]' in text
+
+    def test_render_draft_never_downgrades_write_operations(self):
+        from flextoolsmcp import recipe_files
+        rec = _legacy_row("local-ffffffffffff", SAMPLE_CODE)
+        rec["operations"] = ["read", "write"]
+        text = recipe_files.render_draft(rec, "some-draft")
+        assert "requires_write: true" in text

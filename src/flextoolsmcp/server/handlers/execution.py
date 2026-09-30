@@ -3754,7 +3754,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     ]
                     hint_msg = (
                         "Each entry in casting_issues carries `rewrite` (the cast-wrapped "
-                        "expression) and `imports_needed` (the SIL.LCModel imports to add). "
+                        "or ClassName-guarded expression) and `imports_needed` (the "
+                        "SIL.LCModel imports to add). "
                         "Apply them line-by-line and re-run."
                     )
                 else:

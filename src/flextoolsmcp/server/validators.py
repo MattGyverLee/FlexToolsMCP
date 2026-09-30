@@ -2740,7 +2740,8 @@ def _build_loop_element_types(
     *,
     casting_index: Optional[Dict[str, Any]] = None,
 ) -> Dict[Tuple[int, str], Tuple[str, bool]]:
-    """(line_num, var_name) -> (element_type, is_polymorphic) for for-loop targets.
+    """(line_num, var_name) -> (element_type, is_polymorphic) for for-loop
+    and comprehension targets (every generator, issue #308).
 
     Shared by ``detect_casting_needs`` (issue #121) and
     ``detect_interface_attribute_typos`` (issue #127).
@@ -2764,56 +2765,73 @@ def _build_loop_element_types(
         for _ln in range(start_line, end_line + 1):
             loop_element_types[(_ln, target.id)] = (elem_type, poly)
 
-    if api_index is not None:
-        _accessor_to_ops = _accessor_to_ops_map(api_index)
+    def _unbind_loop_target(target: ast.AST, start_line: int, end_line: int) -> None:
+        # Issue #308: a rebinding whose iterable resolves to nothing known
+        # still ends any outer binding of the same name over its own range.
+        for name in ast.walk(target):
+            if isinstance(name, ast.Name):
+                for _ln in range(start_line, end_line + 1):
+                    loop_element_types.pop((_ln, name.id), None)
 
-        def _bind_from_call(
-            target: ast.AST,
-            call_node: ast.AST,
-            start: int,
-            end: int,
-            body: Optional[List[ast.stmt]] = None,
-        ) -> None:
-            if not isinstance(call_node, ast.Call) or not isinstance(call_node.func, ast.Attribute):
-                return
+    _accessor_to_ops = _accessor_to_ops_map(api_index) if api_index is not None else {}
+    _poly_collections: Dict[str, Any] = {}
+    if casting_index and isinstance(casting_index, dict):
+        _poly_collections = casting_index.get("polymorphic_collections") or {}
+
+    def _bind_from_iter(
+        target: ast.AST,
+        iter_node: ast.AST,
+        start: int,
+        end: int,
+        body: Optional[List[ast.stmt]] = None,
+    ) -> bool:
+        """Bind `target` from a flexicon Operations call or an LCM
+        polymorphic collection; False when the iterable is neither."""
+        if (
+            api_index is not None
+            and isinstance(iter_node, ast.Call)
+            and isinstance(iter_node.func, ast.Attribute)
+        ):
             ops_class = _resolve_receiver_ops_class(
-                call_node.func.value,
+                iter_node.func.value,
                 _accessor_to_ops,
                 operations_aliases,
                 facade_names,
             )
-            if not ops_class:
-                return
-            found = _method_element_type(api_index, ops_class, call_node.func.attr)
-            if found is None:
-                return
-            elem_type, poly = found
-            _bind_loop_target(target, start, end, elem_type, poly, body=body)
+            found = (
+                _method_element_type(api_index, ops_class, iter_node.func.attr)
+                if ops_class
+                else None
+            )
+            if found is not None:
+                _bind_loop_target(target, start, end, found[0], found[1], body=body)
+                return True
+        if _poly_collections and isinstance(iter_node, ast.Attribute):
+            _base_type = (_poly_collections.get(iter_node.attr) or {}).get("base_type")
+            if _base_type:
+                _bind_loop_target(target, start, end, _base_type, True, body=body)
+                return True
+        return False
 
-        for node in ast.walk(tree):
-            if isinstance(node, ast.For) and node.body:
-                end_line = node.end_lineno or node.body[-1].end_lineno or node.body[-1].lineno
-                _bind_from_call(node.target, node.iter, node.lineno, end_line, body=node.body)
-            elif isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
-                end_line = node.end_lineno or node.lineno
-                if node.generators:
-                    gen = node.generators[0]
-                    _bind_from_call(gen.target, gen.iter, node.lineno, end_line)
-
-    if casting_index and isinstance(casting_index, dict):
-        _poly_collections = casting_index.get("polymorphic_collections") or {}
-        if _poly_collections:
-            for node in ast.walk(tree):
-                if not (isinstance(node, ast.For) and isinstance(node.iter, ast.Attribute)):
-                    continue
-                _info = _poly_collections.get(node.iter.attr)
-                if not _info:
-                    continue
-                _base_type = _info.get("base_type")
-                if not _base_type or not node.body:
-                    continue
-                _end_line = node.end_lineno or node.body[-1].end_lineno or node.body[-1].lineno
-                _bind_loop_target(node.target, node.lineno, _end_line, _base_type, True, body=node.body)
+    # One breadth-first walk for both binding sources: ast.walk yields every
+    # enclosing `for`/comprehension before anything nested inside it, so an
+    # inner rebinding of the same name always overwrites (or, when its
+    # iterable is unknown, drops) the outer binding on the lines it covers.
+    for node in ast.walk(tree):
+        if isinstance(node, ast.For) and node.body:
+            end_line = node.end_lineno or node.body[-1].end_lineno or node.body[-1].lineno
+            if not _bind_from_iter(node.target, node.iter, node.lineno, end_line, body=node.body):
+                _unbind_loop_target(node.target, node.lineno, end_line)
+        elif isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
+            end_line = node.end_lineno or node.lineno
+            # Issue #308: every generator binds its own target (the old
+            # generators[0]-only walk missed `for e in xs for c in
+            # project.LexEntry.GetComplexFormComponents(e)`), and a
+            # comprehension has its own scope, so an outer polymorphic `c`
+            # must not leak onto `[... c ... for c in project.LexiconAllEntries()]`.
+            for gen in node.generators:
+                if not _bind_from_iter(gen.target, gen.iter, node.lineno, end_line):
+                    _unbind_loop_target(gen.target, node.lineno, end_line)
 
     return loop_element_types
 
@@ -5083,7 +5101,19 @@ def _is_classname_access_on_var(expr: ast.AST, var_name: str) -> bool:
 
 
 def _class_name_literals_from_compare(test: ast.AST, var_name: str) -> Set[str]:
-    """LCM class names proven by `var.ClassName == "X"` or `in (...)`."""
+    """LCM class names proven by `var.ClassName == "X"` or `in (...)`.
+
+    Issue #308: an `and` chain proves every narrowing conjunct at once, so
+    `c.ClassName == "LexEntry" and ...` narrows `c` just like the bare
+    compare (intersection when several conjuncts narrow the same name).
+    """
+    if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.And):
+        proven: Optional[Set[str]] = None
+        for value in test.values:
+            found = _class_name_literals_from_compare(value, var_name)
+            if found:
+                proven = found if proven is None else proven & found
+        return proven or set()
     if not isinstance(test, ast.Compare) or len(test.ops) != 1:
         return set()
     if not _is_classname_access_on_var(test.left, var_name):
@@ -5130,11 +5160,44 @@ def _elif_if_containing(
 def _class_name_literals_from_classname_guard(
     node: ast.AST, parents: Dict[ast.AST, ast.AST], var_name: str
 ) -> Set[str]:
-    """Innermost enclosing ``if``/``elif`` arm that narrows ``var_name``."""
+    """Innermost enclosing ``if``/``elif`` arm that narrows ``var_name``.
+
+    Issue #308: the expression-level guards are honored too, since a weak
+    model reaches for them first inside a comprehension, where an ``if``
+    statement can't go:
+
+      ``f(c) if c.ClassName == "LexEntry" else ...``   (IfExp body)
+      ``[f(c) for c in xs if c.ClassName == "LexEntry"]``  (comprehension filter)
+      ``c.ClassName == "LexEntry" and f(c)``           (short-circuit ``and``)
+    """
     current: ast.AST = node
     while current in parents:
         parent = parents[current]
-        if isinstance(parent, ast.If):
+        if isinstance(parent, ast.IfExp):
+            if current is parent.body:
+                found = _class_name_literals_from_compare(parent.test, var_name)
+                if found:
+                    return found
+        elif isinstance(parent, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
+            _results = (
+                (parent.key, parent.value)
+                if isinstance(parent, ast.DictComp)
+                else (parent.elt,)
+            )
+            if any(current is r for r in _results):
+                for gen in parent.generators:
+                    for cond in gen.ifs:
+                        found = _class_name_literals_from_compare(cond, var_name)
+                        if found:
+                            return found
+        elif isinstance(parent, ast.BoolOp) and isinstance(parent.op, ast.And):
+            for value in parent.values:
+                if value is current:
+                    break
+                found = _class_name_literals_from_compare(value, var_name)
+                if found:
+                    return found
+        elif isinstance(parent, ast.If):
             if _stmt_list_contains_node(parent.body, node):
                 found = _class_name_literals_from_compare(parent.test, var_name)
                 if found:
@@ -5162,11 +5225,30 @@ def _interfaces_from_classname_guard_at_line(
             continue
         if not (isinstance(n, ast.Name) and n.id == var_name):
             continue
-        for lcm_class in _class_name_literals_from_classname_guard(n, parents, var_name):
-            iface = class_name_mapping.get(lcm_class)
-            if iface:
-                ifaces.add(iface)
+        ifaces |= _interfaces_from_classname_guard_for_node(
+            n, parents, var_name, class_name_mapping
+        )
     return ifaces
+
+
+def _interfaces_from_classname_guard_for_node(
+    node: ast.AST,
+    parents: Dict[ast.AST, ast.AST],
+    var_name: str,
+    class_name_mapping: Dict[str, str],
+) -> Set[str]:
+    """Interfaces a ClassName guard proves for THIS occurrence of `var_name`.
+
+    Issue #308: the line-keyed variant above unions every occurrence on the
+    line, so on a one-line `f(c) if c.ClassName == "LexEntry" else g(c)` the
+    guarded `f(c)` would also clear the unguarded `g(c)`. Rule B checks one
+    argument node at a time and uses this node-precise form.
+    """
+    return {
+        class_name_mapping[c]
+        for c in _class_name_literals_from_classname_guard(node, parents, var_name)
+        if c in class_name_mapping
+    }
 
 
 # Issue #103: hvo instability. liblcm states this outright --
@@ -7955,10 +8037,11 @@ def detect_casting_needs(
                     if _build_cast_candidate_set(_arg, _parents, tree).get(_arg.id):
                         continue
                 if _class_name_mapping:
-                    _guard_ifaces = _interfaces_from_classname_guard_at_line(
-                        tree,
+                    # Issue #308: node-precise, so a guard on one arm of a
+                    # one-line conditional can't clear the other arm.
+                    _guard_ifaces = _interfaces_from_classname_guard_for_node(
+                        _arg,
                         _guard_parents or _parents,
-                        _node.lineno,
                         _arg.id,
                         _class_name_mapping,
                     )
@@ -7989,10 +8072,31 @@ def detect_casting_needs(
                     f"elif {_arg.id}.ClassName == \"LexSense\": "
                     f"project.Senses.GetGloss({_arg.id})"
                 )
+                # Issue #308: always hand back a paste-ready rewrite. There is
+                # no single cast to offer, so the rewrite is the call itself
+                # behind the ClassName guard this rule honors -- an
+                # expression, so it drops into a comprehension or f-string
+                # as-is. cast_interface stays None, which keeps auto-fix off:
+                # the `else None` arm is a behavior choice the caller makes.
+                _call_src = ast.get_source_segment(code, _node) or ast.unparse(_node)
+                _guard_classes = sorted(
+                    {
+                        _cls
+                        for _cls, _iface in _class_name_map.items()
+                        if _iface in (_accepted or [_expected_iface])
+                    }
+                ) or [_base_name]
+                if len(_guard_classes) == 1:
+                    _guard_test = f'{_arg.id}.ClassName == "{_guard_classes[0]}"'
+                else:
+                    _guard_test = f"{_arg.id}.ClassName in ({', '.join(repr(c) for c in _guard_classes)})"
+                _rewrite = f"({_call_src} if {_guard_test} else None)"
                 issues.append({
                     "property": _method_name,
                     "line": _node.lineno,
-                    "pattern": _src_line.strip()[:80],
+                    # Issue #308: the flagged call, not the first 80 chars of
+                    # its line (which cut the call off mid-comprehension).
+                    "pattern": _call_src,
                     "found_at": _src_line.strip()[:120],
                     "missing_on": [_element_type],
                     "available_on": [_expected_iface],
@@ -8009,7 +8113,7 @@ def detect_casting_needs(
                     # hard-blocks read-only runs; see the design-decision
                     # writeup for the tradeoff against a "warning" choice.
                     "severity": "error",
-                    "rewrite": None,  # no single-site rewrite -- needs a ClassName branch, not a cast
+                    "rewrite": _rewrite,
                     "imports_needed": [],
                     "cast_interface": None,
                 })

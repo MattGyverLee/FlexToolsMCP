@@ -382,8 +382,14 @@ def _resolve_project(project_name: Optional[str]):
         from ..execution import _available_projects_payload
     except (ImportError, ValueError):
         from server.handlers.execution import _available_projects_payload
+    try:
+        from ...project_discovery import normalize_project_name, project_not_found_fields
+    except (ImportError, ValueError):
+        from server.project_discovery import normalize_project_name, project_not_found_fields
 
-    name = project_name or session_state.get_project()
+    # Issue #311: a punctuation-only name ("``") is treated as omitted and
+    # falls back to the session; "`Sena 3`" is unwrapped to "Sena 3".
+    name = normalize_project_name(project_name) or session_state.get_project()
     if not name:
         return None, error_response(
             "project_name_required",
@@ -403,10 +409,8 @@ def _resolve_project(project_name: Optional[str]):
         return None, error_response(
             resolve_err["error_code"],
             resolve_err["message"],
-            suggestions=resolve_err["suggestions"],
-            reason=resolve_err["reason"],
-            hint=resolve_err["hint"],
             session=session_state.summary(),
+            **project_not_found_fields(resolve_err),
         )
     if resolved:
         try:

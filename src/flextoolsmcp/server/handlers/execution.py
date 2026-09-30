@@ -76,7 +76,7 @@ except ImportError:
 try:
     from ..validators import (
         detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
-        detect_class_id_constant_error,
+        detect_class_id_constant_error, detect_non_castable_attribute_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
@@ -99,7 +99,7 @@ try:
 except ImportError:
     from server.validators import (
         detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
-        detect_class_id_constant_error,
+        detect_class_id_constant_error, detect_non_castable_attribute_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
@@ -277,11 +277,6 @@ ERROR_WRONG_LIBRARY = "wrong_library_imports"
 ERROR_UNPROTECTED_CODE = "unprotected_code"
 
 
-# Issue #53: cap the inlined project list so a projects-directory with
-# hundreds of entries doesn't bloat every rejection payload.
-_AVAILABLE_PROJECTS_CAP = 15
-
-
 def _available_projects_payload() -> Dict[str, Any]:
     """Build the self-healing `available_projects` block for cold run_module
     rejections (project_not_open / project_name_required -- issue #53).
@@ -289,27 +284,21 @@ def _available_projects_payload() -> Dict[str, Any]:
     Uses the SAME safe enumeration flextools_list_projects uses
     (project_discovery.list_projects) -- directory scan + .fwdata existence
     check only, never opens a project or loads the LCM cache. Capped at
-    _AVAILABLE_PROJECTS_CAP names + a total_count so the model can recover
+    project_discovery.AVAILABLE_PROJECTS_CAP names + a total_count so the model can recover
     in one turn without the payload growing unbounded on large projects
     directories.
 
     NEVER auto-selects a project -- this is purely informational so the
     caller can choose and pass one to project_name explicitly.
+
+    Delegates to project_discovery.available_projects_payload() so the
+    project_not_found payload (issue #311) carries the identical block.
     """
     try:
-        from ..project_discovery import list_projects
+        from ..project_discovery import available_projects_payload
     except ImportError:
-        from server.project_discovery import list_projects
-    try:
-        names, _source = list_projects()
-    except Exception:
-        # Discovery itself is best-effort here; never let it break the
-        # rejection response the caller actually needs.
-        names = []
-    return {
-        "available_projects": names[:_AVAILABLE_PROJECTS_CAP],
-        "total_count": len(names),
-    }
+        from server.project_discovery import available_projects_payload
+    return available_projects_payload()
 
 
 # ---------------------------------------------------------------------------
@@ -3238,7 +3227,14 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Use session state as fallback for project and write settings.
     # An explicit None from args also falls back to session state, so the value
     # passed to the subprocess is always a proper bool (not None).
-    project_name = args.get("project_name") or session_state.get_project()
+    # Issue #311: normalize first -- a punctuation-only name ("``") is treated
+    # as omitted (session fallback), and "`Sena 3`" is unwrapped to "Sena 3".
+    try:
+        from ..project_discovery import normalize_project_name, project_not_found_fields
+    except (ImportError, ValueError):
+        from server.project_discovery import normalize_project_name, project_not_found_fields
+    _raw_project_name = args.get("project_name")
+    project_name = normalize_project_name(_raw_project_name) or session_state.get_project()
     write_enabled_arg = args.get("write_enabled")
     write_enabled = bool(write_enabled_arg if write_enabled_arg is not None else session_state.is_write_enabled())
     api_mode = session_state.get_mode()
@@ -3296,6 +3292,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     if not project_name:
         get_operations_logger().warning(
             "[PRE-OP REJECT] project_name_required: no project_name in args or session"
+            + (f" (ignored non-name project_name={_raw_project_name!r})" if _raw_project_name else "")
         )
         return error_response(
             "project_name_required",
@@ -3320,10 +3317,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         return error_response(
             _resolve_err["error_code"],
             _resolve_err["message"],
-            suggestions=_resolve_err["suggestions"],
-            reason=_resolve_err["reason"],
-            hint=_resolve_err["hint"],
             session=session_state.summary(),
+            **project_not_found_fields(_resolve_err),
         )
     if resolved:
         try:
@@ -4960,6 +4955,18 @@ def run_module():
             "modifyAllowed": WRITE_ENABLED,
         }
 
+        # Issue #314: the helpers above are injected globals, but models read
+        # the tool description's helper list as a module name and write
+        # `from helpers import is_empty_multistring`. Register a `helpers`
+        # shim so that import resolves to the same objects instead of failing
+        # with "No module named 'helpers'". Skip if a real module owns the name.
+        if "helpers" not in sys.modules:
+            _helpers_shim = types.ModuleType("helpers")
+            for _name in ("is_empty_multistring", "FLEX_EMPTY_PLACEHOLDER",
+                          "find_writing_system", "list_writing_systems"):
+                setattr(_helpers_shim, _name, module_namespace[_name])
+            sys.modules["helpers"] = _helpers_shim
+
         # Execute the module code to define Main and FlexToolsModule, or run bare code
         exec(MODULE_CODE, module_namespace)
 
@@ -5536,8 +5543,19 @@ MODULE_CODE = {code}
             # being told to "resubmit" for a preflight that can't catch a raw-LCM
             # attribute typo.
             native_did_you_mean = extract_python_did_you_mean(execution_result["error"])
+            # Issue #307: receivers no cast can fix (str, wrappers, service
+            # locators / factories / repositories) never get the cast hint;
+            # detect_polymorphic_error already declines them.
+            non_castable = detect_non_castable_attribute_error(execution_result["error"])
             if _skip_generic_attr_paths:
                 pass  # kclsid class-id constant handled above; nothing to add.
+            elif non_castable.get("is_service_lookup"):
+                # GetInstance<T>() & co.: the index-based name suggester would
+                # only offer a near-miss spelling of a lookup that can't work.
+                execution_result["error_type"] = "ServiceLookupAttributeError"
+                execution_result["object_type"] = non_castable["object_type"]
+                execution_result["property_name"] = non_castable["property_name"]
+                execution_result["help"] = non_castable["suggestion"]
             elif polymorphic_info["is_polymorphic_error"] and polymorphic_info.get("rewrite"):
                 execution_result["polymorphic_error_detected"] = True
                 execution_result["error_type"] = "PolymorphicAttributeError"
@@ -5565,6 +5583,10 @@ MODULE_CODE = {code}
                         f"'{polymorphic_info.get('object_type')}'. Python suggests "
                         f"'{native_did_you_mean}'. Replace it and re-run."
                     )
+                elif non_castable.get("is_non_castable"):
+                    execution_result["object_type"] = non_castable["object_type"]
+                    execution_result["property_name"] = non_castable["property_name"]
+                    execution_result["help"] = non_castable["suggestion"]
                 elif polymorphic_info["is_polymorphic_error"]:
                     # No concrete rewrite and no name suggestion: hand the model the
                     # fix directly (#122) rather than deferring to a stateless resubmit.

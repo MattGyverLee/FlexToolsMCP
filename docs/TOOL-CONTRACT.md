@@ -189,6 +189,32 @@ an empty list.
 
 ---
 
+## `TeardownError` on `run_module` (issue #302)
+
+When `project.CloseProject()` fails after the script body ran, the
+`run_module` failure payload has `error_type: "TeardownError"` and these
+extra top-level keys:
+
+| Key | Type | Description |
+|---|---|---|
+| `writes_committed` | bool or null | `true` when the failure came from `LcmCache.Dispose` (the writing-system sync) AFTER the data save; `false` when the save itself failed, or teardown failed before `CloseProject()`; `null` when unknown or on a read-only run. The `error` text states the same status. |
+| `teardown_error` | object | `type`, `message`, `traceback`, `phase` (`pre_close` \| `save` \| `dispose` \| `unknown`), `writes_committed`, `abandoned_mutex` (bool), `recovery` (the retry record below, or null). |
+| `next_steps` | list[str] | Always set. On a write run: do not re-run a write that was (or may have been) committed; check with a read-only query first. For an abandoned mutex: close FieldWorks/FLEx and other SIL apps; the next run clears the stale mutex itself; do not retry in a loop. |
+
+**Abandoned writing-system mutex.** `AbandonedMutexException` from SIL's
+global writing-system store (named mutex
+`C:_ProgramData_SIL_WritingSystemRepository_3`, derived at runtime from
+`GlobalWritingSystemRepository<T>.CurrentVersionPath(DefaultBasePath)`)
+means the wait still acquired the mutex. The runner releases it and retries
+the dispose once. If the retry succeeds and the failure was in the dispose
+phase, nothing was lost: the run keeps its own success/failure and carries a
+`teardown_warning` object (same shape as `teardown_error`) instead of a
+`TeardownError`. Every run also clears a stale abandoned mutex before opening
+the project and reports `stale_ws_mutex_cleared` (bool). The scan runner does
+the same.
+
+---
+
 ## Deprecation timeline
 
 The nested `error` object is a **transitional shape** retained during the

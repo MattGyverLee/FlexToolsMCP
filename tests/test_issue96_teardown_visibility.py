@@ -158,7 +158,8 @@ class TestGeneratedScriptWiring:
         be a bare `except: pass` that discards a commit failure."""
         script = _capture_generated_script(monkeypatch, tmp_path)
         idx = script.index("project.CloseProject()")
-        following = script[idx:idx + 1200]
+        # Window widened for issue #302's classification/retry block.
+        following = script[idx:idx + 3500]
         assert "except:\n                pass" not in following
         assert "except Exception as e:" in following
         assert "TeardownError" in following

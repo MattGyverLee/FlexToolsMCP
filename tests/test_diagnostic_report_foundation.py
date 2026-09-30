@@ -1,6 +1,6 @@
 """Foundation-checkpoint tests for the diagnostic-report feature.
 
-Spec: specs/diagnostic-report/SPEC.md, section 12 acceptance criteria
+Spec: specs/_archive/diagnostic-report/spec.md, section 12 acceptance criteria
 (CP1-relevant subset only -- reconstruction/normalization/transport/guard
 criteria are covered by later checkpoints).
 

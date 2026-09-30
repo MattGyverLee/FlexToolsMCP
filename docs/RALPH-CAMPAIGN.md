@@ -195,7 +195,7 @@ Append to `checkpoints[]` in `campaign.json`:
   "writes": false,
   "depends_on": "parser-check-cp6 at feature_complete",
   "scope": "one paragraph the specify step can be scoped to",
-  "scope_refs": ["specs/parser-check/SPEC.md section N"],
+  "scope_refs": ["specs/_archive/parser-check/SPEC.md section N"],
   "extra_dirs": []
 }
 ```

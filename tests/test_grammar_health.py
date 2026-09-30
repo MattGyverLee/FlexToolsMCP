@@ -3,7 +3,7 @@
 """
 T014 (parser-check CP1): response-contract tests for `flextools_grammar_health`.
 
-Authority: specs/parser-check/contracts/flextools_grammar_health.md (the
+Authority: specs/_archive/parser-check/contracts/flextools_grammar_health.md (the
 authoritative response shape -- asserted against literally), SPEC.md 9.5.2,
 9.5.3, 9.5.4 (the ten-row check table -- its row order IS the required
 `findings` order), 9.5.7 and 3.1, research.md D7 ("No scalar score, and what
@@ -116,7 +116,7 @@ _MEASURED_TEMPLATE_RE = re.compile(
 
 _CONTRACT_PATH = (
     Path(__file__).resolve().parent.parent
-    / "specs" / "parser-check" / "contracts" / "flextools_grammar_health.md"
+    / "specs" / "_archive" / "parser-check" / "contracts" / "flextools_grammar_health.md"
 )
 
 _FINDING_ALLOWLIST = {"check_id", "spec_row", "count", "measured", "evidence_basis", "objects"}

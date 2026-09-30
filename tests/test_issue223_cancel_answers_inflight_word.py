@@ -18,7 +18,7 @@ a RUN-scoped message with no `request_id` -- so on the server side, the
 `asyncio.Future` keyed to THIS word's `request_id` was never resolved by
 anything, and `ParseRunner._execute_run`'s `await worker.parse_word(...)`
 for that exact word hung forever. Live evidence:
-`specs/parser-check-cp2/evidence/issue223-live.md`
+`specs/_archive/parser-check-cp2/evidence/issue223-live.md`
 (`test_scenario_6_cancel_stops_at_a_boundary_and_keeps_what_finished`
 timing out after 120s waiting on `handle.done.wait()`, reproduced twice).
 

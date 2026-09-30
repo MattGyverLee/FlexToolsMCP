@@ -38,7 +38,7 @@ from flextoolsmcp.server.parse.record import (  # noqa: E402
     RunRecord,
 )
 
-CONTRACT = REPO_ROOT / "specs" / "parser-check-cp3" / "contracts" / "tools.md"
+CONTRACT = REPO_ROOT / "specs" / "_archive" / "parser-check-cp3" / "contracts" / "tools.md"
 
 
 def _contract_counter_names():

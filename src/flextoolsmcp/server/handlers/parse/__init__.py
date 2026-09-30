@@ -4,8 +4,8 @@
 flextools_try_word and flextools_parse_status (parser-check CP2b), and
 flextools_parse_text (parser-check CP3, US2).
 
-Authority: specs/parser-check-cp2b/contracts/tools.md (levels, ordering
-guarantees, refusal table, the run contract), specs/parser-check-cp2/spec.md
+Authority: specs/_archive/parser-check-cp2b/contracts/tools.md (levels, ordering
+guarantees, refusal table, the run contract), specs/_archive/parser-check-cp2/spec.md
 FR-012 .. FR-016 and FR-026 .. FR-036, data-model.md sections 1-4.
 
 WHAT THIS MODULE DOES NOT DO, and why that is the point:

@@ -3,8 +3,8 @@
 """
 T022: Engine-gate tests for ``check_active_parser`` (parser-check CP1, US3).
 
-Contract sources: specs/parser-check/SPEC.md 3.2 and 12.7,
-specs/parser-check/contracts/error-codes.md (``parser_engine_mismatch``).
+Contract sources: specs/_archive/parser-check/SPEC.md 3.2 and 12.7,
+specs/_archive/parser-check/contracts/error-codes.md (``parser_engine_mismatch``).
 
 Module under test: ``check_active_parser(project, supported_engines=("HC",))``
 in ``src/flextoolsmcp/server/parser_probe.py`` -- **does not exist yet**. Per

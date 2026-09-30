@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 The quickstart scenarios, against live FieldWorks projects
-(parser-check CP2b; specs/parser-check-cp2b/quickstart.md).
+(parser-check CP2b; specs/_archive/parser-check-cp2b/quickstart.md).
 
 EVERYTHING HERE IS READ-ONLY. Projects are opened `writeEnabled=False` in the
 worker and nothing on any path below records, files or writes a parse result.
@@ -186,7 +186,7 @@ SC004_MIN_INLINE_RATE = 0.95
 #: attempt count and the rate (T034), so the numbers are emitted as data
 #: rather than left in a captured test log to be transcribed by hand.
 RATE_REPORT = (
-    REPO_ROOT / "specs" / "parser-check-cp2b" / "evidence" / "sc004-inline-rate.json"
+    REPO_ROOT / "specs" / "_archive" / "parser-check-cp2b" / "evidence" / "sc004-inline-rate.json"
 )
 
 
@@ -354,7 +354,7 @@ async def test_scenario_1_a_second_call_does_not_reload_the_grammar(tmp_path):
     interleave -- data-model.md section 1), only the FIRST word may enter
     `loading_grammar`.
 
-    AMENDED (2026-09-24, issue #223, `specs/parser-check-cp2/spec.md`'s
+    AMENDED (2026-09-24, issue #223, `specs/_archive/parser-check-cp2/spec.md`'s
     FR-042/043 amendment): "held between calls" used to mean "for the
     worker process's whole idle-timeout life", so any two SEPARATE
     `flextools_try_word` calls, however close together, exercised the same
@@ -414,7 +414,7 @@ async def test_a_call_after_an_idle_release_reloads_the_grammar_and_the_lock_is_
     project -- and its `.fwdata.lock` -- is dropped, and the next call pays
     for a real reopen and a real grammar reload. This is the accepted cost
     of never holding the lock while idle
-    (`specs/parser-check-cp2/evidence/issue223-live.md`: ~3.3s cold vs.
+    (`specs/_archive/parser-check-cp2/evidence/issue223-live.md`: ~3.3s cold vs.
     ~0.8s post-idle-release, on `IndonesianHC-Complete`), asserted here as a
     live behaviour rather than left to the earlier "must never reload"
     test, which would otherwise still pass for the wrong reason if release
@@ -1227,7 +1227,7 @@ async def test_fr043_currency_is_confirmed_before_every_reuse(tmp_path):
     as the project stays open, i.e. within one run that never lets the
     worker's queue go idle.
 
-    AMENDED (2026-09-24, issue #223, `specs/parser-check-cp2/spec.md`'s
+    AMENDED (2026-09-24, issue #223, `specs/_archive/parser-check-cp2/spec.md`'s
     FR-042/043 amendment). Before #223's scope change, "every reuse" meant
     every SEPARATE call within the worker's whole idle-timeout life, since
     the project stayed open that whole time. It no longer does: the worker

@@ -221,6 +221,52 @@ def clear_cache() -> None:
     _cache.update({"names": None, "source": None, "directory": None, "expires_at": 0.0})
 
 
+# Issue #311: characters a model wraps a name in when it means "the name"
+# rather than typing the name -- markdown code ticks, straight and curly
+# quotes. Stripped from the ENDS only; internal content is preserved.
+_PROJECT_NAME_WRAPPERS = "`'\"‘’“”"
+
+# Cap on the inlined project list in project_not_found / project_name_required
+# payloads (issue #53) so a projects directory with hundreds of entries
+# doesn't bloat every rejection.
+AVAILABLE_PROJECTS_CAP = 15
+
+
+def normalize_project_name(value) -> Optional[str]:
+    """Normalize a project_name as it arrives from tool arguments (#311).
+
+    Strips surrounding whitespace, quotes and backticks (so "`Sena 3`" ->
+    "Sena 3"), leaving internal content untouched. A value with no
+    alphanumeric character left (e.g. two backticks, "''", "  ") is not a
+    name at all and returns None, so callers treat it exactly like an
+    omitted project_name -- i.e. fall back to the session project.
+    """
+    if value is None:
+        return None
+    text = str(value).strip(_PROJECT_NAME_WRAPPERS + " \t\r\n\f\v")
+    if not any(ch.isalnum() for ch in text):
+        return None
+    return text
+
+
+def available_projects_payload() -> dict:
+    """The self-healing `available_projects` block (issues #53, #311).
+
+    Uses list_projects() -- directory scan + .fwdata existence only, never
+    opens a project. Capped at AVAILABLE_PROJECTS_CAP names plus a
+    total_count. Best-effort: discovery failure yields an empty list rather
+    than breaking the rejection it decorates. NEVER selects a project.
+    """
+    try:
+        names, _source = list_projects()
+    except Exception:
+        names = []
+    return {
+        "available_projects": list(names[:AVAILABLE_PROJECTS_CAP]),
+        "total_count": len(names),
+    }
+
+
 _NORMALIZE_WS = re.compile(r"\s+")
 
 
@@ -472,7 +518,13 @@ def resolve_or_explain(project_name: str) -> tuple:
         (resolved_name, None)   -- usable; caller proceeds with resolved_name
         (None, error_payload)   -- not usable; caller wraps payload in error_response()
         (None, None)            -- empty input; caller handles its own "no project" path
+
+    The input is passed through normalize_project_name() first, so a quoted
+    or backticked name resolves and a punctuation-only one counts as empty
+    (#311). The error payload always carries `available_projects` /
+    `total_count`, even when there are no fuzzy suggestions.
     """
+    project_name = normalize_project_name(project_name)
     if not project_name:
         return None, None
     result = resolve_project_name(project_name)
@@ -484,7 +536,24 @@ def resolve_or_explain(project_name: str) -> tuple:
         "suggestions": result.suggestions,
         "reason": result.reason,
         "hint": (
-            "Call flextools_list_projects to see all available projects, "
-            "then retry with the exact name."
+            "project_name must be a plain project name (no quotes or "
+            "backticks). Pick one of available_projects, or call "
+            "flextools_list_projects, then retry with the exact name."
         ),
+        **available_projects_payload(),
+    }
+
+
+def project_not_found_fields(err: dict) -> dict:
+    """The error_response() kwargs for a resolve_or_explain() error payload.
+
+    One place for the field list so every handler forwards the same shape
+    (suggestions, reason, hint, available_projects, total_count).
+    """
+    return {
+        "suggestions": err.get("suggestions", []),
+        "reason": err.get("reason"),
+        "hint": err.get("hint"),
+        "available_projects": err.get("available_projects", []),
+        "total_count": err.get("total_count", 0),
     }

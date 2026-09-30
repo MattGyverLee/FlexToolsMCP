@@ -416,6 +416,13 @@ class ProjectNotFoundDetail(BaseModel):
     hint: Optional[str] = None
     # recovery action: always "list_projects"
     recovery: Optional[str] = "list_projects"
+    # Fuzzy-resolution outcome (project_discovery.resolve_or_explain).
+    suggestions: Optional[List[str]] = None
+    reason: Optional[str] = None
+    # Issue #311: the real project list (capped) is inlined even when there
+    # are no fuzzy suggestions, so the caller can recover in one turn.
+    available_projects: Optional[List[str]] = None
+    total_count: Optional[int] = None
 
 
 class RuntimeErrorDetail(BaseModel):

@@ -223,7 +223,13 @@ async def handle_flextools_grammar_health(args: dict) -> List[TextContent]:
             run_scan_module,
         )
 
-    project_name = args.get("project_name") or session_state.get_project()
+    try:
+        from ..project_discovery import normalize_project_name, project_not_found_fields
+    except (ImportError, ValueError):
+        from server.project_discovery import normalize_project_name, project_not_found_fields
+
+    # Issue #311: a punctuation-only name falls back to the session project.
+    project_name = normalize_project_name(args.get("project_name")) or session_state.get_project()
     check_ids = args.get("checks")
     limit = args.get("limit")
     if limit is None:
@@ -250,10 +256,8 @@ async def handle_flextools_grammar_health(args: dict) -> List[TextContent]:
         return error_response(
             resolve_err["error_code"],
             resolve_err["message"],
-            suggestions=resolve_err["suggestions"],
-            reason=resolve_err["reason"],
-            hint=resolve_err["hint"],
             session=session_state.summary(),
+            **project_not_found_fields(resolve_err),
         )
     if resolved:
         try:

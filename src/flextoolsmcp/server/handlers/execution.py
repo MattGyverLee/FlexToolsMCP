@@ -39,6 +39,13 @@ try:
 except ImportError:
     from server.subprocess_helpers import run_script_async
 
+# Issue #302: teardown AbandonedMutexException recovery. The same source is
+# embedded into the generated runner scripts, so it is stdlib-only.
+from .teardown_recovery import (
+    RUNNER_HELPER_SOURCE as TEARDOWN_HELPER_SOURCE,
+    teardown_next_steps,
+)
+
 # Import kernel dependencies with fallback
 json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_deps()
 _, get_operations_logger = safe_import_logging_helpers()
@@ -4514,6 +4521,21 @@ def run_module():
 
         FLExInitialize()
 
+        # Issue #302: a process that died holding the global writing-system
+        # store mutex leaves it abandoned, and every later LcmCache.Dispose
+        # then fails with AbandonedMutexException (and re-abandons it on
+        # exit). Clear a stale one before opening. Best-effort, never fatal.
+        try:
+            _ws_mutex_state = clear_stale_ws_mutex()
+            result["stale_ws_mutex_cleared"] = bool(_ws_mutex_state.get("cleared"))
+            if _ws_mutex_state.get("cleared"):
+                report.Warning(
+                    "Cleared a stale (abandoned) global writing-system mutex "
+                    "left by an earlier process (issue #302)."
+                )
+        except Exception:
+            result["stale_ws_mutex_cleared"] = False
+
         # Issue #159: the `ui=` kwarg only exists on flexicon builds >=4.4.0
         # (OpenProject(..., ui=None)); on older builds passing it -- even as
         # ui=None -- raises TypeError and kills the session's very first
@@ -4803,29 +4825,58 @@ def run_module():
         # rather than clobbering them, since a teardown failure can follow
         # either a successful or an already-failed script body.
         if project:
+            _close_started = False
             try:
                 _maybe_refresh_from_disk(project)
+                _close_started = True
                 project.CloseProject()
             except Exception as e:
-                _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
                 _teardown_tb = traceback.format_exc()
-                if result.get("error"):
-                    result["error"] = (
-                        "{}\\n\\nAdditionally, project teardown failed (writes "
-                        "may not have been committed): {}\\n{}"
-                    ).format(result["error"], _teardown_msg, _teardown_tb)
+                _td = classify_teardown_failure(
+                    e, _teardown_tb, write_enabled=WRITE_ENABLED,
+                    close_started=_close_started,
+                )
+                # Issue #302: AbandonedMutexException means this thread now
+                # OWNS the writing-system mutex. Release it and retry the
+                # dispose once; always release before exiting so this
+                # process does not abandon it again for the next run.
+                _td_recovery = None
+                if _td["abandoned_mutex"]:
+                    _td_recovery = retry_dispose_after_abandoned_mutex(project)
                 else:
-                    result["error"] = (
-                        "Project teardown failed after script execution "
-                        "(writes may not have been committed): {}\\n{}"
-                    ).format(_teardown_msg, _teardown_tb)
-                result["success"] = False
-                result["error_type"] = "TeardownError"
-                result["teardown_error"] = {
+                    release_owned_ws_mutex()
+                result["writes_committed"] = _td["writes_committed"]
+                _td_record = {
                     "type": type(e).__name__,
                     "message": str(e),
                     "traceback": _teardown_tb,
+                    "phase": _td["phase"],
+                    "writes_committed": _td["writes_committed"],
+                    "abandoned_mutex": _td["abandoned_mutex"],
+                    "recovery": _td_recovery,
                 }
+                if (_td_recovery and _td_recovery.get("retry_ok")
+                        and _td["phase"] == "dispose"):
+                    # Data committed before the failure and the retried
+                    # dispose succeeded: nothing is lost, so the run keeps
+                    # its own success/failure. Surface it as a warning.
+                    result["teardown_warning"] = _td_record
+                else:
+                    _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
+                    _status = teardown_error_message(_td, write_enabled=WRITE_ENABLED)
+                    if result.get("error"):
+                        result["error"] = (
+                            "{}\\n\\nAdditionally, project teardown failed "
+                            "({}): {}\\n{}"
+                        ).format(result["error"], _status, _teardown_msg, _teardown_tb)
+                    else:
+                        result["error"] = (
+                            "Project teardown failed after script execution "
+                            "({}): {}\\n{}"
+                        ).format(_status, _teardown_msg, _teardown_tb)
+                    result["success"] = False
+                    result["error_type"] = "TeardownError"
+                    result["teardown_error"] = _td_record
         try:
             FLExCleanup()
         except:
@@ -4851,11 +4902,16 @@ PROJECT_NAME = {project_name}
 WRITE_ENABLED = {write_enabled}
 MODULE_CODE = {code}
 
+# --- issue #302 teardown recovery helpers (teardown_recovery.py) ---
+{teardown_helpers}
+# --- end teardown recovery helpers ---
+
 {runner_script}
 '''.format(
         project_name=repr(project_name),
         write_enabled=repr(write_enabled),
         code=escaped_code,
+        teardown_helpers=TEARDOWN_HELPER_SOURCE,
         runner_script=runner_script
     )
 
@@ -5514,6 +5570,17 @@ MODULE_CODE = {code}
                 polymorphic_hint=polymorphic_hint,
             log_dir_fn=get_log_dir,
             )
+            # Issue #302: a teardown failure needs explicit recovery advice --
+            # without it, callers re-ran the same write 20 times in a row
+            # (possibly duplicating already-committed changes).
+            if execution_result.get("error_type") == "TeardownError":
+                _td_info = execution_result.get("teardown_error") or {}
+                execution_result.setdefault(
+                    "writes_committed", _td_info.get("writes_committed")
+                )
+                execution_result[KEY_NEXT_STEPS] = teardown_next_steps(
+                    _td_info, write_enabled=write_enabled
+                )
             # Issue #28: record a runtime-failure signal. Use the structured
             # error_type when available; fall back to a generic bucket.
             runtime_error_code = execution_result.get("error_type") or "runtime_error"
@@ -5743,6 +5810,11 @@ def run_scan():
             )
 
         FLExInitialize()
+        # Issue #302: clear a stale abandoned writing-system mutex first.
+        try:
+            result["stale_ws_mutex_cleared"] = bool(clear_stale_ws_mutex().get("cleared"))
+        except Exception:
+            result["stale_ws_mutex_cleared"] = False
         project = FLExProject()
 
         # Issue #159: `ui=` only exists on flexicon >=4.4.0 OpenProject();
@@ -5819,15 +5891,30 @@ def run_scan():
                 _maybe_refresh_from_disk(project)
                 project.CloseProject()
             except Exception as e:
-                _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
-                if result.get("error"):
-                    result["error"] = "{}\\n\\nAdditionally, project teardown failed: {}".format(
-                        result["error"], _teardown_msg
-                    )
+                # Issue #302: classify, release the owned WS mutex, retry once.
+                _td = classify_teardown_failure(e, traceback.format_exc(), write_enabled=WRITE_ENABLED)
+                _td_recovery = None
+                if _td["abandoned_mutex"]:
+                    _td_recovery = retry_dispose_after_abandoned_mutex(project)
                 else:
-                    result["error"] = "Project teardown failed after scan execution: {}".format(_teardown_msg)
-                result["error_type"] = result["error_type"] or "TeardownError"
-                result["success"] = False
+                    release_owned_ws_mutex()
+                result["writes_committed"] = _td["writes_committed"]
+                if (_td_recovery and _td_recovery.get("retry_ok")
+                        and _td["phase"] == "dispose"):
+                    result["teardown_warning"] = dict(_td, recovery=_td_recovery, message=str(e))
+                else:
+                    _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
+                    _status = teardown_error_message(_td, write_enabled=WRITE_ENABLED)
+                    if result.get("error"):
+                        result["error"] = "{}\\n\\nAdditionally, project teardown failed ({}): {}".format(
+                            result["error"], _status, _teardown_msg
+                        )
+                    else:
+                        result["error"] = "Project teardown failed after scan execution ({}): {}".format(
+                            _status, _teardown_msg
+                        )
+                    result["error_type"] = result["error_type"] or "TeardownError"
+                    result["success"] = False
         try:
             FLExCleanup()
         except Exception:
@@ -5842,7 +5929,8 @@ if __name__ == "__main__":
     print(json.dumps(_result, indent=2, ensure_ascii=False))
 '''
 
-    return header + body
+    # Issue #302: teardown recovery helpers, embedded verbatim.
+    return header + "\n" + TEARDOWN_HELPER_SOURCE + "\n" + body
 
 
 async def run_scan_module(

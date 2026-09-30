@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Home for the parser-check sandbox spine (parser-check CP5,
-specs/parser-check-cp5/plan.md).
+specs/_archive/parser-check-cp5/plan.md).
 
 The sandbox spine runs HermitCrab outside FieldWorks: it builds an HC config
 from a COPY of the project (the packaged `scripts/hcparse.ps1`, Generate

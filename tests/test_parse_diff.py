@@ -36,7 +36,7 @@ from flextoolsmcp.server.parse.record import RunRecord  # noqa: E402
 from flextoolsmcp.server.parse.runner import ParseRunner  # noqa: E402
 from flextoolsmcp.server.parse.signature import SignatureMode  # noqa: E402
 
-CONTRACT = REPO_ROOT / "specs" / "parser-check-cp3" / "contracts" / "tools.md"
+CONTRACT = REPO_ROOT / "specs" / "_archive" / "parser-check-cp3" / "contracts" / "tools.md"
 
 
 def _fp(**overrides):

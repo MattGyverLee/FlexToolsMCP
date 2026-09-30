@@ -156,6 +156,13 @@ foreach ($cp in $checkpoints) {
 
     Write-Banner "$($cp.id) -- $($cp.title)" 'Green'
 
+    # A checkpoint marked "status": "complete" in campaign.json has shipped and
+    # its spec is retired to specs/_archive/ -- there is nothing left to drive.
+    if ($cp.status -eq 'complete') {
+        Write-Host "[DONE] $($cp.id) is complete (retired: $($cp.as_built))." -ForegroundColor Green
+        continue
+    }
+
     if ($cp.writes -eq $true -and (-not $AllowWriteCheckpoints)) {
         Write-Host "[STOP] $($cp.id) is a WRITE checkpoint; this driver will not run it unattended." -ForegroundColor Yellow
         Write-Host "       $($cp.unattended_note)" -ForegroundColor Yellow

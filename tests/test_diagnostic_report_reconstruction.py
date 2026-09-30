@@ -2,7 +2,7 @@
 stitching, MAX_REPORT_OPS summarize-not-drop, path-scoped normalization
 (E2), seven-section rendering, and the CP2 casting-recurrence precision fix.
 
-Spec: specs/diagnostic-report/SPEC.md sections 3, 5, 7, 8.3; section 12
+Spec: specs/_archive/diagnostic-report/spec.md sections 3, 5, 7, 8.3; section 12
 acceptance criteria under "Reconstruction" and "Privacy / normalization".
 """
 

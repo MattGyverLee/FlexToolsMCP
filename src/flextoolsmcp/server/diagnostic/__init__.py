@@ -3,7 +3,7 @@
 """
 Diagnostic-report feature ("send this to the maintainer" flow).
 
-Spec: specs/diagnostic-report/SPEC.md.
+Spec: specs/_archive/diagnostic-report/spec.md.
 
 This package is deliberately kept SEPARATE from the rest of `server/` so the
 section 12 "no transmission" guard has a small, dedicated, AST-scannable tree

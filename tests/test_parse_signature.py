@@ -126,7 +126,7 @@ def test_the_fallback_is_in_force_unless_stability_is_confirmed(monkeypatch):
     monkeypatch.delenv("FLEXTOOLSMCP_IDENTIFIER_STABILITY", raising=False)
     assert sig.IDENTIFIER_STABILITY == "confirmed"
     evidence = (
-        Path(__file__).parent.parent / "specs" / "parser-check-cp3" / "evidence"
+        Path(__file__).parent.parent / "specs" / "_archive" / "parser-check-cp3" / "evidence"
         / "t125-identifier-stability.json"
     )
     assert json.loads(evidence.read_text(encoding="utf-8"))["verdict"] == "stable", (

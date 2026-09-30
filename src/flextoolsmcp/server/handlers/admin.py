@@ -49,9 +49,17 @@ def _ops_logger():
     return get_operations_logger()
 
 try:
-    from ..project_discovery import resolve_or_explain
+    from ..project_discovery import (
+        normalize_project_name,
+        project_not_found_fields,
+        resolve_or_explain,
+    )
 except (ImportError, ValueError):
-    from server.project_discovery import resolve_or_explain
+    from server.project_discovery import (
+        normalize_project_name,
+        project_not_found_fields,
+        resolve_or_explain,
+    )
 
 try:
     from ..startup_notices import get_index_refresh_failures
@@ -523,7 +531,12 @@ async def handle_start(args: dict) -> list[TextContent]:
             session=session_state.summary(),
         )
     # Note: Pydantic model uses 'project_name', not 'project'
-    project_name = args.get("project_name") or args.get(KEY_PROJECT) or ""
+    # Issue #311: a punctuation-only name ("``") means "no project yet", and
+    # "`Sena 3`" is unwrapped to "Sena 3".
+    project_name = (
+        normalize_project_name(args.get("project_name") or args.get(KEY_PROJECT))
+        or ""
+    )
     # Diagnostic-report feature (spec section 4): verbatim human request text,
     # turn-level. Reset (not inherited) on every flextools_start call -- see
     # session.SessionState.configure().
@@ -539,10 +552,8 @@ async def handle_start(args: dict) -> list[TextContent]:
             return error_response(
                 err["error_code"],
                 err["message"],
-                suggestions=err["suggestions"],
-                reason=err["reason"],
-                hint=err["hint"],
                 session=session_state.summary(),
+                **project_not_found_fields(err),
             )
         if resolved and resolved != project_name:
             try:

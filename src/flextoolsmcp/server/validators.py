@@ -3493,6 +3493,117 @@ def _polymorphic_runtime_suggestion(
     )
 
 
+# Issue #307: a cast only helps when the receiver is an LCM *model* interface
+# typed as an abstract base (ICmObject, IMoForm, ...) whose concrete subclass
+# has the member. It cannot help a plain Python value ('str', 'NoneType'), a
+# non-interface wrapper (FLExProject, *Operations) or an LCM service
+# (ILcmServiceLocator, factories, repositories) -- those receivers got the
+# "cast / resolve_property" hint anyway, e.g. for the generic GetInstance<T>().
+_NON_CASTABLE_BUILTIN_RECEIVERS = frozenset({
+    "str", "bytes", "int", "float", "bool", "complex", "list", "tuple",
+    "dict", "set", "frozenset", "NoneType", "object", "type", "function",
+    "method", "builtin_function_or_method", "module", "generator", "range",
+})
+_NON_CASTABLE_SERVICE_SUFFIXES = (
+    "ServiceLocator", "Factory", "Repository", "MetaDataCache",
+    "ActionHandler", "WritingSystemManager",
+)
+# Service-locator lookups pythonnet does not project as plain attributes on
+# ILcmServiceLocator (GetInstance<T>() is a C# generic; see flexicon #34/#272).
+_SERVICE_LOOKUP_METHODS = frozenset({"GetInstance", "GetAllInstances", "GetService"})
+_LCM_INTERFACE_NAME = re.compile(r"^I[A-Z]\w*$")
+
+
+def _non_castable_receiver_kind(object_type: str) -> Optional[str]:
+    """Why no cast can fix a missing attribute on *object_type*, or None (#307).
+
+    Returns ``"python_builtin"``, ``"not_lcm_interface"`` or ``"lcm_service"``;
+    None means the receiver may be an abstract LCM model interface, so the
+    polymorphic (cast) path applies.
+    """
+    if object_type in _NON_CASTABLE_BUILTIN_RECEIVERS:
+        return "python_builtin"
+    if not _LCM_INTERFACE_NAME.match(object_type):
+        return "not_lcm_interface"
+    if object_type.endswith(_NON_CASTABLE_SERVICE_SUFFIXES):
+        return "lcm_service"
+    return None
+
+
+def detect_non_castable_attribute_error(error_msg: str) -> dict:
+    """Detect AttributeErrors whose receiver no cast can fix (#307).
+
+    Returns dict with:
+      - is_non_castable: bool
+      - object_type, property_name: parsed from the error line
+      - receiver_kind: "python_builtin" | "not_lcm_interface" | "lcm_service"
+      - is_service_lookup: bool - a GetInstance/GetService-style lookup
+      - suggestion: guidance that never asks for a cast or a resubmit
+    """
+    match = re.search(r"'(\w+)'\s+object\s+has\s+no\s+attribute\s+'(\w+)'", error_msg or "")
+    if not match:
+        return {"is_non_castable": False}
+    object_type, property_name = match.groups()
+    kind = _non_castable_receiver_kind(object_type)
+    if kind is None:
+        return {"is_non_castable": False}
+
+    is_service_lookup = (
+        property_name in _SERVICE_LOOKUP_METHODS
+        and (kind == "lcm_service" or "ServiceLocator" in object_type)
+    )
+    head = f"'{object_type}' has no attribute '{property_name}'. "
+    if is_service_lookup:
+        suggestion = head + (
+            f"Nothing to cast: {object_type} is an LCM service, not a model "
+            f"object, and pythonnet does not expose '{property_name}' as a plain "
+            f"attribute here (the C# generic GetInstance<T>() is not reachable "
+            f"that way; the pythonnet generic form "
+            f"ServiceLocator.GetInstance[IFooFactory]() fails on some builds). "
+            f"Resolve the factory or repository by interface type instead: "
+            f"project.GetFactory(IFooFactory) or "
+            f"project.project.ServiceLocator.GetService(IFooFactory) (import the "
+            f"interface from SIL.LCModel). Prefer a flexicon Create/Add wrapper "
+            f"(e.g. project.LexEntry.Create) when one exists."
+        )
+    elif kind == "python_builtin" and object_type == "NoneType":
+        suggestion = head + (
+            "The value is None, not an LCM object: the preceding lookup found "
+            "nothing. Guard with `if obj is not None:` (or check why it is empty); "
+            "no cast applies."
+        )
+    elif kind == "python_builtin":
+        suggestion = head + (
+            f"The value is a plain Python '{object_type}', not an LCM object, so "
+            f"no cast will add '{property_name}'. Check what the previous call "
+            f"returned -- flexicon getters such as GetGloss/GetLexemeForm already "
+            f"return str -- and use the value directly."
+        )
+    elif kind == "lcm_service":
+        suggestion = head + (
+            f"{object_type} is an LCM service (factory / repository / service "
+            f"locator), not a model object, so casting cannot add "
+            f"'{property_name}'. Check its members with "
+            f"flextools_get_object_api(object_type='{object_type}')."
+        )
+    else:
+        suggestion = head + (
+            f"'{object_type}' is not an LCM interface (a flexicon wrapper, a "
+            f"concrete class or a Python type), so casting cannot add "
+            f"'{property_name}'. Look the member up with "
+            f"flextools_get_object_api(object_type='{object_type}') or "
+            f"flextools_search_by_capability and check the spelling."
+        )
+    return {
+        "is_non_castable": True,
+        "object_type": object_type,
+        "property_name": property_name,
+        "receiver_kind": kind,
+        "is_service_lookup": is_service_lookup,
+        "suggestion": suggestion,
+    }
+
+
 def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = None) -> dict:
     """Detect polymorphic attribute errors and suggest resolve_property.
 
@@ -3530,6 +3641,18 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
                 "imports_needed": [],
                 "cast_candidates": [],
                 "suggestion": suggestion,
+            }
+
+        # Issue #307: no cast can add a member to a Python value, a wrapper or
+        # an LCM service -- don't classify those as polymorphic. object_type /
+        # property_name stay populated for callers that format other hints.
+        receiver_kind = _non_castable_receiver_kind(object_type)
+        if receiver_kind is not None:
+            return {
+                "is_polymorphic_error": False,
+                "object_type": object_type,
+                "property_name": property_name,
+                "non_castable_receiver": receiver_kind,
             }
 
         # Issue #36: mirror the pre-flight casting lookup so runtime errors carry

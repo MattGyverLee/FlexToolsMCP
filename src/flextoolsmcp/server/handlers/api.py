@@ -47,6 +47,7 @@ try:
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         KEY_RECIPES, KEY_RECIPES_COUNT, KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT,
+        KEY_MCP_TOOLS, KEY_ZERO_RESULT_FALLBACK,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -83,6 +84,7 @@ except ImportError:
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         KEY_RECIPES, KEY_RECIPES_COUNT, KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT,
+        KEY_MCP_TOOLS, KEY_ZERO_RESULT_FALLBACK,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -1614,6 +1616,21 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         result[KEY_RECIPES_HINT] = _recipe_result["recipes_hint"]
     if deprecation_redirects:
         result[KEY_DEPRECATION_REDIRECTS] = deprecation_redirects
+
+    # Issue #312: MCP tools are not API members, so "try_word method" or
+    # "ParserOperations.TryWord" found nothing and weaker models invented a
+    # Flexicon method. Surface matching MCP tools, and when no API member
+    # matched at all, list every tool plus a pointer to the recipe library.
+    try:
+        from ..tool_search import find_mcp_tools, build_zero_result_fallback
+    except ImportError:
+        from server.tool_search import find_mcp_tools, build_zero_result_fallback
+
+    mcp_tool_rows = find_mcp_tools(query)
+    if mcp_tool_rows:
+        result[KEY_MCP_TOOLS] = mcp_tool_rows
+    if not results:
+        result[KEY_ZERO_RESULT_FALLBACK] = build_zero_result_fallback()
 
     result = build_response_with_context(result, include_session=True)
 

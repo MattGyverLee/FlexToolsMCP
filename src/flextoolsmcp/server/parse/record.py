@@ -16,7 +16,7 @@ LAYOUT, following `server/skeleton_storage.py` (R-07):
         traces/<n>.xml   # trace payloads, out of line
 
 This is the frozen artifact contract CP4 and CP5 read
-(specs/parser-check-cp3/contracts/artifact.md). `words.txt` is the only file
+(specs/_archive/parser-check-cp3/contracts/artifact.md). `words.txt` is the only file
 CP3 added; nothing else is created, and in particular no sandbox-spine file is
 written or created empty (FR-015) -- that spine is CP5's.
 

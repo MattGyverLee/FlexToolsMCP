@@ -88,6 +88,8 @@ __all__ = [
     'KEY_RECIPES', 'KEY_RECIPES_COUNT', 'KEY_RECIPE',
     'KEY_RECIPES_AMBIGUOUS', 'KEY_RECIPES_HINT',
     'KEY_SKELETONS_FROM_YOUR_SESSIONS',
+    # MCP-tool hits in search_by_capability (issue #312)
+    'KEY_MCP_TOOLS', 'KEY_ZERO_RESULT_FALLBACK',
     # Operation type constants
     'OP_CREATE', 'OP_READ', 'OP_UPDATE', 'OP_DELETE', 'OP_ITERATE', 'OP_SEARCH',
 ]
@@ -354,6 +356,11 @@ KEY_RECIPE = "recipe"
 KEY_RECIPES_AMBIGUOUS = "recipes_ambiguous"
 KEY_RECIPES_HINT = "recipes_hint"
 KEY_SKELETONS_FROM_YOUR_SESSIONS = "skeletons_from_your_sessions"
+
+# search_by_capability MCP-tool hits (issue #312): MCP tools (e.g.
+# flextools_try_word) matching the query, and the zero-API-hit fallback block.
+KEY_MCP_TOOLS = "mcp_tools"
+KEY_ZERO_RESULT_FALLBACK = "zero_result_fallback"
 
 # Operation type constants
 OP_CREATE = "create"

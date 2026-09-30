@@ -1,7 +1,7 @@
 """CP4 -- the flexicon template's environment pre-flight.
 
 Spec: specs/flexicon-project-bridge (US5, tasks T023-T025)
-Contract: specs/flexicon-project-bridge/contracts/from-open-project.md section 8
+Contract: specs/_archive/flexicon-project-bridge/contracts/from-open-project.md section 8
 
 WHY THIS EXISTS
     SPEC 3d makes ``from flexicon import FLExProject`` load-bearing for the first

@@ -25,10 +25,10 @@ collection time). This file follows T008, not T007: every test that needs
 test with a clear ``ModuleNotFoundError``, not a whole-file collection error.
 
 Contract sources:
-    - specs/parser-check/contracts/error-codes.md ("parser_agent_missing")
-    - specs/parser-check/data-model.md ("AgentProbeState", "ParserDetector
+    - specs/_archive/parser-check/contracts/error-codes.md ("parser_agent_missing")
+    - specs/_archive/parser-check/data-model.md ("AgentProbeState", "ParserDetector
       return shape")
-    - specs/parser-check/SPEC.md 12.7
+    - specs/_archive/parser-check/SPEC.md 12.7
     - tasks.md T023 / T025
 
 Pinned verbatim (task text, "Pin these names exactly"):

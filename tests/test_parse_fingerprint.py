@@ -42,7 +42,7 @@ from flextoolsmcp.server.parse.fingerprint import (  # noqa: E402
 from flextoolsmcp.server.response_models import ParseScopeMismatchDetail  # noqa: E402
 
 
-# Transcribed from specs/parser-check-cp3/data-model.md section 3, in order.
+# Transcribed from specs/_archive/parser-check-cp3/data-model.md section 3, in order.
 EXPECTED_FIELDS = (
     "scope_kind",
     "scope_value",

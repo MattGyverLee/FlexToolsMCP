@@ -3,7 +3,7 @@
 """
 T006: Envelope tests for the four parser-check CP1 error-code detail models.
 
-Contract source: specs/parser-check/contracts/error-codes.md
+Contract source: specs/_archive/parser-check/contracts/error-codes.md
 
 Models under test:
     - ParserEngineMismatchDetail  (parser_engine_mismatch)
@@ -288,7 +288,7 @@ class TestParserToolMissingDetail:
 # ===========================================================================
 # parser-check CP3 (T013, T014) -- the five additive refusal codes
 #
-# Contract source: specs/parser-check-cp3/contracts/tools.md section 2
+# Contract source: specs/_archive/parser-check-cp3/contracts/tools.md section 2
 #
 # The field-ORDER assertion below does not hardcode the expected order. It
 # parses it out of the contract table at test time and compares that against
@@ -311,7 +311,7 @@ from flextoolsmcp.server.response_models import (
 
 _CONTRACT_PATH = (
     Path(__file__).parent.parent
-    / "specs" / "parser-check-cp3" / "contracts" / "tools.md"
+    / "specs" / "_archive" / "parser-check-cp3" / "contracts" / "tools.md"
 )
 
 CP3_MODELS = {
@@ -544,7 +544,7 @@ from flextoolsmcp.server.response_models import (  # noqa: E402
 )
 
 _CP4_CONTRACT_PATH = (
-    Path(__file__).parent.parent / "specs" / "parser-check-cp4" / "contracts" / "tools.md"
+    Path(__file__).parent.parent / "specs" / "_archive" / "parser-check-cp4" / "contracts" / "tools.md"
 )
 
 CP4_MODELS = {
@@ -553,7 +553,7 @@ CP4_MODELS = {
 }
 
 #: The parent spec's five grammar_load_unclean fields, in the parent's order
-#: (specs/parser-check/SPEC.md section 14). CP4 may only APPEND after them.
+#: (specs/_archive/parser-check/SPEC.md section 14). CP4 may only APPEND after them.
 PARENT_GRAMMAR_LOAD_UNCLEAN_PREFIX = [
     "signal", "new_error_count", "baseline_error_count", "baseline_source", "log_path",
 ]
@@ -679,7 +679,7 @@ from flextoolsmcp.server.response_models import (  # noqa: E402
 )
 
 _CP5_CONTRACT_PATH = (
-    Path(__file__).parent.parent / "specs" / "parser-check-cp5" / "contracts" / "tools.md"
+    Path(__file__).parent.parent / "specs" / "_archive" / "parser-check-cp5" / "contracts" / "tools.md"
 )
 
 CP5_MODELS = {

@@ -180,7 +180,7 @@ async def spawn_module_async(
     from -- it kills the whole worker channel, failing every request still
     pending on it, not just the one whose trace was too big. Reproduced
     live on `Claude-Swahili`'s `mtu` (3 analyses, `level='explain'`); see
-    `specs/parser-check-cp2b/reviews/cycle5-verification.md`.
+    `specs/_archive/parser-check-cp2b/reviews/cycle5-verification.md`.
 
     64 MiB gives three orders of magnitude of headroom over the documented
     "hundreds of kilobytes" case -- enough that a legitimately huge trace

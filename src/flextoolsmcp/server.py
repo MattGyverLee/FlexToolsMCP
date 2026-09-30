@@ -953,6 +953,14 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
         if is_read_only_safe or is_run_module:
             cold_project_name = arguments.get("project_name") if is_run_module else None
+            # Issue #311: never seed the session with a non-name such as
+            # "``" -- normalize the same way the handlers do.
+            if cold_project_name:
+                if __package__:
+                    from .server.project_discovery import normalize_project_name
+                else:
+                    from server.project_discovery import normalize_project_name
+                cold_project_name = normalize_project_name(cold_project_name)
             # Only ever honor write_enabled if the CALLER explicitly passed it
             # on this cold run_module call -- never default to True.
             cold_write_enabled = bool(arguments.get("write_enabled")) if (

@@ -334,7 +334,10 @@ invariants only.
   maintainer correction 2026-09-24)**: there are no D4-named gaps left to special-case here --
   shaping (FR-050) happens inside the worker before classification ever sees the analyses.
 - `client.py` and the runner branch, spawning one sandbox worker process per run (not pooled, F-13).
-  The `parser_timeout` failure path kills that process.
+  The `parser_timeout` failure path kills that process. **Superseded 2026-09-28 (Phase 11, #242):**
+  idle `--sandbox` workers are now pooled in `SandboxWorkerPool`, keyed by the exact grammar
+  they loaded; F-13 still holds because checkout is exclusive (two concurrent runs on one key
+  get separate workers).
 - The `RunMeta` fields, including the new D3/D5 ones.
 
 *Exit*: the client tests drive a real `_execute_run` against the sandbox worker: stream, timeout,

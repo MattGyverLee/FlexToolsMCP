@@ -8,12 +8,18 @@ open gaps this contract closes). Generate mode is unaffected and still governed 
 
 **The one-line version.** Parse and Test no longer shell out to an `hc` console tool. They run
 **in the existing parse worker** (`src/flextoolsmcp/server/parse/worker_main.py`), started in a
-new `--sandbox` mode: one process per run, no flexicon, no LCM, no project, no files written. It
+new `--sandbox` mode: a dedicated worker process per run -- kept warm and reused
+between runs whose grammar matches -- no flexicon, no LCM, no project, no files written. It
 loads the FieldWorks HermitCrab engine directly through pythonnet and calls
 `XmlLanguageLoader.Load` / `Morpher` / `ParseWord`, the same calls Try A Word makes. A
 `SandboxClient` spawns this process directly, **outside** the server's `WorkerPool` (the pool that
-manages the ordinary, project-bound `--project` workers) — a sandbox worker is not pooled, is not
-keyed by project, and is not reused across an unrelated sandbox run.
+manages the ordinary, project-bound `--project` workers) — but **inside** the dedicated
+`SandboxWorkerPool` (CP5 Phase 11, #242), which keeps idle `--sandbox` workers warm between
+runs. A pooled worker is keyed by everything that would change its spawn — project-cache runs on the
+cache entry's key plus the resolved parameters, named sandboxes on the config path plus
+file signatures plus the parameters, both plus the `--engine-dir` and `--parse-delay`
+arguments — so a worker can never serve a grammar it did not
+load, and is never reused across an unrelated sandbox run.
 
 ## 1. Argv (spawn parameters)
 

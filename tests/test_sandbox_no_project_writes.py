@@ -154,7 +154,7 @@ def _fresh_module_state():
 
 
 @pytest.fixture
-def e2e(tmp_path, sandbox_root, fake_project, fake_generator, monkeypatch):
+async def e2e(tmp_path, sandbox_root, fake_project, fake_generator, monkeypatch):
     """The real handler, runner, client, script and worker process; a fake
     generator, project and engine."""
     monkeypatch.setenv("FAKE_PYTHON", sys.executable)
@@ -188,6 +188,9 @@ def e2e(tmp_path, sandbox_root, fake_project, fake_generator, monkeypatch):
         yield env
     finally:
         parse_handler.set_runner(None)
+        # Phase 11 (#242): reap the runner's SandboxWorkerPool -- idle
+        # workers stay warm past their run.
+        await runner.aclose()
         if sys.platform == "win32":
             for pid in processes_with(str(tmp_path)):
                 _kill_tree(pid)
@@ -324,6 +327,10 @@ async def test_project_is_byte_identical_after_every_terminal_path(e2e, path):
     assert_project_untouched(e2e.project, before)
     assert_work_empty()
     # Nothing the run started is still running (and so could still write).
+    # Phase 11 (#242): a successful run returns its worker to the idle
+    # pool, so reap the pool first -- what must not survive is a process
+    # the pool no longer owns.
+    await e2e.runner.aclose()
     deadline = time.monotonic() + 8
     alive = processes_with(str(e2e.tmp))
     while alive and time.monotonic() < deadline:

@@ -112,7 +112,7 @@ class Env:
 
 
 @pytest.fixture
-def env(tmp_path, sandbox_root, fake_project):
+async def env(tmp_path, sandbox_root, fake_project):
     e = Env()
     e.tmp_path, e.root, e.project = tmp_path, sandbox_root, fake_project
     e.runner = ParseRunner(record_dir=tmp_path / "parse-runs", grace_window=0.0, stub=True)
@@ -147,7 +147,10 @@ def env(tmp_path, sandbox_root, fake_project):
 
     e.script, e.sidecar, e.launch = script, sidecar, launch
     script()
-    return e
+    yield e
+    # Phase 11 (#242): the runner's SandboxWorkerPool keeps idle workers
+    # warm past the run -- reap them here, or every test leaks a process.
+    await e.runner.aclose()
 
 
 async def start(e, words, launch, *, config_kind="named_sandbox", mode="parse", extra=None):
@@ -382,7 +385,11 @@ async def test_named_run_completes_with_one_line_per_word(env, monkeypatch):
     assert "the engine threw" in lines[4]["parse"]["error_message"]
     assert lines[5]["parse"]["analyses"][0]["guessed"] is True
 
-    # The spawn: a --sandbox worker on the named config, never pooled (F-13).
+    # The spawn: a --sandbox worker on the named config. The runner owns a
+    # SandboxWorkerPool (#242): this first run misses, spawns, and checks
+    # the worker back in, so its exit_code is None -- the process is still
+    # alive in the pool. Checkout is exclusive, so two concurrent runs on
+    # one key still get separate workers (F-13).
     argv = spy.argv
     assert argv[:3] == ["--sandbox", "--config", str(env.named_config)]
     assert "--named-sandbox" in argv and "--hc-params" in argv
@@ -392,7 +399,11 @@ async def test_named_run_completes_with_one_line_per_word(env, monkeypatch):
 
     sb = meta_sandbox(handle)
     assert sb["worker"]["counters"] == "ok" and sb["worker"]["timed_out"] is False
-    assert sb["worker"]["exit_code"] == 0
+    # #242: the worker was checked back into the pool, so it has no exit
+    # code -- it is still alive. This run spawned it (no reuse).
+    assert sb["worker"]["exit_code"] is None
+    assert sb["worker"]["reused_worker"] is False
+    assert isinstance(sb["worker"]["worker_pid"], int)
     # FR-017: the counts are the direct sum of the recorded lines.
     tally = classify.tally_outcomes(lines)
     assert sb["worker"]["engine_counters"] == classify.parse_counters_from(tally).to_dict()
@@ -413,6 +424,60 @@ async def test_named_run_completes_with_one_line_per_word(env, monkeypatch):
         "No generation ran for this run")
     params = json.loads(handle.record.read_sandbox_file("hc-params.json"))
     assert params == engine.HC_PARAMETER_DEFAULTS
+    assert_work_empty()
+
+
+async def test_a_second_named_run_reuses_the_warm_worker(env):
+    """#242: the runner's SandboxWorkerPool keeps the worker between runs.
+
+    Mechanism, not timing: the second run records `reused_worker: true`
+    with the first run's `worker_pid` -- the same process, no new spawn.
+    """
+    words = ["membaca", "baca"]
+    first = await run(env, words, env.launch())
+    assert first.stage is RunStage.COMPLETED, first.failure
+    sb1 = meta_sandbox(first)
+    assert sb1["worker"]["reused_worker"] is False
+    pid = sb1["worker"]["worker_pid"]
+    assert isinstance(pid, int)
+    assert env.runner._sandbox_pool.idle_count() == 1
+
+    second = await run(env, words, env.launch())
+    assert second.stage is RunStage.COMPLETED, second.failure
+    sb2 = meta_sandbox(second)
+    assert sb2["worker"]["reused_worker"] is True
+    assert sb2["worker"]["worker_pid"] == pid
+    assert env.runner._sandbox_pool.idle_count() == 1
+    assert outcomes(second) == ["parsed", "parsed"]
+    assert_work_empty()
+
+
+async def test_a_reused_workers_stderr_stays_with_its_own_run(env):
+    """#242: a pooled worker's stderr sink is per-run, not per-process.
+
+    Run 1's worker logs a marker to stderr; run 2 reuses the same worker.
+    The marker is delivered exactly once, to run 1's sink -- it must never
+    appear in run 2's stderr lines. The `wait_for` pins the delivery to run
+    1's sink being installed, which excludes the pipe-delaying-past-handoff
+    case by construction: each pipe line is consumed once.
+    """
+    marker = "run-one-stderr-marker"
+    env.script(SCRIPT, words={**SCRIPT["words"], "noisy": {"stderr": marker}})
+    first = await run(env, ["noisy", "membaca"], env.launch())
+    assert first.stage is RunStage.COMPLETED, first.failure
+    sb1 = meta_sandbox(first)
+    pid = sb1["worker"]["worker_pid"]
+    stderr1 = first.sandbox_client._stderr_lines
+    assert await wait_for(lambda: any(marker in line for line in stderr1)), \
+        "run 1 never received its own worker's stderr"
+
+    second = await run(env, ["baca"], env.launch())
+    assert second.stage is RunStage.COMPLETED, second.failure
+    sb2 = meta_sandbox(second)
+    assert sb2["worker"]["reused_worker"] is True
+    assert sb2["worker"]["worker_pid"] == pid
+    stderr2 = second.sandbox_client._stderr_lines
+    assert not any(marker in line for line in stderr2), stderr2
     assert_work_empty()
 
 
@@ -481,6 +546,8 @@ async def test_an_unloadable_config_is_engine_unavailable_with_zero_results(env)
     # hc_stdout's file carries the load exception's text (FR-038).
     assert "The morpher could not be built." in handle.record.read_sandbox_file(
         "worker-stderr.txt")
+    # #242: a worker that never finished loading is never pooled.
+    assert env.runner._sandbox_pool.idle_count() == 0
     assert_work_empty()
 
 
@@ -509,6 +576,8 @@ async def test_a_worker_crash_mid_list_is_error_no_output_then_not_reached(env):
     tally = classify.tally_outcomes(results(handle))
     assert sb["worker"]["engine_counters"] == classify.parse_counters_from(tally).to_dict()
     assert "word 3" in handle.record.read_sandbox_file("worker-stderr.txt")
+    # #242: a crashed worker is never pooled.
+    assert env.runner._sandbox_pool.idle_count() == 0
 
 
 async def test_timeout_kills_the_worker_and_keeps_completed_words(env):
@@ -530,6 +599,8 @@ async def test_timeout_kills_the_worker_and_keeps_completed_words(env):
     assert worker["in_flight_index"] == 2 and worker["in_flight_word"] == "slow"
     assert worker["counters"] == "unavailable_timeout"
     assert handle.sandbox_client.is_running() is False
+    # #242: a watchdog-killed worker is never pooled.
+    assert env.runner._sandbox_pool.idle_count() == 0
     assert_work_empty()
 
 
@@ -544,6 +615,8 @@ async def test_cancel_kills_the_worker_and_keeps_partial_results(env):
     assert len(results(handle)) == 2
     assert handle.sandbox_client.is_running() is False
     assert meta_sandbox(handle)["worker"]["counters"] == "unavailable"
+    # #242: a cancelled run's worker is never pooled.
+    assert env.runner._sandbox_pool.idle_count() == 0
     assert_work_empty()
 
 

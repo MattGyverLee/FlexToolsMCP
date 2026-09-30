@@ -26,7 +26,7 @@ server itself. Response shapes and error codes are in
 
 | Tool | Description |
 |------|-------------|
-| `flextools_search_by_capability` | Natural-language search for methods by what they do; surfaces matching skeletons from prior successful runs |
+| `flextools_search_by_capability` | Natural-language search for methods by what they do; also surfaces matching recipes and MCP tools (e.g. `flextools_try_word` for "why doesn't this word parse"), and lists every tool when no API member matches |
 | `flextools_get_object_api` | Full methods/properties for an object such as ILexEntry or LexSenseOperations |
 | `flextools_get_navigation_path` | Traversal paths between object types (ILexEntry -> ILexSense -> ILexExampleSentence) |
 | `flextools_find_examples` | Code examples by method or operation type (create, read, update, delete, iterate) |

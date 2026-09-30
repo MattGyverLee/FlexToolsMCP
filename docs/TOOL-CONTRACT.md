@@ -704,6 +704,26 @@ unchanged. It adds a top-level `deprecation`:
 
 ---
 
+## MCP-tool keys on `flextools_search_by_capability` (issue #312)
+
+Additive optional top-level success keys (absent when not applicable);
+adding them did **not** bump the contract version. They exist because MCP
+tools such as `flextools_try_word` are not Flexicon/LibLCM members, so a
+query like `"try_word method"` or `"ParserOperations.TryWord"` found no API
+rows and models invented a method instead of calling the tool.
+
+| Key | Type | Meaning |
+|---|---|---|
+| `mcp_tools` | list | Up to 3 MCP tools matching the query, best first. Row: `{"tool", "summary", "note"}` -- `summary` is the first line of the tool description (leading `[TAG]` kept); `note` says to call the tool directly, not import it in `run_module` code. Present only when at least one tool matches. |
+| `zero_result_fallback` | object | Present only when `results` is empty. `{"message", "mcp_tools", "recipes_hint"}` -- `mcp_tools` lists every non-deprecated tool as `{"tool", "summary"}`; `recipes_hint` points at `flextools_list_recipes`. The top-level `recipes` key is still emitted as usual. |
+
+Key registry: `KEY_MCP_TOOLS = "mcp_tools"`, `KEY_ZERO_RESULT_FALLBACK =
+"zero_result_fallback"` (`server/response_keys.py`). Matching lives in
+`server/tool_search.py`; `flextools_search_by_capability` itself and the
+deprecated `flextools_list_skeletons` are never listed.
+
+---
+
 ## Source of truth
 
 The models that enforce this contract are in:

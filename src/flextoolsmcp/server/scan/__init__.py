@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Home for the subprocess-run grammar scan module (parser-check feature,
-specs/parser-check/SPEC.md section 9.5.5, `flextools_grammar_health`).
+specs/_archive/parser-check/SPEC.md section 9.5.5, `flextools_grammar_health`).
 
 `grammar_scan_module.py` (T019, a later spurt) lives in this package. It is
 pure-LCM, static-analysis code -- no export, no `hc` tool, no ParserCore --

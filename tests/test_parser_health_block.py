@@ -3,8 +3,8 @@
 """
 Tests for T008 (parser-check CP1): the `parser` block on `flextools_health`.
 
-Authority: specs/parser-check/contracts/flextools_health-parser-block.md and
-specs/parser-check/data-model.md ("ParserDetector return shape"). See
+Authority: specs/_archive/parser-check/contracts/flextools_health-parser-block.md and
+specs/_archive/parser-check/data-model.md ("ParserDetector return shape"). See
 tasks.md T008.
 
 STATUS AT WRITE TIME: RED BY DESIGN. `_build_parser_block()`
@@ -753,7 +753,7 @@ class TestParserBlockFullShape:
 # ---------------------------------------------------------------------------
 # CP5 (T027): the sandbox spine -- additive keys, two-state status decided by
 # found+starts, one rung per cause, FR-006's naming rule
-# (specs/parser-check-cp5/contracts/tools.md section 6, data-model section 7)
+# (specs/_archive/parser-check-cp5/contracts/tools.md section 6, data-model section 7)
 # ---------------------------------------------------------------------------
 
 SANDBOX_TOOL = "flextools_parse_sandbox"

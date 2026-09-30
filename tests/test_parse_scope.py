@@ -19,7 +19,7 @@ the right one passes:
         library's own test.
   T019  ambiguity -- every candidate is named, not the first two.
 
-Plus the live finding from `specs/parser-check-cp3/live-note-fr001-fr003.md`:
+Plus the live finding from `specs/_archive/parser-check-cp3/live-note-fr001-fr003.md`:
 wordforms read at a writing system they are not stored in come back as the
 empty string, and must be skipped-and-recorded rather than collapsing into a
 single empty "word".

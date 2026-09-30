@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 The CP5 sandbox spine, against live FieldWorks projects and FieldWorks' own
-bundled HermitCrab (parser-check CP5; specs/parser-check-cp5/quickstart.md,
+bundled HermitCrab (parser-check CP5; specs/_archive/parser-check-cp5/quickstart.md,
 tasks T091/T094/T095, rewritten for the in-process re-plan by T110).
 
 WHAT THIS MODULE SPECIFIES. It drives the REAL handlers, in process, exactly
@@ -46,7 +46,7 @@ ISOLATION. The sandbox root (`FLEXTOOLSMCP_PARSE_SANDBOX_DIR`) and the run
 records live in a per-module temporary directory, never under
 `~/.flextoolsmcp` and never under a project folder.
 
-EVIDENCE goes to `specs/parser-check-cp5/evidence/<id>-<slug>.json`, written
+EVIDENCE goes to `specs/_archive/parser-check-cp5/evidence/<id>-<slug>.json`, written
 only after a scenario's assertions pass. Each file records the scenario id,
 the bundled HermitCrab's and GenerateHCConfig's `FileVersion` (FR-045), the
 before/after hashes, and response excerpts.
@@ -114,7 +114,7 @@ XAMPLE_PROJECT = "Sena 3"
 #: The opt-in for S9, which writes to its own scratch copy.
 LIVE_WRITE_ENV = "FLEXTOOLSMCP_CP5_LIVE_WRITE"
 
-EVIDENCE_DIR = REPO_ROOT / "specs" / "parser-check-cp5" / "evidence"
+EVIDENCE_DIR = REPO_ROOT / "specs" / "_archive" / "parser-check-cp5" / "evidence"
 
 #: S4's word list for IndonesianHC-Complete, whose vernacular is IPA: a root,
 #: the same root under the nasal prefix (the prefix replaces its first

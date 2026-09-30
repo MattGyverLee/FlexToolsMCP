@@ -96,6 +96,28 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   `unprotected_writes` guidance now says `modifyAllowed` is predefined in
   bare snippets and adds `bare_snippet_fix` (plus `main_wrapper_note` for
   Main-wrapped code). validate_only and the eval preflight runner match.
+- Runtime `AttributeError`s whose receiver no cast can fix no longer get the
+  `PolymorphicAttributeError` cast hint
+  ([#307](https://github.com/MattGyverLee/FlexToolsMCP/issues/307)). Plain
+  Python values (`'str'`, `'NoneType'`, ...), non-interface wrappers
+  (`FLExProject`, `*Operations`) and LCM services (`ILcmServiceLocator`,
+  `*Factory`, `*Repository`) now get receiver-specific guidance instead. A
+  missing `GetInstance` / `GetService` on a service locator reports
+  `ServiceLookupAttributeError` and points at `project.GetFactory(IFoo)` /
+  `ServiceLocator.GetService(IFoo)` or a flexicon Create wrapper, noting that
+  the pythonnet generic form `GetInstance[IFoo]()` fails on some builds.
+  Abstract model interfaces such as `ICmObject` keep the cast hint.
+- A punctuation-only `project_name` (e.g. two backticks) is no longer treated
+  as a real project name
+  ([#311](https://github.com/MattGyverLee/FlexToolsMCP/issues/311)). Every
+  tool that takes `project_name` (`flextools_start`, `flextools_run_module`,
+  `flextools_grammar_health`, and the parse tools) now strips surrounding
+  quotes, backticks and whitespace (`` `Sena 3` `` becomes `Sena 3`). A value
+  with nothing alphanumeric left counts as omitted: it falls back to the
+  session project, or returns `project_name_required` when there is none.
+  `project_not_found` now always carries `available_projects` and
+  `total_count`, even when there are no fuzzy suggestions, and its hint says
+  the name must be a plain project name.
 
 ### Other
 

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Shared CP1 test fixtures for the parser-check feature
-(specs/parser-check/SPEC.md, specs/parser-check/contracts/error-codes.md).
+(specs/_archive/parser-check/SPEC.md, specs/_archive/parser-check/contracts/error-codes.md).
 
 Everything here is a **plain Python stand-in** -- no live FieldWorks, no
 pythonnet, no `LcmCache`. CP1 only reflects into `ParserCore.dll` and reads

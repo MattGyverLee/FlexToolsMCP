@@ -18,10 +18,10 @@ change by default; `flextools_list_recipes` gains keys; the
 project. It reads and rewrites only `~/.flextoolsmcp/recipes.jsonl` and writes
 drafts under `~/.flextoolsmcp/recipe-drafts/`. A *distilled* write recipe that
 is later shipped inherits the existing live-verification obligation of
-`specs/unified-recipes/spec.md` (FR-040..FR-043, Sena 3 only); this feature
+`specs/_archive/unified-recipes/spec.md` (FR-040..FR-043, Sena 3 only); this feature
 does not waive or re-implement it.
 
-**Parent**: `specs/unified-recipes/spec.md` (local capture, ranked search,
+**Parent**: `specs/_archive/unified-recipes/spec.md` (local capture, ranked search,
 `promote`, shipped validator, Sena 3 verification protocol). Reference doc:
 `docs/RECIPES.md`.
 

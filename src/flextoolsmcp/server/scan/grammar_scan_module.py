@@ -52,7 +52,7 @@ checks this module's source text does not even mention that forbidden
 type by name, so this docstring is careful not to spell it out literally
 either.
 
-Implementation table: ``specs/parser-check/data-model.md``, the
+Implementation table: ``specs/_archive/parser-check/data-model.md``, the
 "``flextools_grammar_health`` scan implementation table" section (T033).
 That table -- not SPEC.md 9.5.4 directly -- is the authority this module
 follows for ``check_id`` slugs, cast requirements and ``measured``/

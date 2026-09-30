@@ -45,7 +45,7 @@ Templates requiring updates:
        required, it is the machine-readable form of this document.
 
 Deferred / follow-up TODOs:
-  - `specs/parser-check-cp2b/reviews/cycle3-qc.md` cites "Constitution QG3".
+  - `specs/_archive/parser-check-cp2b/reviews/cycle3-qc.md` cites "Constitution QG3".
     This document describes the quality gates but does not assign them QG
     numbers (per the ratification decision to keep 7 principles without a
     numbered gate register). Either correct that citation or add a numbered

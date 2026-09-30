@@ -13,7 +13,7 @@ sensitivity, offered_store, and the handlers/diagnostic_report orchestration)
 end to end -- no mocks of the diagnostic pipeline itself, only the log-dir /
 session-log / reports-dir location shims so the demo runs against tmp_path.
 
-Spec: specs/diagnostic-report/SPEC.md sections 6-10, 12.
+Spec: specs/_archive/diagnostic-report/spec.md sections 6-10, 12.
 """
 
 import asyncio

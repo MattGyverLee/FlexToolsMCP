@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 CP3's *interpretation* surface (parser-check CP3,
-specs/parser-check-cp3/plan.md Phase 7).
+specs/_archive/parser-check-cp3/plan.md Phase 7).
 
 This package is deliberately separate from `server/parse/`, and the
 separation is the point rather than a filing convenience.

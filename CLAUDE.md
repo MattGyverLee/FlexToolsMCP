@@ -191,6 +191,11 @@ around it:
   for the symbol or heading, then Read with offset/limit. For "how does X
   work across the parse stack" questions, dispatch an Explore agent and keep
   its summary instead of re-reading the files.
+- **Retired specs** (`specs/_archive/**`): shipped features' full working docs. Don't Read or
+  Grep them by default. Start from `specs/<feature>/AS-BUILT.md` (or `contracts.md` for an
+  umbrella); the code is the truth. Open an archived doc only when the AS-BUILT links a specific
+  section or the task is explicitly historical. Scope Grep to `specs/<feature>/` or exclude
+  `specs/_archive`.
 - **Don't re-read** a file already read this session unless it changed.
 - **pytest** is already lean; keep it that way:
   `.venv\Scripts\python -m pytest -q -m "not requires_flex" <path> | tail -20`.
@@ -203,12 +208,15 @@ around it:
 - Don't assume FLExTools will inject the right library - be explicit.
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-`specs/parser-check-cp2b/plan.md` (parser-check CP2a-bridge + CP2b).
+No feature plan is active. The shipped parser-check work is summarized in
+one-pagers; start there, not in `specs/_archive/`:
 
-Companions: `specs/parser-check-cp2b/spec.md` (scoping; the authoritative
-requirement text is `specs/parser-check-cp2/spec.md`),
-`specs/parser-check-cp2b/research.md`, `data-model.md`,
-`contracts/tools.md`, `contracts/bridge.md`, `quickstart.md`.
+- `specs/parser-check/contracts.md` -- umbrella rules every checkpoint follows
+- `specs/parser-check-cp2/AS-BUILT.md` -- CP2a read spine (flexicon side)
+- `specs/parser-check-cp2b/AS-BUILT.md` -- CP2a-bridge + CP2b parse worker
+- `specs/parser-check-cp3/AS-BUILT.md`, `-cp4/`, `-cp5/` -- batch/reporting,
+  filing, sandbox
+
+Other retired features: `specs/diagnostic-report/`,
+`specs/flexicon-project-bridge/`, `specs/unified-recipes/` (each `AS-BUILT.md`).
 <!-- SPECKIT END -->

@@ -4,7 +4,7 @@
 The fixed sentences filing says (parser-check CP4, data-model section 8).
 
 TRANSCRIBED, NOT PARAPHRASED. Each sentence below is copied from
-`specs/parser-check-cp4/data-model.md` section 8 (or, where noted, the plan or
+`specs/_archive/parser-check-cp4/data-model.md` section 8 (or, where noted, the plan or
 research), and the tests assert them byte for byte. CP2's field-order
 divergence happened during transcription, which is why every string a caller
 reads is defined once, here, and rendered by substitution only.

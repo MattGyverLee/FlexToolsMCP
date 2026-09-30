@@ -310,11 +310,12 @@ ATOMIC PROPERTIES: *OA / *RA properties hold ONE object (or None), never a list;
 looping over one is rejected on every run (error_code='atomic_property_iteration').
 Lists end in OS/OC/RS/RC -- e.g. entry.LexemeFormOA vs entry.AlternateFormsOS.
 
-All code has access to:
+All code has these injected globals (use them directly -- do NOT import them):
 - project: FLExProject instance
 - report: Output mechanism (report.Info/Warning/Error)
 - write_enabled / modifyAllowed: Boolean flag for write operations
-- Helpers: is_empty_multistring, FLEX_EMPTY_PLACEHOLDER, find_writing_system, list_writing_systems
+- is_empty_multistring, FLEX_EMPTY_PLACEHOLDER, find_writing_system, list_writing_systems
+  (runner-only helper functions/constant; there is no module to import them from)
 
 Operations classes (POSOperations, LexEntryOperations, etc.) are NOT auto-imported.
 You must include `from flexicon import ...` in your code, or use the project

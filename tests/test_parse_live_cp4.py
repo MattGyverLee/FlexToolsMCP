@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 The CP4 filing path, against live FieldWorks projects (parser-check CP4, US5;
-specs/parser-check-cp4/quickstart.md).
+specs/_archive/parser-check-cp4/quickstart.md).
 
 THIS MODULE MAY WRITE -- BUT ONLY TO A DISPOSABLE COPY. CP4 is the first
 parser-check checkpoint with a write path, and FR-037 confines every live
@@ -29,10 +29,10 @@ source project, every test here SKIPS -- unless `FLEXLIBS_REQUIRE_LIVE=1`, in
 which case a missing prerequisite FAILS (quickstart, Prerequisites). The CI
 live job sets it, so a silently empty live run cannot report green.
 
-Evidence goes to `specs/parser-check-cp4/evidence/` and NEVER into a project
+Evidence goes to `specs/_archive/parser-check-cp4/evidence/` and NEVER into a project
 folder (FR-042).
 
-Task mapping (specs/parser-check-cp4/tasks.md Phase 8):
+Task mapping (specs/_archive/parser-check-cp4/tasks.md Phase 8):
 
     T080    this module: the marker, the scratch fixture, the live gate
     T081    the parity group: the eligibility port agrees with the loader
@@ -81,7 +81,7 @@ SCALE_PROJECT = os.environ.get(
 #: Named here so the exclusion is greppable. Nothing in this module opens it.
 EXCLUDED_XAMPLE_PROJECT = "Sena 3"
 
-EVIDENCE_DIR = REPO_ROOT / "specs" / "parser-check-cp4" / "evidence"
+EVIDENCE_DIR = REPO_ROOT / "specs" / "_archive" / "parser-check-cp4" / "evidence"
 
 #: One live probe may load a whole grammar; generous, but not unbounded.
 _PROBE_TIMEOUT = 900

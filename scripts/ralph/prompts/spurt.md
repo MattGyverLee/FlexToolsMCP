@@ -28,7 +28,7 @@ handoff.
 ## Step 1 -- if `{{FEATURE_DIR}}/spec.md` does NOT exist
 
 This spurt's only job is to create the checkpoint spec. Follow the shape the
-previous checkpoint used (`specs/parser-check-cp2/`): a cycle-1 recon pass
+previous checkpoint used (`specs/_archive/parser-check-cp2/`): a cycle-1 recon pass
 through `/lex-lead` first if the surface is unknown, then
 `/speckit.companion.specify` scoped to:
 

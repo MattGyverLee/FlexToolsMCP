@@ -50,7 +50,7 @@ from fixtures.signals_runs import (  # noqa: E402
     write_run,
 )
 
-CONTRACT = REPO_ROOT / "specs" / "parser-check-cp3" / "contracts" / "tools.md"
+CONTRACT = REPO_ROOT / "specs" / "_archive" / "parser-check-cp3" / "contracts" / "tools.md"
 
 FORBIDDEN = ("invalid", "incorrect", "rejected", "flagged")
 FORBIDDEN_LABELS = ("tacit", "unreviewed", "auto_approved")

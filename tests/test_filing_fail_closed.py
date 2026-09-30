@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Unknown is never clean: the fail-open siblings the CP4 pattern audit found
-(specs/parser-check-cp4/reviews/pattern-audit-3-4.md, sweep #4; and
+(specs/_archive/parser-check-cp4/reviews/pattern-audit-3-4.md, sweep #4; and
 pattern-audit-1-2.md, sweep #2, for the read worker's cache).
 
 Each test below pins one path whose failure used to read as the PERMISSIVE

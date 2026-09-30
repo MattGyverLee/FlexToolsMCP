@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   Packaged driver for the parser-check CP5 sandbox spine. The interface between
-  the MCP and this script is specs/parser-check-cp5/contracts/hcparse.md; keep
+  the MCP and this script is specs/_archive/parser-check-cp5/contracts/hcparse.md; keep
   the two in step.
 
   One mode:

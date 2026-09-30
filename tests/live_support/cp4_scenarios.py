@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 The CP4 quickstart scenarios, live, on disposable copies (parser-check CP4,
-T082-T084; specs/parser-check-cp4/quickstart.md).
+T082-T084; specs/_archive/parser-check-cp4/quickstart.md).
 
 Every scenario makes its own fresh `CP4-Scratch-` copy, drives the REAL
 handler / runner / worker processes, writes its evidence to
-`specs/parser-check-cp4/evidence/`, and deletes the copy and its backups.
+`specs/_archive/parser-check-cp4/evidence/`, and deletes the copy and its backups.
 Scenario data is seeded or broken through `lcm_writer.run_lcm` in a separate
 process, always with the MCP's read worker released first (L-0: a non-shared
 project has one opener at a time).
@@ -36,7 +36,7 @@ sys.path.insert(0, str(_HERE.parent))
 from lcm_writer import run_lcm  # noqa: E402
 from make_disposable import delete_disposable, make_disposable, require_disposable  # noqa: E402
 
-EVIDENCE = REPO / "specs" / "parser-check-cp4" / "evidence"
+EVIDENCE = REPO / "specs" / "_archive" / "parser-check-cp4" / "evidence"
 HC_SOURCE = "IndonesianHC-Complete"
 SCALE_SOURCE = "Malay Parsing-20230810withHC"
 KEEP = False

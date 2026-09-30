@@ -1,0 +1,19 @@
+intent: "A snippet wrapped in def Main with no docs/FlexToolsModule scaffold runs with an advisory"
+api_mode: flexicon
+write_enabled: false
+code: |
+  def Main(project, report, modifyAllowed):
+      report.Info("hello")
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+  advisories: [module_scaffold]
+notes: >
+  Issue #303: this used to reject as partial_module_structure, and weak
+  models ping-ponged between that and unprotected_writes (add Main ->
+  rejected, drop Main -> rejected). The runner injects modifyAllowed and
+  calls Main itself, so the scaffold only matters for saving a FlexTools
+  module file; the run proceeds with a "[module scaffold]" warning carrying
+  a ready-to-paste suggested_scaffold.
+issue: 303

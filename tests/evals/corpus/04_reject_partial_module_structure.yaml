@@ -1,7 +1,13 @@
-intent: "A module-shaped snippet (has Main) missing docs/FlexToolsModule scaffolding"
+intent: "A half-scaffolded module: has Main and a docs dict but no FlexToolsModule binding"
 api_mode: flexicon
 write_enabled: false
 code: |
+  docs = {FTM_Name        : "Hello",
+          FTM_Version     : 1,
+          FTM_ModifiesDB  : False,
+          FTM_Synopsis    : "Say hello",
+          FTM_Description : "Say hello"}
+
   def Main(project, report, modifyAllowed):
       report.Info("hello")
 expect:
@@ -9,7 +15,8 @@ expect:
   error_code: partial_module_structure
   auto_fixes: 0
 notes: >
-  Dennis's case (see validators.py detect_partial_module_structure
-  docstring): def Main present but docs dict / FlexToolsModule binding
-  absent. Mirrors tests/test_validators.py's
-  TestPartialModuleStructure.test_main_without_scaffolding_is_partial.
+  Issue #303: only a GENUINE half-module rejects -- def Main plus exactly one
+  of the docs dict / FlexToolsModule binding. It would not load as a saved
+  FlexTools module file. (def Main with NEITHER piece runs as a snippet; see
+  issue303_main_wrapped_snippet_runs.yaml.) Mirrors tests/test_validators.py's
+  TestPartialModuleStructure.test_main_with_docs_only_still_partial.

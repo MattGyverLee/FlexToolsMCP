@@ -37,10 +37,13 @@ non-comment lines) is remembered as one local recipe in
 --id <new-id>` plus human review -- drafts go to
 `~/.flextoolsmcp/recipe-drafts/`, never straight into the package.
 
-The MCP still runs a `partial_module_structure` check at run time: code
-that defines `Main` but lacks the `docs` dict / `FlexToolsModule` binding
-will be refused with a pointer back to `get_module_template`. That's a
-safety net for half-converted modules, not an instruction to fetch the
+The MCP still runs a `partial_module_structure` check at run time, but
+only for half-modules: code that defines `Main` and has exactly one of the
+`docs` dict / `FlexToolsModule` binding is refused, with the missing piece
+in `suggested_scaffold` (or pass `skip_module_check=True`). Code with
+`def Main` and neither piece runs as a snippet; the response carries a
+`[module scaffold]` warning with the scaffold to paste if you want to save
+it as a module file (#303). Neither case is an instruction to fetch the
 template before every snippet.
 
 ### Lightweight op form (no `Main`)

@@ -83,6 +83,20 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
 
 ### Fixed
 
+- `flextools_run_module` no longer ping-pongs between `partial_module_structure`
+  and `unprotected_writes`
+  ([#303](https://github.com/MattGyverLee/FlexToolsMCP/issues/303)). Code
+  that defines `def Main` with neither the `docs` dict nor the
+  `FlexToolsModule` binding now runs as a snippet (the runner already calls
+  Main), with a `[module scaffold]` warning carrying a ready-to-paste
+  scaffold. A genuine half-module (exactly one of the two) still rejects, now
+  with the missing piece in `suggested_scaffold`, `skip_module_check=True`
+  as the first next step, and one combined rejection when the code also has
+  unguarded writes (`also_unprotected_writes`, `mutations_found`). The
+  `unprotected_writes` guidance now says `modifyAllowed` is predefined in
+  bare snippets and adds `bare_snippet_fix` (plus `main_wrapper_note` for
+  Main-wrapped code). validate_only and the eval preflight runner match.
+
 ### Other
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*

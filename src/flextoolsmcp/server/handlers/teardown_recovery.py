@@ -36,6 +36,7 @@ Commit classification. flexicon ``CloseProject()`` runs
 ``Save`` -- therefore happened AFTER the lexicon data was committed.
 """
 
+import ntpath as _tr_ntpath
 import os as _tr_os
 
 # Observed SIL writing-system store layout version (FieldWorks 9). Only
@@ -220,7 +221,9 @@ def ws_repo_mutex_names():
             names.append(str(vpath).replace("\\", "_"))
     except Exception:
         pass
-    fallback = _tr_os.path.join(
+    # ntpath, not os.path: the mutex name mirrors a Windows path, so the
+    # separators must be backslashes even when this runs elsewhere.
+    fallback = _tr_ntpath.join(
         _tr_os.environ.get("PROGRAMDATA") or "C:\\ProgramData",
         "SIL", "WritingSystemRepository", _TR_WS_REPO_VERSION_FALLBACK,
     ).replace("\\", "_")

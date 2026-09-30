@@ -995,7 +995,7 @@ class WorkerPool:
         (#223 QC P1).
 
         The write gates (`handlers/execution.py`'s
-        `_release_own_worker_or_refuse`, `handlers/parse.py`'s
+        `_release_own_worker_or_refuse`, `handlers/parse/runs.py`'s
         `handle_flextools_parse_release`) used to call `ParseRunner.worker_busy()`
         and this pool's `release()` as two separate steps, with a real
         `await` (worker teardown, `aclose()`) between them. A run that

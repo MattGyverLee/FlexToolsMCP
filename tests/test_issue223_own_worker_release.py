@@ -279,7 +279,7 @@ def _call_release(args):
 
 class TestParseRelease:
     def test_no_worker_at_all_is_a_success_no_op(self, monkeypatch):
-        monkeypatch.setattr(parse_mod, "_resolve_project", lambda name: (name or "P", None))
+        monkeypatch.setattr(parse_mod.common, "_resolve_project", lambda name: (name or "P", None))
         # peek_runner() is None (autouse fixture reset it).
         data = _call_release({"project_name": "NoWorkerProj"})
 
@@ -287,7 +287,7 @@ class TestParseRelease:
         assert data["released"] == []
 
     def test_an_idle_worker_is_released(self, monkeypatch):
-        monkeypatch.setattr(parse_mod, "_resolve_project", lambda name: (name or "P", None))
+        monkeypatch.setattr(parse_mod.common, "_resolve_project", lambda name: (name or "P", None))
         runner = _FakeOwnWorkerRunner({"shared": 111})
         parse_mod.set_runner(runner)
 
@@ -298,7 +298,7 @@ class TestParseRelease:
         assert runner.released == [("IdleProj", "shared")]
 
     def test_a_busy_worker_refuses_and_points_at_parse_cancel(self, monkeypatch):
-        monkeypatch.setattr(parse_mod, "_resolve_project", lambda name: (name or "P", None))
+        monkeypatch.setattr(parse_mod.common, "_resolve_project", lambda name: (name or "P", None))
         runner = _FakeOwnWorkerRunner(
             {"shared": 111}, busy_roles={"shared"}, run_ids={"shared": ["run-xyz"]}
         )
@@ -314,7 +314,7 @@ class TestParseRelease:
         )
 
     def test_multiple_idle_roles_are_all_released(self, monkeypatch):
-        monkeypatch.setattr(parse_mod, "_resolve_project", lambda name: (name or "P", None))
+        monkeypatch.setattr(parse_mod.common, "_resolve_project", lambda name: (name or "P", None))
         runner = _FakeOwnWorkerRunner({"shared": 111, "measurement": 222})
         parse_mod.set_runner(runner)
 

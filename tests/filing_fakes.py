@@ -365,7 +365,7 @@ def filing_env(tmp_path, monkeypatch):
     env = FilingEnv(tmp_path, monkeypatch)
 
     # Project resolution and the projects directory, both under tmp_path.
-    monkeypatch.setattr(parse_handler, "_resolve_project", lambda name: (name or PROJECT, None))
+    monkeypatch.setattr(parse_handler.common, "_resolve_project", lambda name: (name or PROJECT, None))
     monkeypatch.setattr(project_discovery, "get_projects_directory",
                         lambda: (env.projects_dir, "env"))
     monkeypatch.setattr(project_discovery, "get_project_fwdata_path",

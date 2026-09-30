@@ -677,7 +677,10 @@ class TestTreeDiscoveryIsNotVacuous:
 
 
 #: The ONLY files permitted to call a parse operation (CP2b, research.md
-#: R-06). One entry: the long-lived parse worker.
+#: R-06). The long-lived parse worker's two backends, `_RealBackend` and
+#: `_SandboxBackend`. Until #298 both lived in `worker_main.py` and this was
+#: one entry; the split moved each into its own module, so the allowlist
+#: names exactly those two modules and nothing else in the worker.
 #:
 #: WHY THIS EXISTS AT ALL. Before CP2b this repository parsed no words, so
 #: "no parse operation anywhere in the tree" was both true and the whole
@@ -690,8 +693,8 @@ class TestTreeDiscoveryIsNotVacuous:
 #:
 #: SO THE FILE IS AMENDED, NEVER WEAKENED. The scan still walks the whole
 #: tree by ``rglob``; no file is skipped. What is narrowed is exactly one
-#: violation *kind* in exactly one *file*: ``parse_operation`` in the
-#: worker. Construction violations -- ``HCParser(...)``, reflective
+#: violation *kind* in exactly the worker's two backend *files*:
+#: ``parse_operation`` there. Construction violations -- ``HCParser(...)``, reflective
 #: instantiation -- remain forbidden there too, because the worker reaches
 #: the parser through flexicon's facade and constructs nothing itself. A
 #: blanket per-file exemption would have thrown that away silently.
@@ -701,7 +704,10 @@ class TestTreeDiscoveryIsNotVacuous:
 #: QC gate imposed on ``NON_CONTRACT_PREFIXES``, and the reason a future
 #: handler cannot quietly append itself here.
 CP2B_PARSE_OPERATION_ALLOWLIST = frozenset(
-    {"src/flextoolsmcp/server/parse/worker_main.py"}
+    {
+        "src/flextoolsmcp/server/parse/worker_real_backend.py",
+        "src/flextoolsmcp/server/parse/worker_sandbox_backend.py",
+    }
 )
 
 #: The package that owns parser execution (FR-026, "one run mechanism").
@@ -719,7 +725,7 @@ CP2B_PARSE_PACKAGE = "src/flextoolsmcp/server/parse/"
 #: (``filing/filer.py``, a fresh filer per word, R-03). ``HCParser``,
 #: ``XAmpleParser`` and ``ParserWorker`` construction stay forbidden there
 #: and everywhere; ``ParseWord`` stays in the parse package (the filing
-#: worker parses through ``worker_main``'s ``parse_raw``); and the CP1
+#: worker parses through ``_RealBackend.parse_raw``); and the CP1
 #: diagnostic surface is untouched.
 CP4_FILING_ALLOWLIST = {
     "src/flextoolsmcp/server/filing/filer.py": frozenset({"ParseFiler", "ProcessParse"}),
@@ -795,14 +801,15 @@ class TestStaticNoParserConstructionAnywhereInTheTree:
         ``Morpher`` construction is allowlisted on purpose and pinned by
         ``TestTheSandboxEngineAllowlistIsPinned``, not passed by accident.
         """
-        worker = REPO_ROOT / "src/flextoolsmcp/server/parse/worker_main.py"
-        assert worker.exists(), "the allowlisted worker module is missing"
+        for rel in sorted(CP2B_PARSE_OPERATION_ALLOWLIST):
+            worker = REPO_ROOT / rel
+            assert worker.exists(), f"the allowlisted worker module is missing: {rel}"
 
-        violations = scan_source_for_construction(
-            worker.read_text(encoding="utf-8"), _rel(worker)
-        )
-        construction = [v for v in violations if v[0] != "parse_operation"]
-        assert construction == [], "\n".join(repr(v) for v in construction)
+            violations = scan_source_for_construction(
+                worker.read_text(encoding="utf-8"), _rel(worker)
+            )
+            construction = [v for v in violations if v[0] != "parse_operation"]
+            assert construction == [], "\n".join(repr(v) for v in construction)
 
 
 class TestTheParseAllowlistIsPinned:
@@ -815,11 +822,12 @@ class TestTheParseAllowlistIsPinned:
 
     def test_the_allowlist_is_exactly_the_worker(self):
         assert CP2B_PARSE_OPERATION_ALLOWLIST == frozenset(
-            {"src/flextoolsmcp/server/parse/worker_main.py"}
+            {"src/flextoolsmcp/server/parse/worker_real_backend.py", "src/flextoolsmcp/server/parse/worker_sandbox_backend.py"}
         ), (
             "The parse-operation allowlist changed. It is meant to hold "
-            "exactly one entry -- the long-lived parse worker. Adding a "
-            "second means some other module now parses words, which is "
+            "exactly the long-lived parse worker's two backend modules "
+            "(#298). Adding another means some other module now parses "
+            "words, which is "
             "either a second execution path (FR-026 forbids one) or the "
             "CP1 diagnostic surface starting to parse (the guarantee this "
             "file exists to protect). Justify it here or revert it."
@@ -840,18 +848,19 @@ class TestTheParseAllowlistIsPinned:
     def test_the_allowlist_actually_suppresses_something(self):
         """A vacuous allowlist would pass this file while protecting nothing.
 
-        The worker really must contain parse operations; if it stopped
-        doing so the allowlist would be dead weight and this test says so
-        rather than letting it sit there looking meaningful.
+        Each allowlisted module really must contain parse operations; if
+        one stopped doing so its entry would be dead weight and this test
+        says so rather than letting it sit there looking meaningful.
         """
-        worker = REPO_ROOT / "src/flextoolsmcp/server/parse/worker_main.py"
-        raw = scan_source_for_construction(
-            worker.read_text(encoding="utf-8"), _rel(worker)
-        )
-        assert any(v[0] == "parse_operation" for v in raw), (
-            "the worker contains no parse operations, so the allowlist "
-            "entry for it is exempting nothing"
-        )
+        for rel in sorted(CP2B_PARSE_OPERATION_ALLOWLIST):
+            worker = REPO_ROOT / rel
+            raw = scan_source_for_construction(
+                worker.read_text(encoding="utf-8"), _rel(worker)
+            )
+            assert any(v[0] == "parse_operation" for v in raw), (
+                f"{rel} contains no parse operations, so the allowlist "
+                "entry for it is exempting nothing"
+            )
 
 
 class TestNoParserExecutionOutsideTheParsePackage:
@@ -950,7 +959,7 @@ class TestTheFilingAllowlistIsPinned:
         assert any(v[0] == "parse_operation" for v in violations)
 
     def test_the_filing_worker_itself_constructs_and_parses_nothing(self):
-        """It parses through worker_main's parse_raw and files through the filer."""
+        """It parses through _RealBackend.parse_raw and files through the filer."""
         path = REPO_ROOT / "src/flextoolsmcp/server/filing/worker_filing.py"
         rel = "src/flextoolsmcp/server/filing/worker_filing.py"
         assert scan_source_for_construction(path.read_text(encoding="utf-8"), rel) == []
@@ -970,7 +979,7 @@ class TestTheFilingAllowlistIsPinned:
 #: tree-wide scan by accident rather than on purpose.
 CP5_SANDBOX_ENGINE_NAMES = frozenset({"Morpher", "XmlLanguageLoader"})
 CP5_SANDBOX_ENGINE_ALLOWLIST = {
-    "src/flextoolsmcp/server/parse/worker_main.py": "_SandboxBackend",
+    "src/flextoolsmcp/server/parse/worker_sandbox_backend.py": "_SandboxBackend",
 }
 PACKAGE_ROOT = REPO_ROOT / "src" / "flextoolsmcp"
 
@@ -1021,7 +1030,7 @@ class TestTheSandboxEngineAllowlistIsPinned:
     impose on the earlier amendments.
     """
 
-    WORKER = "src/flextoolsmcp/server/parse/worker_main.py"
+    WORKER = "src/flextoolsmcp/server/parse/worker_sandbox_backend.py"
 
     def _worker_source(self) -> str:
         return (REPO_ROOT / self.WORKER).read_text(encoding="utf-8")
@@ -1061,7 +1070,7 @@ class TestTheSandboxEngineAllowlistIsPinned:
             node for node in ast.walk(tree)
             if isinstance(node, ast.ClassDef) and node.name == "_SandboxBackend"
         ]
-        assert backend, "worker_main.py has no _SandboxBackend class"
+        assert backend, "worker_sandbox_backend.py has no _SandboxBackend class"
         calls = [
             node for node in ast.walk(backend[0]) if isinstance(node, ast.Call)
         ]
@@ -1078,24 +1087,26 @@ class TestTheSandboxEngineAllowlistIsPinned:
     def test_the_real_backend_still_constructs_no_parser(self):
         """The premise of ``test_the_worker_still_constructs_no_parser_itself``,
         now scoped: nothing in the worker outside ``_SandboxBackend`` builds a
-        Morpher or any other parser, even counting Morpher as forbidden."""
-        source = self._worker_source()
-        tree = ast.parse(source, filename=self.WORKER)
-        spans = [
-            (node.lineno, node.end_lineno)
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ClassDef) and node.name == "_SandboxBackend"
-        ]
-        violations = scan_source_for_construction(
-            source, self.WORKER,
-            forbidden_types=FORBIDDEN_CONSTRUCTED_TYPES | frozenset({"Morpher"}),
-        )
-        outside = [
-            v for v in violations
-            if v[0] != "parse_operation"
-            and not any(start <= v[2] <= end for start, end in spans)
-        ]
-        assert outside == [], "\n".join(repr(v) for v in outside)
+        Morpher or any other parser, even counting Morpher as forbidden.
+        Both backend modules are scanned: #298 split them apart."""
+        for rel in sorted(CP2B_PARSE_OPERATION_ALLOWLIST):
+            source = (REPO_ROOT / rel).read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=rel)
+            spans = [
+                (node.lineno, node.end_lineno)
+                for node in ast.walk(tree)
+                if isinstance(node, ast.ClassDef) and node.name == "_SandboxBackend"
+            ]
+            violations = scan_source_for_construction(
+                source, rel,
+                forbidden_types=FORBIDDEN_CONSTRUCTED_TYPES | frozenset({"Morpher"}),
+            )
+            outside = [
+                v for v in violations
+                if v[0] != "parse_operation"
+                and not any(start <= v[2] <= end for start, end in spans)
+            ]
+            assert outside == [], "\n".join(repr(v) for v in outside)
 
     def test_the_helper_module_holds_no_engine_entry_point(self):
         """``hc_engine.py`` is pure helpers (engine-dir, id map, shaping)."""

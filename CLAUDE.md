@@ -186,8 +186,8 @@ around it:
   thread. Delegate: `lex-logscan` for triage and issue filing, a
   general-purpose subagent for "what happened in this session?". Grep for a
   signature and read <= 200 lines around the hit only if you need one detail.
-- **Large files** (`parse/worker_main.py`, `handlers/parse.py`,
-  `parse/runner.py`, `specs/*/spec.md|plan.md|tasks.md`, index JSONs): Grep
+- **Large files** (`parse/runner.py`, `handlers/execution.py`,
+  `specs/*/spec.md|plan.md|tasks.md`, index JSONs): Grep
   for the symbol or heading, then Read with offset/limit. For "how does X
   work across the parse stack" questions, dispatch an Explore agent and keep
   its summary instead of re-reading the files.

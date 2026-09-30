@@ -73,23 +73,18 @@ import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..parse.worker_main import (
+from ..parse.worker_analysis import _clr_list, _guid, _multi_text, _structured_analysis
+from ..parse.worker_backend import _StubBackend
+from ..parse.worker_loop import ParseWorker
+from ..parse.worker_main import _idle_timeout_from_env, _reader_thread
+from ..parse.worker_protocol import (
     DEFAULT_IDLE_TIMEOUT_SECONDS,
     PROTOCOL_VERSION,
-    ParseWorker,
-    _clr_list,
     _emit,
     _force_utf8_stdio,
-    _guid,
-    _idle_timeout_from_env,
     _log,
-    _multi_text,
-    _reader_thread,
-    _RealBackend,
-    _structured_analysis,
-    _StubBackend,
-    headless_ui_kwargs,
 )
+from ..parse.worker_real_backend import _RealBackend, headless_ui_kwargs
 from . import classify, filer, gate, paths
 
 __all__ = ["FilingBackend", "FilingWorker", "FilingRefusal", "main"]

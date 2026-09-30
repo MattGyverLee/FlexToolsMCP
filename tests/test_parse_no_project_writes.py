@@ -58,7 +58,7 @@ CP3_MODULES = sorted(
     list((SRC / "parse").glob("*.py"))
     + list((SRC / "signals").glob("*.py"))
     + list((SRC / "sandbox").glob("*.py"))
-    + [SRC / "handlers" / "parse.py"]
+    + list((SRC / "handlers" / "parse").glob("*.py"))
 )
 
 #: The LCM / flexicon write surface, by the name that is CALLED.
@@ -232,7 +232,7 @@ def test_try_word_never_files():
     `handle_flextools_try_word` starts runs; none of them may be a filing run,
     use the filing worker, or name the `file` level.
     """
-    tree = _tree(SRC / "handlers" / "parse.py")
+    tree = _tree(SRC / "handlers" / "parse" / "try_word.py")
     handler = next(
         node for node in ast.walk(tree)
         if isinstance(node, ast.AsyncFunctionDef) and node.name == "handle_flextools_try_word"

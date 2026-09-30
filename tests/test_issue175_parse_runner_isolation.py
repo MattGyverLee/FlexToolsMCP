@@ -20,7 +20,7 @@ from test_try_word_handler import Pool, RecordingWorker  # noqa: E402
 @pytest.fixture
 def runner(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     instance = ParseRunner(
         pool=Pool(RecordingWorker()), record_dir=tmp_path / "runs", grace_window=30.0

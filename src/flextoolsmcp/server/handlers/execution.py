@@ -4788,6 +4788,18 @@ def run_module():
             "modifyAllowed": WRITE_ENABLED,
         }
 
+        # Issue #314: the helpers above are injected globals, but models read
+        # the tool description's helper list as a module name and write
+        # `from helpers import is_empty_multistring`. Register a `helpers`
+        # shim so that import resolves to the same objects instead of failing
+        # with "No module named 'helpers'". Skip if a real module owns the name.
+        if "helpers" not in sys.modules:
+            _helpers_shim = types.ModuleType("helpers")
+            for _name in ("is_empty_multistring", "FLEX_EMPTY_PLACEHOLDER",
+                          "find_writing_system", "list_writing_systems"):
+                setattr(_helpers_shim, _name, module_namespace[_name])
+            sys.modules["helpers"] = _helpers_shim
+
         # Execute the module code to define Main and FlexToolsModule, or run bare code
         exec(MODULE_CODE, module_namespace)
 

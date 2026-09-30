@@ -1425,6 +1425,161 @@ def _diagnose_project_open_error(
     return None
 
 
+# Issue #310: liblcm's UnitOfWorkService.RegisterCommon raises
+# InvalidOperationException("Not in the right state to register a change")
+# when a change is registered while no unit of work is open. Matched
+# case-insensitively on the stable prefix.
+_NO_UOW_MARKERS = (
+    "not in the right state to register a change",
+)
+
+# The supported raw-LCM path on per-operation-uow builds. Not refused by the
+# nested_unit_of_work gate (validators.detect_nested_unit_of_work flags only
+# the raw helpers and Begin*Task calls): flexicon's _FLExUndoableOperation
+# opens an UndoableUnitOfWorkHelper when none is open and joins the enclosing
+# one otherwise, so it never nests.
+_RAW_UOW_PATH = 'with project.UndoableOperation("<label>"):'
+
+
+def _no_uow_error_text(execution_result: Dict[str, Any]) -> Optional[str]:
+    """Return the text carrying the no-unit-of-work marker, or None.
+
+    Looks at the runner's `error` string first, then at ERROR-level report
+    messages -- a script that catches the exception and calls report.Error()
+    turns it into a ReportedError whose `error` no longer carries the text.
+    """
+    candidates: List[str] = []
+    raw_error = execution_result.get("error")
+    if isinstance(raw_error, str):
+        candidates.append(raw_error)
+    for m in execution_result.get("messages") or []:
+        if isinstance(m, dict) and str(m.get("type", "")).upper() == "ERROR":
+            msg = m.get("message")
+            if isinstance(msg, str):
+                candidates.append(msg)
+    for text in candidates:
+        low = text.lower()
+        if any(marker in low for marker in _NO_UOW_MARKERS):
+            return text
+    return None
+
+
+def _diagnose_no_unit_of_work_error(
+    execution_result: Dict[str, Any], write_enabled: bool
+) -> Optional[Dict[str, Any]]:
+    """Map liblcm's "Not in the right state to register a change" (issue #310).
+
+    That InvalidOperationException means a raw LCM mutation ran while no unit
+    of work was open. The guidance depends on the run's mode:
+
+    - read-only (write_enabled=False): nothing opens a unit of work, so no
+      write can register by any route. Guard writes under `if modifyAllowed:`
+      and re-run write-enabled.
+    - write-enabled on a per-operation-uow build (the runner's `undoable`
+      flag True -- every supported install): the runner opens no
+      session-long task; each Flexicon operation opens its own. A raw write
+      outside one has nothing to register in. The supported raw path is
+      `with project.UndoableOperation(label):`. The raw
+      UndoableUnitOfWorkHelper / BeginUndoTask route is refused by the
+      nested_unit_of_work gate, and project.Transaction() opens no unit of
+      work on these builds.
+    - write-enabled legacy (`undoable` False): the session-long task should
+      be open around the whole run, so the script must have closed it.
+
+    Returns None when the error does not carry the marker; otherwise a dict
+    the caller merges into execution_result (same shape as
+    _diagnose_project_open_error).
+    """
+    matched = _no_uow_error_text(execution_result)
+    if matched is None:
+        return None
+
+    wrappers = "project.POS.*, project.LexEntry.*, project.Senses.*"
+    undoable = execution_result.get("undoable")
+    if not write_enabled:
+        uow_mode = "read_only"
+        message = (
+            "A raw LCM mutation ran with no unit of work open (liblcm: 'Not "
+            "in the right state to register a change'). This run is "
+            "read-only (write_enabled=false): no unit of work is ever open, "
+            "so no write can register by any route, wrapper or raw."
+        )
+        guidance = (
+            "Put every write under `if modifyAllowed:` so the dry run skips "
+            "it, then re-run with write_enabled=true. Prefer the Flexicon "
+            f"operations wrappers ({wrappers}); each opens its own unit of "
+            "work. For a raw LCM write in the write-enabled run, wrap it in "
+            f"`{_RAW_UOW_PATH}`."
+        )
+        next_steps = [
+            "1. Guard the mutation with `if modifyAllowed:` -- a read-only "
+            "run cannot write.",
+            f"2. Prefer a Flexicon operations wrapper ({wrappers}) over the "
+            "raw LCM call.",
+            "3. If you must write raw LCM, wrap it in "
+            f"`{_RAW_UOW_PATH}` (inside the modifyAllowed guard).",
+            "4. Re-run flextools_run_module() with write_enabled=true.",
+        ]
+    elif undoable is False:
+        uow_mode = "session_envelope"
+        message = (
+            "A raw LCM mutation ran with no unit of work open (liblcm: 'Not "
+            "in the right state to register a change'). This flexicon build "
+            "holds one session-long non-undoable task for the whole run, so "
+            "the script must have closed it (EndNonUndoableTask, a failed "
+            "SaveChanges, or a raw helper that rolled it back)."
+        )
+        guidance = (
+            "Remove whatever ends the runner's session task. In this mode raw "
+            "LCM writes under `if modifyAllowed:` are legal as they are. "
+            f"Prefer the Flexicon operations wrappers ({wrappers})."
+        )
+        next_steps = [
+            "1. Remove EndNonUndoableTask/EndUndoTask/SaveChanges calls and "
+            "raw UnitOfWork helpers from the script.",
+            "2. Keep raw writes under `if modifyAllowed:`; the session task "
+            "covers them.",
+            "3. Re-run flextools_run_module().",
+        ]
+    else:
+        uow_mode = "per_operation"
+        message = (
+            "A raw LCM mutation ran outside any undo task (liblcm: 'Not in "
+            "the right state to register a change'). The runner opens no "
+            "session-long unit of work on this flexicon build: each Flexicon "
+            "operation opens its own, so a raw LCM write outside one has "
+            "nothing to register in."
+        )
+        guidance = (
+            f"Prefer the Flexicon operations wrappers ({wrappers}); they "
+            "open their own unit of work. For a raw LCM write, the supported "
+            f"path is `{_RAW_UOW_PATH}` around it (under `if modifyAllowed:`) "
+            "-- it opens a unit of work, or joins the enclosing one. Do not "
+            "use UndoableUnitOfWorkHelper or BeginUndoTask (refused by the "
+            "nested_unit_of_work gate), and do not rely on "
+            "project.Transaction(): it opens no unit of work on this build."
+        )
+        next_steps = [
+            f"1. Prefer a Flexicon operations wrapper ({wrappers}) over the "
+            "raw LCM call.",
+            "2. Otherwise wrap the raw LCM writes in "
+            f"`{_RAW_UOW_PATH}` inside the `if modifyAllowed:` guard.",
+            "3. Re-run flextools_run_module() with write_enabled=true.",
+        ]
+
+    return {
+        "error_code": "no_unit_of_work",
+        "message": message,
+        "hint": guidance,
+        "guidance": guidance,
+        "next_steps": next_steps,
+        "uow_mode": uow_mode,
+        "write_enabled": bool(write_enabled),
+        "undoable": undoable if isinstance(undoable, bool) else None,
+        "lcm_message": matched.split("\n", 1)[0][:500],
+    }
+
+
 def _inline_discovery_docs(
     entity_names: List[str], api_index: Any, limit: int = 3
 ) -> Dict[str, Any]:
@@ -3451,32 +3606,49 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     "inside it and will discard that operation's writes before "
                     "the error is raised."
                 )
+                # Issue #310: on these builds the runner opens NO session
+                # task, so a raw LCM write outside a flexicon op has no unit
+                # of work at all. Name the legal raw path instead of "just
+                # write directly" (which raises no_unit_of_work at runtime).
+                _nested_uow_steps = [
+                    "1. Replace the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
+                    "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) with "
+                    f"`{_RAW_UOW_PATH}` -- the supported raw-LCM path. It opens a unit "
+                    "of work when none is open and joins the enclosing one otherwise, "
+                    "so it never nests.",
+                    "2. Better: use the Flexicon operations wrappers (project.POS.*, "
+                    "project.LexEntry.*, project.Senses.*); each opens its own unit "
+                    "of work and needs no wrapper.",
+                    "3. Keep the writes under `if modifyAllowed:`. Do not drop the "
+                    "wrapper and write raw LCM bare: the runner opens no session "
+                    "task on this build, so that raises no_unit_of_work. "
+                    "project.Transaction() opens no unit of work here either.",
+                    "4. Re-run flextools_run_module()",
+                ]
             else:
                 _nested_uow_message = (
                     "Code opens its own raw liblcm UnitOfWork, which nests inside "
                     "the runner's already-open non-undoable task and will discard "
                     "this run's writes."
                 )
+                _nested_uow_steps = [
+                    "1. Drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
+                    "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
+                    "the runner's session-long task is already open around the "
+                    "whole run on this flexicon build.",
+                    "2. Just perform the mutation directly (guarded by "
+                    "`if modifyAllowed:` as usual); that session task captures it.",
+                    "3. project.UndoableOperation() is unavailable in this mode "
+                    "(it needs undoable=True); Flexicon operations wrappers "
+                    "(project.POS.*, project.LexEntry.*) work as usual.",
+                    "4. Re-run flextools_run_module()",
+                ]
             return _attach_assistance_if_loop(
                 error_response(
                     "nested_unit_of_work",
                     _nested_uow_message,
                     constructs=constructs,
-                    next_steps=[
-                        "1. Drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
-                        "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
-                        "there is already a unit of work open around this mutation "
-                        "(the runner's session task, or flexicon's own per-operation "
-                        "task, depending on the flexicon build).",
-                        "2. Just perform the mutation directly (guarded by "
-                        "`if modifyAllowed:` as usual); it will be captured by that "
-                        "already-open unit of work.",
-                        "3. If you need FLEx Ctrl+Z grouping for this specific change, "
-                        "use `project.UndoableOperation(label)` / `project.Transaction(label)` "
-                        "instead of the raw liblcm helper -- those join an already-open "
-                        "UnitOfWork instead of nesting a second one.",
-                        "4. Re-run flextools_run_module()",
-                    ],
+                    next_steps=_nested_uow_steps,
                     op_id=op_id,
                 ),
                 error_code="nested_unit_of_work",
@@ -5310,6 +5482,11 @@ MODULE_CODE = {code}
         # of the bare .NET exception string.
         if execution_result.get("error"):
             open_diag = _diagnose_project_open_error(execution_result, project_name)
+            if open_diag is None:
+                # Issue #310: raw LCM write with no unit of work open.
+                open_diag = _diagnose_no_unit_of_work_error(
+                    execution_result, write_enabled
+                )
             if open_diag is not None:
                 execution_result["error_code"] = open_diag["error_code"]
                 execution_result["help"] = open_diag.get("hint")
@@ -5596,7 +5773,12 @@ MODULE_CODE = {code}
             )
             # Issue #28: record a runtime-failure signal. Use the structured
             # error_type when available; fall back to a generic bucket.
-            runtime_error_code = execution_result.get("error_type") or "runtime_error"
+            # Issue #310: a diagnosed no_unit_of_work keys the loop detector
+            # on its own code so the tailored assistance hint fires.
+            if execution_result.get("error_code") == "no_unit_of_work":
+                runtime_error_code = "no_unit_of_work"
+            else:
+                runtime_error_code = execution_result.get("error_type") or "runtime_error"
             return _attach_assistance_if_loop(
                 json_response(
                     _finalize_run_module_response(execution_result),

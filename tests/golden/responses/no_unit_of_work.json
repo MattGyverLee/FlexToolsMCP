@@ -1,0 +1,30 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "no_unit_of_work",
+  "message": "A raw LCM mutation ran outside any undo task (liblcm: 'Not in the right state to register a change'). The runner opens no session-long unit of work on this flexicon build: each Flexicon operation opens its own, so a raw LCM write outside one has nothing to register in.",
+  "uow_mode": "per_operation",
+  "write_enabled": true,
+  "undoable": true,
+  "lcm_message": "Execution error: Not in the right state to register a change",
+  "guidance": "Prefer the Flexicon operations wrappers (project.POS.*, project.LexEntry.*, project.Senses.*); they open their own unit of work. For a raw LCM write, the supported path is `with project.UndoableOperation(\"<label>\"):` around it (under `if modifyAllowed:`) -- it opens a unit of work, or joins the enclosing one.",
+  "next_steps": [
+    "1. Prefer a Flexicon operations wrapper (project.POS.*, project.LexEntry.*, project.Senses.*) over the raw LCM call.",
+    "2. Otherwise wrap the raw LCM writes in `with project.UndoableOperation(\"<label>\"):` inside the `if modifyAllowed:` guard.",
+    "3. Re-run flextools_run_module() with write_enabled=true."
+  ],
+  "error": {
+    "code": "no_unit_of_work",
+    "message": "A raw LCM mutation ran outside any undo task (liblcm: 'Not in the right state to register a change'). The runner opens no session-long unit of work on this flexicon build: each Flexicon operation opens its own, so a raw LCM write outside one has nothing to register in.",
+    "uow_mode": "per_operation",
+    "write_enabled": true,
+    "undoable": true,
+    "lcm_message": "Execution error: Not in the right state to register a change",
+    "guidance": "Prefer the Flexicon operations wrappers (project.POS.*, project.LexEntry.*, project.Senses.*); they open their own unit of work. For a raw LCM write, the supported path is `with project.UndoableOperation(\"<label>\"):` around it (under `if modifyAllowed:`) -- it opens a unit of work, or joins the enclosing one.",
+    "next_steps": [
+      "1. Prefer a Flexicon operations wrapper (project.POS.*, project.LexEntry.*, project.Senses.*) over the raw LCM call.",
+      "2. Otherwise wrap the raw LCM writes in `with project.UndoableOperation(\"<label>\"):` inside the `if modifyAllowed:` guard.",
+      "3. Re-run flextools_run_module() with write_enabled=true."
+    ]
+  }
+}

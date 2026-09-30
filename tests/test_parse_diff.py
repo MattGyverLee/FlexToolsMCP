@@ -284,7 +284,7 @@ class ExplodingPool:
 
 @pytest.fixture
 def diff_tool(tmp_path, monkeypatch):
-    monkeypatch.setattr(parse_handler, "_probe_access", lambda name: _Access("free"))
+    monkeypatch.setattr(parse_handler.common, "_probe_access", lambda name: _Access("free"))
     parse_handler.set_runner(ParseRunner(pool=ExplodingPool(), record_dir=tmp_path))
     yield tmp_path
     parse_handler.set_runner(None)

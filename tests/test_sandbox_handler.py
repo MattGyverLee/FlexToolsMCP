@@ -145,7 +145,7 @@ def project_resolves(monkeypatch):
         calls.append(name)
         return (name or PROJECT), None
 
-    monkeypatch.setattr(parse_handler, "_resolve_project", resolve)
+    monkeypatch.setattr(parse_handler.common, "_resolve_project", resolve)
     return calls
 
 
@@ -162,7 +162,7 @@ def project_unresolvable(monkeypatch):
                  "then retry with the exact name.",
         )
 
-    monkeypatch.setattr(parse_handler, "_resolve_project", resolve)
+    monkeypatch.setattr(parse_handler.common, "_resolve_project", resolve)
 
 
 @pytest.fixture
@@ -670,8 +670,8 @@ def parse_ready(project_resolves, discovery, sandbox_root, monkeypatch, tmp_path
         engine_calls.append(project_name)
         return None
 
-    monkeypatch.setattr(parse_handler, "_sandbox_engine_check", engine_check_ok, raising=False)
-    monkeypatch.setattr(parse_handler, "_sandbox_space_check",
+    monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_engine_check", engine_check_ok, raising=False)
+    monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_space_check",
                         lambda request, project_name: None, raising=False)
 
     access = types.SimpleNamespace(verdict="free", raises=False, holder_pid=None)
@@ -754,7 +754,7 @@ class TestParseEngineCheck:
                 "hint": "Switch the project's parser to HermitCrab in FLEx, then retry.",
             }
 
-        monkeypatch.setattr(parse_handler, "_sandbox_engine_check", mismatch,
+        monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_engine_check", mismatch,
                             raising=False)
         try:
             payload = await _call(PARSE_ARGS)
@@ -772,7 +772,7 @@ class TestParseEngineCheck:
     ):
         """A missing engine refuses first: step 3 comes before step 4."""
         discovery(engine=engine_missing(), ghc=ghc_ok())
-        monkeypatch.setattr(parse_handler, "_sandbox_engine_check",
+        monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_engine_check",
                             _boom("_sandbox_engine_check"), raising=False)
         payload = await _call(PARSE_ARGS)
         _assert_tool_missing(payload, ENGINE)
@@ -786,7 +786,7 @@ class TestParseEngineCheck:
         sandbox = parse_ready.root / "sandboxes" / PROJECT / "x"
         sandbox.mkdir(parents=True)
         (sandbox / "hc-config.xml").write_text("<HermitCrab/>", encoding="utf-8")
-        monkeypatch.setattr(parse_handler, "_sandbox_engine_check",
+        monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_engine_check",
                             _boom("_sandbox_engine_check"), raising=False)
         payload = await _call({**PARSE_ARGS, "sandbox": "x"})
         assert payload["status"] == "ok", payload
@@ -1224,9 +1224,9 @@ def create_ready(project_resolves, discovery, sandbox_root, fake_store,
     monkeypatch.setattr(filing_paths, "projects_directory",
                         lambda: fake_project.dir.parent)
     engine_calls = []
-    monkeypatch.setattr(parse_handler, "_sandbox_engine_check",
+    monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_engine_check",
                         lambda p: engine_calls.append(p), raising=False)
-    monkeypatch.setattr(parse_handler, "_sandbox_space_check",
+    monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_space_check",
                         lambda request, project_name: None, raising=False)
 
     order = []
@@ -1406,7 +1406,7 @@ class TestNamedSandboxRuns:
         _make_named_sandbox(parse_ready.root, "x")
         fake_store.statuses["x"] = _status("x")
         discovery(engine=engine_ok(), ghc=None)  # boom: GenerateHCConfig not consulted
-        monkeypatch.setattr(parse_handler, "_sandbox_engine_check",
+        monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_engine_check",
                             _boom("_sandbox_engine_check"), raising=False)
         parse_ready.runner.meta_sandbox = _meta_sandbox(config_source=None)
         payload = await _call({**PARSE_ARGS, "sandbox": "x"})
@@ -1615,7 +1615,7 @@ SEED_LINES = [
 def seed_ready(project_resolves, discovery, sandbox_root, record_dir, monkeypatch):
     """seed_corpus needs no tool, no engine check and no run: all boom."""
     discovery(engine=None, ghc=None)
-    monkeypatch.setattr(parse_handler, "_sandbox_engine_check",
+    monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_engine_check",
                         _boom("_sandbox_engine_check"), raising=False)
     from flextoolsmcp.server.parse.runner import ParseRunner
 
@@ -1817,7 +1817,7 @@ class TestRunCorpus:
         self, parse_ready, monkeypatch
     ):
         monkeypatch.setattr(
-            parse_handler, "_sandbox_engine_check",
+            parse_handler.sandbox_checks, "_sandbox_engine_check",
             lambda p: {"configured_engine": "XAmple", "supported_engines": ["HC"],
                        "hint": "Switch the parser."},
             raising=False,
@@ -2114,7 +2114,7 @@ _REAL_SPACE_CHECK = parse_handler._sandbox_space_check
 @pytest.fixture
 def space_ready(parse_ready, fake_project, monkeypatch):
     """parse_ready with the REAL step 7 over a fake project and fake cache."""
-    monkeypatch.setattr(parse_handler, "_sandbox_space_check", _REAL_SPACE_CHECK)
+    monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_space_check", _REAL_SPACE_CHECK)
     monkeypatch.setattr(filing_paths, "projects_directory",
                         lambda: fake_project.dir.parent)
     state = types.SimpleNamespace(hit=False, shortfall=None, checked=[], looked_up=[])
@@ -2284,7 +2284,7 @@ class TestSandboxOrigin:
         fwdata = tmp_path / "Origin" / "Origin.fwdata"
         fwdata.parent.mkdir()
         fwdata.write_text("<languageproject />", encoding="utf-8")
-        monkeypatch.setattr(parse_handler, "_sandbox_fwdata_path",
+        monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_fwdata_path",
                             lambda project: fwdata if project == "Origin" else None)
         self._origin(sandbox_root, "x", "Origin")
         assert parse_handler._sandbox_origin("P", "x") == {
@@ -2292,7 +2292,7 @@ class TestSandboxOrigin:
 
     def test_an_origin_whose_fwdata_is_gone_gives_no_path(
             self, sandbox_root, tmp_path, monkeypatch):
-        monkeypatch.setattr(parse_handler, "_sandbox_fwdata_path",
+        monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_fwdata_path",
                             lambda project: tmp_path / "missing.fwdata")
         self._origin(sandbox_root, "x", "Origin")
         assert parse_handler._sandbox_origin("P", "x") == {

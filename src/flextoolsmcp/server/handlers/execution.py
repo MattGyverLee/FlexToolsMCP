@@ -81,7 +81,8 @@ try:
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_partial_module_structure, detect_top_level_main_invocation,
+        detect_partial_module_structure, build_partial_module_rejection,
+        detect_top_level_main_invocation,
         detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
@@ -102,7 +103,8 @@ except ImportError:
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_partial_module_structure, detect_top_level_main_invocation,
+        detect_partial_module_structure, build_partial_module_rejection,
+        detect_top_level_main_invocation,
         detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
@@ -1772,19 +1774,33 @@ def _capture_skeletons_after_success(
     user_intent: Optional[str] = None,
     project_name: Optional[str] = None,
     is_mutating_script: bool = False,
+    execution_result: Optional[Dict[str, Any]] = None,
+    write_enabled: Optional[bool] = None,
+    messages: Optional[List[Any]] = None,
 ) -> None:
     """Persist the whole successful snippet as one local recipe (US2).
 
     Replaces the per-def skeleton closet: the store derives entities from
     this code's AST (never the ambient session), dedupes by fingerprint,
     and never raises. The op has already succeeded by the time we reach here.
+
+    Issue #309: the run's write evidence (write_enabled, the
+    write_certification verdict, LCM's undoable-action count) and its full
+    report messages go to the store, which derives requires_write from them
+    and refuses to remember swallowed-exception / trivial-output runs.
     """
     try:
+        result = execution_result or {}
+        write_cert = result.get("write_certification") or {}
         local_recipes.capture(
             code,
             user_intent=user_intent,
             project=project_name,
             is_mutating_script=is_mutating_script,
+            write_enabled=write_enabled,
+            performs_writes=write_cert.get("performs_writes"),
+            lcm_undoable_action_count=result.get("lcm_undoable_action_count"),
+            messages=messages,
             op_id=op_id,
         )
     except Exception:
@@ -1998,11 +2014,28 @@ def _build_validate_only_checks(
     if not skip_module_check:
         partial_check = detect_partial_module_structure(code, code_tree)
         if partial_check["is_partial_module"]:
+            # Same builder as the live gate (issue #303): combined with the
+            # unprotected-writes requirement when both apply.
+            rejection = build_partial_module_rejection(
+                partial_check, certify_script_readonly(code, api_idx, code_tree)
+            )
             checks.append({
                 "gate": "partial_module_structure",
                 "passed": False,
-                "issues": [partial_check["suggestion"]],
+                "issues": [rejection["message"]],
                 "missing_elements": partial_check.get("missing_elements"),
+                "suggested_scaffold": partial_check["suggested_scaffold"],
+                "also_unprotected_writes": rejection["also_unprotected_writes"],
+                "mutations_found": rejection["mutations_found"],
+                "next_steps": rejection["next_steps"],
+            })
+        elif partial_check["is_main_wrapped_snippet"]:
+            # Issue #303: runs as a snippet; the live gate warns, not rejects.
+            checks.append({
+                "gate": "partial_module_structure",
+                "passed": True,
+                "advisory": partial_check["advisory"],
+                "suggested_scaffold": partial_check["suggested_scaffold"],
             })
         else:
             checks.append({"gate": "partial_module_structure", "passed": True})
@@ -2078,7 +2111,7 @@ def _build_validate_only_checks(
     cud_info = detect_cud_operations(code)
     cert = certify_script_readonly(code, api_idx, code_tree)
     if not cert["is_certified_readonly"]:
-        guidance = get_unprotected_write_guidance(cert)
+        guidance = get_unprotected_write_guidance(cert, code, code_tree)
         checks.append({
             "gate": "unprotected_writes",
             "passed": False,
@@ -2897,7 +2930,7 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     `flextools_parse_text`'s shared read worker, or the bounded measurement
     worker) apart from a genuinely foreign Python process holding the same
     `.fwdata.lock`. Both report as `held_by_other`. Mirrors filing's own
-    handling of this (`handlers/parse.py:_held_by_own_read_worker` and the
+    handling of this (`handlers/parse/filing.py:_held_by_own_read_worker` and the
     release around L1700), generalized to any of the pool's roles and
     shared through `parse/own_worker.py` so the two write gates cannot
     answer "is this ours?" differently.
@@ -2991,7 +3024,7 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
 
     sharing = bool(decision.refusal.get("sharing_enabled"))
     if sharing:
-        # Mirror filing's confirmed gate (handlers/parse.py row 11): on a
+        # Mirror filing's confirmed gate (handlers/parse/filing.py row 11): on a
         # shared project our read worker coexists with a writable open, so
         # do not release it first -- the probe's `held_by_other` is our own
         # worker, not a foreign collision (issue #223, second repro).
@@ -3086,6 +3119,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     _casting_readonly_warnings: Optional[List[Dict[str, Any]]] = None
     # Issue #279: module-level Main(...) when def Main exists (read-only advisory).
     _top_level_main_readonly_warning: Optional[str] = None
+    # Issue #303: `def Main` with no docs/FlexToolsModule scaffold runs as a
+    # snippet; this carries the ready-to-paste scaffold as a warning.
+    _module_scaffold_advisory: Optional[str] = None
     # Issue #80: provenance. 'existing' code (from disk / pasted by the human)
     # skips the two API-DISCOVERY gates -- verifying every API the model didn't
     # author is expensive LLM work we don't need. This is a COST lever ONLY:
@@ -3241,38 +3277,49 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             code_size_bytes=_code_size_bytes,
         )
 
-    # Partial-module structural check: when code defines `Main` but lacks the
-    # `docs` dict and/or `FlexToolsModule = FlexToolsModuleClass(...)` binding,
-    # nudge the AI toward `get_module_template` instead of letting a half-
-    # scaffolded "module" silently work in the runner but fail when saved as a
-    # real FlexTools file. Bare snippets without `def Main` are unaffected.
+    # Partial-module structural check (issue #303 semantics):
+    #   * half-module (`def Main` + exactly ONE of the `docs` dict /
+    #     `FlexToolsModule = FlexToolsModuleClass(...)` binding): REJECT --
+    #     someone started a module file and left it unfinished. If the code
+    #     also has unprotected writes, the rejection lists BOTH fixes so the
+    #     model does not fix one and bounce off the other.
+    #   * Main-wrapped snippet (`def Main`, NEITHER piece): RUNS. The runner
+    #     injects modifyAllowed and calls Main itself, so the scaffold only
+    #     matters for saving as a FlexTools file -> non-blocking advisory.
+    # Bare snippets without `def Main` are unaffected.
     # Escape hatch: pass skip_module_check=True to run as-is.
     if not args.get("skip_module_check", False):
         partial_check = detect_partial_module_structure(code, code_tree)
         if partial_check["is_partial_module"]:
+            rejection = build_partial_module_rejection(
+                partial_check, certify_script_readonly(code, get_api_index(), code_tree)
+            )
             _log_preflight_reject(
                 op_id, seq, time.monotonic() - t_start,
                 "partial_module_structure",
-                f"missing_elements={partial_check.get('missing_elements')}",
+                f"missing_elements={partial_check.get('missing_elements')} "
+                f"also_unprotected_writes={rejection['also_unprotected_writes']}",
             log_dir_fn=get_log_dir,
             )
             return _attach_assistance_if_loop(
                 error_response(
                     "partial_module_structure",
-                    partial_check["suggestion"],
+                    rejection["message"],
                     missing_elements=partial_check["missing_elements"],
-                    next_steps=[
-                        "1. Call flextools_get_module_template(flavor='flexicon') to fetch the canonical scaffold",
-                        "2. Copy the missing pieces (docs dict, FlexToolsModule binding) into your code",
-                        "3. Re-run flextools_run_module()",
-                        "Alternative: drop the `def Main:` wrapper to run the body as a bare snippet",
-                        "Override: pass skip_module_check=True to run the partial code as-is",
-                    ],
+                    has_main=partial_check["has_main"],
+                    has_docs_dict=partial_check["has_docs_dict"],
+                    has_flextools_binding=partial_check["has_flextools_binding"],
+                    suggested_scaffold=partial_check["suggested_scaffold"],
+                    also_unprotected_writes=rejection["also_unprotected_writes"],
+                    mutations_found=rejection["mutations_found"],
+                    next_steps=rejection["next_steps"],
                     op_id=op_id,
                 ),
                 error_code="partial_module_structure",
                 code_size_bytes=_code_size_bytes,
             )
+        if partial_check["is_main_wrapped_snippet"]:
+            _module_scaffold_advisory = partial_check["advisory"]
 
     # Issue #279: reject write runs that call Main at module level when Main
     # is also defined -- the runner calls Main again after exec().
@@ -3447,7 +3494,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
     # CRITICAL: Refuse unprotected code unconditionally
     if not cert["is_certified_readonly"]:
-        guidance = get_unprotected_write_guidance(cert)
+        guidance = get_unprotected_write_guidance(cert, code, code_tree)
         mutating = [m for m in cert.get("mutating_calls", []) if m.get("is_mutating")]
         _log_writeability_reject(cert, mutating)
         _log_preflight_reject(
@@ -3467,6 +3514,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 mutations_found=guidance.get("mutations_found"),
                 why=guidance.get("why"),
                 fix_pattern=guidance.get("fix_pattern"),
+                bare_snippet_fix=guidance.get("bare_snippet_fix"),
+                **({"main_wrapper_note": guidance["main_wrapper_note"]}
+                   if guidance.get("main_wrapper_note") else {}),
                 templates_to_review=guidance.get("templates_to_review"),
                 next_steps=guidance.get("next_steps"),
                 mutating_calls=mutating[:20],
@@ -4245,6 +4295,10 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # non-blocking advisory (read-only run, no issue at "error" severity --
     # see the gate-local downgrade above). Still surfaced here so the caller
     # sees them even though preflight let the run proceed.
+    if _module_scaffold_advisory:
+        warnings.append("[module scaffold] " + _module_scaffold_advisory)
+        warnings.append("")
+
     if _top_level_main_readonly_warning:
         warnings.append(
             "[double Main execution] " + _top_level_main_readonly_warning
@@ -5462,6 +5516,9 @@ MODULE_CODE = {code}
                 user_intent=user_intent,
                 project_name=project_name,
                 is_mutating_script=is_mutating_script,
+                execution_result=execution_result,
+                write_enabled=write_enabled,
+                messages=report_messages,
             )
             # Issue #46: attach auto-fix metadata when rewrites were applied.
             # Both fields are written atomically via this helper so neither can

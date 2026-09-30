@@ -155,7 +155,7 @@ class TestParserEngineMismatch:
         `_rung(...)` calls) that transcribing them here catches the same
         regression a direct call would.
         """
-        text = (_SRC / "handlers" / "parse.py").read_text(encoding="utf-8")
+        text = (_SRC / "handlers" / "parse" / "sandbox_checks.py").read_text(encoding="utf-8")
         match = re.search(
             r"def _sandbox_run_engine_check.*?(?=\ndef _)", text, re.DOTALL
         )

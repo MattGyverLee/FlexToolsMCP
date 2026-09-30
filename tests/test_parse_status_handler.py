@@ -70,7 +70,7 @@ class SlowWorker(RecordingWorker):
 @pytest.fixture
 def runner(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     instance = ParseRunner(
         pool=Pool(RecordingWorker()), record_dir=tmp_path / "runs", grace_window=30.0
@@ -122,7 +122,7 @@ async def test_a_completed_explain_runs_summary_reports_nonzero_parsed(
     report the words that parsed, not zero.
     """
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     worker = RecordingWorker(trace_outcome="success")
     instance = ParseRunner(
@@ -159,7 +159,7 @@ async def test_a_completed_restricted_runs_summary_counts_hypotheses_held(
     rather than conflating -- or silently dropping -- them into `parsed`.
     """
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     worker = RecordingWorker(trace_outcome="success")
     instance = ParseRunner(
@@ -253,7 +253,7 @@ async def test_a_failed_runs_guidance_names_instruments_never_a_retry(
 async def test_a_cancelled_run_reports_ok_with_what_survived(tmp_path, monkeypatch):
     """FR-036, the reporting half: success, `words_completed`, stage at cancel."""
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     worker = SlowWorker()
     instance = ParseRunner(

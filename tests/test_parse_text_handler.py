@@ -114,7 +114,7 @@ class Pool:
 @pytest.fixture
 def runner_for(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+        parse_handler.common, "_resolve_project", lambda name: (name or "P", None)
     )
     made = []
 

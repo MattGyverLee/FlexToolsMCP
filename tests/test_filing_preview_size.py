@@ -87,7 +87,7 @@ def test_a_failed_plan_file_write_does_not_fail_the_preview(filing_env, monkeypa
 
 
 def test_only_the_newest_plan_files_are_kept(filing_env, monkeypatch):
-    monkeypatch.setattr(parse_handler, "_PREVIEW_PLANS_KEPT", 2)
+    monkeypatch.setattr(parse_handler.filing, "_PREVIEW_PLANS_KEPT", 2)
     plans = filing_env.record_dir / "plans"
     plans.mkdir(parents=True)
     for i in range(3):

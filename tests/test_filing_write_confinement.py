@@ -5,7 +5,7 @@ INVERSE confinement: exactly one module may open a project for writing in the
 parser area (parser-check CP4, FR-029, R-09; tasks.md T052).
 
 `test_parse_no_project_writes.py` proves the read spine never writes, over a
-FIXED scan set (`parse/`, `signals/`, `handlers/parse.py`). This file proves
+FIXED scan set (`parse/`, `signals/`, `handlers/parse/`). This file proves
 the other half: across the whole source tree, a writable open --
 `OpenProject(..., writeEnabled=True)` or a `writeEnabled=True` keyword
 anywhere -- appears in `server/filing/worker_filing.py` and nowhere else,
@@ -101,6 +101,7 @@ def test_the_filing_read_modules_make_no_write_call():
 
 def test_the_read_worker_still_opens_read_only():
     """FR-029: the read tools keep opening the project read-only."""
-    text = (SRC / "server" / "parse" / "worker_main.py").read_text(encoding="utf-8")
-    assert "writeEnabled=False" in text
-    assert _writable_opens(SRC / "server" / "parse" / "worker_main.py") == []
+    backend = SRC / "server" / "parse" / "worker_real_backend.py"
+    assert "writeEnabled=False" in backend.read_text(encoding="utf-8")
+    for worker in sorted((SRC / "server" / "parse").glob("worker_*.py")):
+        assert _writable_opens(worker) == [], worker.name

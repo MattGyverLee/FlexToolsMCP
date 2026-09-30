@@ -301,7 +301,10 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
             "preflight_reject", "server_state_error", "server_state_error", str(health["issues"])
         )
 
-    # Gate 3: partial_module_structure.
+    # Gate 3: partial_module_structure. Issue #303: only a HALF-module (one
+    # of docs / FlexToolsModule present) rejects; `def Main` with neither
+    # piece runs as a snippet with a non-blocking "module_scaffold" advisory.
+    module_scaffold_advisory = False
     if not skip_module_check:
         partial = detect_partial_module_structure(code, tree)
         if partial["is_partial_module"]:
@@ -311,6 +314,7 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
                 "partial_module_structure",
                 str(partial["missing_elements"]),
             )
+        module_scaffold_advisory = partial["is_main_wrapped_snippet"]
 
     # Gate 3a: top_level_main_invocation (issue #279). Write runs only.
     top_level_main = detect_top_level_main_invocation(code, tree)
@@ -360,7 +364,7 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
     # every other index-aware gate here. Mirrors execution.handle_run_module's
     # post-#40-B-1 / post-#39-P1-2 decision.
     casting = _compute_casting_decision(code, FAKE_API_INDEX.casting_index, tree, FAKE_API_INDEX)
-    advisories: list = []
+    advisories: list = ["module_scaffold"] if module_scaffold_advisory else []
     if casting["has_casting_issues"]:
         _casting_issues = casting["casting_issues"]
         _has_error_severity = casting["has_error_severity"]

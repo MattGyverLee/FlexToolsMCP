@@ -270,8 +270,8 @@ def test_every_key_the_handler_passes_is_declared(monkeypatch):
     from flextoolsmcp.server.handlers import parse as parse_handler
 
     mod = client_mod()
-    monkeypatch.setattr(parse_handler, "_sandbox_fwdata_path", lambda project: Path("p.fwdata"))
-    monkeypatch.setattr(parse_handler, "_sandbox_config_path",
+    monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_fwdata_path", lambda project: Path("p.fwdata"))
+    monkeypatch.setattr(parse_handler.sandbox_checks, "_sandbox_config_path",
                         lambda project, name: Path("sb") / name / "hc-config.xml")
     plan = types.SimpleNamespace(
         request=types.SimpleNamespace(sandbox="x", timeout_seconds=60),

@@ -438,7 +438,10 @@ def render_draft(local_record: Dict[str, Any], new_id: str) -> str:
     local_id = local_record.get("id", "local-unknown")
     intent = local_record.get("intent") or f"Promoted from {local_id}"
     entities = local_record.get("entities") or []
-    requires_write = bool(local_record.get("requires_write", False))
+    # Issue #309: a record that lists a write operation is a write recipe
+    # even if its flag was stored False (legacy rows); never downgrade.
+    requires_write = bool(local_record.get("requires_write", False)) or (
+        "write" in (local_record.get("operations") or []))
     operations = ["read", "write"] if requires_write else ["read"]
     code = local_record.get("code", "")
     header_lines = [

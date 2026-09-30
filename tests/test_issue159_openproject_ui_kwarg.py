@@ -210,12 +210,13 @@ class TestScanSeamGeneratedScript:
 class TestParseWorkerSource:
     """The parse worker's `_RealBackend.open()` must stay in step -- it is
     the third OpenProject call site and cannot be imported server-side (see
-    worker_main.py's header), so this asserts on its own source text."""
+    worker_main.py's header), so this asserts on its own source text
+    (worker_real_backend.py since #298)."""
 
     def test_backend_open_probes_and_falls_back(self):
         src_path = os.path.join(
             os.path.dirname(execution_mod.__file__),
-            "..", "parse", "worker_main.py",
+            "..", "parse", "worker_real_backend.py",
         )
         with open(src_path, encoding="utf-8-sig", errors="replace") as f:
             source = f.read()

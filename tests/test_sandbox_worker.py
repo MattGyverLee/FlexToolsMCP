@@ -33,6 +33,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from flextoolsmcp.server.parse import hc_engine  # noqa: E402
 from flextoolsmcp.server.parse import worker_main as wm  # noqa: E402
+from flextoolsmcp.server.parse import worker_sandbox_backend  # noqa: E402
 from flextoolsmcp.server.parse.hc_engine import (  # noqa: E402
     IdMap,
     RawMorph,
@@ -528,7 +529,7 @@ class TestIsolation:
         import ast
 
         forbidden_names = {"FLExProject", "OpenProject", "LcmCache"}
-        source = Path(wm.__file__).read_text(encoding="utf-8")
+        source = Path(worker_sandbox_backend.__file__).read_text(encoding="utf-8")
         tree = ast.parse(source)
         classes = {n.name: n for n in tree.body if isinstance(n, ast.ClassDef)}
         scanned = [classes["_SandboxBackend"], classes["_StubSandboxBackend"],

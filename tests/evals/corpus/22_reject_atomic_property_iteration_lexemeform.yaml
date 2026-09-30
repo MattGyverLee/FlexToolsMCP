@@ -1,0 +1,17 @@
+intent: "List every headword form of each entry by looping over LexemeFormOA"
+api_mode: flexicon
+write_enabled: false
+code: |
+  for entry in project.LexEntry.GetAll():
+      for hf in entry.LexemeFormOA:
+          report.Info(str(hf))
+expect:
+  outcome: preflight_reject
+  error_code: atomic_property_iteration
+  auto_fixes: 0
+notes: >
+  Issue #313: LexemeFormOA is Owning-Atomic -- it holds ONE IMoForm (or
+  None), so the loop raises "'IMoForm' object is not iterable" at runtime.
+  Before the gate, preflight emitted only a warning-tier casting advisory on
+  LexemeFormOA (the wrong diagnosis). The list of other forms is
+  AlternateFormsOS.

@@ -174,6 +174,11 @@ GOLDEN_REQUIRED_KEYS = {
         "_contract", "status", "error_code", "message", "error",
         "findings", "deprecations", "replacement_example", "next_steps",
     },
+    # Issue #313
+    "atomic_property_iteration": {
+        "_contract", "status", "error_code", "message", "error",
+        "findings", "next_steps",
+    },
     # Parser-check CP4 (FR-035): the detail fields ride at top level too.
     "parser_filing_in_progress": {
         "_contract", "status", "error_code", "message", "error",
@@ -271,6 +276,12 @@ ALL_ERROR_CODES = [
         deprecations=[{"id": "lexentry-donotuseforparsing"}],
         replacement_example="entry.LexemeFormOA.IsAbstract = True",
         next_steps=["Set IsAbstract on the entry's forms"],
+    )),
+    ("atomic_property_iteration", dict(
+        findings=[{"line": 2, "col": 14, "property": "LexemeFormOA",
+                   "expr": "entry.LexemeFormOA", "kind": "owning_atomic",
+                   "list_sibling": "AlternateFormsOS", "suggestion": "..."}],
+        next_steps=["1. Use `x = obj.LexemeFormOA` then `if x is not None:`"],
     )),
     ("raw_addcustomfield_write_risk", dict(
         findings=[{"line": 2, "detail": "mdc.AddCustomField(...)"}],
@@ -492,7 +503,8 @@ class TestParserCheckCP2bCodes:
         # #279 adds top_level_main_invocation -> 42;
         # #277 adds reflection_bypass_detected -> 43.
         # unified-recipes adds recipe_not_found -> 44.
-        assert union_size == 44, f"the detail union holds {union_size} models"
+        # #313 adds atomic_property_iteration -> 45.
+        assert union_size == 45, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

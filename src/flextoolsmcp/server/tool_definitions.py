@@ -306,6 +306,10 @@ which no FLEx parser reads. To hide an entry from the parser, set IsAbstract on
 its FORMS -- entry.LexemeFormOA (check it is not None) and each item of
 entry.AlternateFormsOS -- not on the entry (entry.IsAbstract does not exist).
 
+ATOMIC PROPERTIES: *OA / *RA properties hold ONE object (or None), never a list;
+looping over one is rejected on every run (error_code='atomic_property_iteration').
+Lists end in OS/OC/RS/RC -- e.g. entry.LexemeFormOA vs entry.AlternateFormsOS.
+
 All code has access to:
 - project: FLExProject instance
 - report: Output mechanism (report.Info/Warning/Error)

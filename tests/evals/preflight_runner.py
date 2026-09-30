@@ -46,6 +46,7 @@ from server.validators import (
     detect_partial_module_structure,
     detect_top_level_main_invocation,
     detect_deprecated_members,
+    detect_atomic_property_iteration,
     certify_script_readonly,
     detect_undiscovered_entities,
     detect_undefined_variables,
@@ -234,6 +235,7 @@ _ORDERED_GATES = (
     "server_state_error",
     "partial_module_structure",
     "deprecated_member",
+    "atomic_property_iteration",
     "unprotected_writes",
     "casting_issues_detected",
     "api_discovery_required",
@@ -335,6 +337,17 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
             "deprecated_member",
             "deprecated_member",
             str([f["expr"] for f in deprecated["findings"]]),
+        )
+
+    # Gate 3b2: atomic_property_iteration (issue #313). Unconditional:
+    # iterating an *OA/*RA single-object property always raises TypeError.
+    atomic = detect_atomic_property_iteration(code, tree)
+    if atomic["has_atomic_iteration"]:
+        return PreflightResult(
+            "preflight_reject",
+            "atomic_property_iteration",
+            "atomic_property_iteration",
+            str([f["expr"] for f in atomic["findings"]]),
         )
 
     # Gate 4: unprotected_writes.

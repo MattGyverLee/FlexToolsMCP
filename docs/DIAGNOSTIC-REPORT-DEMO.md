@@ -1,7 +1,7 @@
 # Diagnostic-report: end-to-end walk-through
 
 This is the downstream demo for the "send this to the maintainer" flow
-(spec: [`specs/diagnostic-report/SPEC.md`](../specs/diagnostic-report/SPEC.md)).
+(spec: [`specs/_archive/diagnostic-report/spec.md`](../specs/_archive/diagnostic-report/spec.md)).
 It walks a single real scenario from the failure that triggers an offer all the
 way to the three send outcomes, against a fixture session log.
 

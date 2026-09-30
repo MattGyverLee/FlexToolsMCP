@@ -99,7 +99,7 @@ __all__ = [
 #: CONFIRMED by T125, 2026-09-22, on IndonesianHC-Complete: every one of 38
 #: words produced identical (form, MSA, inflection-type) GUID triples in two
 #: sessions with the project closed and reopened between them
-#: (specs/parser-check-cp3/evidence/t125-identifier-stability.json).
+#: (specs/_archive/parser-check-cp3/evidence/t125-identifier-stability.json).
 IDENTIFIER_STABILITY = "confirmed"
 
 _ENV_STABILITY = "FLEXTOOLSMCP_IDENTIFIER_STABILITY"

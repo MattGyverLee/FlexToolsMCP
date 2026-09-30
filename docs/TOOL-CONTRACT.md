@@ -457,7 +457,7 @@ rather than the own-only one.
 
 Successful `run_module` responses may additionally carry a `diagnostic_report`
 advisory block. It is an **additive optional field** on `RunModuleSuccess`
-(diagnostic-report feature, CP3; spec `specs/diagnostic-report/SPEC.md` §6.5,
+(diagnostic-report feature, CP3; spec `specs/_archive/diagnostic-report/spec.md` §6.5,
 §10). Adding it did **not** bump the contract version — it follows the same
 additive-optional pattern as the `auto_discovered` / `_inline_discovery` /
 `discovery_note` fields above (resolved question Q5).

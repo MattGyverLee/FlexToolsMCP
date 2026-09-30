@@ -894,7 +894,7 @@ class ParseScope(BaseModel):
     but it is always resolved to an EXPLICIT one and recorded: on
     IndonesianHC-Complete every wordform of one text reads back as "" at the
     default vernacular WS while being perfectly present in another
-    (specs/parser-check-cp3/live-note-fr001-fr003.md). The field is how a
+    (specs/_archive/parser-check-cp3/live-note-fr001-fr003.md). The field is how a
     caller reaches that text at all.
     """
     model_config = ConfigDict(extra="forbid")

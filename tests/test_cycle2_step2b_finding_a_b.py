@@ -23,7 +23,7 @@ value (`bindings`), consumed only by those two resolvers -- never by
 `_find_cast_alias_property_writes`, which still gets the unwidened
 `ast.Assign`-only list.
 
-See specs/flexicon-project-bridge/reviews/cycle1-qc-step2b-fix-shape.md for
+See specs/_archive/flexicon-project-bridge/reviews/cycle1-qc-step2b-fix-shape.md for
 the design decision this locks in.
 """
 

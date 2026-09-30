@@ -63,7 +63,7 @@ absent from the whole process, because nothing in the bootstrap loads it and
 nothing should.
 
 This divergence from the spec's literal wording is recorded in
-`specs/parser-check-cp2b/evidence/cp2b-evidence.md` with the measurement
+`specs/_archive/parser-check-cp2b/evidence/cp2b-evidence.md` with the measurement
 above.
 
 Requires a live FieldWorks install and an HC-configured project, so it is

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Home for the parse run machinery (parser-check CP2b,
-specs/parser-check-cp2b/plan.md Phase C).
+specs/_archive/parser-check-cp2b/plan.md Phase C).
 
 This package exists to make a *process-lifetime* boundary expressible, which
 is the one thing CP2b needs that no other package in this server provides.

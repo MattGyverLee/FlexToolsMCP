@@ -34,7 +34,7 @@ hooks:
         Check specifically: named file/index paths exist; every LCM call the
         spec binds to does what the spec claims (read the C# if unsure);
         error-contract field names AND field ORDER match the parent
-        specs/parser-check/SPEC.md; version-locked sibling artifacts are named.
+        specs/_archive/parser-check/SPEC.md; version-locked sibling artifacts are named.
         Report findings as BLOCKING or non-blocking. Rationale: CP2 spurt 1
         found this spec class factually false in five blocking places, and the
         E7 field-order divergence alone cost two crew cycles to unwind.

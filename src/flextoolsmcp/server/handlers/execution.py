@@ -320,7 +320,7 @@ def _available_projects_payload() -> Dict[str, Any]:
 # contradict the write-path safety guarantee.
 #
 # `_get_api_mode_imports` / `_get_casting_helpers_code` were deleted here. Archaeology:
-# `specs/parser-check-cp2b/reviews/casting-injection-archivist.md`.
+# `specs/_archive/parser-check-cp2b/reviews/casting-injection-archivist.md`.
 #
 # `_validate_api_mode` remains for direct probes/tests (#146, #164). It is not
 # wired into the runner import seam (`api_mode` is advisory; execution is flexicon-only).

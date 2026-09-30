@@ -34,7 +34,7 @@ from fixtures.signals_runs import PARSED_STATE, line, parser_analysis, stored  #
 
 SIGNALS_DIR = REPO_ROOT / "src" / "flextoolsmcp" / "server" / "signals"
 
-#: Verbatim from specs/parser-check/SPEC.md 9.3.2.
+#: Verbatim from specs/_archive/parser-check/SPEC.md 9.3.2.
 MANDATED = (
     "The parser can derive this word, but its parts do not add up to the "
     "recorded meaning. That may indicate a lexicalized form that deserves its "

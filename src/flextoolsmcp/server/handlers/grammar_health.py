@@ -3,7 +3,7 @@
 """
 flextools_grammar_health: pure-LCM static grammar scan (parser-check CP1, T020).
 
-Authority: specs/parser-check/contracts/flextools_grammar_health.md (response
+Authority: specs/_archive/parser-check/contracts/flextools_grammar_health.md (response
 shape, forbidden-response rules, `checks_skipped` semantics, the
 `next_step: null` rule and the error table), SPEC.md 9.5.2-9.5.5, 9.5.7 and
 3.1, research.md D1 + D11.

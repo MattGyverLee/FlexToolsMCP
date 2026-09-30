@@ -334,7 +334,7 @@ def test_meta_json_fields_match_the_frozen_artifact_contract():
 
     from flextoolsmcp.server.parse.record import RunMeta
 
-    contract = (REPO_ROOT / "specs" / "parser-check-cp3" / "contracts" / "artifact.md")
+    contract = (REPO_ROOT / "specs" / "_archive" / "parser-check-cp3" / "contracts" / "artifact.md")
     text = contract.read_text(encoding="utf-8")
     section = text.split("## 3. `meta.json`", 1)[1].split("\n## 4.", 1)[0]
     listed = set()

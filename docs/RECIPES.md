@@ -172,5 +172,5 @@ flexicon version, parameter values, a report excerpt, and the Sena 3
 values and same-session cleanup of `zzRecipeTest`-prefixed objects. Each
 recipe sets `verified_against` with the flexicon version and `verified_by`
 (`preflight`, `sena3-read`, `sena3-dryrun`, `sena3-live`); evidence files
-live under `specs/unified-recipes/evidence/<recipe-id>.md` per the
-protocol in `specs/unified-recipes/evidence/README.md`.
+live under `specs/_archive/unified-recipes/evidence/<recipe-id>.md` per the
+protocol in `specs/_archive/unified-recipes/evidence/README.md`.

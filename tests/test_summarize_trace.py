@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 `worker_main._summarize_trace` -- the three-way outcome, derived (parser-check
-CP2b honesty gap; specs/parser-check-cp2b/reviews/cycle1-domain.md,
+CP2b honesty gap; specs/_archive/parser-check-cp2b/reviews/cycle1-domain.md,
 cycle1-qc-pattern-audit.md).
 
 `_summarize_trace` reads the `XDocument` `TraceWordXml`/`ParseWordXml` hand

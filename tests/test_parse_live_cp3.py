@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 The CP3 quickstart scenarios, against live FieldWorks projects
-(parser-check CP3; specs/parser-check-cp3/quickstart.md).
+(parser-check CP3; specs/_archive/parser-check-cp3/quickstart.md).
 
 EVERYTHING HERE IS READ-ONLY. CP3 ships no write path at all -- not a guarded
 one, not a confirmed one. That is a standing guarantee (FR-063) asserted
@@ -43,7 +43,7 @@ THE DESIGNATED PROJECTS, and why `Sena 3` is not one of them:
                                     when a designated project is unavailable
                                     -- skip instead.
 
-Scenario-to-task mapping (specs/parser-check-cp3/tasks.md Phase 9):
+Scenario-to-task mapping (specs/_archive/parser-check-cp3/tasks.md Phase 9):
 
     T122    Scenarios 1-3 on IndonesianHC-Complete, with pre/post evidence
             captured to the same discipline a write path would get
@@ -121,7 +121,7 @@ from flextoolsmcp.server.parse.runner import ParseRunner  # noqa: E402
 from flextoolsmcp.server.parse.stages import RunStage  # noqa: E402
 from flextoolsmcp.server.subprocess_helpers import _kill_process_tree  # noqa: E402
 
-EVIDENCE_DIR = REPO_ROOT / "specs" / "parser-check-cp3" / "evidence"
+EVIDENCE_DIR = REPO_ROOT / "specs" / "_archive" / "parser-check-cp3" / "evidence"
 
 #: The sandbox-spine files a CP3 run must never create, even empty.
 _SANDBOX_FILES = (

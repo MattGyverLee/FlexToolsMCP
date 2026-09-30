@@ -33,7 +33,7 @@ a plausible-looking wrong answer rather than an error:
      read back as "" at the default vernacular WS while being present in
      another -- and after NFC de-duplication that is ONE empty "word", a
      silently wrong list indistinguishable from a real one-word text
-     (specs/parser-check-cp3/live-note-fr001-fr003.md). Empty forms are
+     (specs/_archive/parser-check-cp3/live-note-fr001-fr003.md). Empty forms are
      skipped and counted, never emitted.
 
   4. CALL A TEXT WITH NO WORDS EMPTY (FR-002). A text with paragraphs but no

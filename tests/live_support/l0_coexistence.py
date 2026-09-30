@@ -57,7 +57,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 from make_disposable import delete_disposable, make_disposable, require_disposable  # noqa: E402
 
-EVIDENCE = REPO / "specs" / "parser-check-cp4" / "evidence"
+EVIDENCE = REPO / "specs" / "_archive" / "parser-check-cp4" / "evidence"
 
 
 def _snapshot(fwdata: Path) -> dict:

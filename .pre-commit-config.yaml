@@ -13,7 +13,8 @@ repos:
         # trailing whitespace that the hash includes. Trimming them silently
         # invalidates the evidence -- verify with
         # specs/vanilla-flextools-parity/evidence/corpus/regenerate.py --check
-        exclude: ^specs/.*/evidence/corpus/.*\.py\.txt$
+        # Patch files: trailing whitespace on context lines is content.
+        exclude: ^(specs/.*/evidence/corpus/.*\.py\.txt|.*\.(diff|patch))$
 
   # Ruff - same rule set as CI's `ruff check .` (read from [tool.ruff] in
   # pyproject.toml). A fatal-only --select here let F401/B904/E741/E70x

@@ -134,7 +134,7 @@ authoritative. All detail fields are optional unless noted.
 | `project_locked` | `guidance` (required string), `lock_file_path`, `verdict`, `sharing_enabled`, `holder_pid`, `holder_process`, `remedy` |
 | `project_drive_unavailable` | `attempted_path`, `hint` |
 | `project_path_mismatch` | `attempted_path`, `discovered_at`, `hint` |
-| `project_not_found` | `attempted_path`, `hint`, `recovery` (default `"list_projects"`) |
+| `project_not_found` | `attempted_path`, `hint`, `recovery` (default `"list_projects"`), `suggestions` (list; fuzzy matches, may be empty), `reason`, `available_projects` (list, capped at 15) + `total_count` -- issue #311: the project list is inlined even when `suggestions` is empty. `project_name` is normalized first at every tool entry point: surrounding quotes/backticks/whitespace are stripped (`` "`Sena 3`" `` -> `"Sena 3"`), and a value with no alphanumeric character (e.g. two backticks) is treated as omitted -- it falls back to the session project, or yields `project_name_required` (which also carries `available_projects`) when there is none. |
 | `runtime_error` | `stderr`, `traceback`, `exit_code`, `error_type` — plus optional `did_you_mean` (list[str]) and `help` (str) when the runner diagnosed an `AttributeError` with a recoverable suggestion (see [below](#did_you_mean-and-help-on-runtime_error)) |
 | `parser_engine_mismatch` | `configured_engine` (required string), `supported_engines` (required list), `hint` (required string) |
 | `parser_core_missing` | `signal` (required; `absent` \| `foreign_install` \| `incompatible_surface` \| `load_failed`), `expected_path` (required string), `detected_version` -- **reported and never compared: there is no version floor**, this is a standing guarantee with a regression test behind it (SPEC 16), `missing_members` (required list), `lcmodel_install_path`, `install_hint` (required string), `load_error` |
@@ -457,7 +457,7 @@ rather than the own-only one.
 
 Successful `run_module` responses may additionally carry a `diagnostic_report`
 advisory block. It is an **additive optional field** on `RunModuleSuccess`
-(diagnostic-report feature, CP3; spec `specs/diagnostic-report/SPEC.md` §6.5,
+(diagnostic-report feature, CP3; spec `specs/_archive/diagnostic-report/spec.md` §6.5,
 §10). Adding it did **not** bump the contract version — it follows the same
 additive-optional pattern as the `auto_discovered` / `_inline_discovery` /
 `discovery_note` fields above (resolved question Q5).
@@ -701,6 +701,26 @@ unchanged. It adds a top-level `deprecation`:
  "replacement": "flextools_list_recipes(source=\"local\")",
  "removal": "tool-responses/2.0"}
 ```
+
+---
+
+## MCP-tool keys on `flextools_search_by_capability` (issue #312)
+
+Additive optional top-level success keys (absent when not applicable);
+adding them did **not** bump the contract version. They exist because MCP
+tools such as `flextools_try_word` are not Flexicon/LibLCM members, so a
+query like `"try_word method"` or `"ParserOperations.TryWord"` found no API
+rows and models invented a method instead of calling the tool.
+
+| Key | Type | Meaning |
+|---|---|---|
+| `mcp_tools` | list | Up to 3 MCP tools matching the query, best first. Row: `{"tool", "summary", "note"}` -- `summary` is the first line of the tool description (leading `[TAG]` kept); `note` says to call the tool directly, not import it in `run_module` code. Present only when at least one tool matches. |
+| `zero_result_fallback` | object | Present only when `results` is empty. `{"message", "mcp_tools", "recipes_hint"}` -- `mcp_tools` lists every non-deprecated tool as `{"tool", "summary"}`; `recipes_hint` points at `flextools_list_recipes`. The top-level `recipes` key is still emitted as usual. |
+
+Key registry: `KEY_MCP_TOOLS = "mcp_tools"`, `KEY_ZERO_RESULT_FALLBACK =
+"zero_result_fallback"` (`server/response_keys.py`). Matching lives in
+`server/tool_search.py`; `flextools_search_by_capability` itself and the
+deprecated `flextools_list_skeletons` are never listed.
 
 ---
 

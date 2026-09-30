@@ -32,6 +32,9 @@ class TestIssue128SpecMdCase(unittest.TestCase):
         specs = _REPO_ROOT / "specs"
         for slug in _ISSUE_128_SPEC_DIRS:
             feature_dir = specs / slug
+            if not (feature_dir / "spec.md").exists():
+                # Retired specs keep their full docs under specs/_archive/.
+                feature_dir = specs / "_archive" / slug
             # Use directory listing for exact case — Path.exists() is
             # case-insensitive on Windows NTFS, so SPEC.md.exists() is True
             # even when only lowercase spec.md is present.

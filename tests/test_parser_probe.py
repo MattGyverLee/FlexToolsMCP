@@ -6,7 +6,7 @@ T007: Probe tests for the CP1 ParserCore capability probe (SPEC 5.4).
 Module under test: ``src/flextoolsmcp/server/parser_probe.py`` -- this file
 does **not exist yet**. It is written by T009/T010/T011, which land after
 this test file per the declared tests-first wave order in
-``specs/parser-check/tasks.md``. No repo precedent for pre-implementation
+``specs/_archive/parser-check/tasks.md``. No repo precedent for pre-implementation
 tests was found (no ``xfail``/``importorskip``/skip-guard convention turned
 up across ``tests/*.py``), so this file is a **plain, undecorated test
 module**: it fails loudly (a collection-time ``ModuleNotFoundError`` on the
@@ -14,7 +14,7 @@ top-level import below) until T009 lands, rather than reporting green via
 ``xfail`` or invisible via a skip guard. See cycle9-programmer-t007.md for
 the exact failing/passing counts this produced.
 
-Contract pinned verbatim from specs/parser-check/data-model.md (shared with
+Contract pinned verbatim from specs/_archive/parser-check/data-model.md (shared with
 the parallel tests/test_parser_health_block.py agent -- do not rename):
 
     - ``ProbeResult`` fields: ``ok: bool``, ``signal: str | None``,

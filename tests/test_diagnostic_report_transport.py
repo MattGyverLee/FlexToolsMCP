@@ -4,7 +4,7 @@
 run_module success-close auto-offer advisory, and the RunModuleSuccess
 contract addition.
 
-Spec: specs/diagnostic-report/SPEC.md sections 6.5, 9, 10, 12 (acceptance
+Spec: specs/_archive/diagnostic-report/spec.md sections 6.5, 9, 10, 12 (acceptance
 criteria under "Transport" and part of "Dedupe" / "Privacy").
 """
 

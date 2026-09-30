@@ -27,6 +27,7 @@ import io
 import json
 import os
 import re
+import tempfile
 import tokenize
 from datetime import datetime, timezone
 from pathlib import Path
@@ -496,22 +497,55 @@ def remember_rejection_reason(code: str,
 # requires_write derivation (issue #309)
 # ---------------------------------------------------------------------------
 
+# Capitalised .NET / Flexicon mutator verbs. Case-sensitive on purpose:
+# Python's own list.append / set.add / dict.update / str.replace are
+# lowercase and never match.
+_MUTATOR_METHOD_RE = re.compile(
+    r"^(Create|Add|Set|Delete|Remove|Move|Merge|Insert|Replace|Clear)([A-Z_]|$)")
+# Raw LibLCM owning/reference property suffixes (SensesOS, CategoryRA, ...).
+_LCM_FIELD_RE = re.compile(r"\w(OA|RA|OS|RS|OC|RC)$")
+
+
+def _mutator_names_in(tree: ast.AST) -> bool:
+    """Name-based write scan that needs no API index.
+
+    Flags any call to a capitalised mutator method on any receiver
+    (project.LexEntry.SetLexemeForm, entry.SensesOS.Add, ops.MergeObject)
+    and any assignment to a raw LCM OA/RA/OS/RS/OC/RC property. Coarse on
+    purpose: it backs up the index-based certifier when that cannot run,
+    and a false positive only costs a dry run.
+    """
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and _MUTATOR_METHOD_RE.match(node.func.attr)):
+            return True
+        if (isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Store)
+                and _LCM_FIELD_RE.search(node.attr)):
+            return True
+    return False
+
+
 def _code_is_write_shaped(code: str) -> bool:
     """Static write evidence, reusing the run_module write detectors.
 
     True when the code reads ``modifyAllowed`` (a write guard, not just the
-    Main() parameter), when detect_cud_operations() flags a CUD call, or
-    when the index-based certifier (compute_is_mutating_script) finds any
-    mutation, guarded or not.
+    Main() parameter), when the name-based mutator scan hits, when
+    detect_cud_operations() flags a CUD call, or when the index-based
+    certifier (compute_is_mutating_script) finds any mutation, guarded or
+    not. The name scan always runs, so a missing validators module or API
+    index degrades to a coarser check instead of failing open to read-only.
     """
     try:
         tree = ast.parse(code)
     except SyntaxError:
-        return False
+        # Code that cannot be vetted is treated as a write.
+        return True
     for node in ast.walk(tree):
         if (isinstance(node, ast.Name) and node.id == "modifyAllowed"
                 and isinstance(node.ctx, ast.Load)):
             return True
+    if _mutator_names_in(tree):
+        return True
     try:
         try:
             from . import validators as _v  # type: ignore
@@ -648,15 +682,26 @@ def _repair_write_flags(rows: List[Dict[str, Any]]) -> bool:
     return changed
 
 
-def _ensure_write_flags_locked(path: Path) -> None:
-    """Repair legacy write flags in place; caller holds _WRITE_LOCK."""
+def _ensure_write_flags_locked(path: Path) -> Optional[List[Dict[str, Any]]]:
+    """Repair legacy write flags; caller holds _WRITE_LOCK.
+
+    Returns the rows it read (repaired in memory), or None when the store
+    was already checked at this (mtime, size). If persisting the repair
+    fails (e.g. a Windows PermissionError from os.replace) the repaired
+    rows are still returned, so callers never see the stale False flags,
+    and the cache is left unset so the next load retries the write.
+    """
     key = _stat_key(path)
     if key is None or _REPAIR_SEEN.get(str(path)) == key:
-        return
+        return None
     rows = _read_rows(path)
     if rows and _repair_write_flags(rows):
-        _atomic_write(path, rows)
+        try:
+            _atomic_write(path, rows)
+        except Exception:
+            return rows
     _REPAIR_SEEN[str(path)] = _stat_key(path)
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -686,11 +731,21 @@ def _read_rows(path: Path) -> List[Dict[str, Any]]:
 
 def _atomic_write(path: Path, rows: List[Dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with tmp.open("w", encoding="utf-8") as fp:
-        for r in rows:
-            fp.write(json.dumps(r, ensure_ascii=False) + "\n")
-    os.replace(str(tmp), str(path))
+    # Unique temp file in the same directory: a fixed recipes.jsonl.tmp
+    # collides when two threads or server processes write at once.
+    fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp",
+                               dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fp:
+            for r in rows:
+                fp.write(json.dumps(r, ensure_ascii=False) + "\n")
+        os.replace(tmp, str(path))
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def _apply_cap(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -766,11 +821,14 @@ def capture(
                 path = get_recipe_path()
             except Exception:
                 return None
+            repaired: Optional[List[Dict[str, Any]]] = None
             try:
-                _ensure_write_flags_locked(path)
+                repaired = _ensure_write_flags_locked(path)
             except Exception:
-                pass
-            rows = _read_rows(path)
+                repaired = None
+            # Build on the repaired rows so this write persists the repair
+            # even if the repair's own write failed.
+            rows = repaired if repaired is not None else _read_rows(path)
             existing = None
             for r in rows:
                 if r.get("id") == rid:
@@ -796,7 +854,11 @@ def capture(
                 if proj:
                     projs.add(proj)
                 existing["projects"] = sorted(projs)
-                # Sticky: once any run of this recipe wrote, it stays a write.
+                # Sticky on purpose: once any run of this recipe (by
+                # fingerprint or intent+entities) wrote, it stays a write.
+                # A later read-only run never clears the flag, because a
+                # stale True only costs a dry run while a stale False lets
+                # a write skip the dry-run gate.
                 if mut:
                     existing["requires_write"] = True
                     existing["operations"] = ["read", "write"]
@@ -857,21 +919,25 @@ def capture_from_code(code: str, **kwargs: Any) -> Optional[Dict[str, Any]]:
 
 def load_local_recipes() -> List[Dict[str, Any]]:
     try:
-        _maybe_migrate_locked()
-    except Exception:
-        pass
-    try:
         path = get_recipe_path()
     except Exception:
         return []
-    # Issue #309: flip legacy read-only rows that actually wrote.
     try:
         with _WRITE_LOCK:
-            _ensure_write_flags_locked(path)
-    except Exception:
-        pass
-    try:
-        return _read_rows(path)
+            try:
+                _maybe_migrate_locked()
+            except Exception:
+                pass
+            # Issue #309: flip legacy read-only rows that actually wrote.
+            # Use the repaired rows even if persisting them failed.
+            repaired: Optional[List[Dict[str, Any]]] = None
+            try:
+                repaired = _ensure_write_flags_locked(path)
+            except Exception:
+                repaired = None
+            if repaired is not None:
+                return repaired
+            return _read_rows(path)
     except Exception:
         return []
 
@@ -1051,13 +1117,16 @@ def _migrate_once() -> List[Dict[str, Any]]:
             if intent and not m.get("intent"):
                 m["intent"] = intent
         else:
+            # Issue #309: legacy skeletons carry no write record, so derive
+            # the flag from the code instead of defaulting to read-only.
+            mig_write = derive_requires_write(body)
             merged[rid] = {
                 "id": rid,
                 "intent": intent,
                 "code": body,
                 "entities": entities,
-                "requires_write": False,
-                "operations": ["read"],
+                "requires_write": mig_write,
+                "operations": ["read", "write"] if mig_write else ["read"],
                 "params": [],
                 "projects": [],
                 "first_used": first,

@@ -719,3 +719,167 @@ class TestLegacyWriteRepair:
         rec["operations"] = ["read", "write"]
         text = recipe_files.render_draft(rec, "some-draft")
         assert "requires_write: true" in text
+
+
+# ---------------------------------------------------------------------------
+# Issue #309 QC follow-ups: fail-closed write detection, repair survives a
+# failed persist, locked load, unique temp files, migration derivation.
+# ---------------------------------------------------------------------------
+
+# A Flexicon mutator the detect_cud_operations regexes do not know.
+UNKNOWN_MUTATOR_CODE = (
+    "entries = project.LexEntry.GetAll()\n"
+    "for entry in entries:\n"
+    "    form = project.LexEntry.GetLexemeForm(entry)\n"
+    "    if form:\n"
+    "        project.Allomorphs.AddToEntry(entry, form + '-a')\n"
+)
+
+
+class TestWriteDetectionWithoutIndex:
+    def test_unknown_mutator_is_write_when_index_unavailable(self, monkeypatch):
+        mod = _import_local_recipes()
+        from flextoolsmcp.server import kernel, validators
+        monkeypatch.setattr(kernel, "get_api_index", lambda: None)
+        # Pin the gap: the regex fallback alone would call this read-only.
+        assert validators.detect_cud_operations(UNKNOWN_MUTATOR_CODE)["is_cud"] is False
+        assert mod.derive_requires_write(UNKNOWN_MUTATOR_CODE) is True
+
+    def test_index_lookup_raising_does_not_fail_open(self, monkeypatch):
+        mod = _import_local_recipes()
+        from flextoolsmcp.server import kernel
+
+        def _boom():
+            raise RuntimeError("index not loaded")
+        monkeypatch.setattr(kernel, "get_api_index", _boom)
+        assert mod.derive_requires_write(UNKNOWN_MUTATOR_CODE) is True
+        raw_lcm = UNKNOWN_MUTATOR_CODE.replace(
+            "project.Allomorphs.AddToEntry(entry, form + '-a')",
+            "entry.MorphoSyntaxAnalysisRA = None")
+        assert mod.derive_requires_write(raw_lcm) is True
+
+    def test_python_builtins_are_not_mutators(self, monkeypatch):
+        mod = _import_local_recipes()
+        from flextoolsmcp.server import kernel
+        monkeypatch.setattr(kernel, "get_api_index", lambda: None)
+        code = (
+            "rows = []\n"
+            "seen = set()\n"
+            "for entry in project.LexEntry.GetAll():\n"
+            "    rows.append(project.LexEntry.GetHeadword(entry).replace('-', ''))\n"
+            "    seen.add(entry.Hvo)\n"
+            "report.Info(str(len(rows)))\n"
+        )
+        assert mod.derive_requires_write(code) is False
+
+
+class TestRepairPersistFailure:
+    def test_load_returns_repaired_rows_when_persist_fails(self, tmp_path, monkeypatch):
+        mod = _import_local_recipes()
+        TestLegacyWriteRepair()._seed(tmp_path, monkeypatch, [
+            _legacy_row("local-111111111111", WRITE_CODE, intent="Normalize allomorphs"),
+        ])
+
+        def _fail(*_a, **_k):
+            raise PermissionError("recipes.jsonl is open in another process")
+        monkeypatch.setattr(mod, "_atomic_write", _fail)
+        rows = _load_fn(mod)()
+        assert rows and rows[0]["requires_write"] is True
+        # Not persisted yet ...
+        on_disk = json.loads((tmp_path / "recipes.jsonl").read_text(encoding="utf-8"))
+        assert on_disk["requires_write"] is False
+        # ... and retried on the next load once writing works again.
+        monkeypatch.undo()
+        TestLegacyWriteRepair()._seed(tmp_path, monkeypatch, [
+            _legacy_row("local-111111111111", WRITE_CODE, intent="Normalize allomorphs"),
+        ])
+        rows = _load_fn(mod)()
+        assert rows[0]["requires_write"] is True
+        on_disk = json.loads((tmp_path / "recipes.jsonl").read_text(encoding="utf-8"))
+        assert on_disk["requires_write"] is True
+
+    def test_load_holds_write_lock(self, isolated_recipe_dir, monkeypatch):
+        mod = _import_local_recipes()
+        import threading
+        entered = []
+
+        class _Recording:
+            def __init__(self):
+                self._lock = threading.Lock()
+
+            def __enter__(self):
+                entered.append(True)
+                return self._lock.__enter__()
+
+            def __exit__(self, *a):
+                return self._lock.__exit__(*a)
+
+        monkeypatch.setattr(mod, "_WRITE_LOCK", _Recording())
+        _load_fn(mod)()
+        assert entered
+
+
+class TestAtomicWriteTempFile:
+    def test_unique_temp_and_no_leftovers(self, tmp_path):
+        mod = _import_local_recipes()
+        path = tmp_path / "recipes.jsonl"
+        # A stale fixed-name temp from an old writer must not be reused.
+        (tmp_path / "recipes.jsonl.tmp").write_text("junk", encoding="utf-8")
+        mod._atomic_write(path, [{"id": "local-a"}])
+        assert json.loads(path.read_text(encoding="utf-8")) == {"id": "local-a"}
+        leftovers = sorted(p.name for p in tmp_path.iterdir())
+        assert leftovers == ["recipes.jsonl", "recipes.jsonl.tmp"]
+
+    def test_temp_cleaned_up_on_failure(self, tmp_path, monkeypatch):
+        mod = _import_local_recipes()
+        path = tmp_path / "recipes.jsonl"
+        monkeypatch.setattr(os, "replace", lambda *a, **k: (_ for _ in ()).throw(
+            PermissionError("locked")))
+        with pytest.raises(PermissionError):
+            mod._atomic_write(path, [{"id": "local-a"}])
+        assert list(tmp_path.iterdir()) == []
+
+
+class TestMigrationDerivesWrite:
+    def test_migrated_write_skeleton_requires_write(self, tmp_path, monkeypatch):
+        mod = _import_local_recipes()
+        monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(tmp_path))
+        monkeypatch.setenv("FLEXTOOLSMCP_SKELETON_DIR", str(tmp_path))
+        monkeypatch.delenv("FLEXTOOLSMCP_LOG_DIR", raising=False)
+        body = (
+            "def strip_hyphens(project):\n"
+            "    for entry in project.LexEntry.GetAll():\n"
+            "        form = project.LexEntry.GetLexemeForm(entry)\n"
+            "        if form.endswith('-'):\n"
+            "            project.LexEntry.SetLexemeForm(entry, form.rstrip('-'))\n"
+        )
+        _write_skeleton_file(tmp_path / "skeletons.jsonl",
+                             [_skeleton_entry("strip_hyphens", body, "op-m1")])
+        rows = _migrate_fn(mod)()
+        assert len(rows) == 1
+        assert rows[0]["requires_write"] is True
+        assert rows[0]["operations"] == ["read", "write"]
+
+
+class TestPlaceholderHandlerPinned:
+    def test_string_placeholder_in_broad_handler_rejected(self):
+        """Intentional: `except Exception: label = "(none)"` is not remembered.
+
+        A string placeholder turns a failure into plausible output -- the
+        #309 "No - Unknown issue" case is exactly that shape -- and not
+        remembering a run is cheap. Empty-string / None / pass / continue
+        fallbacks, and handlers that report or use the exception, stay
+        allowed.
+        """
+        mod = _import_local_recipes()
+        code = (
+            "for sense in project.Senses.GetAll():\n"
+            "    try:\n"
+            "        label = project.Senses.GetPartOfSpeech(sense)\n"
+            "    except Exception:\n"
+            "        label = '(none)'\n"
+            "    report.Info(label)\n"
+        )
+        assert mod.remember_rejection_reason(code) is not None
+        assert mod.remember_rejection_reason(
+            code.replace("label = '(none)'", "label = ''")) is None

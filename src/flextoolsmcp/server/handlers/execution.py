@@ -1323,7 +1323,7 @@ def _diagnose_project_open_error(
                 # build_access_remedy() raising) can never leave `diag` with
                 # some CP3 keys set (verdict/hint/...) but no `remedy` --
                 # a third payload shape neither the generic nor CP3 path
-                # intends. See specs/shared-mode-access/reviews/cycle5-qc.md
+                # intends. See specs/_archive/shared-mode-access/reviews/cycle5-qc.md
                 # P1-1.
                 diag.update(extra)
         except Exception as exc:
@@ -2492,7 +2492,7 @@ async def _handle_validate_only(
     if _lock_path is not None:
         project_lock["lock_file"] = str(_lock_path)
 
-    # Issue #93 sweep follow-up (see specs/shared-mode-access/reviews/
+    # Issue #93 sweep follow-up (see specs/_archive/shared-mode-access/reviews/
     # cycle5-qc.md P1-2): `locked` above is bare .fwdata.lock existence,
     # the exact false positive CP3 exists to remove (a stale lock, or a
     # live open_shared holder, both leave a lock file on disk without

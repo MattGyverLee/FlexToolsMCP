@@ -8,7 +8,7 @@ Branch: `feat/shared-mode-access` (shared with the feature below -- #96 is
 shared-mode territory, so the campaign did not branch away).
 
 Also active, same branch: **shared-mode-access** (let the user keep FLEx open).
-Spec: `specs/shared-mode-access/SPEC.md`.
+Spec: `specs/_archive/shared-mode-access/spec.md`.
 Issues: [#92](https://github.com/MattGyverLee/FlexToolsMCP/issues/92) (CP1 bug),
 [#93](https://github.com/MattGyverLee/FlexToolsMCP/issues/93) (the feature).
 
@@ -862,7 +862,7 @@ Gate results:
   --stat` touches `tests/test_v1_3_0_upgrade.py` only (1 file, +14/-5), and
   the same diff scoped to `-- src/` is **empty**. Zero production files were
   touched by the amend. Recorded as a clearly-separated addendum in
-  `specs/shared-mode-access/reviews/cycle3-qc.md`.
+  `specs/_archive/shared-mode-access/reviews/cycle3-qc.md`.
 
 **CP1 is verified STATIC-ONLY.** Every green gate above is the test suite and
 static review. The one gate that actually proves #92 is fixed -- driving a real
@@ -1031,7 +1031,7 @@ will not run it unattended; only the user authorizes it.
 > **SUPERSEDED 2026-09-08 (cycle 8).** This section is a historical record of the
 > CP1 hand-off. The live authority is the final section of this file,
 > "shared-mode-access (#93) -- spurt 5 CLOSED GREEN (cycle 8)", plus
-> `specs/shared-mode-access/.crew-handoff.json`.
+> `specs/_archive/shared-mode-access/.crew-handoff.json`.
 
 1. ~~User runs the CP1 live write check above and reports the result.~~ **DONE
    2026-09-07 -- PASSED (both legs, against `Sena 3`). See the RESOLVED section
@@ -1487,7 +1487,7 @@ per-lock loop. Both are in SPEC.md Section 8.
 
 **Remaining human gates -- ONE. Two of the original three closed 2026-09-08:**
 1. **The live FieldWorks session -- STILL OPEN, and now the only gate.**
-   `specs/shared-mode-access/evidence/live-session-checklist.md` is a single
+   `specs/_archive/shared-mode-access/evidence/live-session-checklist.md` is a single
    ordered checklist for one sitting: pre-flight backup, CP4-a/b/c, CP3's
    sharing-off recipe check (both parts), and the three OPEN questions
    (writing systems, possibility lists, reversal indexes) that classify SPEC
@@ -1606,7 +1606,7 @@ origin/main, NOTHING PUSHED" is **false**. Verified at close:
 `origin/main == local main == 502ab92`, 0 ahead / 0 behind. Everything is pushed.
 
 **Issue filing: 13 drafted, roughly 5-6 genuinely new.** Nothing is filed;
-drafts live in `specs/shared-mode-access/issues/DRAFT-issues.md`. Dedup found
+drafts live in `specs/_archive/shared-mode-access/issues/DRAFT-issues.md`. Dedup found
 the FlexToolsMCP `mutations_detected` draft is a near-duplicate of open
 [#105](https://github.com/MattGyverLee/FlexToolsMCP/issues/105); flexicon
 finding 2 recurs explicitly-declined scope in closed #183; findings 1, 7 and 9

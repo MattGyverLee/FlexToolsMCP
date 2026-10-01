@@ -6,7 +6,7 @@ one project setting: **project sharing**. This page explains what works with
 FLEx open, what does not and why, and how to turn sharing on.
 
 Tracked as issue #93. The design record, with source citations for every
-claim below, is `specs/shared-mode-access/SPEC.md`.
+claim below, is `specs/_archive/shared-mode-access/spec.md`.
 
 ## The short version
 
@@ -79,7 +79,7 @@ FLEx.
 | Change | What goes wrong from a peer | Evidence |
 |---|---|---|
 | **Custom field** create, delete or rename | *Silently lost.* Only the master writes custom-field definitions to disk, and the commit log has nowhere to carry them, so the field is gone after the next restart with no error. FLEx blocks its own Custom Fields dialog in the same situation. | `SharedXMLBackendProvider.cs:408,478`; `CommitLogRecord.cs:17-49`; `XWorksViewBase.cs:715` |
-| **Writing system** add or modify | *Crashes FLEx.* The change reaches disk, then the running FLEx throws `NullReferenceException` in `WritingSystemListHandler.AddWritingSystemList` (`TextListeners.cs:286`). Seen live on FieldWorks 9.3.10. | `specs/shared-mode-access/evidence/live-cp4.md`, Item 5 |
+| **Writing system** add or modify | *Crashes FLEx.* The change reaches disk, then the running FLEx throws `NullReferenceException` in `WritingSystemListHandler.AddWritingSystemList` (`TextListeners.cs:286`). Seen live on FieldWorks 9.3.10. | `specs/_archive/shared-mode-access/evidence/live-cp4.md`, Item 5 |
 
 The custom-field row comes from reading the LCM source; it has not been
 reproduced live. Today flexicon's `CustomFieldOperations.CreateField` fails

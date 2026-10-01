@@ -27,6 +27,10 @@ staleness, closed), #315 (`project_locked` held by a python PID, open and being
 fixed separately on `fix/315-project-locked-holder`; out of scope here),
 flexicon#292 (`SyncForeignChanges()`, shipped).
 
+**Amended 2026-09-30 during planning**: Section 2 (FLEx Undo of peer writes
+is answered by LCM source), US5/FR-030 (sync call depends on undo mode),
+FR-002 (raw LCM names). See `research.md`.
+
 ---
 
 ## 1. Context: where things stand
@@ -62,14 +66,17 @@ What is true:
   `flextools_undo_last_operation` tool never worked and was removed (#92).
 - **FLEx's own Undo cannot reach MCP writes made while FLEx was closed.** FLEx
   starts with an empty undo history every time it opens.
-- **It is unknown whether FLEx's Undo can reach MCP writes made while FLEx is
-  open.** A peer's change arrives in FLEx through reconciliation of the shared
-  commit log, not as a unit of work on FLEx's undo stack. It is also unknown
-  whether the MCP should try to supply the undo metadata FLEx would need.
+- **FLEx's own Undo cannot reach MCP writes made while FLEx is open either.**
+  LCM source (checked 2026-09-30, see `research.md` R4): FLEx picks up a
+  peer's change during its own next commit, and `ChangeReconciler` records it
+  as a non-undoable unit of work (`AddForeignBundleToUndoStack` on the
+  non-undoable stack). The MCP has no metadata it could supply to change that.
+  A live check (Edit > Undo in FLEx after an MCP write) is still worth
+  recording as evidence.
 - **Undoing through LCM from the MCP may be possible but has never been built.**
 
 What this spec does: it corrects the documentation (FR-020 to FR-022) and
-records the open question about FLEx Undo while FLEx is open. It does **not**
+records the source finding about FLEx Undo while FLEx is open. It does **not**
 build programmatic undo. That would be a separate feature with its own spec
 (see Out of scope).
 
@@ -112,13 +119,16 @@ script. It must get past the gate.
 5. **Given** a script that would certify as read-only but contains an
    exclusive-only call, **When** it is submitted with FLEx open, **Then** it
    is still refused. Mis-certification must not bypass the gate.
-6. **Given** a script where the exclusive-only call appears only in a comment,
-   a string, or code that never runs on the write path, **When** it is
-   submitted, **Then** the call does not trigger the gate.
+6. **Given** a script where the exclusive-only call appears only in a comment
+   or a string, **When** it is submitted, **Then** the call does not trigger
+   the gate. (A call in a dead branch such as `if False:` still triggers it,
+   matching the existing mutation detection, which fails closed.)
 7. **Given** a request made with `validate_only`, **When** the script contains
    an exclusive-only call and FLEx holds the project in shared mode, **Then**
    the preflight result reports that the run would be refused, and why.
-
+8. **Given** a read-only run (writes not enabled), **When** the script
+   contains a guarded exclusive-only call, **Then** this gate does not fire:
+   guarded code does not execute on a read-only run.
 ---
 
 ### User Story 2 - The assistant recovers from the refusal without looping (Priority: P1)
@@ -211,9 +221,11 @@ Today that read may show the state *before* the write, because a fresh session
 sees only FLEx's last save to disk. flexicon now provides
 `SyncForeignChanges()`, which pulls in other peers' committed changes.
 
-From the flexicon source (`FLExProject.py:1321-1334`), the call works only in a
-write-enabled session opened with `undoable=False`, because it saves. A
-read-only session raises `FP_ReadOnlyError`. So syncing can help write-enabled
+From the flexicon source, pulling in a peer's changes means committing, so it
+needs a write-enabled session: `SyncForeignChanges()` (for `undoable=False`
+sessions) and `SaveChanges()` (for `undoable=True` sessions, the MCP's default
+when flexicon advertises `per-operation-uow`) both raise `FP_ReadOnlyError`
+in a read-only session. So syncing can help write-enabled
 runs (for example a script that writes and then verifies), but not read-only
 read-backs. Opening a writable session just to read is out of scope: it would
 take the write path's lock and backup steps for a read.
@@ -302,10 +314,14 @@ for each filing.
     `Duplicate` can reach a writing system.
   - **Custom fields**, flexicon `CustomFieldOperations` schema changes:
     `CreateField`, `DeleteField`, `SetFieldName` (the "rename").
-  - **Raw LCM names**: `AddCustomField`, `UpdateCustomField` (plus a delete
-    counterpart if LCM has one), and writing-system manager calls (`Set`,
-    `Save`, `CreateOrGet`) matched on the manager receiver, never on a bare
-    `.Set(`. Raw names are reachable only from user-submitted code, so
+  - **Raw LCM names** (verified in LCM source, `research.md` R3): metadata
+    cache `AddCustomField`, `UpdateCustomField`, `DeleteCustomField`;
+    `FieldDescription.UpdateCustomField` and `MarkForDeletion`; writing-system
+    manager `Set`, `GetOrSet`, `Replace`, `Save`;
+    `AddToCurrentVernacularWritingSystems`,
+    `AddToCurrentAnalysisWritingSystems`; `Add`/`Remove` on the four
+    writing-system lists; the `WritingSystemServices` mutators. Manager and list
+    calls are matched on their receiver, never on a bare `.Set(` or `.Add(`. Raw names are reachable only from user-submitted code, so
     detection MUST match them in the script itself.
 - **FR-002a**: Reads and value edits MUST NOT trigger the gate. That includes
   every writing-system `Get*`, `Exists*` and display method, and the
@@ -319,8 +335,9 @@ for each filing.
   and the script contains an exclusive-only call, `run_module` MUST refuse with
   the new error code `requires_exclusive_access` before running any project
   code, and before the pre-write backup.
-- **FR-005**: If an exclusive-only call is detected, the access probe MUST run
-  even when the script certified as read-only.
+- **FR-005**: If an exclusive-only call is detected in a write-enabled run,
+  the access probe MUST run even when the script certified as read-only. The
+  gate applies only to write-enabled runs.
 - **FR-006**: On an `unknown` probe verdict, exclusive-only calls MUST be
   refused, with a message saying FLEx could not be confirmed closed.
 - **FR-007**: `open_exclusive` and `held_by_other` MUST keep their existing
@@ -360,9 +377,9 @@ for each filing.
   reverse a write.
 - **FR-022**: The Undo section of `docs/SHARED-MODE.md` MUST state the four
   facts in Section 2: no MCP undo; FLEx Undo starts empty on open, so it cannot
-  reach writes made while FLEx was closed; whether FLEx Undo reaches peer
-  writes made while FLEx is open is unknown; programmatic undo through LCM is
-  not built.
+  reach writes made while FLEx was closed; FLEx records peer writes made while
+  it is open as non-undoable, so its Undo cannot reach them either;
+  programmatic undo through LCM is not built.
 - **FR-023**: `docs/SHARED-MODE.md` MUST say how to see a peer write in an open
   FLEx window (navigate away and back; F5 is not enough).
 - **FR-024**: The "Close FLEx for these" section MUST describe the refusal as
@@ -375,8 +392,10 @@ for each filing.
 
 **Read-back (US5)**
 
-- **FR-030**: The feature MUST establish live whether `SyncForeignChanges()`
-  makes a fresh write-enabled session see a prior peer's committed write.
+- **FR-030**: The feature MUST establish live whether a commit at the start of
+  a write-enabled session (`SaveChanges()` under `undoable=True`,
+  `SyncForeignChanges()` under `undoable=False`) makes it see a prior peer's
+  committed write.
   Read-only sessions cannot call it (source-established).
 - **FR-031**: If it works, write-enabled runs on an `open_shared` project MUST
   sync before running the script. The `shared_mode_read_back` note on
@@ -434,9 +453,8 @@ for each filing.
   calls and any future flexicon fix can reach the hazard.
 - Wrapper names in FR-002 come from the flexicon working tree on 2026-09-30
   and MUST be re-checked against the shipped flexicon index during planning.
-- The LCM-level claims (raw method names, reconciliation and undo behavior)
-  were not re-checked against LCM source for this spec, because that source
-  was not available locally. Planning MUST confirm them.
+- The LCM-level claims were checked against `sillsdev/liblcm@master` during
+  planning (`research.md`).
 - Programmatic undo through LCM is out of scope (see below).
 
 ## Out of scope

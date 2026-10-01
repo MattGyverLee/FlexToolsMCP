@@ -3,11 +3,37 @@
   "specName": "exclusive-access-gate",
   "branch": "feat/exclusive-access-gate",
   "selectedAt": "2026-09-30T20:00:00.000Z",
-  "currentStep": "specify",
-  "status": "specified",
+  "currentStep": "plan",
+  "status": "planned",
   "history": [
-    {"step": "specify", "substep": null, "kind": "start", "by": "user", "at": "2026-09-30T20:00:00.000Z"},
-    {"step": "specify", "substep": null, "kind": "complete", "by": "ai", "at": "2026-09-30T20:30:00.000Z"}
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "user",
+      "at": "2026-09-30T20:00:00.000Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-30T20:30:00.000Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "user",
+      "at": "2026-09-30T21:00:00.000Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-30T22:00:00.000Z"
+    }
   ],
   "decisions": [
     "Predecessor specs/shared-mode-access (#93) retired; #93 closed 2026-09-30.",

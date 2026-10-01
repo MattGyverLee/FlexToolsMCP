@@ -208,14 +208,13 @@ around it:
 - Don't assume FLExTools will inject the right library - be explicit.
 
 <!-- SPECKIT START -->
-No feature plan is active. The shipped parser-check work is summarized in
-one-pagers; start there, not in `specs/_archive/`:
+Active feature plan: `specs/exclusive-access-gate/plan.md` (successor to the
+retired shared-mode-access / #93). Companions in the same folder: `spec.md`,
+`research.md`, `data-model.md`, `contracts/`, `quickstart.md`.
 
-- `specs/parser-check/contracts.md` -- umbrella rules every checkpoint follows
-- `specs/parser-check-cp2/AS-BUILT.md` -- CP2a read spine (flexicon side)
-- `specs/parser-check-cp2b/AS-BUILT.md` -- CP2a-bridge + CP2b parse worker
-- `specs/parser-check-cp3/AS-BUILT.md`, `-cp4/`, `-cp5/` -- batch/reporting,
-  filing, sandbox
+Shipped parser-check work is summarized in one-pagers; start there, not in
+`specs/_archive/`: `specs/parser-check/contracts.md`, and `AS-BUILT.md` under
+`specs/parser-check-cp2/`, `-cp2b/`, `-cp3/`, `-cp4/`, `-cp5/`.
 
 Other retired features: `specs/diagnostic-report/`,
 `specs/flexicon-project-bridge/`, `specs/unified-recipes/` (each `AS-BUILT.md`).

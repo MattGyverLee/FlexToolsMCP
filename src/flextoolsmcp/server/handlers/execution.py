@@ -2184,8 +2184,15 @@ def _build_validate_only_checks(
     provenance_existing: bool,
     skip_module_check: bool,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Run gates 1-11 (production order) WITHOUT short-circuiting, except that
-    a syntax failure blocks every AST-dependent gate after it (per spec).
+    """Run every run_module preflight gate, in production order, WITHOUT
+    short-circuiting, except that a syntax failure blocks every AST-dependent
+    gate after it (per spec). This function IS the canonical gate list: each
+    gate appends one `checks[]` entry, so count the entries rather than
+    restating a number anywhere. The `# --- Gate N ---` labels below are
+    positional section names shared with tests/evals/preflight_runner.py (and
+    cross-referenced as e.g. "Gate 5" for casting); a gate inserted between
+    two others gets a letter suffix (3a, 3b2), one appended gets the next
+    number -- so the labels are not a count either.
 
     Side-effect free: does NOT call session_state_obj.record_auto_discovered_api
     or any other mutating method -- discovery gates REPORT here, they never
@@ -2203,7 +2210,7 @@ def _build_validate_only_checks(
             "passed": False,
             "issues": [{"line": syntax_error.lineno, "message": syntax_error.msg}],
         })
-        # AST-dependent gates 2-11 cannot run without a parse tree.
+        # Stop: every later gate is skipped without a parse tree (per spec).
         writeability = {
             "is_mutating_script": False,
             "mutations_detected": [],
@@ -2465,7 +2472,7 @@ def _build_validate_only_checks(
     else:
         checks.append({"gate": "invalid_api_chain", "passed": True})
 
-    # --- Gate 12: unknown_method (issue #306) ---
+    # --- Gate 12: unknown_method (issue #306; appended after Gate 11) ---
     unknown_method_check = detect_unknown_operations_methods(code_tree, api_idx)
     if unknown_method_check["has_unknown"]:
         checks.append({

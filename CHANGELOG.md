@@ -174,6 +174,9 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   tool description, the `validate_only` field, the style guide and the
   handler docstrings now say "full preflight". The response's `checks[]`
   names every gate, so the count is not repeated anywhere it could go stale.
+  The `_build_validate_only_checks` docstring and comments no longer say
+  "gates 1-11". They note that its `# --- Gate N ---` labels are positional
+  section names shared with the eval preflight runner, not a count.
 - `flextools_run_module` now returns a structured `no_unit_of_work` error
   when liblcm raises `InvalidOperationException: Not in the right state to
   register a change`

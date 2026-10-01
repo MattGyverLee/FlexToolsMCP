@@ -1,0 +1,92 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "unknown_method",
+  "message": "ParserOperations.TryWord (line 2) does not exist. Did you mean: ParseWord, ParseWordXml, TraceWordXml? This is not a write-safety problem: a call to a method the class does not have raises AttributeError, so no guard makes it work.",
+  "unknown_methods": [
+    {
+      "class": "ParserOperations",
+      "method": "TryWord",
+      "line": 2,
+      "protected": false,
+      "did_you_mean": [
+        "ParseWord",
+        "ParseWordXml",
+        "TraceWordXml"
+      ],
+      "available_methods": [
+        "ApplySyncableProperties",
+        "CompareTo",
+        "GetAvailability",
+        "GetSyncableProperties",
+        "IsUpToDate",
+        "MoveAfter",
+        "MoveBefore",
+        "MoveDown",
+        "MoveToIndex",
+        "MoveUp",
+        "ParseWord",
+        "ParseWordXml",
+        "Reload",
+        "Sort",
+        "Swap",
+        "TraceWordXml"
+      ]
+    }
+  ],
+  "did_you_mean": [
+    "ParseWord",
+    "ParseWordXml",
+    "TraceWordXml"
+  ],
+  "next_steps": [
+    "1. Replace ParserOperations.TryWord with a real method (e.g. ParseWord). The rejection's `available_methods` lists the class's methods.",
+    "2. Check the signature first: flextools_get_object_api(object_type='ParserOperations').",
+    "3. Re-run flextools_run_module()."
+  ],
+  "error": {
+    "code": "unknown_method",
+    "message": "ParserOperations.TryWord (line 2) does not exist. Did you mean: ParseWord, ParseWordXml, TraceWordXml? This is not a write-safety problem: a call to a method the class does not have raises AttributeError, so no guard makes it work.",
+    "unknown_methods": [
+      {
+        "class": "ParserOperations",
+        "method": "TryWord",
+        "line": 2,
+        "protected": false,
+        "did_you_mean": [
+          "ParseWord",
+          "ParseWordXml",
+          "TraceWordXml"
+        ],
+        "available_methods": [
+          "ApplySyncableProperties",
+          "CompareTo",
+          "GetAvailability",
+          "GetSyncableProperties",
+          "IsUpToDate",
+          "MoveAfter",
+          "MoveBefore",
+          "MoveDown",
+          "MoveToIndex",
+          "MoveUp",
+          "ParseWord",
+          "ParseWordXml",
+          "Reload",
+          "Sort",
+          "Swap",
+          "TraceWordXml"
+        ]
+      }
+    ],
+    "did_you_mean": [
+      "ParseWord",
+      "ParseWordXml",
+      "TraceWordXml"
+    ],
+    "next_steps": [
+      "1. Replace ParserOperations.TryWord with a real method (e.g. ParseWord). The rejection's `available_methods` lists the class's methods.",
+      "2. Check the signature first: flextools_get_object_api(object_type='ParserOperations').",
+      "3. Re-run flextools_run_module()."
+    ]
+  }
+}

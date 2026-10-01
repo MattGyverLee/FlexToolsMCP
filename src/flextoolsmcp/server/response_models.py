@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 45 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 46 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + raw_addcustomfield_write_risk + invalid_api_mode
   + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
@@ -21,7 +21,8 @@ Provides:
   unknown_tool, invalid_input
   + deprecated_member (curated_deprecations.py)
   + recipe_not_found (unified-recipes FR-024)
-  + no_unit_of_work (#310))
+  + no_unit_of_work (#310)
+  + unknown_method (#306))
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -327,6 +328,24 @@ class InvalidApiChainDetail(BaseModel):
     error_code: Literal["invalid_api_chain"] = "invalid_api_chain"
     issues: List[Any] = Field(default_factory=list)
     guidance: Optional[str] = None
+
+
+class UnknownMethodDetail(BaseModel):
+    """Detail payload for unknown_method rejections (issue #306).
+
+    A call names a method that is neither on its Operations class nor on any
+    indexed base (a ``TryWord`` call on ParserOperations), whatever the
+    receiver shape: the ``project.Parser`` facade accessor, a local alias of
+    it, or an inline ``ParserOperations(project)``. Each
+    ``unknown_methods`` item is ``{class, method, line, protected,
+    did_you_mean, available_methods}``; top-level ``did_you_mean`` merges
+    their suggestions.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["unknown_method"] = "unknown_method"
+    unknown_methods: List[Any] = Field(default_factory=list)
+    did_you_mean: List[str] = Field(default_factory=list)
+    next_steps: List[Any] = Field(default_factory=list)
 
 
 class ReflectionBypassDetectedDetail(BaseModel):
@@ -957,7 +976,7 @@ class RecipeNotFoundDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 45 per-code detail models
+# Discriminated union over all 46 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -978,6 +997,7 @@ AnyDetail = Union[
     WrongLibraryImportsDetail,
     InvalidApiModeDetail,
     InvalidApiChainDetail,
+    UnknownMethodDetail,
     ReflectionBypassDetectedDetail,
     NestedUnitOfWorkDetail,
     NoUnitOfWorkDetail,

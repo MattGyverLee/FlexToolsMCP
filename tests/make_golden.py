@@ -176,6 +176,31 @@ GOLDEN_FIXTURES: dict[str, dict] = {
             "3. Re-run flextools_run_module() with write_enabled=true.",
         ],
     },
+    # Issue #306: a method its Operations class does not have, via an alias.
+    "unknown_method": {
+        "message": "ParserOperations.TryWord (line 2) does not exist. Did you mean: ParseWord, ParseWordXml, TraceWordXml? This is not a write-safety problem: a call to a method the class does not have raises AttributeError, so no guard makes it work.",
+        "unknown_methods": [
+            {
+                "class": "ParserOperations",
+                "method": "TryWord",
+                "line": 2,
+                "protected": False,
+                "did_you_mean": ["ParseWord", "ParseWordXml", "TraceWordXml"],
+                "available_methods": [
+                    "ApplySyncableProperties", "CompareTo", "GetAvailability",
+                    "GetSyncableProperties", "IsUpToDate", "MoveAfter", "MoveBefore",
+                    "MoveDown", "MoveToIndex", "MoveUp", "ParseWord", "ParseWordXml",
+                    "Reload", "Sort", "Swap", "TraceWordXml",
+                ],
+            }
+        ],
+        "did_you_mean": ["ParseWord", "ParseWordXml", "TraceWordXml"],
+        "next_steps": [
+            "1. Replace ParserOperations.TryWord with a real method (e.g. ParseWord). The rejection's `available_methods` lists the class's methods.",
+            "2. Check the signature first: flextools_get_object_api(object_type='ParserOperations').",
+            "3. Re-run flextools_run_module().",
+        ],
+    },
     "project_locked": {
         "message": "Project 'Demo' is held for exclusive access (verdict: open_exclusive) and this script requests write access.",
         "guidance": "FieldWorks has this project open and project sharing is OFF...",

@@ -88,6 +88,7 @@ try:
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
+        build_unknown_method_rejection,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
         detect_undiscovered_entities,
@@ -110,6 +111,7 @@ except ImportError:
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
+        build_unknown_method_rejection,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
         detect_undiscovered_entities,
@@ -2379,15 +2381,42 @@ def _build_validate_only_checks(
         checks.append({"gate": "wrong_library_imports", "passed": True})
 
     # --- Gate 11: invalid_api_chain ---
+    # Issue #306: a project.<X>.<Y> method typo that Gate 12 reports as an
+    # unknown method is left to Gate 12 (the live run rejects it as
+    # unknown_method too), so one call is not listed twice.
+    unknown_method_rejection = build_unknown_method_rejection(cert)
+    _unknown_seen = {
+        (f.get("method"), f.get("line"))
+        for f in ((unknown_method_rejection or {}).get("unknown_methods") or [])
+    }
     chain_check = detect_invalid_project_chains(code_tree, api_idx)
-    if chain_check["has_invalid"]:
+    _chain_issues = [
+        i for i in (chain_check.get("issues") or [])
+        if not (i.get("kind") == "method"
+                and (i.get("typo_attr"), i.get("lineno")) in _unknown_seen)
+    ]
+    if any(i.get("blocking", True) for i in _chain_issues):
         checks.append({
             "gate": "invalid_api_chain",
             "passed": False,
-            "issues": chain_check.get("issues") or [],
+            "issues": _chain_issues,
         })
     else:
         checks.append({"gate": "invalid_api_chain", "passed": True})
+
+    # --- Gate 12: unknown_method (issue #306) ---
+    # Calls to a name that is not a member of its Operations class at all.
+    if unknown_method_rejection is not None:
+        checks.append({
+            "gate": "unknown_method",
+            "passed": False,
+            "issues": [unknown_method_rejection["message"]],
+            "unknown_methods": unknown_method_rejection["unknown_methods"],
+            "did_you_mean": unknown_method_rejection["did_you_mean"],
+            "next_steps": unknown_method_rejection["next_steps"],
+        })
+    else:
+        checks.append({"gate": "unknown_method", "passed": True})
 
     writeability = build_writeability_payload(code, api_idx, code_tree, cud_info=cud_info, cert=cert)
     return checks, writeability
@@ -4347,24 +4376,57 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                         "[AUTO-FIX] typo: patch did not pass re-preflight; falling back to rejection"
                     )
 
-        if chain_check["has_invalid"]:
-            _log_preflight_reject(
-                op_id, seq, time.monotonic() - t_start,
-                "invalid_api_chain",
-                f"issues={chain_check.get('issues')}",
+    # Issue #306: a call to a name its Operations class does not have
+    # (ParserOperations.TryWord). certify_script_readonly reports these
+    # separately from mutations, so the unprotected_writes gate no longer
+    # sends the caller to guard a call that could never run; this gate names
+    # the real methods instead. It runs after invalid_api_chain's typo
+    # auto-fix (re-certifying, since that may have patched the code) but
+    # BEFORE that gate's rejection, so a direct `project.<X>.<Y>` call and an
+    # aliased one get the same unknown_method verdict; the chain rejection
+    # still covers accessor typos.
+    unknown_method_rejection = build_unknown_method_rejection(
+        certify_script_readonly(code, api_idx, code_tree)
+    )
+    if unknown_method_rejection is not None:
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "unknown_method",
+            "calls="
+            f"{[f['class'] + '.' + f['method'] for f in unknown_method_rejection['unknown_methods'][:5]]}",
             log_dir_fn=get_log_dir,
-            )
-            return _attach_assistance_if_loop(
-                error_response(
-                    "invalid_api_chain",
-                    chain_check["suggestion"],
-                    issues=chain_check["issues"],
-                    guidance="Replace each flagged expression with the suggested correct name and re-run.",
-                    op_id=op_id,
-                ),
-                error_code="invalid_api_chain",
-                code_size_bytes=_code_size_bytes,
-            )
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "unknown_method",
+                unknown_method_rejection["message"],
+                unknown_methods=unknown_method_rejection["unknown_methods"],
+                did_you_mean=unknown_method_rejection["did_you_mean"],
+                next_steps=unknown_method_rejection["next_steps"],
+                op_id=op_id,
+            ),
+            error_code="unknown_method",
+            code_size_bytes=_code_size_bytes,
+        )
+
+    if chain_check["has_invalid"]:
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "invalid_api_chain",
+            f"issues={chain_check.get('issues')}",
+        log_dir_fn=get_log_dir,
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "invalid_api_chain",
+                chain_check["suggestion"],
+                issues=chain_check["issues"],
+                guidance="Replace each flagged expression with the suggested correct name and re-run.",
+                op_id=op_id,
+            ),
+            error_code="invalid_api_chain",
+            code_size_bytes=_code_size_bytes,
+        )
 
     # getall-contract SPEC §6 Level 3 (cycle-4 reversal): non-blocking
     # advisory (never rejects) for unsafe len()/subscript/truthiness/

@@ -42,6 +42,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Set
 
 from server.validators import (
+    build_unknown_method_rejection,
     validate_server_state,
     detect_partial_module_structure,
     detect_top_level_main_invocation,
@@ -82,6 +83,7 @@ class _FakeAPIIndex:
                         {"name": "POS", "return_type": "POSOperations"},
                         {"name": "Senses", "return_type": "LexSenseOperations"},
                         {"name": "Segments", "return_type": "SegmentOperations"},
+                        {"name": "Parser", "return_type": "ParserOperations"},
                     ],
                     "methods": [
                         {"name": "LexiconGetSense"},
@@ -103,6 +105,9 @@ class _FakeAPIIndex:
                         {"name": "GetLexemeForm", "is_mutating": False},
                         {"name": "Create", "is_mutating": True},
                         {"name": "SetLexemeForm", "is_mutating": True},
+                        # Issue #306: the class's member list is now taken as
+                        # complete, so 16_ok_guarded_delete needs Delete here.
+                        {"name": "Delete", "is_mutating": True},
                     ],
                 },
                 "POSOperations": {
@@ -129,6 +134,15 @@ class _FakeAPIIndex:
                         {"name": "GetAll", "is_mutating": False, "return_type": "EnumerableWrapper[ISegment]"},
                         {"name": "IsLabel", "is_mutating": False},
                         {"name": "GetFreeTranslation", "is_mutating": False},
+                    ],
+                },
+                # Issue #306: a known class whose real methods do not include
+                # the invented TryWord.
+                "ParserOperations": {
+                    "methods": [
+                        {"name": "ParseWord", "is_mutating": False},
+                        {"name": "ParseWordXml", "is_mutating": False},
+                        {"name": "TraceWordXml", "is_mutating": False},
                     ],
                 },
                 "WordformOperations": {
@@ -241,6 +255,7 @@ _ORDERED_GATES = (
     "undefined_variables",
     "missing_imports",
     "wrong_library_imports",
+    "unknown_method",
     "invalid_api_chain",
 )
 
@@ -420,6 +435,16 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
     if wrong["has_wrong_imports"]:
         return PreflightResult(
             "preflight_reject", "wrong_library_imports", "wrong_library_imports", str(wrong["wrong_imports"])
+        )
+
+    # Gate 12: unknown_method (issue #306). The handler checks it after the
+    # chain gate's auto-fix but before the chain rejection (no auto-fix here).
+    unknown = build_unknown_method_rejection(
+        certify_script_readonly(code, FAKE_API_INDEX, tree)
+    )
+    if unknown is not None:
+        return PreflightResult(
+            "preflight_reject", "unknown_method", "unknown_method", unknown["message"]
         )
 
     # Gate 11: invalid_api_chain.

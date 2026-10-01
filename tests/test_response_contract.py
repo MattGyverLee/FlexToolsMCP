@@ -52,6 +52,7 @@ from flextoolsmcp.server.response_models import (
     DeprecatedMemberDetail,
     RawAddCustomFieldWriteRiskDetail,
     NoUnitOfWorkDetail,
+    UnknownMethodDetail,
 )
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "responses"
@@ -204,6 +205,11 @@ GOLDEN_REQUIRED_KEYS = {
         "_contract", "status", "error_code", "message", "error",
         "uow_mode", "write_enabled", "undoable", "guidance", "next_steps",
     },
+    # Issue #306: a method its Operations class does not have.
+    "unknown_method": {
+        "_contract", "status", "error_code", "message", "error",
+        "unknown_methods", "did_you_mean", "next_steps",
+    },
 }
 
 
@@ -249,6 +255,12 @@ ALL_ERROR_CODES = [
     ("wrong_library_imports", dict(wrong_imports=["flexlibs"], api_mode="flexicon", affected_symbols=["LexOps"])),
     ("invalid_api_mode", dict(allowed_modes=["flexicon", "flexlibs_stable", "liblcm"], received="bogus")),
     ("invalid_api_chain", dict(issues=[], guidance="Fix chain")),
+    ("unknown_method", dict(
+        unknown_methods=[{"class": "ParserOperations", "method": "TryWord", "line": 2,
+                          "did_you_mean": ["ParseWord"]}],
+        did_you_mean=["ParseWord"],
+        next_steps=["1. Replace ParserOperations.TryWord with a real method."],
+    )),
     ("reflection_bypass_detected", dict(
         findings=[{"kind": "operator.methodcaller", "line": 2, "expr": "operator.methodcaller(\"Add\", ...)(...)"}],
         reflection_bypass_count=1,
@@ -362,6 +374,7 @@ DETAIL_MODEL_MAP = {
     "deprecated_member": DeprecatedMemberDetail,
     "raw_addcustomfield_write_risk": RawAddCustomFieldWriteRiskDetail,
     "no_unit_of_work": NoUnitOfWorkDetail,
+    "unknown_method": UnknownMethodDetail,
 }
 
 #: CP2b's three. Separate from the map above because two of them have
@@ -507,7 +520,8 @@ class TestParserCheckCP2bCodes:
         # #277 adds reflection_bypass_detected -> 43.
         # unified-recipes adds recipe_not_found -> 44.
         # #310 adds no_unit_of_work -> 45.
-        assert union_size == 45, f"the detail union holds {union_size} models"
+        # #306 adds unknown_method -> 46.
+        assert union_size == 46, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

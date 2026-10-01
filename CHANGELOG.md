@@ -130,6 +130,22 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   rejected, but now it comes with a `rewrite` wrapped in a ClassName guard,
   and `pattern` holds the flagged call rather than the first 80 characters of
   the line.
+- `flextools_run_module` now rejects a call to a method its Operations class
+  does not have with a structured `unknown_method` error, instead of
+  `unprotected_writes`
+  ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306)). Before,
+  `project.Parser.TryWord(...)` (ParserOperations has no TryWord) was
+  reported as a suspected mutation, so the model was told to guard it,
+  retried, and looped. The error lists `did_you_mean` (spelling matches
+  first, then methods sharing a word: `ParseWord`, `ParseWordXml`,
+  `TraceWordXml`) and the class's `available_methods`, inherited
+  `BaseOperations` methods included. Every receiver shape gets the same
+  verdict: `project.Parser.X`, an alias (`parser_ops = project.Parser`), an
+  inline `ParserOperations(project)`, an attached facade, guarded or not.
+  `Get*`/`Find*`/`Is*`/`Has*`/`Count*`/`Contains*` names keep the #32
+  tolerance unless they are a confident typo of a real method. validate_only
+  gains an `unknown_method` gate, and the eval preflight runner matches. The
+  error-code count in `docs/TOOL-CONTRACT.md` moves from 45 to 46.
 - Runtime `AttributeError`s whose receiver no cast can fix no longer get the
   `PolymorphicAttributeError` cast hint
   ([#307](https://github.com/MattGyverLee/FlexToolsMCP/issues/307)). Plain

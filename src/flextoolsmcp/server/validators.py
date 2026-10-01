@@ -4817,6 +4817,175 @@ def _indexed_operations_class_names(api_index: Optional[Any]) -> Set[str]:
     }
 
 
+# Issue #32: method-name prefixes that are unambiguously read-only. Applied to
+# a name the index does not list on a KNOWN class: such a call is let through
+# as read-only (tolerating a getter added upstream before the index was
+# regenerated), and the runtime AttributeError path (#137) still names the
+# nearest real method if it turns out not to exist.
+_READONLY_METHOD_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains")
+
+# Caps for the unknown_method payload (#306): enough to orient the caller
+# without dumping a 90-method class into the response.
+_UNKNOWN_METHOD_SUGGESTION_CAP = 5
+_UNKNOWN_METHOD_AVAILABLE_CAP = 40
+
+
+def _ops_class_member_names(
+    api_index: Optional[Any], ops_class: str
+) -> Optional[Set[str]]:
+    """Every member name of an indexed Operations class, bases included.
+
+    Issue #306: the flexicon index lists only a class's OWN methods; the
+    inherited ones (``BaseOperations.MoveUp``, ``PossibilityItemOperations.*``,
+    catalog mixins) live on the base entity named in ``base_classes``. Both
+    methods and properties count -- the question this answers is "can this
+    attribute exist at all", not "is it mutating".
+
+    Returns None when the answer is not knowable from the index: the class
+    is not indexed, or some class in its base chain is not. Callers must
+    treat None as "no information" and keep their pre-#306 behavior.
+    """
+    if api_index is None:
+        return None
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entities = flexicon.get("entities") or {}
+    if ops_class not in entities:
+        return None
+    names: Set[str] = set()
+    pending = [ops_class]
+    seen: Set[str] = set()
+    while pending:
+        cls = pending.pop()
+        if cls in seen:
+            continue
+        seen.add(cls)
+        entity = entities.get(cls)
+        if entity is None:
+            return None  # an unindexed base -> the member list is incomplete
+        for member in (entity.get("methods") or []) + (entity.get("properties") or []):
+            name = member.get("name")
+            if name:
+                names.add(name)
+        pending.extend(b for b in (entity.get("base_classes") or []) if b)
+    return names
+
+
+def _has_confident_member_typo_match(name: str, members: Set[str]) -> bool:
+    """True when ``name`` reads as a typo of a real member (#306).
+
+    Same bar as detect_invalid_project_chains' method branch: a difflib
+    candidate at cutoff 0.7 whose measured ratio clears
+    ``_MIN_CHAIN_MATCH_RATIO``.
+    """
+    import difflib
+
+    public = [m for m in members if not m.startswith("_")]
+    close = _suggest_attribute_matches(name, public, cutoff=0.7)
+    if not close:
+        return False
+    ratio = difflib.SequenceMatcher(None, name.lower(), close[0].lower()).ratio()
+    return ratio >= _MIN_CHAIN_MATCH_RATIO
+
+
+def _camel_tokens(name: str) -> Set[str]:
+    """CamelCase words of a member name, lowercased (``TraceWordXml`` ->
+    {trace, word, xml}). Single letters are dropped."""
+    return {t.lower() for t in re.findall(r"[A-Z][a-z0-9]+|[a-z0-9]+", name) if len(t) > 1}
+
+
+def suggest_ops_methods(method_name: str, candidates: List[str]) -> List[str]:
+    """Nearest real method names for an unknown Operations method (#306).
+
+    Ranked in three bands:
+
+    1. Strong spelling matches (difflib ratio >= 0.8): a plain typo such as
+       ``SetGlos`` -> ``SetGloss`` goes first.
+    2. Methods sharing a CamelCase word with the request, most shared words
+       first, then closest in length: ``TryWord`` -> ``ParseWord``,
+       ``ParseWordXml``, ``TraceWordXml``. A model that invents a verb
+       usually keeps the noun. Verb-only overlap (Get/Set/...) is ignored,
+       since every class has dozens of those.
+    3. Remaining spelling matches at the shared member floor
+       (``_MIN_MEMBER_SUGGESTION_RATIO``, incl. the acronym fallback).
+    """
+    import difflib
+
+    public = sorted({c for c in candidates if c and not c.startswith("_")})
+    spelled = _suggest_attribute_matches(
+        method_name, public, cutoff=_MIN_MEMBER_SUGGESTION_RATIO
+    )
+
+    def _ratio(cand: str) -> float:
+        return difflib.SequenceMatcher(None, method_name, cand).ratio()
+
+    strong = [c for c in spelled if _ratio(c) >= 0.8]
+    _verbs = {"get", "set", "add", "remove", "create", "delete", "find", "is",
+              "has", "count", "contains", "all", "by", "to", "from"}
+    wanted = _camel_tokens(method_name) - _verbs
+    shared = sorted(
+        (c for c in public if wanted & _camel_tokens(c)),
+        key=lambda c: (-len(wanted & _camel_tokens(c)),
+                       abs(len(c) - len(method_name)), c),
+    ) if wanted else []
+    ordered: List[str] = []
+    for cand in strong + shared + list(spelled):
+        if cand not in ordered:
+            ordered.append(cand)
+    return ordered[:_UNKNOWN_METHOD_SUGGESTION_CAP]
+
+
+def build_unknown_method_rejection(cert: Optional[dict]) -> Optional[dict]:
+    """The ``unknown_method`` rejection for a certify_script_readonly result (#306).
+
+    Returns None when the code calls no unknown Operations method.
+
+    The message says plainly that the method does not exist and that it is
+    NOT a write problem: the #306 loop came from the model being told to
+    guard a call that could never run, retrying with the guard, and arguing
+    with the gate ("TryWord is actually read-only").
+    """
+    findings = list((cert or {}).get("unknown_methods") or [])
+    if not findings:
+        return None
+    parts: List[str] = []
+    did_you_mean: List[str] = []
+    for f in findings:
+        expr = f"{f['class']}.{f['method']}"
+        sugg = f.get("did_you_mean") or []
+        for s in sugg:
+            if s not in did_you_mean:
+                did_you_mean.append(s)
+        if sugg:
+            parts.append(
+                f"{expr} (line {f.get('line')}) does not exist. "
+                f"Did you mean: {', '.join(sugg)}?"
+            )
+        else:
+            parts.append(
+                f"{expr} (line {f.get('line')}) does not exist. "
+                f"Real methods include: {', '.join((f.get('available_methods') or [])[:10])}."
+            )
+    message = (
+        " ".join(parts)
+        + " This is not a write-safety problem: a call to a method the class "
+        "does not have raises AttributeError, so no guard makes it work."
+    )
+    first = findings[0]
+    next_steps = [
+        f"1. Replace {first['class']}.{first['method']} with a real method"
+        + (f" (e.g. {first['did_you_mean'][0]})" if first.get("did_you_mean") else "")
+        + ". The rejection's `available_methods` lists the class's methods.",
+        f"2. Check the signature first: flextools_get_object_api(object_type='{first['class']}').",
+        "3. Re-run flextools_run_module().",
+    ]
+    return {
+        "message": message,
+        "unknown_methods": findings,
+        "did_you_mean": did_you_mean,
+        "next_steps": next_steps,
+    }
+
+
 def _iter_property_write_targets(
     tree: ast.AST,
 ) -> Iterator[Tuple[Union[ast.Assign, ast.AugAssign, ast.AnnAssign], ast.AST]]:
@@ -6143,6 +6312,8 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
               {"method": str, "line": int, "context": str}
           ],
           "unknown_calls": [...],                  # Calls not found in index
+          "unknown_methods": [...],                # #306: names not on their Operations class (or bases)
+                                                   #   {class, method, line, protected, did_you_mean, available_methods}
           "raw_lcm_patterns": [...],               # Regex-detected raw LCM writes
         }
     """
@@ -6152,6 +6323,11 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     mutating_calls = []
     protected_calls = []
     unknown_calls = []
+    # Issue #306: calls to names that are not members of their (indexed)
+    # Operations class at all -- see Step 2. Not mutations; run_module
+    # rejects them as `unknown_method`.
+    unknown_methods: List[Dict[str, Any]] = []
+    _unknown_method_keys: Set[Tuple[str, str, int]] = set()
     raw_lcm_patterns = []
     unprotected_liblcm_calls = []
     protected_liblcm_calls = []
@@ -6319,11 +6495,61 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                         break
 
                 if not method_found:
-                    # Class found but method not in index.
-                    # Issue #32: Get*/Find*/Is*/Has*/Count*/Contains* prefixes are
-                    # unambiguously read-only -- don't false-positive them as mutating.
-                    _READONLY_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains")
-                    if method_name.startswith(_READONLY_PREFIXES):
+                    # Class found but method not in its OWN method list.
+                    #
+                    # Issue #306: a name that is not a member of the class
+                    # OR of any indexed base is not a method at all
+                    # (ParserOperations.TryWord). Calling it raises
+                    # AttributeError, so it can write nothing -- reporting it
+                    # as a suspected mutation sent the caller round an
+                    # unprotected_writes loop ("guard this write") for a call
+                    # that could never run. Report it as an unknown method
+                    # with the real names instead; run_module rejects it with
+                    # `unknown_method`. Same verdict guarded or not, and for
+                    # every receiver shape Steps 1/1b/1c resolve (literal
+                    # class, alias, facade accessor) since they all land here.
+                    #
+                    # Read-only prefixes keep issue #32's tolerance (a getter
+                    # added upstream before the index was regenerated runs)
+                    # UNLESS a confident close match says it is a typo -- the
+                    # same policy detect_invalid_project_chains applies to
+                    # `project.<X>.<Y>`, so an aliased `ops.GetGlos(...)` gets
+                    # the verdict the direct form already got. Private names
+                    # and incomplete base chains keep the old conservative
+                    # path.
+                    _members = _ops_class_member_names(api_index, class_name)
+                    if (
+                        _members is not None
+                        and method_name not in _members
+                        and not method_name.startswith("_")
+                        and (
+                            not method_name.startswith(_READONLY_METHOD_PREFIXES)
+                            or _has_confident_member_typo_match(method_name, _members)
+                        )
+                    ):
+                        _key = (class_name, method_name, line_num)
+                        if _key not in _unknown_method_keys:
+                            _unknown_method_keys.add(_key)
+                            _public = sorted(m for m in _members if not m.startswith("_"))
+                            unknown_methods.append({
+                                "class": class_name,
+                                "method": method_name,
+                                "line": line_num,
+                                "protected": is_protected,
+                                "did_you_mean": suggest_ops_methods(method_name, _public),
+                                "available_methods": _public[:_UNKNOWN_METHOD_AVAILABLE_CAP],
+                            })
+                            unknown_calls.append({
+                                "class": class_name,
+                                "method": method_name,
+                                "reason": "unknown_method",
+                                "line": line_num,
+                            })
+                            confidence_sources["unknown"] += 1
+                    elif method_name.startswith(_READONLY_METHOD_PREFIXES):
+                        # Issue #32: Get*/Find*/Is*/Has*/Count*/Contains*
+                        # prefixes are unambiguously read-only -- don't
+                        # false-positive them as mutating.
                         mutating_calls.append({
                             "class": class_name,
                             "method": method_name,
@@ -6520,6 +6746,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         "unprotected_liblcm_calls": unprotected_liblcm_calls,
         "protected_liblcm_calls": protected_liblcm_calls,
         "unknown_calls": unknown_calls,
+        "unknown_methods": unknown_methods,
         "raw_lcm_patterns": raw_lcm_patterns,
     }
 

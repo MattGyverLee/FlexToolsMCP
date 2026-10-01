@@ -3050,6 +3050,27 @@ def _defer_chain_method_issues_to_unknown_method(
     }
 
 
+def _typo_fix_introduces_unprotected_write(patched_code: str, api_idx: Any) -> bool:
+    """True when a typo-patched script has an unguarded mutating call.
+
+    Issue #306 follow-up: the typo auto-fix (#46) runs AFTER the
+    unprotected_writes gate, so rewriting a MovUp typo on `project.Senses` to
+    the inherited, mutating MoveUp would skip the write gate entirely. The
+    original script passed that gate (the unknown name was not counted as a
+    write), so any unprotected mutation in the patch was introduced by the
+    patch: decline it and let the call be reported as unknown_method with
+    MoveUp as the did-you-mean -- the same answer the aliased form gets.
+    """
+    try:
+        cert = certify_script_readonly(patched_code, api_idx, ast.parse(patched_code))
+    except Exception:
+        return True  # cannot certify the patch -> do not apply it
+    return any(
+        m.get("is_mutating") and not m.get("protected")
+        for m in cert.get("mutating_calls", [])
+    )
+
+
 def _try_auto_fix_typos(
     code: str,
     issues: List[Dict[str, Any]],
@@ -4437,7 +4458,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             if _af_typo is not None:
                 _patched_typo = _af_typo["patched_code"]
                 _typo_fix_records = _af_typo["fixes"]
-                if _validate_patched_code(_patched_typo, api_idx, casting_index):
+                if _validate_patched_code(
+                    _patched_typo, api_idx, casting_index
+                ) and not _typo_fix_introduces_unprotected_write(_patched_typo, api_idx):
                     _orig_sha_t = hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest()[:12]
                     _patched_sha_t = hashlib.sha256(_patched_typo.encode("utf-8", errors="replace")).hexdigest()[:12]
                     get_operations_logger().info(

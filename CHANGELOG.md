@@ -96,6 +96,21 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   `unprotected_writes` guidance now says `modifyAllowed` is predefined in
   bare snippets and adds `bare_snippet_fix` (plus `main_wrapper_note` for
   Main-wrapped code). validate_only and the eval preflight runner match.
+- The `invalid_api_chain` preflight now catches method typos on every
+  `project.<accessor>`, not just the ones whose class is the accessor name
+  plus "Operations"
+  ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306),
+  follow-up). It looked for `SensesOperations` when the class is
+  `LexSenseOperations`, so typos on 44 of the 61 accessors (`Senses`,
+  `Allomorphs`, `Texts`, `PhonRules`, ...) were never reported. It now
+  resolves the class from the index and checks inherited methods (MoveUp,
+  Sort, ... on BaseOperations) the same way the `unknown_method` gate does.
+  Runtime did-you-mean for `'<X>Operations' object has no attribute` now
+  suggests inherited methods too. The read-only typo auto-fix no longer
+  rewrites a name into an unguarded write (`MovUp` to `MoveUp`), because it
+  runs after the `unprotected_writes` gate. The call is reported as
+  `unknown_method` with the fix as did-you-mean, which is the same answer the
+  aliased form gets.
 - `flextools_run_module` now returns a structured `no_unit_of_work` error
   when liblcm raises `InvalidOperationException: Not in the right state to
   register a change`

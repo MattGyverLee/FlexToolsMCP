@@ -220,6 +220,11 @@ def tiny_flexicon(tmp_path):
         "    def LexiconGetLexemeForm(self, e):\n"
         "        return self.LexEntry.GetLexemeForm(e)\n"
     ))
+    # A file-level version keeps detect_flexicon_version from falling back
+    # to `import flexicon`, which needs FieldWorks (absent on CI runners).
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nversion = "0.0.1"\n', encoding="utf-8"
+    )
     return tmp_path
 
 

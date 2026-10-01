@@ -152,7 +152,9 @@ def _detect_package_version(repo_root: str, package_dirname: str, import_name: s
         module = __import__(import_name)
         if hasattr(module, "version"):
             return module.version
-    except ImportError:
+    except Exception:
+        # Not just ImportError: importing flexicon/flexlibs without
+        # FieldWorks raises a bare Exception ("FieldWorks 9 not found").
         pass
 
     return "0.0.0"

@@ -2551,7 +2551,7 @@ async def _handle_validate_only(
             _excl["blocking"] = bool(
                 write_enabled
                 and _excl["required"]
-                and _access.verdict in exclusive_access.REFUSING_VERDICTS
+                and _access.verdict in exclusive_access.GATED_VERDICTS
             )
             project_lock["exclusive_access"] = _excl
             if _excl["blocking"]:
@@ -2571,8 +2571,11 @@ async def _handle_validate_only(
             _excl = _exclusive_access_report(code, code_tree, write_enabled)
             _excl["blocking"] = None
             project_lock["exclusive_access"] = _excl
-        except Exception:
-            pass
+        except Exception as excl_exc:
+            if _lock_logger is not None:
+                _lock_logger.debug(
+                    f"validate_only exclusive_access report unavailable: {excl_exc!r}"
+                )
 
     all_passed = all(c.get("passed", False) for c in checks)
     status = "validated" if all_passed else "validation_failed"
@@ -5359,7 +5362,7 @@ MODULE_CODE = {code}
         if (
             _exclusive_matches
             and _access is not None
-            and _decision.verdict in exclusive_access.REFUSING_VERDICTS
+            and _decision.verdict in exclusive_access.GATED_VERDICTS
         ):
             _holder = getattr(_access, "holder", None)
             _excl_msg, _excl_detail = exclusive_access.build_refusal(

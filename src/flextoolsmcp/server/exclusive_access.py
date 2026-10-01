@@ -385,7 +385,7 @@ def _raw_matches(tree: ast.AST) -> List[ExclusiveOnlyMatch]:
 #: Probe verdicts on which an exclusive-only script is refused (FR-004, FR-006).
 #: `open_exclusive` / `held_by_other` keep their own `project_locked` refusal
 #: (FR-007); `free` / `stale_lock` mean FieldWorks does not hold the project.
-REFUSING_VERDICTS = ("open_shared", "unknown")
+GATED_VERDICTS = ("open_shared", "unknown")
 
 REFUSAL_GUIDANCE = (
     "1. Close FieldWorks (all windows for this project). "

@@ -4,7 +4,7 @@
     "branch":  "feat/exclusive-access-gate",
     "selectedAt":  "2026-09-30T20:00:00.000Z",
     "currentStep":  "implement",
-    "status":  "implementing",
+    "status":  "needs-human",
     "history":  [
                     {
                         "step":  "specify",
@@ -47,6 +47,13 @@
                         "kind":  "progress",
                         "by":  "ai",
                         "at":  "2026-09-30T23:30:00.000Z"
+                    },
+                    {
+                        "step":  "implement",
+                        "substep":  "offline tasks done; QC 84/100, B1 live evidence pending",
+                        "kind":  "progress",
+                        "by":  "ai",
+                        "at":  "2026-10-01T00:30:00.000Z"
                     }
                 ],
     "decisions":  [

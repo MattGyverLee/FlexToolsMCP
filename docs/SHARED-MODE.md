@@ -100,6 +100,36 @@ The full list, with the raw LCM names, is
 Setting a custom field's **value** (`CustomFieldOperations.SetValue` and the
 other value methods) is an ordinary edit and is not refused.
 
+### `WritingSystems.Ensure()` is checked first
+
+`Ensure()` changes nothing when the writing system is already active in the
+category you ask for. A script whose only writing-system calls are
+`Ensure()` is not refused outright while FLEx is open:
+
+- Just before the run, the server reads the project's **active**
+  writing-system lists straight from its `.fwdata` file. It does not open the
+  project. The `.ldml` files in `WritingSystemStore` are not enough for this:
+  a writing system can have an `.ldml` and still be inactive, and `Ensure()`
+  would then activate it.
+- An `Ensure('en', 'English', is_vernacular=False)` whose tag is already
+  active in that category runs normally. A tag that would be added, or added
+  to the other category, is refused up front with the reason. Remember that
+  `is_vernacular` defaults to True.
+- If the tag is not a plain literal (for example a variable), or the file
+  could not be read, the run goes ahead, and flexicon's peer schema guard
+  refuses that `Ensure()` at the moment it would write, before anything
+  changes. The same guard also covers a file that lags FLEx, for example a
+  writing system removed in FLEx but not yet saved.
+- `validate_only` makes the same decision from the same file read.
+
+This needs a flexicon that offers the peer schema guard (capability
+`peer-schema-guard`). Without it, `Ensure()` is refused like the other
+changes above. Put `Ensure()` calls at the top of the script: if one is
+refused part way through a run, writes the script made before it have
+already been saved. The server warns when an `Ensure()` comes after other
+writes. Every other write-enabled run while FLEx is open also has the guard
+on, as a backstop.
+
 The custom-field row comes from reading the LCM source; it has not been
 reproduced live. Today flexicon's `CustomFieldOperations.CreateField` fails
 with `FP_TransactionError` whether or not FLEx is open, so that route cannot

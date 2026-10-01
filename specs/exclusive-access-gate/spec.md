@@ -328,6 +328,30 @@ for each filing.
   custom-field value methods `SetValue`, `AddListValue`, `RemoveListValue`,
   `SetListFieldSingle` and `SetListFieldMultiple`. Matching on a `Set*` or
   `Add*` prefix is not acceptable (SC-002).
+- **FR-002b** (amendment, 2026-10-01, maintainer-approved): `Ensure` is
+  **conditional**: it writes only when the tag is not already active in the
+  requested category. When conditional calls are a gated script's only
+  exclusive-only calls, the server MUST NOT refuse outright. Instead:
+  - it MUST read the project's ACTIVE writing-system lists just before the
+    run, from the `.fwdata` on disk, without opening the project. The
+    `.ldml` store alone is not sufficient: a store-present tag can be
+    inactive, and activating it is a write;
+  - it MUST refuse up front (as FR-004) a literal `Ensure` that would add,
+    naming why;
+  - it MUST let an already-active literal `Ensure` run, and MUST leave a
+    non-literal one, or any one when the file cannot be read, to the runtime
+    guard.
+  An allowed conditional call MUST run with flexicon's peer schema guard
+  enabled. The guard (`FLExProject.SetPeerSchemaGuard`, capability
+  `peer-schema-guard`) raises `FP_ExclusiveAccessRequiredError` before any
+  write. The server MUST map that error to `requires_exclusive_access` with
+  `stage: runtime`. If the installed flexicon lacks the guard, conditional
+  calls MUST be refused as before. If the guard was required but cannot be
+  enabled in the run, the run MUST stop before any user code. `validate_only`
+  MUST make the same decision from the same file read.
+  The guard SHOULD be on for every write-enabled run on a gated verdict, as a
+  backstop. A conditional call after other writes SHOULD produce a warning,
+  because a runtime refusal leaves those earlier writes saved.
 - **FR-003**: The server MUST detect exclusive-only calls in a submitted script
   before it runs. Detection MUST use the same parse, alias resolution and
   ignored-region rules as the existing mutation detection.

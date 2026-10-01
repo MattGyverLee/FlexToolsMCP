@@ -429,6 +429,9 @@ class ExclusiveOnlyMatchModel(BaseModel):
     call: str
     line: Optional[int] = None
     source: str
+    # True for WritingSystems.Ensure: decided from the project's writing
+    # systems rather than refused outright.
+    conditional: bool = False
 
 
 class RequiresExclusiveAccessDetail(BaseModel):
@@ -450,6 +453,9 @@ class RequiresExclusiveAccessDetail(BaseModel):
     # At least one on every refusal the handler sends.
     operations: List[ExclusiveOnlyMatchModel] = Field(default_factory=list)
     remedy: str = ""
+    # "preflight" (refused before anything ran) | "runtime" (flexicon's peer
+    # schema guard refused a conditional Ensure() during the run).
+    stage: Optional[str] = None
 
 
 class ProjectDriveUnavailableDetail(BaseModel):

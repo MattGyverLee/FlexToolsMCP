@@ -37,6 +37,24 @@ The envelope keys (`_contract`, `status`, `op_id`, the nested `error` object
 during its deprecation window) come from `error_response()` as they do for
 every code. The golden fixture pins the exact shape.
 
+## Conditional `WritingSystems.Ensure()` (FR-002b)
+
+- Operations rows carry `conditional` (true for `Ensure`). The detail adds
+  `stage`: `preflight` for the up-front refusal, `runtime` when flexicon's
+  peer schema guard refused during the run.
+- A literal `Ensure` that would add a writing system is refused up front.
+  The message ends with the reason, e.g. "Ensure('qaa-x-new') on line 2 would
+  add a vernacular writing system: 'qaa-x-new' is not active as vernacular in
+  the project."
+- The decision comes from the project's active writing-system lists, read
+  from its `.fwdata` without opening the project. When the file cannot be
+  read, the call is left to the runtime guard.
+- An allowed run carries `exclusive_access` on its success result (see
+  data-model.md).
+- A runtime refusal comes back as the run's error with
+  `error_code: requires_exclusive_access`, `stage: runtime`, `guidance` and
+  `remedy`. Writes made earlier in the script are already saved.
+
 ## Assistance hint (`_ASSISTANCE_HINTS_BY_ERROR_CODE`)
 
 > Ask the user to close FieldWorks, wait until they confirm, then re-submit the

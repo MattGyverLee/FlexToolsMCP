@@ -171,7 +171,7 @@ class TestRefusedWhileShared:
         fields = list(RequiresExclusiveAccessDetail.model_fields)
         assert fields == [
             "error_code", "guidance", "verdict", "holder_pid",
-            "holder_process", "operations", "remedy",
+            "holder_process", "operations", "remedy", "stage",
         ]
         detail = RequiresExclusiveAccessDetail.model_validate(
             {k: data[k] for k in fields}
@@ -386,3 +386,262 @@ class TestAssistanceHint:
             )
         finally:
             execution_mod.session_state.reset_op_signals()
+
+
+# ---------------------------------------------------------------------------
+# Conditional WritingSystems.Ensure(): snapshot + runtime peer schema guard
+# ---------------------------------------------------------------------------
+
+import json  # noqa: E402
+
+ENSURE_OK = "if modifyAllowed:\n    project.WritingSystems.Ensure('en', 'English', is_vernacular=False)\n"
+ENSURE_NEW = "if modifyAllowed:\n    project.WritingSystems.Ensure('qaa-x-new', 'New')\n"
+ENSURE_VAR = "tag = 'en'\nif modifyAllowed:\n    project.WritingSystems.Ensure(tag, 'English', False)\n"
+ENSURE_MIXED = (
+    "if modifyAllowed:\n"
+    "    project.WritingSystems.Ensure('en', 'English', is_vernacular=False)\n"
+    "    project.WritingSystems.SetFontSize('en', 12)\n"
+)
+ENSURE_LATE = (
+    "if modifyAllowed:\n"
+    "    project.LexEntry.SetLexemeForm(entry, 'x')\n"
+    "    project.WritingSystems.Ensure('en', 'English', is_vernacular=False)\n"
+)
+
+
+def _row(method, line, cls="WritingSystemOperations"):
+    return {"class": cls, "method": method, "line": line, "is_mutating": True,
+            "source": "index", "protected": True}
+
+
+_ROWS.update({
+    ENSURE_OK: [_row("Ensure", 2)],
+    ENSURE_NEW: [_row("Ensure", 2)],
+    ENSURE_VAR: [_row("Ensure", 3)],
+    ENSURE_MIXED: [_row("Ensure", 2), _row("SetFontSize", 3)],
+    ENSURE_LATE: [_row("SetLexemeForm", 2, cls="LexEntryOperations"), _row("Ensure", 3)],
+})
+
+ACTIVE = {"vernacular": ["seh"], "analysis": ["en", "pt"]}
+
+
+def _stub_snapshot(monkeypatch, active=ACTIVE, guard=True):
+    """Stub the two seams plan_conditional reads: the .fwdata active-list
+    read (returns `active`; `None` = unreadable) and the guard probe."""
+    calls = []
+
+    def fake_read(project_name):
+        calls.append(project_name)
+        return active
+
+    monkeypatch.setattr(execution_mod, "_read_active_writing_systems", fake_read)
+    monkeypatch.setattr(execution_mod, "_peer_schema_guard_available", lambda: guard)
+    return calls
+
+
+def _capture_runner(monkeypatch, *, error=None):
+    """run_script_async fake that records the runner's PEER_SCHEMA_GUARD line."""
+    seen = {}
+
+    async def fake(path, timeout_seconds):
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        seen["text"] = text
+        seen["guard"] = next(
+            ln for ln in text.splitlines() if ln.startswith("PEER_SCHEMA_GUARD = ")
+        )
+        payload = {
+            "success": error is None,
+            "summary": {"info_count": 0, "warning_count": 0, "error_count": 0},
+            "messages": [],
+        }
+        if error is not None:
+            payload["error"] = error
+        return {
+            "stdout": "===FLEXTOOLS_RESULT_JSON===" + json.dumps(payload),
+            "stderr": "", "timeout": False, "returncode": 0,
+        }
+
+    _allow_execution(monkeypatch)
+    monkeypatch.setattr(execution_mod, "run_script_async", fake)
+    return seen
+
+
+class TestConditionalEnsure:
+    def test_already_active_runs_with_guard_required(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        snap_calls = _stub_snapshot(monkeypatch)
+        seen = _capture_runner(monkeypatch)
+
+        data = _run(ENSURE_OK)
+        assert data.get("error_code") is None
+        assert snap_calls == ["TestProj_excl_gate"]
+        assert seen["guard"] == "PEER_SCHEMA_GUARD = 'required'"
+        excl = data["exclusive_access"]
+        assert excl["decision"] == "allowed_conditional"
+        assert [m["key"] for m in excl["satisfied"]] == ["ws.ensure"]
+
+    def test_would_add_is_refused_before_the_run(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch)
+        _refuse_execution(monkeypatch)
+
+        data = _run(ENSURE_NEW)
+        assert data["error_code"] == "requires_exclusive_access"
+        assert data["stage"] == "preflight"
+        assert "would add a vernacular writing system" in data["message"]
+        assert data["operations"][0]["conditional"] is True
+
+    def test_non_literal_is_deferred_to_the_runtime_guard(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch)
+        seen = _capture_runner(monkeypatch)
+
+        data = _run(ENSURE_VAR)
+        assert data.get("error_code") is None
+        assert seen["guard"] == "PEER_SCHEMA_GUARD = 'required'"
+        assert [m["key"] for m in data["exclusive_access"]["deferred_to_runtime"]] == ["ws.ensure"]
+
+    def test_refused_without_the_guard_and_no_file_read(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        read_calls = _stub_snapshot(monkeypatch, guard=False)
+        _refuse_execution(monkeypatch)
+
+        data = _run(ENSURE_OK)
+        assert data["error_code"] == "requires_exclusive_access"
+        assert "no peer schema guard" in data["message"]
+        assert read_calls == []  # no point reading without the backstop
+
+    def test_unreadable_file_defers_to_the_guard(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch, active=None)
+        seen = _capture_runner(monkeypatch)
+
+        data = _run(ENSURE_NEW)
+        assert data.get("error_code") is None
+        assert seen["guard"] == "PEER_SCHEMA_GUARD = 'required'"
+        assert [m["key"] for m in data["exclusive_access"]["deferred_to_runtime"]] == ["ws.ensure"]
+
+    def test_mixed_with_an_unconditional_call_is_refused_without_reading(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        snap_calls = _stub_snapshot(monkeypatch)
+        _refuse_execution(monkeypatch)
+
+        data = _run(ENSURE_MIXED)
+        assert data["error_code"] == "requires_exclusive_access"
+        assert snap_calls == []
+        assert [op["key"] for op in data["operations"]] == ["ws.ensure", "ws.wrapper"]
+
+    def test_free_does_not_read_or_guard(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("free", holder=False))
+        snap_calls = _stub_snapshot(monkeypatch)
+        seen = _capture_runner(monkeypatch)
+
+        data = _run(ENSURE_NEW)
+        assert data.get("error_code") is None
+        assert snap_calls == []
+        assert seen["guard"] == "PEER_SCHEMA_GUARD = 'off'"
+
+    def test_ensure_after_other_writes_warns(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch)
+        _capture_runner(monkeypatch)
+
+        data = _run(ENSURE_LATE)
+        assert any("Put Ensure() calls first" in w for w in data.get("warnings", []))
+
+    def test_runtime_refusal_maps_to_the_same_code(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch)
+        _capture_runner(monkeypatch, error=(
+            "Execution error: WritingSystems.Ensure('en') needs to change ...\n"
+            "Traceback ...\nflexicon.code.exceptions.FP_ExclusiveAccessRequiredError: ..."
+        ))
+
+        data = _run(ENSURE_OK)
+        assert data["error_code"] == "requires_exclusive_access"
+        assert data["stage"] == "runtime"
+        assert "already saved" in data["remedy"]
+
+    def test_guard_unavailable_in_the_run_maps_to_the_same_code(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch)
+        _capture_runner(monkeypatch, error="Execution error: PeerSchemaGuardUnavailable: ...")
+
+        data = _run(ENSURE_OK)
+        assert data["error_code"] == "requires_exclusive_access"
+        assert data["stage"] == "runtime"
+        assert "was not run" in data["error"]
+
+
+class TestPeerGuardBackstop:
+    def test_ordinary_write_on_open_shared_turns_the_guard_on(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        seen = _capture_runner(monkeypatch)
+
+        assert _run(ORDINARY).get("error_code") is None
+        assert seen["guard"] == "PEER_SCHEMA_GUARD = 'on'"
+        assert "project.SetPeerSchemaGuard(True)" in seen["text"]
+        assert "PeerSchemaGuardUnavailable" in seen["text"]
+
+    def test_ordinary_write_on_free_leaves_it_off(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("free", holder=False))
+        seen = _capture_runner(monkeypatch)
+
+        assert _run(ORDINARY).get("error_code") is None
+        assert seen["guard"] == "PEER_SCHEMA_GUARD = 'off'"
+
+
+class TestValidateOnlyConditional:
+    def test_already_active_does_not_block(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch)
+        _refuse_execution(monkeypatch)
+
+        excl = _validate(ENSURE_OK)["project_lock"]["exclusive_access"]
+        assert excl["required"] is True
+        assert excl["conditional"] is True
+        assert excl["blocking"] is False
+        assert excl["deferred_to_runtime"] == []
+
+    def test_would_add_blocks_with_the_reason(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch)
+        _refuse_execution(monkeypatch)
+
+        excl = _validate(ENSURE_NEW)["project_lock"]["exclusive_access"]
+        assert excl["blocking"] is True
+        assert "would add a vernacular writing system" in excl["notes"][0]
+
+    def test_non_literal_is_reported_deferred(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch)
+        _refuse_execution(monkeypatch)
+
+        excl = _validate(ENSURE_VAR)["project_lock"]["exclusive_access"]
+        assert excl["blocking"] is False
+        assert [m["key"] for m in excl["deferred_to_runtime"]] == ["ws.ensure"]
+
+    def test_mixed_still_blocks(self, monkeypatch, tmp_path):
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _refuse_execution(monkeypatch)
+
+        excl = _validate(ENSURE_MIXED)["project_lock"]["exclusive_access"]
+        assert excl["blocking"] is True
+        assert "conditional" not in excl

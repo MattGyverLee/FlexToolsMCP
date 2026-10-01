@@ -138,8 +138,9 @@ class TestDetect:
 
     def test_b_accessor_alias(self):
         m = detect(main('ws = project.WritingSystems\nws.Ensure("en")'))
-        assert keys(m) == ["ws.wrapper"]
+        assert keys(m) == ["ws.ensure"]
         assert m[0].call == "WritingSystemOperations.Ensure"
+        assert m[0].conditional is True
 
     def test_c_facade(self):
         m = detect(main(
@@ -212,7 +213,7 @@ class TestDetect:
             ("ops", "Ensure")
         ]
         m = detect(code)
-        assert keys(m) == ["ws.wrapper"]
+        assert keys(m) == ["ws.ensure"]
         assert m[0].call == "ops.Ensure"
 
     def test_j_unresolved_receiver_guarded(self):
@@ -329,3 +330,172 @@ class TestDetect:
 
     def test_syntax_error_tree_none(self):
         assert detect_exclusive_only_operations("def (:\n", None, {}) == []
+
+
+# ---------------------------------------------------------------------------
+# Conditional Ensure(): argument reading, the .fwdata read, the plan, the
+# order warning
+# ---------------------------------------------------------------------------
+
+from flextoolsmcp.server.exclusive_access import (  # noqa: E402
+    conditional_after_writes,
+    ensure_call_args,
+    plan_conditional,
+    read_active_writing_systems,
+)
+
+# Sena 3's real lists; its .ldml store also holds grc and hbo, inactive.
+ACTIVE = {"vernacular": ["seh", "seh-fonipa-x-etic"], "analysis": ["pt", "en"]}
+
+
+def plan(body, active=ACTIVE, guard=True):
+    code = main(body)
+    tree = ast.parse(code)
+    matches = detect(code)
+    return plan_conditional(matches, ensure_call_args(tree), active, guard), matches
+
+
+# The LangProject fragment as FieldWorks 9 writes it (Sena 3, 2026-10-01),
+# with the inactive store-only tags in AnalysisWss / VernWss for contrast.
+FWDATA_FRAGMENT = """<?xml version="1.0" encoding="utf-8"?>
+<languageproject version="7000072">
+<rt class="LangProject" guid="00000000-0000-0000-0000-000000000001">
+<AnalysisWss>
+<Uni>en pt grc</Uni>
+</AnalysisWss>
+<CurAnalysisWss>
+<Uni>pt en</Uni>
+</CurAnalysisWss>
+<CurVernWss>
+<Uni>seh seh-fonipa-x-etic</Uni>
+</CurVernWss>
+<VernWss>
+<Uni>seh seh-fonipa-x-etic hbo</Uni>
+</VernWss>
+</rt>
+</languageproject>
+"""
+
+
+class TestReadActiveWritingSystems:
+    def test_reads_only_the_current_lists(self, tmp_path):
+        f = tmp_path / "P.fwdata"
+        f.write_text(FWDATA_FRAGMENT, encoding="utf-8")
+        assert read_active_writing_systems(f) == {
+            "analysis": ["pt", "en"],
+            "vernacular": ["seh", "seh-fonipa-x-etic"],
+        }
+
+    def test_same_line_and_empty_uni(self, tmp_path):
+        f = tmp_path / "P.fwdata"
+        f.write_text(
+            "<CurVernWss><Uni>seh</Uni></CurVernWss>\n<CurAnalysisWss><Uni/></CurAnalysisWss>\n",
+            encoding="utf-8",
+        )
+        assert read_active_writing_systems(f) == {"vernacular": ["seh"], "analysis": []}
+
+    def test_missing_element_is_none(self, tmp_path):
+        f = tmp_path / "P.fwdata"
+        f.write_text("<CurVernWss>\n<Uni>seh</Uni>\n</CurVernWss>\n", encoding="utf-8")
+        assert read_active_writing_systems(f) is None
+
+    def test_missing_file_is_none(self, tmp_path):
+        assert read_active_writing_systems(tmp_path / "absent.fwdata") is None
+
+    def test_store_only_tag_is_not_active(self, tmp_path):
+        """Why the .ldml store is not enough: `grc` is in the store and in
+        AnalysisWss, but not current -- Ensure('grc', analysis) would write."""
+        f = tmp_path / "P.fwdata"
+        f.write_text(FWDATA_FRAGMENT, encoding="utf-8")
+        active = read_active_writing_systems(f)
+        p, _ = plan("project.WritingSystems.Ensure('grc', 'Greek', False)", active=active)
+        assert not p.allowed
+
+
+class TestEnsureCallArgs:
+    def test_positional_keyword_and_default(self):
+        tree = ast.parse(
+            "a.Ensure('en', 'English', False)\n"
+            "b.Ensure(language_tag='seh', name='Sena', is_vernacular=True)\n"
+            "c.Ensure('pt', 'Portuguese')\n"
+        )
+        assert ensure_call_args(tree) == {
+            1: [("en", False)], 2: [("seh", True)], 3: [("pt", True)],
+        }
+
+    @pytest.mark.parametrize("call", [
+        "a.Ensure(tag, 'x')",
+        "a.Ensure('en', 'x', flag)",
+        "a.Ensure(f'{x}', 'x')",
+        "a.Ensure('', 'x')",
+    ])
+    def test_non_literal_is_none(self, call):
+        assert ensure_call_args(ast.parse(call)) == {1: [None]}
+
+
+class TestPlanConditional:
+    def test_active_analysis_tag_is_satisfied(self):
+        p, _ = plan("project.WritingSystems.Ensure('en', 'English', is_vernacular=False)")
+        assert p.allowed
+        assert [m.key for m in p.satisfied] == ["ws.ensure"]
+        assert p.deferred == ()
+
+    def test_tag_compare_is_case_and_separator_blind(self):
+        p, _ = plan("project.WritingSystems.Ensure('SEH_FONIPA_X_ETIC', 'x')")
+        assert p.allowed
+
+    def test_default_is_vernacular_so_analysis_tag_would_write(self):
+        """`en` is analysis-only: Ensure('en', ...) ADDS it as vernacular."""
+        p, _ = plan("project.WritingSystems.Ensure('en', 'English')")
+        assert not p.allowed
+        assert "would add a vernacular writing system" in p.notes[0]
+
+    def test_absent_tag_refuses_with_note(self):
+        p, _ = plan("project.WritingSystems.Ensure('qaa-x-new', 'New')")
+        assert [m.key for m in p.refuse] == ["ws.ensure"]
+        assert "'qaa-x-new' is not active as vernacular" in p.notes[0]
+
+    def test_non_literal_is_deferred_to_runtime(self):
+        p, _ = plan("tag = pick()\nproject.WritingSystems.Ensure(tag, 'x')")
+        assert p.allowed
+        assert [m.key for m in p.deferred] == ["ws.ensure"]
+
+    def test_any_unconditional_match_refuses_everything(self):
+        p, matches = plan(
+            "project.WritingSystems.Ensure('en', 'English', False)\n"
+            "project.WritingSystems.SetFontSize('en', 12)"
+        )
+        assert set(p.refuse) == set(matches)
+
+    def test_unreadable_file_defers_to_the_guard(self):
+        p, _ = plan("project.WritingSystems.Ensure('qaa-x-new', 'New')", active=None)
+        assert p.allowed
+        assert [m.key for m in p.deferred] == ["ws.ensure"]
+
+    def test_no_runtime_guard_refuses(self):
+        p, _ = plan("project.WritingSystems.Ensure('en', 'English', False)", guard=False)
+        assert not p.allowed
+        assert "peer-schema-guard" in p.notes[0]
+
+
+class TestConditionalAfterWrites:
+    def test_ensure_after_a_write_is_flagged(self):
+        code = main(
+            "if modifyAllowed:\n"
+            "    project.LexEntry.Create('zz', 'stem')\n"
+            "    project.WritingSystems.Ensure('en', 'English', False)"
+        )
+        tree = ast.parse(code)
+        cert = certify_script_readonly(code, load_index(), tree=tree)
+        late = conditional_after_writes(detect(code), cert)
+        assert [m.key for m in late] == ["ws.ensure"]
+
+    def test_ensure_first_is_not_flagged(self):
+        code = main(
+            "if modifyAllowed:\n"
+            "    project.WritingSystems.Ensure('en', 'English', False)\n"
+            "    project.LexEntry.Create('zz', 'stem')"
+        )
+        tree = ast.parse(code)
+        cert = certify_script_readonly(code, load_index(), tree=tree)
+        assert conditional_after_writes(detect(code), cert) == []

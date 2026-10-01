@@ -280,6 +280,39 @@ observe Class B.
   All must be clean.
 - [ ] T041 Update `specs/exclusive-access-gate/.spec-context.json` (currentStep implement, status per progress). Commit and push each phase on the branch with `git push origin HEAD:refs/heads/feat/exclusive-access-gate`, and only after that phase's tests are green.
 
+---
+
+## Phase 10: Conditional `Ensure()` (FR-002b amendment, 2026-10-01)
+
+Maintainer-approved design: an early writing-system read decides literal
+calls before the run; flexicon's peer schema guard backs it up during the run.
+
+- [X] T042 flexicon (worktree `C:\Github\flexicon-peer-guard`, branch `feat/peer-schema-guard`, commit `076a239`): `FLExProject.SetPeerSchemaGuard` / `PeerSchemaGuard`, `FP_ExclusiveAccessRequiredError`, `_EnsureSchemaWriteAllowed`. `Ensure` raises only past its no-op; the other WS mutators raise before writing. Capability `peer-schema-guard`. Offline suite 2590 passed; live on Sena 3 (`evidence/peer_schema_guard_live.py`) PASS.
+- [X] T043 MCP table and planner: `ws.ensure` row (`conditional=True`), `ensure_call_args`, `plan_conditional`, `conditional_after_writes` and `read_active_writing_systems` (streams `CurVernWss` / `CurAnalysisWss` from the `.fwdata`; no project open; replaced a first LCM-subprocess snapshot at the maintainer's suggestion: ~0.5 s vs ~4 s) in `server/exclusive_access.py`; the guard probe is `execution._peer_schema_guard_available`.
+- [X] T044 MCP gate and runner:
+  - gate: an active-list read plus a plan for conditional-only matches (`_plan_conditional_for`, shared with validate_only);
+  - `PEER_SCHEMA_GUARD` runner line (`off` / `on` / `required`), patched after the probe;
+  - the runner enables the guard and fails closed with `PeerSchemaGuardUnavailable`;
+  - `_diagnose_exclusive_access_runtime_error` maps runtime refusals to `requires_exclusive_access` with `stage: runtime`;
+  - `exclusive_access` on the success result;
+  - the after-writes warning;
+  - validate_only makes the same plan (`blocking`, `conditional`, `deferred_to_runtime`, `notes`).
+- [X] T045 Tests:
+  - `test_exclusive_access_detect.py`: args, plan, order;
+  - `test_exclusive_access_gate.py`: allowed / refused / deferred / unreadable file defers / no guard (no read) / mixed / free / warning / runtime mapping / guard unavailable / backstop on and off / validate_only;
+  - the golden fixture gains `conditional` and `stage`.
+- [X] T046 Docs: spec FR-002b, data-model, contract, TOOL-CONTRACT row, SHARED-MODE "`Ensure()` is checked first", CHANGELOG.
+- [X] T047 Live V8 on Sena 3 with FLEx open, with the run's flexicon from the `flexicon-peer-guard` worktree:
+  - (a) an already-active `Ensure` runs;
+  - (b) a literal new tag is refused before the run;
+  - (c) a non-literal new tag is refused at run time, with WS lists unchanged;
+  - (d) with the released (main) flexicon, (a) is refused because there is no guard.
+- [ ] T048 **needs-human**:
+  - merge and release flexicon `feat/peer-schema-guard`;
+  - then regenerate the MCP indexes against that release (release order: flexicon first);
+  - optionally raise the pyflexicon floor.
+  Until then the MCP refuses `Ensure()` exactly as before (fail closed).
+
 **Constitution gate obligations**:
 
 - Pattern audit: T019 (message class) and T039 (detector shape).

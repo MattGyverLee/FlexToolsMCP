@@ -14,10 +14,12 @@
       "failure_class": "crashes_holder",
       "call": "WritingSystemOperations.Create",
       "line": 2,
-      "source": "wrapper"
+      "source": "wrapper",
+      "conditional": false
     }
   ],
   "remedy": "Close FieldWorks, re-submit unchanged, reopen FieldWorks.",
+  "stage": "preflight",
   "error": {
     "code": "requires_exclusive_access",
     "message": "This script changes writing systems or custom fields, which is not safe while FieldWorks has 'Demo' open. Close FieldWorks, re-submit this same call, then reopen FieldWorks. Operations: WritingSystemOperations.Create (line 2). Writing-system changes made while FieldWorks has the project open crash that FieldWorks session.",
@@ -32,9 +34,11 @@
         "failure_class": "crashes_holder",
         "call": "WritingSystemOperations.Create",
         "line": 2,
-        "source": "wrapper"
+        "source": "wrapper",
+        "conditional": false
       }
     ],
-    "remedy": "Close FieldWorks, re-submit unchanged, reopen FieldWorks."
+    "remedy": "Close FieldWorks, re-submit unchanged, reopen FieldWorks.",
+    "stage": "preflight"
   }
 }

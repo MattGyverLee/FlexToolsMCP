@@ -200,9 +200,11 @@ GOLDEN_FIXTURES: dict[str, dict] = {
                 "call": "WritingSystemOperations.Create",
                 "line": 2,
                 "source": "wrapper",
+                "conditional": False,
             },
         ],
         "remedy": "Close FieldWorks, re-submit unchanged, reopen FieldWorks.",
+        "stage": "preflight",
     },
     "project_drive_unavailable": {
         "message": "Project drive is not available",

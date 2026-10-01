@@ -31,6 +31,7 @@ writes and are deliberately absent from the table.
 from __future__ import annotations
 
 import ast
+import re
 from dataclasses import asdict, dataclass
 from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
@@ -53,6 +54,11 @@ class ExclusiveOnlyOperation:
     raw_assignments: FrozenSet[str] = frozenset()
     reason: str = ""
     evidence: str = ""
+    # True for an idempotent call that writes only when the project lacks what
+    # it asks for (WritingSystems.Ensure). Such a call is decided from a fresh
+    # read of the project instead of refused outright, and flexicon's peer
+    # schema guard backs the decision up at run time (plan_conditional).
+    conditional: bool = False
 
 
 @dataclass(frozen=True)
@@ -65,6 +71,7 @@ class ExclusiveOnlyMatch:
     call: str
     line: Optional[int]
     source: str  # "wrapper" | "raw"
+    conditional: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -87,12 +94,23 @@ EXCLUSIVE_ONLY_OPERATIONS: Tuple[ExclusiveOnlyOperation, ...] = (
         wrapper=(
             "WritingSystemOperations",
             frozenset({
-                "Create", "Ensure", "Delete", "SetFontName", "SetFontSize",
+                "Create", "Delete", "SetFontName", "SetFontSize",
                 "SetRightToLeft", "SetDefaultVernacular", "SetDefaultAnalysis",
             }),
         ),
         reason=_WS_REASON,
         evidence=_WS_LIVE_EVIDENCE,
+    ),
+    ExclusiveOnlyOperation(
+        key="ws.ensure",
+        category="writing_system",
+        failure_class="crashes_holder",
+        # Ensure() writes only when the tag is not already active in the
+        # requested category; an already-active tag is a no-op.
+        wrapper=("WritingSystemOperations", frozenset({"Ensure"})),
+        reason=_WS_REASON,
+        evidence=_WS_LIVE_EVIDENCE + "; flexicon WritingSystemOperations.Ensure no-op path",
+        conditional=True,
     ),
     ExclusiveOnlyOperation(
         key="cf.wrapper",
@@ -208,13 +226,30 @@ def _is_unresolved_row(row: dict) -> bool:
     return str(row.get("reason", "")).startswith("receiver could not be typed")
 
 
+def _match(op: ExclusiveOnlyOperation, call: str, line: Optional[int], source: str) -> ExclusiveOnlyMatch:
+    return ExclusiveOnlyMatch(
+        key=op.key,
+        category=op.category,
+        failure_class=op.failure_class,
+        call=call,
+        line=line,
+        source=source,
+        conditional=op.conditional,
+    )
+
+
 def _wrapper_matches(cert: dict) -> List[ExclusiveOnlyMatch]:
-    by_class: Dict[str, ExclusiveOnlyOperation] = {}
+    # (class, method) -> row; one class can own several rows (ws.wrapper and
+    # the conditional ws.ensure).
+    by_class_method: Dict[Tuple[str, str], ExclusiveOnlyOperation] = {}
+    wrapper_classes: Set[str] = set()
     by_name: Dict[str, ExclusiveOnlyOperation] = {}
     for op in EXCLUSIVE_ONLY_OPERATIONS:
         if op.wrapper is None:
             continue
-        by_class[op.wrapper[0]] = op
+        wrapper_classes.add(op.wrapper[0])
+        for method in op.wrapper[1]:
+            by_class_method[(op.wrapper[0], method)] = op
         for method in op.wrapper[1] - _GENERIC_WRAPPER_NAMES:
             by_name[method] = op
 
@@ -224,24 +259,14 @@ def _wrapper_matches(cert: dict) -> List[ExclusiveOnlyMatch]:
             cls, method = row.get("class"), row.get("method")
             if not cls or not method:
                 continue
-            op = by_class.get(cls)
-            if op is not None:
-                if method not in op.wrapper[1]:
-                    continue
+            if cls in wrapper_classes:
+                op = by_class_method.get((cls, method))
             elif _is_unresolved_row(row):
                 op = by_name.get(method)
-                if op is None:
-                    continue
             else:
-                continue
-            out.append(ExclusiveOnlyMatch(
-                key=op.key,
-                category=op.category,
-                failure_class=op.failure_class,
-                call=f"{cls}.{method}",
-                line=row.get("line"),
-                source="wrapper",
-            ))
+                op = None
+            if op is not None:
+                out.append(_match(op, f"{cls}.{method}", row.get("line"), "wrapper"))
     return out
 
 
@@ -330,14 +355,7 @@ def _raw_matches(tree: ast.AST) -> List[ExclusiveOnlyMatch]:
         all_receivers |= op.raw_receiver_methods[0]
 
     def match(op: ExclusiveOnlyOperation, node: ast.AST, call: str) -> ExclusiveOnlyMatch:
-        return ExclusiveOnlyMatch(
-            key=op.key,
-            category=op.category,
-            failure_class=op.failure_class,
-            call=call,
-            line=getattr(node, "lineno", None),
-            source="raw",
-        )
+        return _match(op, call, getattr(node, "lineno", None), "raw")
 
     out: List[ExclusiveOnlyMatch] = []
     module_aliases = _receiver_aliases(tree, all_receivers, {})
@@ -400,12 +418,15 @@ def build_refusal(
     matches: List[ExclusiveOnlyMatch],
     holder_pid: Optional[int] = None,
     holder_process: Optional[str] = None,
+    notes: Optional[List[str]] = None,
+    stage: str = "preflight",
 ) -> Tuple[str, dict]:
     """Message and detail fields for a `requires_exclusive_access` refusal.
 
     The detail fields are spread into `error_response()` (the envelope adds
     `error_code`), in RequiresExclusiveAccessDetail order. The message names
     each matched operation and gives the reason per category (FR-008).
+    `notes` (from plan_conditional) say why a conditional call was refused.
     """
     if verdict == "unknown":
         opening = (
@@ -434,7 +455,7 @@ def build_refusal(
             reasons.append(reason)
     message = (
         f"{opening} Close FieldWorks, re-submit this same call, then reopen "
-        f"FieldWorks. Operations: {calls}. " + " ".join(reasons)
+        f"FieldWorks. Operations: {calls}. " + " ".join(reasons + list(notes or []))
     )
     detail = {
         "guidance": REFUSAL_GUIDANCE,
@@ -443,6 +464,7 @@ def build_refusal(
         "holder_process": holder_process,
         "operations": [m.to_dict() for m in matches],
         "remedy": remedy,
+        "stage": stage,
     }
     return message, detail
 
@@ -476,3 +498,214 @@ def detect_exclusive_only_operations(
         unique.append(m)
     unique.sort(key=lambda m: (m.line is None, m.line or 0, m.key))
     return unique
+
+
+# ---------------------------------------------------------------------------
+# Conditional calls (WritingSystems.Ensure)
+#
+# Ensure() writes only when the tag is not already active in the requested
+# category. Two layers decide whether one may run while FieldWorks holds the
+# project:
+#   1. Before the run, the project's ACTIVE writing-system lists are read
+#      straight from the .fwdata (read_active_writing_systems: the
+#      CurVernWss / CurAnalysisWss elements, the same lists flexicon's
+#      Ensure() tests against). Pure filesystem, like the access probe; it
+#      never opens the project. Literal calls are settled here: already active
+#      -> let it through; would add -> refuse now, before confirmation, backup
+#      or run. The .ldml store is NOT enough: a store-present tag can be
+#      inactive, and Ensure() would then activate it (a write).
+#   2. During the run, flexicon's peer schema guard (capability
+#      "peer-schema-guard") refuses any Ensure() that turns out to need a write,
+#      before it writes. That covers a stale file (FLEx holds unsaved changes,
+#      or the user changed writing systems in between), arguments that are not
+#      literals, and a file that could not be read.
+# Without the guard, layer 1 alone is not safe (a stale read errs in the
+# direction that crashes FLEx), so conditional calls are refused as before.
+# ---------------------------------------------------------------------------
+
+#: flexicon capability token for the runtime guard.
+PEER_SCHEMA_GUARD_CAPABILITY = "peer-schema-guard"
+
+#: Runner modes for the guard (PEER_SCHEMA_GUARD in the generated runner).
+#:   "off"      -- do not touch the guard
+#:   "on"       -- enable it if flexicon offers it (backstop for every
+#:                 write-enabled run while FieldWorks holds the project)
+#:   "required" -- a conditional call was let through on the guard's strength;
+#:                 refuse the run before any user code if it cannot be enabled
+GUARD_OFF, GUARD_ON, GUARD_REQUIRED = "off", "on", "required"
+
+
+def _norm_tag(tag: str) -> str:
+    """Tag comparison as flexicon's Exists() does it: case- and '_'/'-'-blind."""
+    return tag.strip().lower().replace("_", "-")
+
+
+def _literal(node: Optional[ast.AST]):
+    if isinstance(node, ast.Constant):
+        return node.value
+    return _NOT_LITERAL
+
+
+_NOT_LITERAL = object()
+
+
+def ensure_call_args(tree: Optional[ast.AST]) -> Dict[int, List[Optional[Tuple[str, bool]]]]:
+    """Literal `(language_tag, is_vernacular)` of every `.Ensure(...)` call, by line.
+
+    A call whose tag or `is_vernacular` is not a literal maps to None (decided
+    at run time). `is_vernacular` defaults to True, as in flexicon.
+    """
+    out: Dict[int, List[Optional[Tuple[str, bool]]]] = {}
+    if tree is None:
+        return out
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "Ensure"):
+            continue
+        kwargs = {kw.arg: kw.value for kw in node.keywords if kw.arg}
+        tag_node = node.args[0] if node.args else kwargs.get("language_tag")
+        if len(node.args) >= 3:
+            vern_node = node.args[2]
+        else:
+            vern_node = kwargs.get("is_vernacular")
+        tag = _literal(tag_node)
+        vern = True if vern_node is None else _literal(vern_node)
+        resolved: Optional[Tuple[str, bool]] = None
+        if isinstance(tag, str) and tag.strip() and isinstance(vern, bool):
+            resolved = (tag, vern)
+        out.setdefault(node.lineno, []).append(resolved)
+    return out
+
+
+@dataclass(frozen=True)
+class ConditionalPlan:
+    """What plan_conditional decided for one run."""
+
+    refuse: Tuple[ExclusiveOnlyMatch, ...]  # refuse the run with these
+    notes: Tuple[str, ...]                  # why (for the refusal message)
+    satisfied: Tuple[ExclusiveOnlyMatch, ...] = ()  # settled no-op by the file read
+    deferred: Tuple[ExclusiveOnlyMatch, ...] = ()   # left to the runtime guard
+
+    @property
+    def allowed(self) -> bool:
+        return not self.refuse
+
+
+_ACTIVE_WS_ELEMENTS = {"CurVernWss": "vernacular", "CurAnalysisWss": "analysis"}
+_WS_OPEN_RE = re.compile(r"<(CurVernWss|CurAnalysisWss)>")
+_UNI_RE = re.compile(r"<Uni>([^<]*)</Uni>|<Uni\s*/>")
+
+
+def read_active_writing_systems(fwdata_path) -> Optional[Dict[str, List[str]]]:
+    """Active vernacular / analysis tags from a project's .fwdata, or None.
+
+    Streams the file for the LangProject `CurVernWss` / `CurAnalysisWss`
+    elements (space-separated tags in a `<Uni>` child) and stops as soon as
+    both are found. Never opens the project, so it is safe while FieldWorks
+    holds it. Returns None when the file cannot be read or either element is
+    missing; plan_conditional then leaves the call to the runtime guard.
+
+    The file can lag what FieldWorks holds unsaved. That is acceptable only
+    because the runtime guard backs this read up (see the section comment).
+    """
+    found: Dict[str, List[str]] = {}
+    pending: Optional[str] = None
+    try:
+        with open(fwdata_path, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if pending is None:
+                    opened = _WS_OPEN_RE.search(line)
+                    if opened is None:
+                        continue
+                    pending = _ACTIVE_WS_ELEMENTS[opened.group(1)]
+                    line = line[opened.end():]
+                uni = _UNI_RE.search(line)
+                if uni is not None:
+                    found[pending] = (uni.group(1) or "").split()
+                    pending = None
+                    if len(found) == len(_ACTIVE_WS_ELEMENTS):
+                        return found
+    except OSError:
+        return None
+    return None
+
+
+def plan_conditional(
+    matches: List[ExclusiveOnlyMatch],
+    ensure_args: Dict[int, List[Optional[Tuple[str, bool]]]],
+    active: Optional[Dict[str, List[str]]],
+    guard_available: bool,
+) -> ConditionalPlan:
+    """Decide a gated run whose exclusive-only matches may be conditional.
+
+    `active` is read_active_writing_systems() output, or None when the read
+    failed. `guard_available` says whether the run's flexicon offers the peer
+    schema guard (the runner refuses to start if that turns out wrong).
+
+    - Any unconditional match refuses everything.
+    - No guard refuses everything: without it a stale read could let a
+      writing Ensure() through.
+    - With the guard: a literal tag active in its category is satisfied; a
+      literal tag that would be added refuses now; a non-literal call, or any
+      call when the file could not be read, is deferred to the guard.
+    """
+    matches = list(matches)
+    hard = [m for m in matches if not m.conditional]
+    if hard:
+        return ConditionalPlan(refuse=tuple(matches), notes=())
+    if not guard_available:
+        return ConditionalPlan(refuse=tuple(matches), notes=(
+            "The installed flexicon has no peer schema guard "
+            f"('{PEER_SCHEMA_GUARD_CAPABILITY}'), so a no-op Ensure() cannot be "
+            "told apart safely from one that writes.",
+        ))
+    if active is None:
+        return ConditionalPlan(refuse=(), notes=(), deferred=tuple(matches))
+
+    active_by_vern = {
+        True: {_norm_tag(t) for t in active.get("vernacular") or []},
+        False: {_norm_tag(t) for t in active.get("analysis") or []},
+    }
+    refuse: List[ExclusiveOnlyMatch] = []
+    notes: List[str] = []
+    satisfied: List[ExclusiveOnlyMatch] = []
+    deferred: List[ExclusiveOnlyMatch] = []
+    for m in matches:
+        calls = ensure_args.get(m.line) if m.line is not None else None
+        if not calls or any(c is None for c in calls):
+            deferred.append(m)
+            continue
+        missing = [(tag, vern) for tag, vern in calls if _norm_tag(tag) not in active_by_vern[vern]]
+        if missing:
+            refuse.append(m)
+            for tag, vern in missing:
+                notes.append(
+                    f"Ensure({tag!r}) on line {m.line} would add "
+                    f"{'a vernacular' if vern else 'an analysis'} writing system: "
+                    f"'{tag}' is not active as "
+                    f"{'vernacular' if vern else 'analysis'} in the project."
+                )
+        else:
+            satisfied.append(m)
+    return ConditionalPlan(
+        refuse=tuple(refuse), notes=tuple(notes),
+        satisfied=tuple(satisfied), deferred=tuple(deferred),
+    )
+
+
+def conditional_after_writes(matches: List[ExclusiveOnlyMatch], cert: dict) -> List[ExclusiveOnlyMatch]:
+    """Conditional calls that come after some other write in the script.
+
+    If such a call is refused at run time, the earlier writes have already
+    committed (each wrapper call saves its own change), so the run stops part
+    way. Used for a warning, not a refusal.
+    """
+    write_lines = sorted(
+        r.get("line") for bucket in ("mutating_calls", "protected_calls")
+        for r in (cert or {}).get(bucket) or []
+        if r.get("line") is not None and r.get("method") != "Ensure"
+    )
+    if not write_lines:
+        return []
+    first_write = write_lines[0]
+    return [m for m in matches if m.conditional and m.line is not None and m.line > first_write]

@@ -70,6 +70,36 @@ list[ExclusiveOnlyMatch], blocking: bool}`. `blocking` is true when the real
 run would refuse under the table above. The key is present only when the
 probe ran.
 
+## Conditional calls (FR-002b amendment)
+
+- `ExclusiveOnlyOperation.conditional` and `ExclusiveOnlyMatch.conditional`
+  (bool, default False). Only `ws.ensure` (`WritingSystemOperations.Ensure`)
+  sets it. `ws.wrapper` keeps the other writing-system mutators.
+- Active lists (`exclusive_access.read_active_writing_systems(fwdata_path)`):
+  `{vernacular: [tag], analysis: [tag]}` from the LangProject `CurVernWss` /
+  `CurAnalysisWss` `<Uni>` elements, streamed from the `.fwdata`, or None.
+  It is pure filesystem and never opens the project. The `.ldml` store is
+  not used: store-present does not mean active.
+- Guard probe (`execution._peer_schema_guard_available`): in the server
+  process. A mismatch with the run's flexicon fails closed through
+  `PEER_SCHEMA_GUARD='required'`.
+- `plan_conditional(matches, ensure_call_args(tree), active, guard_available)`
+  returns `ConditionalPlan{refuse, notes, satisfied, deferred}`. Rules:
+  - any unconditional match refuses everything;
+  - no guard refuses everything;
+  - a literal tag active in its category is satisfied;
+  - a literal tag that would be added refuses;
+  - a non-literal tag, or an unreadable file, is deferred.
+- Runner `PEER_SCHEMA_GUARD`: `off` (verdict not gated), `on` (gated,
+  backstop), `required` (a conditional call was allowed; the run stops with
+  `PeerSchemaGuardUnavailable` if the guard cannot be enabled).
+- Success result: `exclusive_access` = `{decision: "allowed_conditional",
+  verdict, satisfied, deferred_to_runtime, note}`.
+- `RequiresExclusiveAccessDetail.stage`: `preflight` | `runtime`.
+- validate_only: when only conditional matches remain on a gated verdict, it
+  makes the same plan from the same file read: `blocking` (refuse or not),
+  `conditional: true`, `deferred_to_runtime`, and `notes` when it refuses.
+
 ## Sync-at-open note (US5, conditional)
 
 If the step ships, it adds `shared_mode.sync_at_open` = `{attempted: bool, ok:

@@ -201,6 +201,23 @@ project-open diagnosis changes.
   and `docs/SHARED-MODE.md` documents the refusal, how to see an MCP change in
   FLEx (navigate away and back; F5 alone is not enough), and why FLEx's Undo
   cannot reverse an MCP write.
+- `WritingSystems.Ensure()` is checked first instead of refused outright
+  while FieldWorks has the project open. When `Ensure()` calls are a script's
+  only writing-system changes, the server reads the project's active
+  writing-system lists from its `.fwdata` just before the run (about half a
+  second; the project is not opened):
+  - an already-active tag runs normally (the result carries
+    `exclusive_access`);
+  - a tag that would be added is refused up front, with the reason;
+  - a non-literal tag, or an unreadable file, is left to flexicon's peer
+    schema guard, which refuses the call at the moment it would write. That
+    refusal comes back as `requires_exclusive_access` with `stage: runtime`.
+
+  `validate_only` makes the same decision from the same read. The guard is
+  also on for every other write-enabled run while FieldWorks holds the
+  project, as a backstop. A warning names any `Ensure()` that comes after
+  other writes. This needs a flexicon with the `peer-schema-guard`
+  capability. Without it, `Ensure()` is refused as before.
 
 ## [2.14.0] - 2026-09-27
 

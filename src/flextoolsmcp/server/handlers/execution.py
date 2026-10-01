@@ -1489,6 +1489,63 @@ def _no_uow_error_text(execution_result: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+_RUNTIME_EXCLUSIVE_MARKERS = ("FP_ExclusiveAccessRequiredError", "PeerSchemaGuardUnavailable")
+
+
+def _diagnose_exclusive_access_runtime_error(
+    execution_result: Dict[str, Any], project_name: str
+) -> Optional[Dict[str, Any]]:
+    """Map a runtime refusal by flexicon's peer schema guard (exclusive-access-gate).
+
+    The gate let a conditional `WritingSystems.Ensure()` through, and at run
+    time it turned out to need a write (the project changed since the
+    snapshot, or the argument was not a literal), so flexicon raised
+    FP_ExclusiveAccessRequiredError before writing. Or the run's flexicon
+    could not enable the guard at all, and the runner stopped before any user
+    code ("PeerSchemaGuardUnavailable"). Same code and recovery as the
+    up-front refusal; `stage` says where it happened. Writes the script made
+    BEFORE the refused call have already been saved.
+    """
+    raw_error = execution_result.get("error") or ""
+    if not isinstance(raw_error, str) or not any(m in raw_error for m in _RUNTIME_EXCLUSIVE_MARKERS):
+        return None
+    unavailable = "PeerSchemaGuardUnavailable" in raw_error
+    if unavailable:
+        message = (
+            "The script was not run: it calls WritingSystems.Ensure() while "
+            f"FieldWorks has '{project_name}' open, and this run's flexicon cannot "
+            "refuse an Ensure() that would change writing systems. Close FieldWorks, "
+            "re-submit this same call, then reopen FieldWorks."
+        )
+        remedy = "Close FieldWorks, re-submit unchanged, reopen FieldWorks."
+    else:
+        message = (
+            "A writing-system change was refused while the script ran: FieldWorks "
+            f"has '{project_name}' open, and this call would have changed the "
+            "project's writing systems (it was not a no-op after all). Nothing was "
+            "written by that call. Close FieldWorks, re-submit this same call, then "
+            "reopen FieldWorks."
+        )
+        remedy = (
+            "Close FieldWorks, re-submit unchanged, reopen FieldWorks. Writes the "
+            "script made before the refused call were already saved; check them "
+            "with a read-only run before re-submitting if the script is not "
+            "idempotent."
+        )
+    return {
+        "error_code": "requires_exclusive_access",
+        "message": message,
+        "hint": remedy,
+        "guidance": (
+            "1. Close FieldWorks (all windows for this project). "
+            "2. Re-submit this exact run_module call unchanged. "
+            "3. Reopen FieldWorks after it finishes."
+        ),
+        "remedy": remedy,
+        "stage": "runtime",
+    }
+
+
 def _diagnose_no_unit_of_work_error(
     execution_result: Dict[str, Any], write_enabled: bool
 ) -> Optional[Dict[str, Any]]:
@@ -2441,13 +2498,92 @@ def _build_validate_only_checks(
     return checks, writeability
 
 
+_RUNNER_PEER_GUARD_LINE = "PEER_SCHEMA_GUARD = 'off'\n"
+
+
+def _set_runner_peer_guard(script_path: str, mode: str) -> None:
+    """Rewrite the generated runner's `PEER_SCHEMA_GUARD` line to `mode`.
+
+    The runner is written before the access probe, and the guard mode
+    depends on the probe, so the gate patches the one config line afterwards.
+    """
+    with open(script_path, encoding="utf-8") as fh:
+        text = fh.read()
+    if _RUNNER_PEER_GUARD_LINE not in text:
+        raise RuntimeError("generated runner has no PEER_SCHEMA_GUARD line")
+    text = text.replace(_RUNNER_PEER_GUARD_LINE, f"PEER_SCHEMA_GUARD = {mode!r}\n", 1)
+    with open(script_path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+
+
+def _read_active_writing_systems(project_name: str) -> Optional[Dict[str, List[str]]]:
+    """The project's active WS lists, read from its .fwdata on disk, or None.
+
+    Pure filesystem, like the access probe: it never opens the project.
+    None (no .fwdata, unreadable, elements not found) leaves conditional
+    calls to the runtime guard.
+    """
+    try:
+        try:
+            from ..project_discovery import get_project_fwdata_path
+        except (ImportError, ValueError):
+            from server.project_discovery import get_project_fwdata_path
+        fwdata = get_project_fwdata_path(project_name)
+        active = (
+            exclusive_access.read_active_writing_systems(fwdata) if fwdata else None
+        )
+    except Exception as exc:  # noqa: BLE001 -- a failed read only defers to the guard
+        active = None
+        get_operations_logger().warning(
+            f"[SHARED] '{project_name}': active writing-system read failed: {exc!r}"
+        )
+    if active is None:
+        get_operations_logger().info(
+            f"[SHARED] '{project_name}': active writing systems not read from "
+            ".fwdata; conditional Ensure() is left to the runtime guard."
+        )
+    return active
+
+
+def _peer_schema_guard_available() -> bool:
+    """Does the installed flexicon offer the peer schema guard?
+
+    Probed in this process; the run's own subprocess re-checks, and with
+    PEER_SCHEMA_GUARD='required' refuses to start if the guard is missing
+    there, so a mismatch fails closed. Same broad except as
+    `_probe_undoable_capability` (importing flexicon without FieldWorks
+    raises a bare Exception).
+    """
+    try:
+        import flexicon  # type: ignore
+    except Exception:  # noqa: BLE001
+        return False
+    caps = getattr(flexicon, "CAPABILITIES", frozenset())
+    return (
+        exclusive_access.PEER_SCHEMA_GUARD_CAPABILITY in caps
+        and callable(getattr(getattr(flexicon, "FLExProject", None), "SetPeerSchemaGuard", None))
+    )
+
+
+def _plan_conditional_for(project_name: str, matches: List[Any], code_tree: Optional[ast.AST]):
+    """plan_conditional with this project's file read and the guard probe."""
+    guard = _peer_schema_guard_available()
+    active = _read_active_writing_systems(project_name) if guard else None
+    return exclusive_access.plan_conditional(
+        matches, exclusive_access.ensure_call_args(code_tree), active, guard
+    )
+
+
 def _exclusive_access_report(
     code: str, code_tree: Optional[ast.AST], write_enabled: bool
-) -> Dict[str, Any]:
-    """`project_lock.exclusive_access` for validate_only, minus `blocking`.
+) -> Tuple[Dict[str, Any], List[Any]]:
+    """`project_lock.exclusive_access` for validate_only (minus `blocking`),
+    and the matches behind it.
 
     Read-only runs are not gated (their guarded code never runs), so they
-    report `required: False` like the real run's gate sees them.
+    report `required: False` like the real run's gate sees them. A syntax
+    error also reports `required: False`; validate_only already fails that
+    script at the syntax gate.
     """
     matches: List[Any] = []
     if write_enabled and code_tree is not None:
@@ -2457,7 +2593,7 @@ def _exclusive_access_report(
     return {
         "required": bool(matches),
         "operations": [m.to_dict() for m in matches],
-    }
+    }, matches
 
 
 async def _handle_validate_only(
@@ -2547,14 +2683,35 @@ async def _handle_validate_only(
             # Exclusive-access gate (FR-009): report the refusal the real run
             # would give. The real run refuses `unknown` (probed=False) too,
             # so that verdict reports blocking:true, not null.
-            _excl = _exclusive_access_report(code, code_tree, write_enabled)
-            _excl["blocking"] = bool(
+            _excl, _excl_matches = _exclusive_access_report(code, code_tree, write_enabled)
+            _excl_gated = bool(
                 write_enabled
                 and _excl["required"]
                 and _access.verdict in exclusive_access.GATED_VERDICTS
             )
+            if _excl_gated and all(m.conditional for m in _excl_matches):
+                # Only WritingSystems.Ensure(): the same decision the real run
+                # makes, from the same .fwdata read (no project open).
+                _excl_plan = _plan_conditional_for(project_name, _excl_matches, code_tree)
+                _excl["blocking"] = not _excl_plan.allowed
+                _excl["conditional"] = True
+                _excl["deferred_to_runtime"] = [m.to_dict() for m in _excl_plan.deferred]
+                if _excl_plan.notes:
+                    _excl["notes"] = list(_excl_plan.notes)
+            else:
+                _excl["blocking"] = _excl_gated
             project_lock["exclusive_access"] = _excl
-            if _excl["blocking"]:
+            if _excl.get("conditional") and not _excl["blocking"]:
+                project_lock["lock_note"] += (
+                    " exclusive_access: the script's only exclusive-only calls are "
+                    "WritingSystems.Ensure(), and the real run allows them"
+                    + (
+                        "; deferred_to_runtime calls are checked by flexicon "
+                        "while the script runs."
+                        if _excl["deferred_to_runtime"] else "."
+                    )
+                )
+            elif _excl["blocking"]:
                 project_lock["lock_note"] += (
                     " exclusive_access.blocking: this script changes writing "
                     "systems or custom fields while FieldWorks holds the project; "
@@ -2568,7 +2725,7 @@ async def _handle_validate_only(
             )
         # Probe unavailable: never assert blocking either way (#118).
         try:
-            _excl = _exclusive_access_report(code, code_tree, write_enabled)
+            _excl, _ = _exclusive_access_report(code, code_tree, write_enabled)
             _excl["blocking"] = None
             project_lock["exclusive_access"] = _excl
         except Exception as excl_exc:
@@ -5108,6 +5265,29 @@ def run_module():
                 setattr(_helpers_shim, _name, module_namespace[_name])
             sys.modules["helpers"] = _helpers_shim
 
+        # exclusive-access-gate: flexicon's peer schema guard. While FieldWorks
+        # holds the project, writing-system wrapper writes raise
+        # FP_ExclusiveAccessRequiredError before writing; a no-op Ensure()
+        # still passes. "required" means the server let a conditional call
+        # through on the guard's strength, so the run must not start without it.
+        if WRITE_ENABLED and PEER_SCHEMA_GUARD in ("on", "required"):
+            _guard_on = False
+            try:
+                import flexicon as _guard_pkg
+                if ("peer-schema-guard" in getattr(_guard_pkg, "CAPABILITIES", frozenset())
+                        and callable(getattr(project, "SetPeerSchemaGuard", None))):
+                    project.SetPeerSchemaGuard(True)
+                    _guard_on = True
+            except Exception as _guard_exc:
+                report.Warning("peer schema guard could not be enabled: {}".format(_guard_exc))
+            result["peer_schema_guard"] = _guard_on
+            if PEER_SCHEMA_GUARD == "required" and not _guard_on:
+                raise RuntimeError(
+                    "PeerSchemaGuardUnavailable: this run's flexicon cannot refuse "
+                    "writing-system changes while FieldWorks holds the project, so "
+                    "the script was not run."
+                )
+
         # Execute the module code to define Main and FlexToolsModule, or run bare code
         exec(MODULE_CODE, module_namespace)
 
@@ -5252,6 +5432,7 @@ if __name__ == "__main__":
     full_script = '''# Configuration
 PROJECT_NAME = {project_name}
 WRITE_ENABLED = {write_enabled}
+PEER_SCHEMA_GUARD = 'off'
 MODULE_CODE = {code}
 
 # --- issue #302 teardown recovery helpers (teardown_recovery.py) ---
@@ -5309,9 +5490,11 @@ MODULE_CODE = {code}
         # turn `project.WritingSytems` into a real WS call). Read-only runs are
         # not gated -- their guarded code never executes.
         _exclusive_matches: List[Any] = []
+        _excl_cert: Dict[str, Any] = {}
         if write_enabled:
+            _excl_cert = certify_script_readonly(code, get_api_index(), code_tree)
             _exclusive_matches = exclusive_access.detect_exclusive_only_operations(
-                code, code_tree, certify_script_readonly(code, get_api_index(), code_tree)
+                code, code_tree, _excl_cert
             )
 
         # Issue #93 CP4 (T4.1): probe the project's real access state ONCE,
@@ -5359,20 +5542,63 @@ MODULE_CODE = {code}
         # through to the project_locked refusal below untouched. This uses the
         # first probe decision -- the `_release_own_worker_or_refuse` re-probe
         # later only ever revisits a project_locked refusal.
-        if (
-            _exclusive_matches
+        #
+        # Conditional calls (WritingSystems.Ensure): when they are the ONLY
+        # exclusive-only calls, a fresh read-only snapshot of the project's
+        # writing systems decides literal calls now, and flexicon's peer
+        # schema guard backs that up at run time (exclusive_access
+        # plan_conditional). The guard is also switched on as a backstop for
+        # every write-enabled run while FieldWorks holds the project.
+        _gated = (
+            write_enabled
             and _access is not None
             and _decision.verdict in exclusive_access.GATED_VERDICTS
-        ):
+        )
+        _peer_guard_mode = exclusive_access.GUARD_ON if _gated else exclusive_access.GUARD_OFF
+        _exclusive_access_result: Optional[Dict[str, Any]] = None
+        _excl_refuse: List[Any] = list(_exclusive_matches)
+        _excl_notes: List[str] = []
+        if _gated and _exclusive_matches and all(m.conditional for m in _exclusive_matches):
+            _plan = _plan_conditional_for(project_name, _exclusive_matches, code_tree)
+            _excl_refuse = list(_plan.refuse)
+            _excl_notes = list(_plan.notes)
+            if _plan.allowed:
+                _peer_guard_mode = exclusive_access.GUARD_REQUIRED
+                _exclusive_access_result = {
+                    "decision": "allowed_conditional",
+                    "verdict": _decision.verdict,
+                    "satisfied": [m.to_dict() for m in _plan.satisfied],
+                    "deferred_to_runtime": [m.to_dict() for m in _plan.deferred],
+                    "note": (
+                        "WritingSystems.Ensure() was allowed while FieldWorks holds "
+                        "the project: the project's active writing systems were read "
+                        "from its .fwdata just before this run, and the run's flexicon "
+                        "refuses any "
+                        "Ensure() that would still need to write."
+                    ),
+                }
+                for _late in exclusive_access.conditional_after_writes(_exclusive_matches, _excl_cert):
+                    warnings.append(
+                        f"{_late.call} (line {_late.line}) runs after other writes. If it "
+                        "turns out to need a write it is refused at that point, and the "
+                        "earlier writes have already been saved. Put Ensure() calls first."
+                    )
+                get_operations_logger().info(
+                    f"[SHARED] '{project_name}' {_decision.verdict}: conditional "
+                    f"Ensure() allowed (satisfied={len(_plan.satisfied)} "
+                    f"deferred={len(_plan.deferred)}; op {op_id}); peer schema guard required."
+                )
+        if _gated and _excl_refuse:
             _holder = getattr(_access, "holder", None)
             _excl_msg, _excl_detail = exclusive_access.build_refusal(
                 project_name,
                 _decision.verdict,
-                _exclusive_matches,
+                _excl_refuse,
                 holder_pid=_holder.pid if _holder else None,
                 holder_process=_holder.process_name if _holder else None,
+                notes=_excl_notes,
             )
-            _excl_calls = ",".join(m.call for m in _exclusive_matches)
+            _excl_calls = ",".join(m.call for m in _excl_refuse)
             get_operations_logger().warning(
                 f"[SHARED] '{project_name}' {_decision.verdict}: refused "
                 f"exclusive-only operation(s) {_excl_calls} (op {op_id}); "
@@ -5394,6 +5620,10 @@ MODULE_CODE = {code}
                 error_code="requires_exclusive_access",
                 code_size_bytes=_code_size_bytes,
             )
+
+        # The runner was written before the probe; switch its guard line now.
+        if _peer_guard_mode != exclusive_access.GUARD_OFF:
+            _set_runner_peer_guard(temp_script_path, _peer_guard_mode)
 
         # Issue #55 (Rung 3): enforce `confirmed` on mutating writes. Runs
         # BEFORE the project-lock probe / subprocess launch below so an
@@ -5690,6 +5920,8 @@ MODULE_CODE = {code}
             execution_result["shared_mode"] = _shared_mode
         if _shared_mode_read_back is not None:
             execution_result["shared_mode_read_back"] = _shared_mode_read_back
+        if _exclusive_access_result is not None:
+            execution_result["exclusive_access"] = _exclusive_access_result
 
         # CP5 FR-026: a write-enabled run that completed without error may have
         # changed the grammar, so the project's sandbox config cache is
@@ -5713,6 +5945,11 @@ MODULE_CODE = {code}
         # of the bare .NET exception string.
         if execution_result.get("error"):
             open_diag = _diagnose_project_open_error(execution_result, project_name)
+            if open_diag is None:
+                # exclusive-access-gate: the peer schema guard refused at run time.
+                open_diag = _diagnose_exclusive_access_runtime_error(
+                    execution_result, project_name
+                )
             if open_diag is None:
                 # Issue #310: raw LCM write with no unit of work open.
                 open_diag = _diagnose_no_unit_of_work_error(
@@ -6033,8 +6270,8 @@ MODULE_CODE = {code}
             # error_type when available; fall back to a generic bucket.
             # Issue #310: a diagnosed no_unit_of_work keys the loop detector
             # on its own code so the tailored assistance hint fires.
-            if execution_result.get("error_code") == "no_unit_of_work":
-                runtime_error_code = "no_unit_of_work"
+            if execution_result.get("error_code") in ("no_unit_of_work", "requires_exclusive_access"):
+                runtime_error_code = execution_result["error_code"]
             else:
                 runtime_error_code = execution_result.get("error_type") or "runtime_error"
             return _attach_assistance_if_loop(

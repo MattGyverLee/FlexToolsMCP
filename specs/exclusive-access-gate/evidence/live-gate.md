@@ -1,0 +1,148 @@
+# Live verification: exclusive-access gate (T036, T025, T030)
+
+Project: **Sena 3** (the designated test project). FieldWorks 9.3.x, PID
+27984, sharing on. Date 2026-10-01. Worktree `feat/exclusive-access-gate` at
+`c3d5df0` plus the evidence scripts in this folder.
+
+**How it was run.** This session's MCP server runs the main checkout, which
+has no gate. Every call below went through
+`evidence/live_gate_driver.py`, which imports the worktree's `src/` and
+drives `handle_start` + `handle_run_module` exactly as the MCP tool does, with
+the real API index loaded and `FLEXLIBS_REQUIRE_LIVE=1`.
+
+**run_mode.** All runs are live: a real subprocess against the real Sena 3,
+with FieldWorks attached. `tests/live_status.json` does not exist in this
+repo, so there was nothing to cross-check. The probe line printed by every
+run (`verdict=open_shared sharing=True holder=PID 27984 FieldWorks`) is the
+live-state proof.
+
+Command shape (PowerShell, from the worktree):
+
+```
+$env:FLEXLIBS_REQUIRE_LIVE='1'
+C:\Github\FlexToolsMCP\.venv\Scripts\python.exe specs\exclusive-access-gate\evidence\live_gate_driver.py <mode> [args]
+```
+
+## Pre-state
+
+`ws-list` (read-only, op-082355392 and later):
+
+- vernacular: `seh`, `seh-fonipa-x-etic`
+- analysis: `en`, `pt`
+- `WritingSystemStore` holds 6 `.ldml` files: `en`, `grc`, `hbo`, `pt`,
+  `seh-fonipa-x-etic`, `seh`. Their mtimes are recorded by the driver before
+  and after each WS step.
+
+## V1: refused while FLEx is open -- PASS
+
+`live_gate_driver.py v1 en`. The script is
+`if modifyAllowed: project.WritingSystems.Ensure('en')`, write-enabled,
+`confirmed=True`. Op `op-082526186-001`.
+
+- `error_code: requires_exclusive_access`, `verdict: open_shared`,
+  `holder_pid: 27984`, `holder_process: FieldWorks`.
+- `operations`: `[{key: ws.wrapper, call: WritingSystemOperations.Ensure,
+  line: 2, failure_class: crashes_holder, source: wrapper}]`.
+- Message, guidance and remedy as in contracts/requires_exclusive_access.md.
+- `.ldml` mtimes unchanged (6 files).
+- No backup taken: the newest Sena 3 backup was still `20260930T201558Z`.
+- FieldWorks PID 27984 still `Responding: True`.
+
+## V2: validate_only -- PASS
+
+`live_gate_driver.py v2 en` (same script, `validate_only=True`):
+
+- `project_lock.exclusive_access = {required: true, operations: [ws.wrapper
+  Ensure line 2], blocking: true}`.
+- `project_lock.blocking: false`: the ordinary write gate would not refuse.
+- `lock_note` carries the exclusive-access sentence.
+- `.ldml` unchanged.
+
+## V4: ordinary write while FLEx is open -- PASS
+
+`evidence/v4_create.py`:
+
+- Dry run first (read-only, `op-082630097`): `pre: zzExclTest exists =
+  False`.
+- Write run (write-enabled, confirmed, `op-082645405`): `created zzExclTest,
+  gloss = zzgloss-v4`.
+- **Not refused by the gate.** `shared_mode.note` now ends "Writing-system
+  and custom-field changes are refused while FieldWorks has the project open
+  (requires_exclusive_access)."
+- Backup taken: `20261001T132645Z` (with the peer caveat).
+- FieldWorks still responding.
+
+Side finding, pre-existing and not this feature: the write gate does not
+treat `if modifyAllowed and existing is None:` as a guard
+(`unprotected_writes`). A nested `if` passes.
+
+## V5: does a write-enabled session see a peer's write? -- decided NO-SHIP
+
+Call A = V4 (gloss `zzgloss-v4` committed by a peer). Call B reads it back from
+a fresh process:
+
+| Call B | op | Read value |
+|---|---|---|
+| read-only, `v_read.py` | `op-082708234` | `['zzgloss-v4']` |
+| write-enabled, confirmed, as-is, `v_read.py` | `op-082717294` | `['zzgloss-v4']` |
+| write-enabled, `project.SaveChanges()` first, `v5_read_synced.py` (`SaveChanges ok`) | `op-082747578` | `['zzgloss-v4']` |
+
+All three saw the peer write at once. Sync-at-open adds nothing, so T026 and
+T027 are **not shipped**. Reason: a peer's commit reaches disk at commit time,
+and a fresh peer reads it whether or not it syncs first. (The unguarded
+first try of the sync variant was refused as `unprotected_writes`, which is
+correct, because `SaveChanges()` is a write.)
+
+## V7: harness dry run
+
+`live_cf_peer.py dry`: opened read-only with `HeadlessLcmUI`;
+`FieldDescription.FieldDescriptors` works; `zzExclTest already defined =
+False`. (The backend-name helper could not import `IDataStorer`; this is
+cosmetic.)
+
+## Peer schema guard, flexicon side -- PASS
+
+`C:\Github\flexicon-peer-guard\evidence\peer_schema_guard_live.py`
+(flexicon branch `feat/peer-schema-guard`, `076a239`). FLEx PID 27984 holds
+Sena 3. With `SetPeerSchemaGuard(True)`:
+
+- `Ensure('en', analysis)` returned `created=False`;
+- `Ensure('qaa-x-zzexcl')` raised `FP_ExclusiveAccessRequiredError`;
+- the WS lists were identical in-session and after a fresh open.
+
+## V8: conditional Ensure() end to end (FR-002b) -- PASS
+
+Final design: the active lists are read from the `.fwdata`
+(`read_active_writing_systems`; 156 ms on Sena 3's 53 MB file, result
+`{analysis: [pt, en], vernacular: [seh, seh-fonipa-x-etic]}`), and the guard
+is probed in the server process. For V8a-c, `PYTHONPATH=C:\Github\flexicon-peer-guard`
+made both the driver's probe and the run's subprocess use the guard build.
+V8d had no `PYTHONPATH`, so it used the released flexicon.
+
+| Step | Script | Result | op |
+|---|---|---|---|
+| V8a | `v8a_ensure_active.py`: `Ensure('en', 'English', is_vernacular=False)` | ran; `Ensure ... created = False`; `exclusive_access.decision = allowed_conditional`, satisfied `ws.ensure`; `peer_schema_guard: true` | `op-092335154` |
+| V8b | `v8b_ensure_new_literal.py`: `Ensure('qaa-x-zzexcl', ...)` | refused up front, `stage: preflight`: "Ensure('qaa-x-zzexcl') on line 3 would add a vernacular writing system: 'qaa-x-zzexcl' is not active as vernacular in the project." | `op-092345041` |
+| V8c | `v8c_ensure_new_variable.py`: same tag via a variable | allowed by the gate (`deferred_to_runtime`), then refused **at run time**: `requires_exclusive_access`, `stage: runtime`, "Nothing was written by that call" | `op-092351020` |
+| V8d | V8a with the **released** flexicon (no `peer-schema-guard`) | refused up front: "The installed flexicon has no peer schema guard ('peer-schema-guard'), so a no-op Ensure() cannot be told apart safely from one that writes." | `op-092400071` |
+
+The same four steps first ran against an earlier design that used an LCM
+subprocess snapshot (ops `op-0856*`), with the same outcomes. That design
+was replaced by the file read at the maintainer's suggestion (about 0.5 s
+against about 4 s, and no second project open).
+
+Post-state (`ws-list`): vernacular `seh`, `seh-fonipa-x-etic`; analysis
+`en`, `pt`; all six `.ldml` mtimes identical to the pre-state. FieldWorks
+PID 27984 responding throughout.
+
+Side finding (ledger flexicon-5, already STILL NEW): V8c's
+`report.Info("before Ensure ...")` line is missing from the result, because
+run_module drops `report` messages when the script raises.
+
+## Pending
+
+- V6 (FLEx side: navigate away and back, Edit > Undo): needs the maintainer.
+- V7 add, then check the Custom Fields dialog, close and reopen FLEx, then
+  `check`.
+- V3 (FLEx closed: re-submit V1).
+- Cleanup of `zzExclTest` (entry, and the custom field if it survived).

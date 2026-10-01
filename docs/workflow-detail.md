@@ -438,6 +438,7 @@ Audit trail.
 | 2 | AST / syntax parse | `ast.parse(code)` |  | `SyntaxError` — missing colons, unclosed parens, bad indent. Tree feeds gates 3–10 | `syntax_error` + line# |
 | 3 | Partial module | `detect_partial_module_structure()` | ✓ | `def Main` + exactly one of `docs` / `FlexToolsModule` binding (half-module; #303 -- `def Main` with neither runs with a `[module scaffold]` warning). Override: `skip_module_check=True` | `partial_module_structure` |
 | 3a | Top-level Main call | `detect_top_level_main_invocation()` | ✓ (write only) | `def Main` plus a module-level `Main(...)` call (double execution). Read-only: advisory only | `top_level_main_invocation` |
+| 3b | Atomic property iteration | `detect_atomic_property_iteration()` | ✓ | iterating an `*OA`/`*RA` single-object property, e.g. `for hf in entry.LexemeFormOA:` (#313; guaranteed "not iterable" TypeError). Read-only and write runs; runs before casting so no misleading cast advisory | `atomic_property_iteration` |
 | 4 | Unprotected mutation | `certify_script_readonly()` | ✓ | any mutation outside a recognized guard (`if modifyAllowed:`, `project.writeEnabled`, `with project.modifyEnabled:`) | `unprotected_code` |
 | 5 | Polymorphic casting | `detect_casting_needs()` | ✓ | base interface property access (e.g. `sense.Owner.HeadWord`). Drives helper-injection tier. Reads `casting_index` from foundation | `casting_issues_detected` |
 | 6 | API discovery gate | `len(session.discovered_apis) > 0` |  | "I'll just write code from memory" — no Stage 3 tool was called | `api_discovery_required` |

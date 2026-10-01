@@ -271,7 +271,8 @@ class TestBuildValidateOnlyChecks:
         gate_order = [c["gate"] for c in checks]
         assert gate_order == [
             "syntax", "server_state", "partial_module_structure",
-            "top_level_main_invocation", "deprecated_member", "reflection_bypass", "unprotected_writes", "casting",
+            "top_level_main_invocation", "deprecated_member",
+            "atomic_property_iteration", "reflection_bypass", "unprotected_writes", "casting",
             "api_discovery_required",
             "undiscovered_entity", "undefined_variables", "missing_imports",
             "wrong_library_imports", "invalid_api_chain", "unknown_method",
@@ -327,7 +328,8 @@ class TestBuildValidateOnlyChecks:
         # short-circuit occurred once the first fault was found.
         assert by_gate["unprotected_writes"]["passed"] is True
         assert by_gate["invalid_api_chain"]["passed"] is True
-        assert len(checks) == 15
+        # 14 gates + atomic_property_iteration (#313) + unknown_method (#306).
+        assert len(checks) == 16
 
     def test_mutating_script_writeability_has_both_kinds(self, monkeypatch):
         """Regression for #44: a mutating script's writeability block must

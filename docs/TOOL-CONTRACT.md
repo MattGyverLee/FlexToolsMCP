@@ -79,7 +79,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 46 codes below |
+| `error_code` | string | one of the 47 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -132,6 +132,7 @@ authoritative. All detail fields are optional unless noted.
 | `no_unit_of_work` | `uow_mode` (`read_only` \| `per_operation` \| `session_envelope`), `write_enabled` (bool), `undoable` (bool or null), `lcm_message`, `guidance`, `next_steps` (list) -- issue #310; **runtime**, not preflight: liblcm raised `InvalidOperationException: Not in the right state to register a change` (a raw LCM mutation with no unit of work open), seen in the runner's `error` or in an ERROR report message. `read_only`: the run is `write_enabled=false`, so no write can register by any route -- guard under `if modifyAllowed:` and re-run write-enabled. `per_operation` (every supported install): the runner opens no session task and each Flexicon operation opens its own, so raw writes need `with project.UndoableOperation(label):` (opens a unit of work or joins the enclosing one; not refused by `nested_unit_of_work`). Raw `UndoableUnitOfWorkHelper`/`BeginUndoTask` is refused by `nested_unit_of_work`, and `project.Transaction()` opens no unit of work. `session_envelope` (legacy build): the script closed the runner's session task. The original liblcm text survives in `raw_error`; `help` mirrors `guidance` |
 | `hvo_literal_write_risk` | `findings` (list), `next_steps` (list) -- issue #103; write-enabled runs only, a bare integer literal reached an `*_or_hvo` parameter (see `validators.detect_hvo_literal_args`) |
 | `deprecated_member` | `findings` (list of `{member, deprecation_id, access, expr, line, col_offset}`), `deprecations` (list of `{id, note, replacement_paths, replacement_owner, example, evidence}`), `replacement_example` (string), `next_steps` (list) -- read-only AND write-enabled runs: the code reads, writes or calls a member listed in `curated_deprecations.CURATED_DEPRECATIONS` (see `validators.detect_deprecated_members`). Today: `ILexEntry.DoNotUseForParsing` and flexicon `LexEntryOperations.Get/SetDoNotUseForParsing`, which no FLEx parser reads; the redirect is `IsAbstract` on the entry's forms (`LexemeFormOA`, each `AlternateFormsOS` item -- IMoForm, not ILexEntry). Not bypassable by `skip_module_check` or `source='existing'`. |
+| `atomic_property_iteration` | `findings` (list of `{line, col, property, expr, kind, list_sibling?, suggestion}`; `kind` is `owning_atomic` or `reference_atomic`), `next_steps` (list) -- issue #313; read-only AND write-enabled runs: the code iterates an LCM `*OA` / `*RA` property (a `for` loop, a comprehension, or `list/tuple/set/sorted/enumerate/len/reversed/iter(...)`), which holds ONE object or None and raises `'IMoForm' object is not iterable` at runtime (see `validators.detect_atomic_property_iteration`). Runs before the casting gate, so no casting advisory is emitted for the same line. At runtime, a `... object is not iterable` error carries `error_type` `AtomicPropertyIterationError` / `NotIterableError` and a `help` hint. |
 | `raw_addcustomfield_write_risk` | `findings` (list), `next_steps` (list) -- issue #70; write-enabled runs only, raw `AddCustomField` on the LCM metadata cache (see `validators.detect_raw_addcustomfield_risk`) |
 | `project_locked` | `guidance` (required string), `lock_file_path`, `verdict`, `sharing_enabled`, `holder_pid`, `holder_process`, `remedy` |
 | `project_drive_unavailable` | `attempted_path`, `hint` |
@@ -363,7 +364,7 @@ repaired here.)
 
 This downgrade is **gate-local to the casting gate's warning tier only**.
 No other preflight gate is affected: `unprotected_writes`,
-`hvo_literal_write_risk`, `reflection_bypass_detected`, `nested_unit_of_work`, and `deprecated_member` all continue to
+`hvo_literal_write_risk`, `reflection_bypass_detected`, `nested_unit_of_work`, `deprecated_member`, and `atomic_property_iteration` all continue to
 hard-reject exactly as before, on both read-only and write-enabled runs, at
 every severity they detect. Detection and reporting for the casting gate
 itself are also unaffected -- `casting_issues`, `rewrite`, and

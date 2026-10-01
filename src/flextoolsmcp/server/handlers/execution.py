@@ -91,6 +91,7 @@ try:
         detect_unknown_operations_methods,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
+        detect_atomic_property_iteration, detect_not_iterable_error,
         detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
@@ -114,6 +115,7 @@ except ImportError:
         detect_unknown_operations_methods,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
+        detect_atomic_property_iteration, detect_not_iterable_error,
         detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
@@ -2108,6 +2110,21 @@ def _compute_casting_decision(
         ) + typo_check["issues"]
         casting_check["has_casting_issues"] = True
         casting_check["severity"] = "error"
+    # Issue #313 (defense in depth): a casting advisory on a property the
+    # code ITERATES as an *OA/*RA atomic is the wrong diagnosis -- the
+    # atomic_property_iteration gate owns that line. Drop it here so no
+    # caller can surface "cast LexemeFormOA" for `for x in e.LexemeFormOA:`.
+    atomic_check = detect_atomic_property_iteration(code, code_tree)
+    if atomic_check["has_atomic_iteration"] and casting_check.get("casting_issues"):
+        _atomic_keys = {(f["property"], f["line"]) for f in atomic_check["findings"]}
+        kept = [
+            i for i in casting_check["casting_issues"]
+            if (i.get("property"), i.get("line")) not in _atomic_keys
+        ]
+        if len(kept) != len(casting_check["casting_issues"]):
+            casting_check["casting_issues"] = kept
+            casting_check["has_casting_issues"] = bool(kept)
+            casting_check["severity"] = "error" if kept else "none"
     casting_check["has_error_severity"] = _has_error_severity_casting_issue(
         casting_check.get("casting_issues") or []
     )
@@ -2230,6 +2247,21 @@ def _build_validate_only_checks(
         })
     else:
         checks.append({"gate": "deprecated_member", "passed": True})
+
+    # --- Gate 3b2: atomic_property_iteration (issue #313) ---
+    # Same detector handle_run_module uses; hard-rejects there on read-only
+    # and write-enabled runs alike (a guaranteed "not iterable" TypeError).
+    atomic_iteration_check = detect_atomic_property_iteration(code, code_tree)
+    if atomic_iteration_check["has_atomic_iteration"]:
+        checks.append({
+            "gate": "atomic_property_iteration",
+            "passed": False,
+            "issues": atomic_iteration_check["findings"],
+            "message": atomic_iteration_check["message"],
+            "next_steps": atomic_iteration_check["next_steps"],
+        })
+    else:
+        checks.append({"gate": "atomic_property_iteration", "passed": True})
 
     # --- Gate 3c: reflection_bypass (issue #277) ---
     # Same detector + refusal rule handle_run_module uses (reject on write
@@ -3599,6 +3631,31 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id=op_id,
             ),
             error_code="deprecated_member",
+            code_size_bytes=_code_size_bytes,
+        )
+
+    # Issue #313: iterating an *OA / *RA (single-object) property -- e.g.
+    # `for hf in entry.LexemeFormOA:` -- is a guaranteed
+    # `TypeError: 'IMoForm' object is not iterable`. HARD BLOCK on read-only
+    # and write-enabled runs alike, and ahead of the casting gate so the
+    # misleading casting advisory on the same property never fires.
+    atomic_iteration_check = detect_atomic_property_iteration(code, code_tree)
+    if atomic_iteration_check["has_atomic_iteration"]:
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "atomic_property_iteration",
+            f"findings={[f.get('expr') for f in atomic_iteration_check['findings'][:5]]}",
+        log_dir_fn=get_log_dir,
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "atomic_property_iteration",
+                atomic_iteration_check["message"],
+                findings=atomic_iteration_check["findings"],
+                next_steps=atomic_iteration_check["next_steps"],
+                op_id=op_id,
+            ),
+            error_code="atomic_property_iteration",
             code_size_bytes=_code_size_bytes,
         )
 
@@ -5789,6 +5846,22 @@ MODULE_CODE = {code}
                 execution_result["given_arg_types"] = overload_info.get("given_arg_types")
                 execution_result["candidate_overloads"] = overload_info.get("candidates")
                 execution_result["help"] = overload_info.get("suggestion")
+
+        # Issue #313: "'IMoForm' object is not iterable" -- almost always a
+        # loop over an *OA/*RA single-object property. `code`/`code_tree`
+        # here are the EXECUTED (possibly auto-patched) source.
+        elif execution_result.get("error") and "object is not iterable" in execution_result.get("error", ""):
+            not_iterable_info = detect_not_iterable_error(execution_result["error"], code, code_tree)
+            if not_iterable_info.get("is_not_iterable_error"):
+                execution_result["error_type"] = (
+                    "AtomicPropertyIterationError"
+                    if not_iterable_info["is_atomic_iteration_error"]
+                    else "NotIterableError"
+                )
+                execution_result["object_type"] = not_iterable_info["object_type"]
+                if not_iterable_info.get("property"):
+                    execution_result["property_name"] = not_iterable_info["property"]
+                execution_result["help"] = not_iterable_info["suggestion"]
 
         # Record API usage patterns for learning
         from ..kernel import get_pattern_tracker

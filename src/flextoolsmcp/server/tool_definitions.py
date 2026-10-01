@@ -333,7 +333,7 @@ OPTIONAL `user_request`: the VERBATIM human request text, only needed here if
 intent drifted since flextools_start (which already captures it per-turn).
 
 VALIDATE WITHOUT EXECUTING (issue #49): pass validate_only=True to run the full
-11-gate preflight (plus a read-only project-lock probe) WITHOUT opening the
+preflight (plus a read-only project-lock probe) WITHOUT opening the
 project or spawning a subprocess. Returns status 'validated'|'validation_failed',
 a per-gate `checks[]` array (ALL gates reported, not just the first failure),
 and a `writeability` block describing any mutations the script would make.

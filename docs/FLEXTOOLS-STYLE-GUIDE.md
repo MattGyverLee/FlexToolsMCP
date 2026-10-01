@@ -664,10 +664,11 @@ Fix by wrapping writes:
 ## Validating Without Executing (validate_only)
 
 Before committing to a real run -- especially a write -- you can ask
-`flextools_run_module(validate_only=True)` to run the full 11-gate preflight
-(syntax, server state, partial-module structure, unprotected writes, casting,
-API discovery x2, undefined vars, imports x2, invalid API chains) plus a
-READ-ONLY project-lock probe, then stop. The project is never opened and no
+`flextools_run_module(validate_only=True)` to run the full preflight -- every
+gate a real run applies before launching (syntax, server state, module
+structure, unprotected writes, casting, API discovery, undefined names,
+imports, API chains, unknown methods, and more) -- plus a READ-ONLY
+project-lock probe, then stop. The project is never opened and no
 subprocess is spawned.
 
 The response reports EVERY gate (`checks[]`), not just the first failure, so

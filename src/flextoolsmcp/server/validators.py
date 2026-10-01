@@ -1832,12 +1832,35 @@ def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
 
 
 def _operation_method_names(api_index: Optional[Any], operations_class: str) -> List[str]:
-    """Methods on an Operations class, looked up in the flexicon index."""
+    """Methods on an Operations class, looked up in the flexicon index,
+    inherited ones included (issue #306 follow-up: MoveUp / Sort / Swap live
+    on BaseOperations, so an own-methods-only list never suggested them).
+
+    Best effort: ancestors the index does not cover are skipped rather than
+    voiding the list, since callers only use it for did-you-mean candidates.
+    Own methods come first, in index order.
+    """
     if api_index is None:
         return []
     flexicon = getattr(api_index, "flexicon", None) or {}
-    entity = (flexicon.get("entities") or {}).get(operations_class, {})
-    return [m.get("name", "") for m in entity.get("methods", []) if m.get("name")]
+    entities = flexicon.get("entities") or {}
+    names: List[str] = []
+    seen_names: Set[str] = set()
+    pending = [operations_class]
+    seen_classes: Set[str] = set()
+    while pending:
+        cls = pending.pop(0)
+        if cls in seen_classes or cls == "object":
+            continue
+        seen_classes.add(cls)
+        entity = entities.get(cls) or {}
+        for m in entity.get("methods", []) or []:
+            name = m.get("name")
+            if name and name not in seen_names:
+                seen_names.add(name)
+                names.append(name)
+        pending.extend(entity.get("base_classes") or [])
+    return names
 
 
 def _suggest_attribute_matches(attr_name: str, candidates: List[str], cutoff: float = 0.5) -> List[str]:
@@ -2114,6 +2137,10 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
     # Build enumerated set of known Lexicon* direct-project methods from index.
     # Only names actually in the index pass as valid; others get fuzzy-checked.
     known_lexicon_methods: Set[str] = set()
+    # Issue #306 follow-up: project.<X> -> its real Operations class from the
+    # index (Senses -> LexSenseOperations), not f"{X}Operations".
+    accessor_to_ops = _accessor_to_ops_map(api_index)
+    member_cache: Dict[str, Optional[Tuple[Dict[str, Dict[str, Any]], Set[str]]]] = {}
     if api_index is not None:
         flexicon = getattr(api_index, "flexicon", None) or {}
         flex_project = (flexicon.get("entities") or {}).get("FLExProject", {})
@@ -2220,9 +2247,28 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
             y = node.attr
             if x not in accessors:
                 continue  # outer accessor will be flagged separately if invalid
-            ops_class = f"{x}Operations"
-            methods = _operation_method_names(api_index, ops_class)
-            if not methods or y in methods:
+            # Issue #306 follow-up: `f"{x}Operations"` named a class that does
+            # not exist for most accessors (Senses, Wordforms, PhonRules, ...),
+            # so typos on them were never caught; and an own-methods-only
+            # lookup would misread inherited calls (MoveUp, Sort on
+            # BaseOperations). Resolve the class through the index and use
+            # the same base-class-aware, decidability-checked member lookup
+            # as the unknown_method gate, so the two gates agree.
+            ops_class = accessor_to_ops.get(x) or f"{x}Operations"
+            if ops_class not in member_cache:
+                member_cache[ops_class] = _ops_class_member_records(api_index, ops_class)
+            members = member_cache[ops_class]
+            if not _ops_class_membership_decidable(ops_class, members):
+                continue
+            member_methods, member_props = members
+            if y in member_methods or y in member_props:
+                continue
+            methods = [m for m in member_methods if not m.startswith("_")]
+            # Issue #306 QC: same #32 rule as the unknown_method gate -- a
+            # Get*/Find*/... name may be a getter newer than the index
+            # (`GetGlossText` next to an indexed GetGloss), so it only blocks
+            # (or is auto-fixed) when it is a confident typo of a real one.
+            if y.startswith(_UNINDEXED_READONLY_PREFIXES) and not _has_confident_member_typo_match(y, methods):
                 continue
             close = _suggest_attribute_matches(y, methods, cutoff=0.7)
             if close:
@@ -5153,8 +5199,48 @@ def _ambiguously_bound_names(
 
 
 #: Issue #32: name prefixes that are unambiguously read-only, so an unindexed
-#: method with one is neither a suspected write nor an unknown_method reject.
+#: method with one is never a suspected write, and is an unknown_method /
+#: invalid_api_chain finding only when _has_confident_member_typo_match says
+#: it is a typo of a real method.
 _UNINDEXED_READONLY_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains")
+
+#: Similarity a read-prefixed unindexed name needs to an indexed method before
+#: it is treated as a typo of it rather than a newer getter (same floor as the
+#: #46 typo auto-fix).
+_CONFIDENT_MEMBER_TYPO_RATIO = 0.9
+
+
+def _is_plausible_member_extension(base: str, tail: str) -> bool:
+    """True when `base + tail` reads as a different member, not a typo."""
+    if not tail:
+        return False
+    if tail[0].isupper():
+        return True
+    return tail in ("s", "es") and tail[0] != base[-1:]
+
+
+def _has_confident_member_typo_match(name: str, candidates: List[str]) -> bool:
+    """True when `name` is very probably a misspelling of one of `candidates`.
+
+    Issue #306 QC: shared by the unknown_method and invalid_api_chain gates
+    for Get*/Find*/Is*/Has*/Count*/Contains* names (#32), so a getter newer
+    than the index still runs while `GetLexemeFrom` (GetLexemeForm) is caught.
+    A candidate counts when the case-insensitive similarity is at least
+    _CONFIDENT_MEMBER_TYPO_RATIO and `name` is not a plausible extension of
+    it: a new camelCase word (`GetGlossText` after GetGloss) or a plural
+    ("s"/"es": `GetForms`, `GetGlosses`) is what a newer method looks like.
+    A doubled final letter (`GetGlosss`) or any other lowercase tail is
+    still a typo.
+    """
+    import difflib
+
+    lowered = name.lower()
+    for cand in candidates:
+        if name.startswith(cand) and _is_plausible_member_extension(cand, name[len(cand):]):
+            continue
+        if difflib.SequenceMatcher(None, lowered, cand.lower()).ratio() >= _CONFIDENT_MEMBER_TYPO_RATIO:
+            return True
+    return False
 
 
 def detect_unknown_operations_methods(
@@ -5180,10 +5266,11 @@ def detect_unknown_operations_methods(
 
     Conservative: a class not in the index, or whose base classes are not all
     indexed, is skipped; so are `_`-prefixed names and property names. So are
-    Get*/Find*/Is*/Has*/Count*/Contains* names (issue #32): a getter added to
-    flexicon after the index was built must still run, and a wrong getter
-    name fails at runtime with an AttributeError the runner already turns
-    into a `did_you_mean` (runtime_error) -- it never needed a write guard.
+    Get*/Find*/Is*/Has*/Count*/Contains* names (issue #32) unless
+    _has_confident_member_typo_match calls them a typo of a real method: a
+    getter added to flexicon after the index was built must still run, and a
+    less certain wrong getter name fails at runtime with an AttributeError the
+    runner already turns into a `did_you_mean` (runtime_error).
 
     Returns dict with:
       - has_unknown: bool
@@ -5215,7 +5302,7 @@ def detect_unknown_operations_methods(
         if not isinstance(node.func, ast.Attribute):
             continue
         method_name = node.func.attr
-        if method_name.startswith("_") or method_name.startswith(_UNINDEXED_READONLY_PREFIXES):
+        if method_name.startswith("_"):
             continue
         receiver = node.func.value
         # A receiver (or facade root) whose name is bound to more than one
@@ -5239,11 +5326,18 @@ def detect_unknown_operations_methods(
         methods, properties = members
         if method_name in methods or method_name in properties:
             continue
+        public = sorted(m for m in methods if not m.startswith("_"))
+        # Issue #32 / #306 QC: a read-prefixed name absent from the index may
+        # be a getter newer than it, so it is only reported when it is a
+        # confident typo of a real method (the chain gate uses the same rule).
+        if method_name.startswith(_UNINDEXED_READONLY_PREFIXES) and not _has_confident_member_typo_match(
+            method_name, public
+        ):
+            continue
         key = (cls, method_name, node.lineno)
         if key in seen:
             continue
         seen.add(key)
-        public = sorted(m for m in methods if not m.startswith("_"))
         close = _suggest_attribute_matches(method_name, public, cutoff=0.5)
         if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name):
             expr = f"{receiver.func.id}(...).{method_name}"

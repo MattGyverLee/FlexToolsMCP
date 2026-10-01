@@ -2184,8 +2184,15 @@ def _build_validate_only_checks(
     provenance_existing: bool,
     skip_module_check: bool,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Run gates 1-11 (production order) WITHOUT short-circuiting, except that
-    a syntax failure blocks every AST-dependent gate after it (per spec).
+    """Run every run_module preflight gate, in production order, WITHOUT
+    short-circuiting, except that a syntax failure blocks every AST-dependent
+    gate after it (per spec). This function IS the canonical gate list: each
+    gate appends one `checks[]` entry, so count the entries rather than
+    restating a number anywhere. The `# --- Gate N ---` labels below are
+    positional section names shared with tests/evals/preflight_runner.py (and
+    cross-referenced as e.g. "Gate 5" for casting); a gate inserted between
+    two others gets a letter suffix (3a, 3b2), one appended gets the next
+    number -- so the labels are not a count either.
 
     Side-effect free: does NOT call session_state_obj.record_auto_discovered_api
     or any other mutating method -- discovery gates REPORT here, they never
@@ -2203,7 +2210,7 @@ def _build_validate_only_checks(
             "passed": False,
             "issues": [{"line": syntax_error.lineno, "message": syntax_error.msg}],
         })
-        # AST-dependent gates 2-11 cannot run without a parse tree.
+        # Stop: every later gate is skipped without a parse tree (per spec).
         writeability = {
             "is_mutating_script": False,
             "mutations_detected": [],
@@ -2465,7 +2472,7 @@ def _build_validate_only_checks(
     else:
         checks.append({"gate": "invalid_api_chain", "passed": True})
 
-    # --- Gate 12: unknown_method (issue #306) ---
+    # --- Gate 12: unknown_method (issue #306; appended after Gate 11) ---
     unknown_method_check = detect_unknown_operations_methods(code_tree, api_idx)
     if unknown_method_check["has_unknown"]:
         checks.append({
@@ -2491,7 +2498,10 @@ async def _handle_validate_only(
     seq: int,
     t_start: float,
 ) -> list[TextContent]:
-    """Issue #49: run the 11-gate preflight + a read-only lock probe, then STOP.
+    """Issue #49: run the full preflight + a read-only lock probe, then STOP.
+
+    The gate list lives in _build_validate_only_checks (one `checks[]` entry
+    per gate); do not restate its count here.
 
     Never opens the project, never spawns the subprocess. Reports ALL faults
     in one response (no short-circuit except syntax_error, which blocks the
@@ -3050,6 +3060,27 @@ def _defer_chain_method_issues_to_unknown_method(
     }
 
 
+def _typo_fix_introduces_unprotected_write(patched_code: str, api_idx: Any) -> bool:
+    """True when a typo-patched script has an unguarded mutating call.
+
+    Issue #306 follow-up: the typo auto-fix (#46) runs AFTER the
+    unprotected_writes gate, so rewriting a MovUp typo on `project.Senses` to
+    the inherited, mutating MoveUp would skip the write gate entirely. The
+    original script passed that gate (the unknown name was not counted as a
+    write), so any unprotected mutation in the patch was introduced by the
+    patch: decline it and let the call be reported as unknown_method with
+    MoveUp as the did-you-mean -- the same answer the aliased form gets.
+    """
+    try:
+        cert = certify_script_readonly(patched_code, api_idx, ast.parse(patched_code))
+    except Exception:
+        return True  # cannot certify the patch -> do not apply it
+    return any(
+        m.get("is_mutating") and not m.get("protected")
+        for m in cert.get("mutating_calls", [])
+    )
+
+
 def _try_auto_fix_typos(
     code: str,
     issues: List[Dict[str, Any]],
@@ -3434,7 +3465,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     seq, op_id = _next_op_id()
     t_start = time.monotonic()
 
-    # Issue #49: validate_only mode -- run the 11-gate preflight (plus a
+    # Issue #49: validate_only mode -- run the full preflight (plus a
     # read-only project-lock probe) and STOP. Diverted here, before the
     # normal ast.parse()/SyntaxError early-return below, because validate_only
     # must surface a syntax failure as a `checks[]` entry (gate 1) rather than
@@ -4437,7 +4468,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             if _af_typo is not None:
                 _patched_typo = _af_typo["patched_code"]
                 _typo_fix_records = _af_typo["fixes"]
-                if _validate_patched_code(_patched_typo, api_idx, casting_index):
+                if _validate_patched_code(
+                    _patched_typo, api_idx, casting_index
+                ) and not _typo_fix_introduces_unprotected_write(_patched_typo, api_idx):
                     _orig_sha_t = hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest()[:12]
                     _patched_sha_t = hashlib.sha256(_patched_typo.encode("utf-8", errors="replace")).hexdigest()[:12]
                     get_operations_logger().info(

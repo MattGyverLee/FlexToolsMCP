@@ -53,6 +53,7 @@ from server.validators import (
     detect_missing_operations_imports,
     detect_wrong_library_imports,
     detect_invalid_project_chains,
+    detect_unknown_operations_methods,
     detect_getall_unsafe_idiom,
 )
 from server import kernel
@@ -63,7 +64,10 @@ from server import kernel
 # docstring). Previously this runner called detect_casting_needs directly
 # and never modeled detect_interface_attribute_typos at all -- its own
 # comment admitted Tier-1 evals were blind to the whole #39 typo class.
-from server.handlers.execution import _compute_casting_decision
+from server.handlers.execution import (
+    _compute_casting_decision,
+    _defer_chain_method_issues_to_unknown_method,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -104,6 +108,10 @@ class _FakeAPIIndex:
                         {"name": "GetLexemeForm", "is_mutating": False},
                         {"name": "Create", "is_mutating": True},
                         {"name": "SetLexemeForm", "is_mutating": True},
+                        # Issue #306: the real index has Delete; without it the
+                        # unknown_method gate would reject corpus 16's guarded
+                        # delete as a nonexistent method.
+                        {"name": "Delete", "is_mutating": True},
                     ],
                 },
                 "POSOperations": {
@@ -244,6 +252,7 @@ _ORDERED_GATES = (
     "missing_imports",
     "wrong_library_imports",
     "invalid_api_chain",
+    "unknown_method",
 )
 
 
@@ -435,11 +444,21 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
             "preflight_reject", "wrong_library_imports", "wrong_library_imports", str(wrong["wrong_imports"])
         )
 
-    # Gate 11: invalid_api_chain.
-    chain = detect_invalid_project_chains(tree, FAKE_API_INDEX)
+    # Gate 11: invalid_api_chain (method issues the unknown_method gate also
+    # reports are deferred to it -- issue #306, as in handle_run_module).
+    chain = _defer_chain_method_issues_to_unknown_method(
+        detect_invalid_project_chains(tree, FAKE_API_INDEX), tree, FAKE_API_INDEX
+    )
     if chain["has_invalid"]:
         return PreflightResult(
             "preflight_reject", "invalid_api_chain", "invalid_api_chain", str(chain["issues"])
+        )
+
+    # Gate 12: unknown_method (issue #306).
+    unknown_method = detect_unknown_operations_methods(tree, FAKE_API_INDEX)
+    if unknown_method["has_unknown"]:
+        return PreflightResult(
+            "preflight_reject", "unknown_method", "unknown_method", str(unknown_method["issues"])
         )
 
     # Non-blocking advisory (getall-contract SPEC §6 Level 3): never rejects,

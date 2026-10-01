@@ -417,6 +417,9 @@ class ProjectLockedDetail(BaseModel):
     holder_pid: Optional[int] = None
     holder_process: Optional[str] = None
     remedy: Optional[str] = None
+    # Issue #315: numbered steps the model can act on ("1. ..."), so a
+    # held_by_other refusal is not a dead end it cannot resolve.
+    next_steps: List[Any] = Field(default_factory=list)
 
 
 class ProjectDriveUnavailableDetail(BaseModel):

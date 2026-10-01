@@ -6,7 +6,8 @@ one project setting: **project sharing**. This page explains what works with
 FLEx open, what does not and why, and how to turn sharing on.
 
 Tracked as issue #93. The design record, with source citations for every
-claim below, is `specs/shared-mode-access/SPEC.md`.
+claim below, is `specs/shared-mode-access/spec.md`; the writing-system and
+custom-field refusal is `specs/exclusive-access-gate/spec.md`.
 
 ## The short version
 
@@ -17,7 +18,8 @@ claim below, is `specs/shared-mode-access/SPEC.md`.
 | Open | off | refused, with the enable-sharing steps below | refused, with the enable-sharing steps below |
 
 Two kinds of change must **not** be made while FLEx has the project open,
-even with sharing on: **custom fields** and **writing systems**. See
+even with sharing on: **custom fields** and **writing systems**. The server
+refuses them with `requires_exclusive_access`. See
 [Close FLEx for these](#close-flex-for-these).
 
 ## Why sharing matters
@@ -57,7 +59,7 @@ is one of these verdicts, reported by `flextools_health(verbose=True)` under
 | Verdict | Meaning | Write behavior |
 |---|---|---|
 | `free` | No lock file | proceeds |
-| `open_shared` | FLEx has it open, sharing on | proceeds, with a `shared_mode` note on the result |
+| `open_shared` | FLEx has it open, sharing on | proceeds, with a `shared_mode` note on the result; writing-system and custom-field changes are refused as `requires_exclusive_access` |
 | `stale_lock` | Lock names a process that is no longer running | proceeds; LCM treats a stale lock as free |
 | `open_exclusive` | FLEx has it open, sharing off (or the lock file is unreadable) | refused as `project_locked`, with the enable-sharing steps |
 | `held_by_other` | A live process that is not FLEx holds it, usually a leftover FLExTools/MCP subprocess | refused as `project_locked`; enabling sharing does not help. Wait for that process to exit, or end it |
@@ -71,15 +73,32 @@ no FieldWorks or python process is running, delete it yourself.
 
 ## Close FLEx for these
 
-Some changes a peer cannot make safely. Until the planned refusal gate
-(`requires_exclusive_access`, CP5) ships, **nothing in the server refuses
-these** while FLEx is open. Close FLEx first, make the change, then reopen
-FLEx.
+Some changes a peer cannot make safely. A write-enabled `run_module` whose
+script makes one of them is **refused** with `requires_exclusive_access`
+while FLEx has the project open with sharing on (verdict `open_shared`), or
+when the server cannot confirm FLEx is closed (verdict `unknown`). The
+refusal comes before the confirmation step, the backup and the run, so
+nothing has happened yet. To recover:
+
+1. Close FLEx (all windows for this project).
+2. Re-submit the **same** `run_module` call, unchanged. Do not rewrite the
+   script to get around the refusal.
+3. Reopen FLEx after the run finishes.
+
+`validate_only` reports the same decision ahead of time as
+`project_lock.exclusive_access.blocking`. Read-only runs are never refused
+for this. Ordinary edits are never refused for this either: closing FLEx is
+needed only for the changes below.
 
 | Change | What goes wrong from a peer | Evidence |
 |---|---|---|
-| **Custom field** create, delete or rename | *Silently lost.* Only the master writes custom-field definitions to disk, and the commit log has nowhere to carry them, so the field is gone after the next restart with no error. FLEx blocks its own Custom Fields dialog in the same situation. | `SharedXMLBackendProvider.cs:408,478`; `CommitLogRecord.cs:17-49`; `XWorksViewBase.cs:715` |
-| **Writing system** add or modify | *Crashes FLEx.* The change reaches disk, then the running FLEx throws `NullReferenceException` in `WritingSystemListHandler.AddWritingSystemList` (`TextListeners.cs:286`). Seen live on FieldWorks 9.3.10. | `specs/shared-mode-access/evidence/live-cp4.md`, Item 5 |
+| **Custom field** create, delete or rename (`CustomFieldOperations.CreateField` / `DeleteField` / `SetFieldName`; raw `AddCustomField`, `UpdateCustomField`, `DeleteCustomField`, `MarkForDeletion`) | *Silently lost.* Only the master writes custom-field definitions to disk, and the commit log has nowhere to carry them, so the field is gone after the next restart with no error. FLEx blocks its own Custom Fields dialog in the same situation. | `SharedXMLBackendProvider.cs:429,479`; `CommitLogRecord.cs:23-48`; `XWorksViewBase.cs:715` |
+| **Writing system** add, delete or modify (`WritingSystemOperations.Create` / `Ensure` / `Delete` / `SetFontName` / `SetFontSize` / `SetRightToLeft` / `SetDefaultVernacular` / `SetDefaultAnalysis`; the raw writing-system manager, lists and services) | *Crashes FLEx.* The change reaches disk, then the running FLEx throws `NullReferenceException` in `WritingSystemListHandler.AddWritingSystemList` (`TextListeners.cs:286`). Seen live on FieldWorks 9.3.10. | `specs/shared-mode-access/evidence/live-cp4.md`, Item 5 |
+
+The full list, with the raw LCM names, is
+`EXCLUSIVE_ONLY_OPERATIONS` in `src/flextoolsmcp/server/exclusive_access.py`.
+Setting a custom field's **value** (`CustomFieldOperations.SetValue` and the
+other value methods) is an ordinary edit and is not refused.
 
 The custom-field row comes from reading the LCM source; it has not been
 reproduced live. Today flexicon's `CustomFieldOperations.CreateField` fails
@@ -112,6 +131,12 @@ committed. Results in this situation carry a `shared_mode_read_back` note.
 Do not treat such a read as proof that a write was lost, and do not retry the
 write because of it. Check the FLEx UI instead.
 
+## Seeing an MCP change in FLEx
+
+FLEx picks up a peer's change when it next refreshes the view you are on.
+**Navigate away and back** (for example, click another entry and then return)
+to see it. Pressing **F5** alone is not enough (#96).
+
 ## Retrying after `ReportedError`
 
 A run whose script called `report.Error()` comes back with `success: false`
@@ -142,8 +167,22 @@ belongs in flexicon (upstream issue not yet filed).
 
 ## Undo
 
-There is no undo tool. LCM keeps its undo stack in memory only, and each
-`run_module` call runs in a fresh process, so nothing survives to undo. The
-old `flextools_undo_last_operation` tool never worked and was removed (#92).
-Your safety nets are the automatic backup and, for Send/Receive projects,
-the repository.
+There is no undo for an MCP write, from either side:
+
+- **No MCP undo.** LCM keeps its undo stack in memory only, and each
+  `run_module` call runs in a fresh process, so nothing survives to undo. The
+  old `flextools_undo_last_operation` tool never worked and was removed (#92).
+- **FLEx starts with an empty undo history.** Each time FLEx opens a project
+  its undo stacks are new and empty; no undo history is saved with the
+  project (`UnitOfWorkService.cs:169-172`).
+- **FLEx records peer writes as non-undoable.** When FLEx picks up a peer's
+  change, it wraps it in a non-undoable unit of work
+  (`ChangeReconciler.cs:200-204`, `UndoStack.cs:859-870`). So Edit > Undo in
+  FLEx does not offer an MCP change, whether FLEx was open or closed when it
+  was made.
+- **Programmatic undo is not built.** Under `undoable=True` LCM keeps an undo
+  stack inside one `run_module` process, so a script could in principle undo
+  its own work before it exits. The server offers no such feature.
+
+Your safety nets are the automatic pre-write backup and, for Send/Receive
+projects, the repository. See [RECOVERY.md](RECOVERY.md).

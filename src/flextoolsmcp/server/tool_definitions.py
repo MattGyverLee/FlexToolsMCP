@@ -130,16 +130,18 @@ feature; it is carried through to any run_module ops this turn unless a given
 op overrides it with its own user_request.
 
 write_enabled is inherited from the prior session on re-init when not
-explicitly provided (per #9 fix). Undo behavior depends on the installed
-flexicon build: on builds advertising the "per-operation-uow" capability
+explicitly provided (per #9 fix). There is NO undo for a run_module write:
+each run is a fresh process whose LCM undo stack dies with it, and FLEx
+records peer writes as non-undoable, so FLEx's Ctrl+Z does not offer them
+either. On flexicon builds advertising the "per-operation-uow" capability
 (every supported install under the declared pyflexicon floor), each
-mutating call opens its own named FLEx undo task, so a run's writes land
-in FLEx's Ctrl+Z menu individually. On an unsupported build without that
-capability token the runner falls back to non-undoable mode and reports
+mutating call opens its own named unit of work, which is what stamps
+DateModified. On an unsupported build without that capability token the
+runner falls back to non-undoable mode and reports
 `undoable=false` / `timestamps_updated=false` on the run_module response
-(issue #153) -- do not treat a silent success as stamped-and-rollbackable.
-Either way, see docs/RECOVERY.md for the pre-write backup safety net --
-do not rely on undo as your only recovery path.""",
+(issue #153) -- do not treat a silent success as stamped. The recovery path
+is the pre-write backup (and, for Send/Receive projects, the repository):
+see docs/RECOVERY.md.""",
         input_model=FlexToolsStartInput,
         annotations=READ_ONLY_SAFE,
     ),

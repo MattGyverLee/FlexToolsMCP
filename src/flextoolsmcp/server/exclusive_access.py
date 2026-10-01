@@ -34,7 +34,7 @@ import ast
 from dataclasses import asdict, dataclass
 from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
-_WS_LIVE_EVIDENCE = "specs/_archive/shared-mode-access/evidence/live-cp4.md Item 5"
+_WS_LIVE_EVIDENCE = "specs/shared-mode-access/evidence/live-cp4.md Item 5"
 _CF_SOURCE_EVIDENCE = (
     "liblcm SharedXMLBackendProvider.cs:429,479; CommitLogRecord.cs:23-48"
 )
@@ -178,6 +178,13 @@ EXCLUSIVE_ONLY_OPERATIONS: Tuple[ExclusiveOnlyOperation, ...] = (
         evidence=_WS_LIVE_EVIDENCE + "; flexicon WritingSystemOperations setters",
     ),
 )
+
+#: The row label each category has in docs/SHARED-MODE.md "Close FLEx for
+#: these" (tests/test_docs_no_undo_claims.py keeps the two in step).
+CATEGORY_LABELS: Dict[str, str] = {
+    "custom_field": "Custom field",
+    "writing_system": "Writing system",
+}
 
 ROWS_BY_KEY: Dict[str, ExclusiveOnlyOperation] = {
     row.key: row for row in EXCLUSIVE_ONLY_OPERATIONS

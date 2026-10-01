@@ -172,24 +172,24 @@ describes the gate as shipped.
 
 **Independent test**: `tests/test_docs_no_undo_claims.py` passes.
 
-- [ ] T020 [P] [US4] Write `tests/test_docs_no_undo_claims.py`:
+- [X] T020 [P] [US4] Write `tests/test_docs_no_undo_claims.py`:
   - (a) no file under `docs/`, nor `USAGE.md`, `README.md` or `src/flextoolsmcp/server/tool_definitions.py`, contains `undo_last_operation`;
   - (b) none contains "can reverse a write";
   - (c) `docs/SHARED-MODE.md` contains "requires_exclusive_access", "navigate away", "F5", "non-undoable" and "empty undo history" (or the exact phrases chosen in T023, kept in sync);
   - (d) every `category` in `EXCLUSIVE_ONLY_OPERATIONS` has a row in SHARED-MODE.md's "Close FLEx for these" table.
-- [ ] T021 [P] [US4] In `docs/workflow-summary.md`:
+- [X] T021 [P] [US4] In `docs/workflow-summary.md`:
   - remove Stage 6 "Inspect & Undo" (~:16 table row, ~:137 "undo entry recorded", ~:170-211);
   - keep `flextools_get_operation_logs` and `flextools_get_session_history` in an "Inspect" stage, described without undo;
   - fix the numbering of any stages after it.
-- [ ] T022 [P] [US4] In `docs/FLEXTOOLS-STYLE-GUIDE.md` (~:688-693), replace the "`flextools_undo_last_operation` can reverse a write" passage with: there is no undo; your safety nets are the automatic pre-write backup and, for Send/Receive projects, the repository. Link `docs/RECOVERY.md`.
-- [ ] T023 [US4] In `docs/SHARED-MODE.md`:
+- [X] T022 [P] [US4] In `docs/FLEXTOOLS-STYLE-GUIDE.md` (~:688-693), replace the "`flextools_undo_last_operation` can reverse a write" passage with: there is no undo; your safety nets are the automatic pre-write backup and, for Send/Receive projects, the repository. Link `docs/RECOVERY.md`.
+- [X] T023 [US4] In `docs/SHARED-MODE.md`:
   - "Close FLEx for these" (~:72-97): say the server refuses these with `requires_exclusive_access` and give the recovery steps; generate the table rows from the categories in `EXCLUSIVE_ONLY_OPERATIONS`;
   - add a "Seeing an MCP change in FLEx" paragraph: navigate away and back; F5 alone is not enough (#96);
   - extend "Undo" (~:143-149) with the four facts from spec Section 2: no MCP undo; FLEx starts with an empty undo history on open; FLEx records peer writes as non-undoable, citing research R4; programmatic LCM undo is not built;
   - leave the "upstream issue not yet filed" line (~:141) for T037.
 
   Run T020.
-- [ ] T024 [US4] Review the undo wording in `src/flextoolsmcp/server/tool_definitions.py` (~:133-142, ~:661, ~:718). Rewrite anything that suggests the MCP can undo a write. FLEx-side `undoable` mode text may stay if it is accurate. Then run `python scripts/validate_integrity.py server`.
+- [X] T024 [US4] Review the undo wording in `src/flextoolsmcp/server/tool_definitions.py` (~:133-142, ~:661, ~:718). Rewrite anything that suggests the MCP can undo a write. FLEx-side `undoable` mode text may stay if it is accurate. Then run `python scripts/validate_integrity.py server`.
 
 **Checkpoint**: T020 passes, and the integrity check is clean.
 

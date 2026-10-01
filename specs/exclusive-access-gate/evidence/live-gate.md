@@ -139,6 +139,40 @@ Side finding (ledger flexicon-5, already STILL NEW): V8c's
 `report.Info("before Ensure ...")` line is missing from the result, because
 run_module drops `report` messages when the script raises.
 
+## Merged flexicon (#601) re-run, and an unintended write (2026-10-01 11:37)
+
+After flexicon#601 merged, `C:\Github\flexicon` was pulled to `04786b0`. The
+venv's flexicon now has `peer-schema-guard`.
+
+- flexicon offline suite on `main`: the 23 guard / capability / stub tests
+  pass. 47 failures, in `test_575_msa_longname_type.py`,
+  `test_577_inflectable_features.py`, `test_issue581_offline.py` and
+  `test_docstring_example_ratchet.py`, are **pre-existing**: the identical 47
+  fail at `ad4a1c2` (main just before the #601 merge). They are unrelated to
+  the guard.
+
+**Incident.** The maintainer had closed FieldWorks before this re-run, and
+the session did not re-check the probe first. With `verdict: free` the gate
+correctly does not apply, so the V8 scripts ran as ordinary writes:
+
+- V8a (`op-113709844`): `Ensure('en', analysis)`, `created=False`. This is
+  also the corrected **V3** call (FLEx closed, an already-active tag), and it
+  passed the gate and wrote nothing.
+- V8b (`op-113719668`): **created** `qaa-x-zzexcl` as a vernacular WS.
+- V8c (`op-113729827`): `created=False` (already present by then).
+
+Cleanup (`cleanup_zzexcl_ws.py`, read-only dry run, then write
+`op-113850747`): `WritingSystems.Delete('qaa-x-zzexcl')`. A fresh read
+confirms vernacular `seh, seh-fonipa-x-etic` and analysis `en, pt`.
+
+**Residue (ledger flexicon-6):** `WritingSystemStore/qaa-x-zzexcl.ldml` and
+an `<Add Producer="???">` entry for it in `idchangelog.xml` remain.
+Removing them needs a hand edit, pending the maintainer. The pre-write backup
+taken just before V8b is `~/.flextoolsmcp/backups/Sena 3/20261001T163719Z`.
+
+Lesson for the driver: probe and print the verdict, and refuse to run a V8
+step unless it is `open_shared`.
+
 ## Pending
 
 - V6 (FLEx side: navigate away and back, Edit > Undo): needs the maintainer.

@@ -90,6 +90,13 @@ def main():
     print(f"[ENV ] FLEXLIBS_REQUIRE_LIVE={os.environ.get('FLEXLIBS_REQUIRE_LIVE')}", flush=True)
     a = probe_project_access(PROJECT)
     print(f"[PROBE] verdict={a.verdict} sharing={a.sharing_enabled} holder={a.holder}", flush=True)
+    # `--expect <verdict>`: refuse to run when the project is not in the state
+    # the step was written for (2026-10-01: V8 re-ran as ordinary writes after
+    # FieldWorks had been closed, and created a writing system).
+    if "--expect" in sys.argv:
+        expected = sys.argv[sys.argv.index("--expect") + 1]
+        if a.verdict != expected:
+            raise SystemExit(f"[STOP] verdict is {a.verdict!r}, step expects {expected!r}; not running")
     if mode == "probe":
         return
     if mode == "ws-list":

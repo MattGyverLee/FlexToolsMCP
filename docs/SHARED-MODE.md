@@ -110,7 +110,9 @@ category you ask for. A script whose only writing-system calls are
   writing-system lists straight from its `.fwdata` file. It does not open the
   project. The `.ldml` files in `WritingSystemStore` are not enough for this:
   a writing system can have an `.ldml` and still be inactive, and `Ensure()`
-  would then activate it.
+  would then activate it. The result is kept until the file changes, so most
+  calls cost a single file-timestamp check. Any save by FLEx, and any MCP
+  write, refreshes it.
 - An `Ensure('en', 'English', is_vernacular=False)` whose tag is already
   active in that category runs normally. A tag that would be added, or added
   to the other category, is refused up front with the reason. Remember that

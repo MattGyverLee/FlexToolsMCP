@@ -204,8 +204,8 @@ project-open diagnosis changes.
 - `WritingSystems.Ensure()` is checked first instead of refused outright
   while FieldWorks has the project open. When `Ensure()` calls are a script's
   only writing-system changes, the server reads the project's active
-  writing-system lists from its `.fwdata` just before the run (about half a
-  second; the project is not opened):
+  writing-system lists from its `.fwdata` just before the run (about 150 ms,
+  then cached until the file changes; the project is not opened):
   - an already-active tag runs normally (the result carries
     `exclusive_access`);
   - a tag that would be added is refused up front, with the reason;

@@ -2516,12 +2516,20 @@ def _set_runner_peer_guard(script_path: str, mode: str) -> None:
         fh.write(text)
 
 
+#: .fwdata path -> ((size, mtime_ns), active lists). Re-read only when the
+#: file changes: any FLEx save or MCP write changes it, so a writing system
+#: added since the last read is never refused from a stale entry. What FLEx
+#: holds unsaved is invisible either way; the runtime guard covers that.
+_ACTIVE_WS_CACHE: Dict[str, Tuple[Tuple[int, int], Dict[str, List[str]]]] = {}
+
+
 def _read_active_writing_systems(project_name: str) -> Optional[Dict[str, List[str]]]:
     """The project's active WS lists, read from its .fwdata on disk, or None.
 
     Pure filesystem, like the access probe: it never opens the project.
-    None (no .fwdata, unreadable, elements not found) leaves conditional
-    calls to the runtime guard.
+    Cached per file on (size, mtime); a cache hit costs one stat(). None (no
+    .fwdata, unreadable, elements not found) leaves conditional calls to the
+    runtime guard, and is not cached.
     """
     try:
         try:
@@ -2529,9 +2537,19 @@ def _read_active_writing_systems(project_name: str) -> Optional[Dict[str, List[s
         except (ImportError, ValueError):
             from server.project_discovery import get_project_fwdata_path
         fwdata = get_project_fwdata_path(project_name)
-        active = (
-            exclusive_access.read_active_writing_systems(fwdata) if fwdata else None
-        )
+        active = None
+        if fwdata:
+            st = os.stat(fwdata)
+            signature = (st.st_size, st.st_mtime_ns)
+            key = str(fwdata)
+            cached = _ACTIVE_WS_CACHE.get(key)
+            if cached is not None and cached[0] == signature:
+                return cached[1]
+            active = exclusive_access.read_active_writing_systems(fwdata)
+            if active is not None:
+                _ACTIVE_WS_CACHE[key] = (signature, active)
+            else:
+                _ACTIVE_WS_CACHE.pop(key, None)
     except Exception as exc:  # noqa: BLE001 -- a failed read only defers to the guard
         active = None
         get_operations_logger().warning(

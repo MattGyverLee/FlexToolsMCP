@@ -645,3 +645,66 @@ class TestValidateOnlyConditional:
         excl = _validate(ENSURE_MIXED)["project_lock"]["exclusive_access"]
         assert excl["blocking"] is True
         assert "conditional" not in excl
+
+
+# ---------------------------------------------------------------------------
+# The active-list read is cached per .fwdata on (size, mtime)
+# ---------------------------------------------------------------------------
+
+import os  # noqa: E402
+
+from flextoolsmcp.server import exclusive_access as _ea  # noqa: E402
+from flextoolsmcp.server import project_discovery  # noqa: E402
+
+_FWDATA = (
+    "<CurVernWss>\n<Uni>seh</Uni>\n</CurVernWss>\n"
+    "<CurAnalysisWss>\n<Uni>en pt</Uni>\n</CurAnalysisWss>\n"
+)
+
+
+class TestActiveWritingSystemCache:
+    def _setup(self, monkeypatch, tmp_path, text=_FWDATA):
+        f = tmp_path / "P.fwdata"
+        f.write_text(text, encoding="utf-8")
+        monkeypatch.setattr(project_discovery, "get_project_fwdata_path", lambda name: f)
+        monkeypatch.setattr(execution_mod, "_ACTIVE_WS_CACHE", {})
+        reads = []
+        real = _ea.read_active_writing_systems
+
+        def counting(path):
+            reads.append(path)
+            return real(path)
+
+        monkeypatch.setattr(_ea, "read_active_writing_systems", counting)
+        return f, reads
+
+    def test_unchanged_file_is_read_once(self, monkeypatch, tmp_path):
+        _, reads = self._setup(monkeypatch, tmp_path)
+        first = execution_mod._read_active_writing_systems("P")
+        second = execution_mod._read_active_writing_systems("P")
+        assert first == second == {"vernacular": ["seh"], "analysis": ["en", "pt"]}
+        assert len(reads) == 1
+
+    def test_changed_file_is_read_again(self, monkeypatch, tmp_path):
+        """A writing system added in FLEx (or by an MCP run) changes the file;
+        the next call must see it, not refuse from a stale entry."""
+        f, reads = self._setup(monkeypatch, tmp_path)
+        execution_mod._read_active_writing_systems("P")
+        f.write_text(_FWDATA.replace("seh</Uni>", "seh qaa-x-new</Uni>"), encoding="utf-8")
+        st = f.stat()
+        os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000_000))
+        active = execution_mod._read_active_writing_systems("P")
+        assert active["vernacular"] == ["seh", "qaa-x-new"]
+        assert len(reads) == 2
+
+    def test_failed_read_is_not_cached(self, monkeypatch, tmp_path):
+        f, reads = self._setup(monkeypatch, tmp_path, text="<nothing/>\n")
+        assert execution_mod._read_active_writing_systems("P") is None
+        assert execution_mod._read_active_writing_systems("P") is None
+        assert len(reads) == 2
+        assert execution_mod._ACTIVE_WS_CACHE == {}
+
+    def test_missing_fwdata_is_none(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(project_discovery, "get_project_fwdata_path", lambda name: None)
+        monkeypatch.setattr(execution_mod, "_ACTIVE_WS_CACHE", {})
+        assert execution_mod._read_active_writing_systems("P") is None

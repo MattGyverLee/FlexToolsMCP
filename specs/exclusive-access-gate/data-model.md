@@ -79,7 +79,9 @@ probe ran.
   `{vernacular: [tag], analysis: [tag]}` from the LangProject `CurVernWss` /
   `CurAnalysisWss` `<Uni>` elements, streamed from the `.fwdata`, or None.
   It is pure filesystem and never opens the project. The `.ldml` store is
-  not used: store-present does not mean active.
+  not used: store-present does not mean active. `execution._ACTIVE_WS_CACHE`
+  caches the result per `.fwdata` path on `(size, mtime_ns)`, so a cache hit
+  costs one `stat()`. A failed read is not cached.
 - Guard probe (`execution._peer_schema_guard_available`): in the server
   process. A mismatch with the run's flexicon fails closed through
   `PEER_SCHEMA_GUARD='required'`.

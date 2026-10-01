@@ -3,8 +3,8 @@
   "specName": "exclusive-access-gate",
   "branch": "feat/exclusive-access-gate",
   "selectedAt": "2026-09-30T20:00:00.000Z",
-  "currentStep": "plan",
-  "status": "planned",
+  "currentStep": "tasks",
+  "status": "ready-to-implement",
   "history": [
     {
       "step": "specify",
@@ -33,6 +33,13 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-30T22:00:00.000Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-30T22:30:00.000Z"
     }
   ],
   "decisions": [

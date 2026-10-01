@@ -4977,6 +4977,8 @@ def build_unknown_method_rejection(cert: Optional[dict]) -> Optional[dict]:
         + ". The rejection's `available_methods` lists the class's methods.",
         f"2. Check the signature first: flextools_get_object_api(object_type='{first['class']}').",
         "3. Re-run flextools_run_module().",
+        "If the method really exists in the installed flexicon, the API index "
+        "is stale: run `flextools-mcp-refresh` and restart the server.",
     ]
     return {
         "message": message,

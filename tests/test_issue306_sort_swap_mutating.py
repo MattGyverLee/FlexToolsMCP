@@ -67,9 +67,14 @@ class TestShippedIndex:
 class TestGeneratorHeuristic:
     @pytest.mark.parametrize("name, expected", [
         ("Sort", True), ("Swap", True), ("Reorder", True), ("ReorderSenses", True),
-        ("InsertAt", True), ("SortByKey", True),
+        ("InsertAt", True), ("InsertBefore", True), ("InsertAfter", True),
+        # Nouns / non-splice names: often getters or properties.
+        ("SortKey", False), ("SortKeyWs", False), ("SortOrder", False),
+        ("SortSpec", False), ("SortWs", False), ("SortField", False),
+        ("SortBy", False), ("SortByKey", False), ("SortAlternative", False),
+        ("SwapPair", False), ("InsertXml", False), ("Insert", False),
         ("Sorted", False), ("Insertion", False), ("Swapped", False),
-        ("GetSortKey", False),
+        ("Reordered", False), ("GetSortKey", False),
     ])
     def test_name_reorders_sequence(self, name, expected):
         assert _name_reorders_sequence(name) is expected
@@ -101,3 +106,4 @@ class TestGeneratorHeuristic:
         usage_hint values do not churn."""
         info = _analyze("def Sort(self, parent):\n    return 0\n")
         assert info["usage_hint"] is None
+

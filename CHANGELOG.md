@@ -124,7 +124,9 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   and they have neither. Since the #306 fix resolves inherited methods from
   the index, an unguarded `project.LexEntry.Sort(e)` was certified
   read-only. The generator now also counts a `self._TransactionCM(...)`
-  bracket, and the names Sort, Swap, Reorder* and Insert*, as writes. On the
+  bracket as a write. As a backstop, the exact names Sort and Swap,
+  Reorder*, and InsertAt/InsertBefore/InsertAfter also count as writes
+  (nouns such as SortKey, SortOrder, SwapPair and InsertXml do not). On the
   flexicon 4.11.0 source that changes exactly 12 flags. The shipped
   `flexicon_api_v4.11.0.json` has those 12 patched by hand rather than
   regenerated, because the installed flexicon is not the 4.11.0 release:

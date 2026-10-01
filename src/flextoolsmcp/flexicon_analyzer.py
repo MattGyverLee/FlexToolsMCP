@@ -345,23 +345,24 @@ def generate_method_usage_hint(method_name: str, return_type: str = "") -> str:
             return "enumeration"
 
 
-#: Issue #306 follow-up: verbs that reorder or splice an owning sequence, so a
+#: Issue #306 follow-up: names that reorder or splice an owning sequence, so a
 #: method named with one is a write. Move* is already "manipulation" in
-#: generate_method_usage_hint; these were missing, which left
-#: BaseOperations.Sort / Swap is_mutating False. Kept out of
+#: generate_method_usage_hint. Deliberately narrow: "Sort"/"Swap" only as the
+#: whole name (SortKey, SortOrder, SortSpec, SwapPair are nouns -- often
+#: getters), Reorder as a camelCase word, and only the positional Insert
+#: verbs (InsertXml is not a sequence splice). Kept out of
 #: generate_method_usage_hint so the indexed usage_hint values do not change.
-_SEQUENCE_REORDER_VERBS = ("Sort", "Swap", "Reorder", "Insert")
+#: Today every flexicon method these names cover already has write evidence
+#: (_EnsureWriteEnabled / _TransactionCM); this is the backstop for a future
+#: reorder method that has none.
+_SEQUENCE_REORDER_NAMES = frozenset({"Sort", "Swap", "InsertAt", "InsertBefore", "InsertAfter"})
 
 
 def _name_reorders_sequence(method_name: str) -> bool:
-    """True for Sort / Swap / Reorder* / Insert* names (camelCase word
-    boundary, so `Sorted...` or `Insertion...` do not match)."""
-    for verb in _SEQUENCE_REORDER_VERBS:
-        if method_name == verb:
-            return True
-        if method_name.startswith(verb) and method_name[len(verb)].isupper():
-            return True
-    return False
+    """True for Sort, Swap, Reorder / Reorder<Word>, InsertAt/Before/After."""
+    if method_name in _SEQUENCE_REORDER_NAMES or method_name == "Reorder":
+        return True
+    return method_name.startswith("Reorder") and method_name[len("Reorder")].isupper()
 
 
 def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,

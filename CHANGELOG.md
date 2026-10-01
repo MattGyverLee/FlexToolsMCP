@@ -162,6 +162,11 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   flags exactly. One side effect is by design (#130): the write gate fails
   closed on calls to `Sort`, `Swap` or `Import` on a receiver it cannot type,
   treating them as suspected writes that need an `if modifyAllowed:` guard.
+  A new test, `tests/test_flexicon_index_drift.py`, runs the generator on the
+  installed flexicon and fails when the shipped index's generator-owned
+  method fields drift from its output. It runs only when the installed
+  pyflexicon distribution's version matches the shipped file. To check a
+  specific source tree instead, set `FLEXTOOLSMCP_DRIFT_FLEXICON_ROOT`.
 - The `validate_only` descriptions no longer say "11-gate preflight"
   ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306),
   follow-up). It runs 16 checks now (`unknown_method` and

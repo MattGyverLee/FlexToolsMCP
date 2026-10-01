@@ -88,6 +88,7 @@ try:
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
+        detect_unknown_operations_methods,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
         detect_undiscovered_entities,
@@ -110,6 +111,7 @@ except ImportError:
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
+        detect_unknown_operations_methods,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
         detect_undiscovered_entities,
@@ -2379,7 +2381,9 @@ def _build_validate_only_checks(
         checks.append({"gate": "wrong_library_imports", "passed": True})
 
     # --- Gate 11: invalid_api_chain ---
-    chain_check = detect_invalid_project_chains(code_tree, api_idx)
+    chain_check = _defer_chain_method_issues_to_unknown_method(
+        detect_invalid_project_chains(code_tree, api_idx), code_tree, api_idx
+    )
     if chain_check["has_invalid"]:
         checks.append({
             "gate": "invalid_api_chain",
@@ -2388,6 +2392,17 @@ def _build_validate_only_checks(
         })
     else:
         checks.append({"gate": "invalid_api_chain", "passed": True})
+
+    # --- Gate 12: unknown_method (issue #306) ---
+    unknown_method_check = detect_unknown_operations_methods(code_tree, api_idx)
+    if unknown_method_check["has_unknown"]:
+        checks.append({
+            "gate": "unknown_method",
+            "passed": False,
+            "issues": unknown_method_check.get("issues") or [],
+        })
+    else:
+        checks.append({"gate": "unknown_method", "passed": True})
 
     writeability = build_writeability_payload(code, api_idx, code_tree, cud_info=cud_info, cert=cert)
     return checks, writeability
@@ -2911,6 +2926,45 @@ def _try_auto_fix_casting(
             patched = "\n".join(new_imports) + "\n" + patched
 
     return {"patched_code": patched, "fixes": fix_records}
+
+
+def _defer_chain_method_issues_to_unknown_method(
+    chain_check: Dict[str, Any],
+    code_tree: Optional[ast.AST],
+    api_idx: Any,
+) -> Dict[str, Any]:
+    """Drop `kind == "method"` chain issues the unknown_method gate also reports.
+
+    Issue #306: a direct TryWord call on `project.Parser` is both an invalid_api_chain
+    method issue (when difflib finds a close-enough name) and an
+    unknown_method call, while the aliased `p.TryWord(...)` is only the
+    latter. Leaving the shared ones to unknown_method makes the direct and
+    aliased forms answer with the same code. Applied AFTER the typo auto-fix
+    (issue #46), so auto-correction of high-confidence typos is unchanged.
+    Issues the unknown_method gate does not cover (accessor typos, non-call
+    references) are kept.
+    """
+    if not chain_check.get("has_invalid"):
+        return chain_check
+    covered = {
+        (i["lineno"], i["method"])
+        for i in detect_unknown_operations_methods(code_tree, api_idx).get("issues", [])
+    }
+    if not covered:
+        return chain_check
+    kept = [
+        i for i in chain_check.get("issues", [])
+        if not (i.get("kind") == "method" and (i.get("lineno"), i.get("typo_attr")) in covered)
+    ]
+    if len(kept) == len(chain_check.get("issues", [])):
+        return chain_check
+    if not kept:
+        return {"has_invalid": False, "issues": []}
+    return {
+        "has_invalid": any(i.get("blocking", True) for i in kept),
+        "issues": kept,
+        "suggestion": " ".join(i["suggestion"] for i in kept),
+    }
 
 
 def _try_auto_fix_typos(
@@ -4347,6 +4401,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                         "[AUTO-FIX] typo: patch did not pass re-preflight; falling back to rejection"
                     )
 
+        # Issue #306: method-name issues that the unknown_method gate below
+        # also reports are left to it, so a direct TryWord call on
+        # `project.Parser` and the same call through an alias get the same
+        # error code.
+        chain_check = _defer_chain_method_issues_to_unknown_method(
+            chain_check, code_tree, api_idx
+        )
         if chain_check["has_invalid"]:
             _log_preflight_reject(
                 op_id, seq, time.monotonic() - t_start,
@@ -4365,6 +4426,51 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 error_code="invalid_api_chain",
                 code_size_bytes=_code_size_bytes,
             )
+
+    # Issue #306: a call to a method an indexed Operations class does not
+    # have (TryWord on `project.Parser`), on any receiver shape -- facade,
+    # alias, inline construction. Runs after the typo auto-fix above so
+    # high-confidence typos are still auto-corrected first. Before #306 the
+    # writeability gate classified such calls as mutating and returned
+    # unprotected_writes, so guarding them was the only "fix" offered.
+    unknown_method_check = detect_unknown_operations_methods(code_tree, api_idx)
+    if unknown_method_check["has_unknown"]:
+        _um_issues = unknown_method_check["issues"]
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "unknown_method",
+            f"calls={[i['class'] + '.' + i['method'] for i in _um_issues[:5]]}",
+        log_dir_fn=get_log_dir,
+        )
+        _um_steps = []
+        for _i in _um_issues:
+            if _i["did_you_mean"]:
+                _um_steps.append(
+                    f"Line {_i['lineno']}: replace {_i['method']} with one of "
+                    f"{', '.join(_i['did_you_mean'])} (check the signature with "
+                    f"flextools_get_object_api(\"{_i['class']}\"))."
+                )
+            else:
+                _um_steps.append(
+                    f"Line {_i['lineno']}: {_i['class']} has no {_i['method']}; "
+                    f"call flextools_get_object_api(\"{_i['class']}\") for its methods."
+                )
+        _um_steps.append(
+            "Do not add an `if modifyAllowed:` guard for this -- the method does "
+            "not exist, so no guard can make the call work."
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "unknown_method",
+                unknown_method_check["suggestion"],
+                issues=_um_issues,
+                did_you_mean=_um_issues[0]["did_you_mean"],
+                next_steps=_um_steps,
+                op_id=op_id,
+            ),
+            error_code="unknown_method",
+            code_size_bytes=_code_size_bytes,
+        )
 
     # getall-contract SPEC §6 Level 3 (cycle-4 reversal): non-blocking
     # advisory (never rejects) for unsafe len()/subscript/truthiness/

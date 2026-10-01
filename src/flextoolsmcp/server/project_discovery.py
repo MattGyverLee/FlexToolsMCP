@@ -413,7 +413,7 @@ def _describe_lock(project_name: str, lock_path: Path) -> str:
                     f"process {status_desc}. {remedy}"
                 )
         else:
-            # Issue #93 sweep follow-up (see specs/shared-mode-access/
+            # Issue #93 sweep follow-up (see specs/_archive/shared-mode-access/
             # reviews/cycle5-qc.md P1-2): the holder is confirmed dead,
             # so this is a stale lock, not a live collision -- telling
             # the operator to "close FieldWorks" is the exact CP3/CP4

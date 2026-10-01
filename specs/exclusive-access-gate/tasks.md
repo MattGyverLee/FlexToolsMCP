@@ -23,8 +23,8 @@ before editing.
 
 ## Phase 1: Setup
 
-- [ ] T001 Record the baseline. Run `.venv\Scripts\python -m pytest -q -m "not requires_flex" tests/test_response_contract.py tests/test_parser_error_models.py tests/test_shared_mode_write_gate.py tests/test_shared_mode_lock_diagnosis.py tests/test_script_certification.py | tail -20` and note the pass count in `specs/exclusive-access-gate/evidence/baseline.md`. All must pass before any change.
-- [ ] T002 [P] Create `specs/exclusive-access-gate/evidence/` and `specs/exclusive-access-gate/issues/`, each with a one-line `README.md` describing what will go there (live evidence; the filing ledger).
+- [X] T001 Record the baseline. Run `.venv\Scripts\python -m pytest -q -m "not requires_flex" tests/test_response_contract.py tests/test_parser_error_models.py tests/test_shared_mode_write_gate.py tests/test_shared_mode_lock_diagnosis.py tests/test_script_certification.py | tail -20` and note the pass count in `specs/exclusive-access-gate/evidence/baseline.md`. All must pass before any change.
+- [X] T002 [P] Create `specs/exclusive-access-gate/evidence/` and `specs/exclusive-access-gate/issues/`, each with a one-line `README.md` describing what will go there (live evidence; the filing ledger).
 
 ---
 
@@ -33,11 +33,11 @@ before editing.
 **Purpose**: the single table that the detector, the refusal message and the
 docs check all read (constitution VI).
 
-- [ ] T003 Write `tests/test_exclusive_access_detect.py::TestTable`, which must fail first:
+- [X] T003 Write `tests/test_exclusive_access_detect.py::TestTable`, which must fail first:
   - every `wrapper` method in `EXCLUSIVE_ONLY_OPERATIONS` exists in the shipped flexicon index (`src/flextoolsmcp/index/python/flexicon_api_v*.json`; load it the way `tests/test_issue130_facade_receiver_write_gate.py` does) with `is_mutating: true`;
   - no row names `SetValue`, `AddListValue`, `RemoveListValue`, `SetListFieldSingle`, `SetListFieldMultiple`, `ClearValue` or `Duplicate`;
   - every row has a non-empty `reason` and `evidence`, and a `failure_class` in {`crashes_holder`, `silently_lost`}.
-- [ ] T004 Create `src/flextoolsmcp/server/exclusive_access.py` with:
+- [X] T004 Create `src/flextoolsmcp/server/exclusive_access.py` with:
   - Frozen dataclasses `ExclusiveOnlyOperation` and `ExclusiveOnlyMatch`, fields exactly as in data-model.md.
   - The tuple `EXCLUSIVE_ONLY_OPERATIONS` with these rows (names from research.md R2/R3):
     - `ws.wrapper`: `WritingSystemOperations` {Create, Ensure, Delete, SetFontName, SetFontSize, SetRightToLeft, SetDefaultVernacular, SetDefaultAnalysis}, `crashes_holder`, evidence `specs/_archive/shared-mode-access/evidence/live-cp4.md Item 5`.
@@ -67,7 +67,7 @@ probe mocked, and live V1-V3 pass on Sena 3.
 
 ### Tests for US1 (write first, see them fail)
 
-- [ ] T005 [P] [US1] In `tests/test_exclusive_access_detect.py::TestDetect`, cover, each as its own test:
+- [X] T005 [P] [US1] In `tests/test_exclusive_access_detect.py::TestDetect`, cover, each as its own test:
   - (a) `project.WritingSystems.Create(...)`
   - (b) the alias `ws = project.WritingSystems; ws.Ensure(...)`
   - (c) the facade `fx = FLExProject.FromOpenProject(project); fx.CustomFields.CreateField(...)`
@@ -86,7 +86,7 @@ probe mocked, and live V1-V3 pass on Sena 3.
   - (n) `some_dict.Set(...)`, `items.Add(...)` and `other.Save()` on unrelated receivers
   - (o) calls only inside a comment or a string literal
   - (p) the detector run over every `.py` under `src/flextoolsmcp/server/filing/` returns zero matches (research R8)
-- [ ] T006 [P] [US1] Write `tests/test_exclusive_access_gate.py`. Drive `handle_run_module` with `write_ladder.probe_write_access` mocked to return each verdict; model it on `tests/test_shared_mode_write_gate.py`. Assert that the subprocess spawn mock is never called on refusal. Cases:
+- [X] T006 [P] [US1] Write `tests/test_exclusive_access_gate.py`. Drive `handle_run_module` with `write_ladder.probe_write_access` mocked to return each verdict; model it on `tests/test_shared_mode_write_gate.py`. Assert that the subprocess spawn mock is never called on refusal. Cases:
   - scenario 1.1/1.2: `open_shared` plus a WS script, a CF script and a raw script each give the code `requires_exclusive_access`;
   - 1.3: `free` and `stale_lock` with matches are not refused by this gate;
   - 1.4: `open_exclusive` and `held_by_other` with matches give `project_locked`;
@@ -96,11 +96,11 @@ probe mocked, and live V1-V3 pass on Sena 3.
   - refusal happens before the confirmation gate: `confirmed=False` on an `open_shared` match gives `requires_exclusive_access`, not `confirmation_required`;
   - the gate uses the first probe decision, unaffected by the `_release_own_worker_or_refuse` re-probe;
   - the detail fields match data-model.md `RequiresExclusiveAccessDetail` exactly (FR-008).
-- [ ] T007 [P] [US1] Add a test to `tests/test_exclusive_access_gate.py` for the `validate_only=True` path (scenario 1.7): `project_lock.exclusive_access` = {required: true, operations: [...], blocking: true} on `open_shared`; `blocking: false` on `free`; `blocking is None` when the probe is unavailable (mirror the existing `probed`/#118 branch).
+- [X] T007 [P] [US1] Add a test to `tests/test_exclusive_access_gate.py` for the `validate_only=True` path (scenario 1.7): `project_lock.exclusive_access` = {required: true, operations: [...], blocking: true} on `open_shared`; `blocking: false` on `free`; `blocking is None` when the probe is unavailable (mirror the existing `probed`/#118 branch).
 
 ### Implementation for US1
 
-- [ ] T008 [US1] In `src/flextoolsmcp/server/exclusive_access.py`, implement `detect_exclusive_only_operations(code: str, tree: ast.AST, cert: dict) -> list[ExclusiveOnlyMatch]`:
+- [X] T008 [US1] In `src/flextoolsmcp/server/exclusive_access.py`, implement `detect_exclusive_only_operations(code: str, tree: ast.AST, cert: dict) -> list[ExclusiveOnlyMatch]`:
   - Layer 1 filters the cert rows in `mutating_calls`, `protected_calls`, `unknown_calls` and those with `source == "unresolved_receiver"` on `(class, method)` against the wrapper rows. For `unresolved_receiver` rows, match on method name only when the class is unknown.
   - Layer 2 is an `ast.walk`, modelled on `detect_raw_addcustomfield_risk` (`src/flextoolsmcp/server/validators.py` ~:5789):
     - `Call` nodes whose `func.attr` is in a row's `raw_names`;
@@ -108,8 +108,8 @@ probe mocked, and live V1-V3 pass on Sena 3.
     - `Assign`/`AugAssign` targets that are an `Attribute` whose `attr` is in `raw_assignments`.
   - Fill `line` from the AST, and fall back to the cert row's line if present. De-duplicate on `(key, line)` and sort by line.
   - Run T005 until it passes.
-- [ ] T009 [US1] Add `RequiresExclusiveAccessDetail` (`extra="forbid"`, fields in data-model.md order) next to `ProjectLockedDetail` in `src/flextoolsmcp/server/response_models.py` (~:396). Add it to the `AnyDetail` union (~:979-1026), and add the code to the module-docstring count history (~:25), changing 46 to 47.
-- [ ] T010 [US1] Wire the gate into `handle_run_module` in `src/flextoolsmcp/server/handlers/execution.py`:
+- [X] T009 [US1] Add `RequiresExclusiveAccessDetail` (`extra="forbid"`, fields in data-model.md order) next to `ProjectLockedDetail` in `src/flextoolsmcp/server/response_models.py` (~:396). Add it to the `AnyDetail` union (~:979-1026), and add the code to the module-docstring count history (~:25), changing 46 to 47.
+- [X] T010 [US1] Wire the gate into `handle_run_module` in `src/flextoolsmcp/server/handlers/execution.py`:
   - right after `cert` / `is_mutating_script` (~:5239), compute `_exclusive_matches = detect_exclusive_only_operations(code, code_tree, cert) if write_enabled else []`;
   - change `_probe_access = needs_lock or (not write_enabled)` (~:5257) to `needs_lock or (not write_enabled) or bool(_exclusive_matches)`;
   - immediately after the probe and read-back block (~:5278), before the confirmation gate (~:5285), refuse when `_exclusive_matches` is non-empty **and** `_access.verdict in ("open_shared", "unknown")`;
@@ -118,8 +118,8 @@ probe mocked, and live V1-V3 pass on Sena 3.
   - leave `open_exclusive` / `held_by_other` alone.
 
   Run T006 until it passes.
-- [ ] T011 [US1] In the `validate_only` block of `src/flextoolsmcp/server/handlers/execution.py` (~:2466-2531), run the detector, then add `project_lock["exclusive_access"]` per data-model.md (`blocking: None` on the probe-unavailable branch ~:2507/:2516). Update `lock_note` when blocking. Run T007 until it passes.
-- [ ] T012 [US1] Contract chores for the new code:
+- [X] T011 [US1] In the `validate_only` block of `src/flextoolsmcp/server/handlers/execution.py` (~:2466-2531), run the detector, then add `project_lock["exclusive_access"]` per data-model.md (`blocking: None` on the probe-unavailable branch ~:2507/:2516). Update `lock_note` when blocking. Run T007 until it passes.
+- [X] T012 [US1] Contract chores for the new code:
   - add a `requires_exclusive_access` entry to `GOLDEN_FIXTURES` in `tests/make_golden.py` (~:105, next to `project_locked` ~:179), then run `python tests/make_golden.py --regen`. The only new file should be `tests/golden/responses/requires_exclusive_access.json`;
   - in `tests/test_response_contract.py`, add the per-code key set (~:169), the `ALL_ERROR_CODES` entry (~:243), the detail-model map (~:367), the count history comment (~:515-521) and `assert union_size == 47` (~:522);
   - in `tests/test_parser_error_models.py` (~:503), change 46 to 47;
@@ -141,20 +141,20 @@ to close FLEx for an ordinary failure on a shared project.
 
 ### Tests for US2
 
-- [ ] T013 [P] [US2] In `tests/test_exclusive_access_gate.py`, test that `_ASSISTANCE_HINTS_BY_ERROR_CODE["requires_exclusive_access"]` exists (`src/flextoolsmcp/server/session.py` ~:33) and contains "re-submit" and "do not rewrite". Also test that a repeated refusal in one session gets that hint attached, not the generic fallback (scenario 2.1).
-- [ ] T014 [P] [US2] Extend `tests/test_shared_mode_lock_diagnosis.py`: for an open failure carrying a lock marker while the probe says `open_shared`, `_diagnose_project_open_error` returns no "Close FieldWorks" text and says sharing is on (scenario 2.2, FR-011).
-- [ ] T015 [P] [US2] Extend `tests/test_shared_mode_write_gate.py`: the `open_shared` advisory from `probe_write_access` no longer contains "Custom-field and writing-system changes are NOT safe", and it names `requires_exclusive_access` (FR-013).
+- [X] T013 [P] [US2] In `tests/test_exclusive_access_gate.py`, test that `_ASSISTANCE_HINTS_BY_ERROR_CODE["requires_exclusive_access"]` exists (`src/flextoolsmcp/server/session.py` ~:33) and contains "re-submit" and "do not rewrite". Also test that a repeated refusal in one session gets that hint attached, not the generic fallback (scenario 2.1).
+- [X] T014 [P] [US2] Extend `tests/test_shared_mode_lock_diagnosis.py`: for an open failure carrying a lock marker while the probe says `open_shared`, `_diagnose_project_open_error` returns no "Close FieldWorks" text and says sharing is on (scenario 2.2, FR-011).
+- [X] T015 [P] [US2] Extend `tests/test_shared_mode_write_gate.py`: the `open_shared` advisory from `probe_write_access` no longer contains "Custom-field and writing-system changes are NOT safe", and it names `requires_exclusive_access` (FR-013).
 
 ### Implementation for US2
 
-- [ ] T016 [US2] Add the hint text from `contracts/requires_exclusive_access.md` to `_ASSISTANCE_HINTS_BY_ERROR_CODE` in `src/flextoolsmcp/server/session.py`. Run T013.
-- [ ] T017 [US2] In `src/flextoolsmcp/server/handlers/execution.py` `_diagnose_project_open_error` (~:1223, generic hint ~:1265-1271): when the probe verdict is `open_shared`, replace the generic hint with: "FieldWorks has this project open with sharing on, so the lock file is not the cause. Report the underlying error below; closing FieldWorks is not required." Keep the other verdicts unchanged. Run T014.
-- [ ] T018 [US2] In `src/flextoolsmcp/server/write_ladder.py`:
+- [X] T016 [US2] Add the hint text from `contracts/requires_exclusive_access.md` to `_ASSISTANCE_HINTS_BY_ERROR_CODE` in `src/flextoolsmcp/server/session.py`. Run T013.
+- [X] T017 [US2] In `src/flextoolsmcp/server/handlers/execution.py` `_diagnose_project_open_error` (~:1223, generic hint ~:1265-1271): when the probe verdict is `open_shared`, replace the generic hint with: "FieldWorks has this project open with sharing on, so the lock file is not the cause. Report the underlying error below; closing FieldWorks is not required." Keep the other verdicts unchanged. Run T014.
+- [X] T018 [US2] In `src/flextoolsmcp/server/write_ladder.py`:
   - reword the fallback guidance (~:157-158) so it doesn't contradict shared mode;
   - replace the last sentence of the `open_shared` advisory (~:172-179) with "Writing-system and custom-field changes are refused while FieldWorks has the project open (requires_exclusive_access).".
 
   Run T015 and the existing `tests/test_shared_mode_write_gate.py`.
-- [ ] T019 [US2] Pattern audit, sweeping for siblings of the "close FieldWorks" message:
+- [X] T019 [US2] Pattern audit, sweeping for siblings of the "close FieldWorks" message:
   - check each candidate: `src/flextoolsmcp/server/project_discovery.py` ~:398 and ~:419, `src/flextoolsmcp/server/handlers/teardown_recovery.py` ~:180, plus `grep -rni "close fieldworks\|close flex" src/`;
   - fix any that fire on an `open_shared` project, and record each one kept with its reason (stale-lock or dead-PID text may legitimately stay);
   - put the findings in the Phase 4 commit body under "Pattern audit".

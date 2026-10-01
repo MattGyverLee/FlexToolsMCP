@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 45 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 47 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + raw_addcustomfield_write_risk + invalid_api_mode
   + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
@@ -22,7 +22,8 @@ Provides:
   + deprecated_member (curated_deprecations.py)
   + recipe_not_found (unified-recipes FR-024)
   + no_unit_of_work (#310)
-  + atomic_property_iteration (#313))
+  + atomic_property_iteration (#313)
+  + requires_exclusive_access (exclusive-access-gate))
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -417,6 +418,38 @@ class ProjectLockedDetail(BaseModel):
     holder_pid: Optional[int] = None
     holder_process: Optional[str] = None
     remedy: Optional[str] = None
+
+
+class ExclusiveOnlyMatchModel(BaseModel):
+    """One exclusive-only call (server/exclusive_access.ExclusiveOnlyMatch)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    key: str
+    category: str
+    failure_class: str
+    call: str
+    line: Optional[int] = None
+    source: str
+
+
+class RequiresExclusiveAccessDetail(BaseModel):
+    """Detail payload for requires_exclusive_access rejections.
+
+    specs/exclusive-access-gate FR-004..FR-008: a write-enabled script that
+    changes writing systems or custom fields is refused while FieldWorks holds
+    the project in shared mode (``open_shared``) or the probe cannot tell
+    (``unknown``). Field order follows ProjectLockedDetail: shared fields
+    first, then the gate-specific ones.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["requires_exclusive_access"] = "requires_exclusive_access"
+    guidance: str = ""
+    # "open_shared" | "unknown" on every refusal the handler sends.
+    verdict: Optional[str] = None
+    holder_pid: Optional[int] = None
+    holder_process: Optional[str] = None
+    # At least one on every refusal the handler sends.
+    operations: List[ExclusiveOnlyMatchModel] = Field(default_factory=list)
+    remedy: str = ""
 
 
 class ProjectDriveUnavailableDetail(BaseModel):
@@ -973,7 +1006,7 @@ class RecipeNotFoundDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 45 per-code detail models
+# Discriminated union over all 47 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -998,6 +1031,7 @@ AnyDetail = Union[
     NestedUnitOfWorkDetail,
     NoUnitOfWorkDetail,
     ProjectLockedDetail,
+    RequiresExclusiveAccessDetail,
     ProjectDriveUnavailableDetail,
     ProjectPathMismatchDetail,
     ProjectNotFoundDetail,

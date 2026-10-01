@@ -139,6 +139,13 @@ except ImportError:
     from server import write_ladder
     from server.write_ladder import PEER_BACKUP_CAVEAT as _PEER_BACKUP_CAVEAT
 
+# Writing-system / custom-field changes refused while FieldWorks holds the
+# project (specs/exclusive-access-gate).
+try:
+    from .. import exclusive_access
+except ImportError:
+    from server import exclusive_access
+
 
 # Issue #55 (Rung 2): automatic pre-write backup.
 try:
@@ -1297,6 +1304,15 @@ def _diagnose_project_open_error(
                 )
             access = probe_project_access(project_name)
             specific_hint = build_lock_diagnosis(access)
+            if specific_hint is None and getattr(access, "verdict", None) == "open_shared":
+                # exclusive-access-gate FR-011: with sharing on, FieldWorks
+                # holding the lock is expected and is not why the open
+                # failed, so "Close FieldWorks and retry" is the wrong advice.
+                diag["hint"] = (
+                    "FieldWorks has this project open with sharing on, so the "
+                    "lock file is not the cause. Report the underlying error "
+                    "below; closing FieldWorks is not required."
+                )
             if specific_hint is not None:
                 # build_lock_diagnosis() only returns non-None for
                 # "open_exclusive", "held_by_other", and "stale_lock" --
@@ -2425,6 +2441,25 @@ def _build_validate_only_checks(
     return checks, writeability
 
 
+def _exclusive_access_report(
+    code: str, code_tree: Optional[ast.AST], write_enabled: bool
+) -> Dict[str, Any]:
+    """`project_lock.exclusive_access` for validate_only, minus `blocking`.
+
+    Read-only runs are not gated (their guarded code never runs), so they
+    report `required: False` like the real run's gate sees them.
+    """
+    matches: List[Any] = []
+    if write_enabled and code_tree is not None:
+        matches = exclusive_access.detect_exclusive_only_operations(
+            code, code_tree, certify_script_readonly(code, get_api_index(), code_tree)
+        )
+    return {
+        "required": bool(matches),
+        "operations": [m.to_dict() for m in matches],
+    }
+
+
 async def _handle_validate_only(
     *,
     args: dict,
@@ -2509,12 +2544,35 @@ async def _handle_validate_only(
                 "locked reflects bare .fwdata.lock file existence on disk; "
                 "blocking reflects whether the access probe would refuse a write."
             )
+            # Exclusive-access gate (FR-009): report the refusal the real run
+            # would give. The real run refuses `unknown` (probed=False) too,
+            # so that verdict reports blocking:true, not null.
+            _excl = _exclusive_access_report(code, code_tree, write_enabled)
+            _excl["blocking"] = bool(
+                write_enabled
+                and _excl["required"]
+                and _access.verdict in exclusive_access.REFUSING_VERDICTS
+            )
+            project_lock["exclusive_access"] = _excl
+            if _excl["blocking"]:
+                project_lock["lock_note"] += (
+                    " exclusive_access.blocking: this script changes writing "
+                    "systems or custom fields while FieldWorks holds the project; "
+                    "the real run is refused with requires_exclusive_access."
+                )
     except Exception as exc:
         _lock_logger = get_operations_logger()
         if _lock_logger is not None:
             _lock_logger.debug(
                 f"validate_only project_lock probe unavailable: {exc!r}"
             )
+        # Probe unavailable: never assert blocking either way (#118).
+        try:
+            _excl = _exclusive_access_report(code, code_tree, write_enabled)
+            _excl["blocking"] = None
+            project_lock["exclusive_access"] = _excl
+        except Exception:
+            pass
 
     all_passed = all(c.get("passed", False) for c in checks)
     status = "validated" if all_passed else "validation_failed"
@@ -5239,6 +5297,20 @@ MODULE_CODE = {code}
         is_mutating_script = compute_is_mutating_script(cert, cud_info)
         needs_lock = write_enabled and is_mutating_script
 
+        # Exclusive-access gate (specs/exclusive-access-gate FR-003..FR-005):
+        # writing-system and custom-field changes are not safe while
+        # FieldWorks holds the project. Detect them before the probe so a
+        # write-enabled run that certified read-only (needs_lock False) still
+        # gets probed and gated. Re-certified on the FINAL code: the auto-fix
+        # passes above can rewrite it after `cert` was taken (a typo fix can
+        # turn `project.WritingSytems` into a real WS call). Read-only runs are
+        # not gated -- their guarded code never executes.
+        _exclusive_matches: List[Any] = []
+        if write_enabled:
+            _exclusive_matches = exclusive_access.detect_exclusive_only_operations(
+                code, code_tree, certify_script_readonly(code, get_api_index(), code_tree)
+            )
+
         # Issue #93 CP4 (T4.1): probe the project's real access state ONCE,
         # here, ahead of the confirmation gate. The probe is pure filesystem
         # (the .fwdata.lock JSON + SharedSettings\LexiconSettings.plsx) and
@@ -5255,7 +5327,7 @@ MODULE_CODE = {code}
         # confirmation gate -- the rung order is this handler's, not the
         # ladder's.
         _decision = None
-        _probe_access = needs_lock or (not write_enabled)
+        _probe_access = needs_lock or (not write_enabled) or bool(_exclusive_matches)
         if _probe_access:
             _decision = write_ladder.probe_write_access(project_name)
         _access = _decision.access if _decision is not None else None
@@ -5276,6 +5348,49 @@ MODULE_CODE = {code}
                     "write solely based on this result."
                 ),
             }
+
+        # Exclusive-access gate (FR-004, FR-006, FR-007): refuse BEFORE the
+        # confirmation gate, the backup and the subprocess, so the user is
+        # never asked to confirm a run that will be refused. Only
+        # `open_shared` / `unknown`; `open_exclusive` / `held_by_other` fall
+        # through to the project_locked refusal below untouched. This uses the
+        # first probe decision -- the `_release_own_worker_or_refuse` re-probe
+        # later only ever revisits a project_locked refusal.
+        if (
+            _exclusive_matches
+            and _access is not None
+            and _decision.verdict in exclusive_access.REFUSING_VERDICTS
+        ):
+            _holder = getattr(_access, "holder", None)
+            _excl_msg, _excl_detail = exclusive_access.build_refusal(
+                project_name,
+                _decision.verdict,
+                _exclusive_matches,
+                holder_pid=_holder.pid if _holder else None,
+                holder_process=_holder.process_name if _holder else None,
+            )
+            _excl_calls = ",".join(m.call for m in _exclusive_matches)
+            get_operations_logger().warning(
+                f"[SHARED] '{project_name}' {_decision.verdict}: refused "
+                f"exclusive-only operation(s) {_excl_calls} (op {op_id}); "
+                "requires_exclusive_access."
+            )
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
+                "requires_exclusive_access",
+                f"verdict={_decision.verdict} operations={_excl_calls}",
+                log_dir_fn=get_log_dir,
+            )
+            return _attach_assistance_if_loop(
+                error_response(
+                    "requires_exclusive_access",
+                    _excl_msg,
+                    **_excl_detail,
+                    op_id=op_id,
+                ),
+                error_code="requires_exclusive_access",
+                code_size_bytes=_code_size_bytes,
+            )
 
         # Issue #55 (Rung 3): enforce `confirmed` on mutating writes. Runs
         # BEFORE the project-lock probe / subprocess launch below so an

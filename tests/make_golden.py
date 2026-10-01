@@ -186,6 +186,24 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "holder_process": "FieldWorks",
         "remedy": "FieldWorks has this project open and project sharing is OFF...",
     },
+    "requires_exclusive_access": {
+        "message": "This script changes writing systems or custom fields, which is not safe while FieldWorks has 'Demo' open. Close FieldWorks, re-submit this same call, then reopen FieldWorks. Operations: WritingSystemOperations.Create (line 2). Writing-system changes made while FieldWorks has the project open crash that FieldWorks session.",
+        "guidance": "1. Close FieldWorks (all windows for this project). 2. Re-submit this exact run_module call unchanged. 3. Reopen FieldWorks after it finishes.",
+        "verdict": "open_shared",
+        "holder_pid": 68436,
+        "holder_process": "FieldWorks",
+        "operations": [
+            {
+                "key": "ws.wrapper",
+                "category": "writing_system",
+                "failure_class": "crashes_holder",
+                "call": "WritingSystemOperations.Create",
+                "line": 2,
+                "source": "wrapper",
+            },
+        ],
+        "remedy": "Close FieldWorks, re-submit unchanged, reopen FieldWorks.",
+    },
     "project_drive_unavailable": {
         "message": "Project drive is not available",
     },

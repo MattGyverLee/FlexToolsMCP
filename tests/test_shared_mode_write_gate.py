@@ -229,8 +229,12 @@ class TestGateWiring:
         assert advisory["sharing_enabled"] is True
         assert advisory["holder_pid"] == 68436
         assert advisory["holder_process"] == "FieldWorks"
-        # The advisory must not overstate what a peer can safely do.
-        assert "Custom-field" in advisory["note"]
+        # The advisory must not overstate what a peer can safely do -- and,
+        # since the exclusive-access gate now refuses those changes up front,
+        # it points at that refusal instead of warning after the fact
+        # (exclusive-access-gate FR-013).
+        assert "Custom-field and writing-system changes are NOT safe" not in advisory["note"]
+        assert "requires_exclusive_access" in advisory["note"]
 
     def test_stale_lock_proceeds_and_names_the_dead_holder(self, monkeypatch, tmp_path):
         _stub_env(monkeypatch, tmp_path)

@@ -79,7 +79,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 46 codes below |
+| `error_code` | string | one of the 47 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -134,6 +134,7 @@ authoritative. All detail fields are optional unless noted.
 | `atomic_property_iteration` | `findings` (list of `{line, col, property, expr, kind, list_sibling?, suggestion}`; `kind` is `owning_atomic` or `reference_atomic`), `next_steps` (list) -- issue #313; read-only AND write-enabled runs: the code iterates an LCM `*OA` / `*RA` property (a `for` loop, a comprehension, or `list/tuple/set/sorted/enumerate/len/reversed/iter(...)`), which holds ONE object or None and raises `'IMoForm' object is not iterable` at runtime (see `validators.detect_atomic_property_iteration`). Runs before the casting gate, so no casting advisory is emitted for the same line. At runtime, a `... object is not iterable` error carries `error_type` `AtomicPropertyIterationError` / `NotIterableError` and a `help` hint. |
 | `raw_addcustomfield_write_risk` | `findings` (list), `next_steps` (list) -- issue #70; write-enabled runs only, raw `AddCustomField` on the LCM metadata cache (see `validators.detect_raw_addcustomfield_risk`) |
 | `project_locked` | `guidance` (required string), `lock_file_path`, `verdict`, `sharing_enabled`, `holder_pid`, `holder_process`, `remedy` |
+| `requires_exclusive_access` | `guidance` (string), `verdict` (`open_shared` or `unknown`), `holder_pid`, `holder_process`, `operations` (list of `{key, category, failure_class, call, line, source}`, at least one), `remedy` -- write-enabled runs only: the script changes writing systems or custom fields (`server/exclusive_access.EXCLUSIVE_ONLY_OPERATIONS`) while FieldWorks holds the project with sharing on, or the probe cannot confirm it is closed. Refused before the confirmation gate, the backup and any subprocess. `open_exclusive` / `held_by_other` still give `project_locked`. Recovery: close FieldWorks, re-submit unchanged, reopen FieldWorks. `validate_only` reports it as `project_lock.exclusive_access` = `{required, operations, blocking}` (`blocking` is null only when the probe itself failed). See [SHARED-MODE.md](SHARED-MODE.md). |
 | `project_drive_unavailable` | `attempted_path`, `hint` |
 | `project_path_mismatch` | `attempted_path`, `discovered_at`, `hint` |
 | `project_not_found` | `attempted_path`, `hint`, `recovery` (default `"list_projects"`), `suggestions` (list; fuzzy matches, may be empty), `reason`, `available_projects` (list, capped at 15) + `total_count` -- issue #311: the project list is inlined even when `suggestions` is empty. `project_name` is normalized first at every tool entry point: surrounding quotes/backticks/whitespace are stripped (`` "`Sena 3`" `` -> `"Sena 3"`), and a value with no alphanumeric character (e.g. two backticks) is treated as omitted -- it falls back to the session project, or yields `project_name_required` (which also carries `available_projects`) when there is none. |
@@ -718,7 +719,7 @@ the id that was asked for), `closest_matches` (list — up to 3 nearest
 ids by difflib), `hint` (required string — names
 `flextools_list_recipes(query=...)`)). Golden fixture:
 `tests/golden/responses/recipe_not_found.json`. The error-code count
-text ("one of the 44 codes") already includes it.
+text ("one of the 47 codes") already includes it.
 
 **`flextools_list_skeletons` (deprecated alias).** Input (`limit`) and
 top-level keys (`count`, `limit`, `storage_path`, `skeletons`) are

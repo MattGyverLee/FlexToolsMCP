@@ -154,8 +154,10 @@ def probe_write_access(project_name: str) -> AccessDecision:
         decision.refusal = {
             "guidance": (
                 remedy
-                or "Close FieldWorks, then retry. Read-only operations "
-                   "do not require closing FieldWorks."
+                or "The project is held exclusively by another process. "
+                   "Release it (close the program holding it, or enable "
+                   "project sharing if it is FieldWorks), then retry. "
+                   "Read-only operations do not require closing FieldWorks."
             ),
             "lock_file_path": str(lock_path) if lock_path else None,
             "verdict": verdict,
@@ -173,9 +175,9 @@ def probe_write_access(project_name: str) -> AccessDecision:
                 "FieldWorks has this project open with sharing enabled, "
                 "so this run attached as a non-master LCM peer and wrote "
                 "through the shared commit log. The change should be "
-                "visible in the FLEx UI. Custom-field and writing-system "
-                "changes are NOT safe from a peer and are not covered by "
-                "this path."
+                "visible in the FLEx UI. Writing-system and custom-field "
+                "changes are refused while FieldWorks has the project open "
+                "(requires_exclusive_access)."
             ),
         }
     elif verdict == "stale_lock":

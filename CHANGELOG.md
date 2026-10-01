@@ -113,9 +113,10 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   aliased form gets. Both gates now share one rule for
   Get*/Find*/Is*/Has*/Count*/Contains* names that are not in the index
   (#32). Such a name is reported only when it is a confident typo of a real
-  method: at least 0.9 similar, and not that method's name plus a suffix. So
-  `GetLexemeFrom` is caught, while a getter newer than the index, such as
-  `GetGlossText` next to `GetGloss`, still runs and is never auto-fixed.
+  method: at least 0.9 similar, and not that method's name extended by a
+  new camelCase word or a plural. So `GetLexemeFrom` and `GetGlosss` are
+  caught, while a getter newer than the index, such as `GetGlossText` or
+  `GetGlosses` next to `GetGloss`, still runs and is never auto-fixed.
 - 40 flexicon methods that write are now marked as writes
   (`is_mutating: true`) in the flexicon index
   ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306),

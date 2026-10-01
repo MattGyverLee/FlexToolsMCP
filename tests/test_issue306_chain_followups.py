@@ -210,7 +210,9 @@ class TestConfidentGetterTypoRule:
         ("GetGlos", True),          # truncation typo
         ("GetLexemeFrom", True),    # transposition (vs GetLexemeForm)
         ("GetGlossText", False),    # extension: a newer getter
-        ("GetGlosses", False),      # extension
+        ("GetGlosses", False),      # plural extension
+        ("GetGlosss", True),        # doubled final letter: a typo
+        ("GetGlossx", True),        # lowercase non-plural tail: a typo
         ("GetNewThing", False),     # unrelated
     ])
     def test_rule(self, name, expected):

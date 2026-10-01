@@ -5210,6 +5210,15 @@ _UNINDEXED_READONLY_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains")
 _CONFIDENT_MEMBER_TYPO_RATIO = 0.9
 
 
+def _is_plausible_member_extension(base: str, tail: str) -> bool:
+    """True when `base + tail` reads as a different member, not a typo."""
+    if not tail:
+        return False
+    if tail[0].isupper():
+        return True
+    return tail in ("s", "es") and tail[0] != base[-1:]
+
+
 def _has_confident_member_typo_match(name: str, candidates: List[str]) -> bool:
     """True when `name` is very probably a misspelling of one of `candidates`.
 
@@ -5217,15 +5226,17 @@ def _has_confident_member_typo_match(name: str, candidates: List[str]) -> bool:
     for Get*/Find*/Is*/Has*/Count*/Contains* names (#32), so a getter newer
     than the index still runs while `GetLexemeFrom` (GetLexemeForm) is caught.
     A candidate counts when the case-insensitive similarity is at least
-    _CONFIDENT_MEMBER_TYPO_RATIO and `name` is not the candidate plus a
-    suffix: `GetGlossText` / `GetForms` extend GetGloss / GetForm, which is
-    what a newer method looks like, not a typo.
+    _CONFIDENT_MEMBER_TYPO_RATIO and `name` is not a plausible extension of
+    it: a new camelCase word (`GetGlossText` after GetGloss) or a plural
+    ("s"/"es": `GetForms`, `GetGlosses`) is what a newer method looks like.
+    A doubled final letter (`GetGlosss`) or any other lowercase tail is
+    still a typo.
     """
     import difflib
 
     lowered = name.lower()
     for cand in candidates:
-        if name.startswith(cand):
+        if name.startswith(cand) and _is_plausible_member_extension(cand, name[len(cand):]):
             continue
         if difflib.SequenceMatcher(None, lowered, cand.lower()).ratio() >= _CONFIDENT_MEMBER_TYPO_RATIO:
             return True

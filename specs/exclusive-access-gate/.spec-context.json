@@ -1,0 +1,17 @@
+{
+  "workflow": "companion",
+  "specName": "exclusive-access-gate",
+  "branch": "feat/exclusive-access-gate",
+  "selectedAt": "2026-09-30T20:00:00.000Z",
+  "currentStep": "specify",
+  "status": "specified",
+  "history": [
+    {"step": "specify", "substep": null, "kind": "start", "by": "user", "at": "2026-09-30T20:00:00.000Z"},
+    {"step": "specify", "substep": null, "kind": "complete", "by": "ai", "at": "2026-09-30T20:30:00.000Z"}
+  ],
+  "decisions": [
+    "Predecessor specs/shared-mode-access (#93) retired; #93 closed 2026-09-30.",
+    "Interim 2026-09-08 policy stands: writing-system and custom-field changes need FLEx closed; the gate enforces it.",
+    "Programmatic undo is out of scope (separate spec if wanted)."
+  ]
+}

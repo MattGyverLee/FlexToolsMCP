@@ -127,6 +127,13 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "entry.AlternateFormsOS), not on the entry. Copy the "
         "replacement_example from the rejection."
     ),
+    "atomic_property_iteration": (
+        # Issue #313: `for hf in entry.LexemeFormOA:` -> "not iterable".
+        "a property ending in OA/RA holds ONE object (or None), not a list "
+        "-- do not loop over it. Use `x = obj.<Name>OA` then "
+        "`if x is not None:`. Lists end in OS/OC/RS/RC (e.g. the entry's "
+        "other forms are entry.AlternateFormsOS)."
+    ),
     "reflection_bypass_detected": (
         "remove reflection shortcuts (operator.methodcaller, importlib "
         "SIL.LCModel imports, getattr/setattr on LCM members) and use normal "

@@ -21,7 +21,8 @@ Provides:
   unknown_tool, invalid_input
   + deprecated_member (curated_deprecations.py)
   + recipe_not_found (unified-recipes FR-024)
-  + no_unit_of_work (#310))
+  + no_unit_of_work (#310)
+  + atomic_property_iteration (#313))
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -497,6 +498,21 @@ class DeprecatedMemberDetail(BaseModel):
     findings: List[Any] = Field(default_factory=list)
     deprecations: List[Any] = Field(default_factory=list)
     replacement_example: Optional[str] = None
+    next_steps: List[Any] = Field(default_factory=list)
+
+
+class AtomicPropertyIterationDetail(BaseModel):
+    """Detail payload for atomic_property_iteration rejections (issue #313).
+
+    Fires on ANY run (read-only or write-enabled) whose code iterates an
+    LCM *OA (Owning-Atomic) or *RA (Reference-Atomic) property -- e.g.
+    ``for hf in entry.LexemeFormOA:`` -- which holds ONE object or None and
+    raises "'IMoForm' object is not iterable" at runtime. See
+    validators.detect_atomic_property_iteration().
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["atomic_property_iteration"] = "atomic_property_iteration"
+    findings: List[Any] = Field(default_factory=list)
     next_steps: List[Any] = Field(default_factory=list)
 
 
@@ -988,6 +1004,7 @@ AnyDetail = Union[
     RuntimeErrorDetail,
     HvoLiteralWriteRiskDetail,
     DeprecatedMemberDetail,
+    AtomicPropertyIterationDetail,
     RawAddCustomFieldWriteRiskDetail,
     ParserEngineMismatchDetail,
     ParserCoreMissingDetail,

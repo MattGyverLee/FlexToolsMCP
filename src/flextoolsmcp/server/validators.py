@@ -704,6 +704,219 @@ def detect_top_level_main_invocation(
 
 
 # ============================================================
+# Atomic-property iteration (issue #313)
+# ============================================================
+#
+# LCM names its fields by cardinality: *OA (Owning-Atomic) and *RA
+# (Reference-Atomic) hold ONE object or None; *OS/*OC/*RS/*RC are the
+# collections. `for hf in entry.LexemeFormOA:` is therefore a guaranteed
+# `TypeError: 'IMoForm' object is not iterable` at runtime. Before this gate
+# the only preflight signal was a warning-tier casting advisory on
+# LexemeFormOA -- the wrong diagnosis -- so a weak model retried the same
+# loop three times.
+
+# Initial capital, then at least one lowercase/digit char before the OA/RA
+# suffix, so all-caps names such as `DATA` or `ERA` never match.
+_ATOMIC_PROPERTY_RE = re.compile(r"^[A-Z]\w*[a-z0-9](OA|RA)$")
+
+# Builtins whose first positional argument is iterated (or measured, for
+# len()). An atomic property there fails the same way a for-loop does.
+_ITERATING_BUILTINS = frozenset(
+    {"list", "tuple", "set", "frozenset", "sorted", "enumerate", "len",
+     "reversed", "iter", "sum", "any", "all", "min", "max"}
+)
+
+# Curated atomic -> collection pairs. Only pairs verified against the shipped
+# LibLCM index (liblcm_api_v11.0.0.json); anything else gets the generic hint.
+_ATOMIC_LIST_SIBLINGS: Dict[str, Dict[str, str]] = {
+    # ILexEntry.LexemeFormOA (IMoForm) / ILexEntry.AlternateFormsOS
+    "LexemeFormOA": {
+        "list_sibling": "AlternateFormsOS",
+        "hint": (
+            "The entry's other forms are the list `AlternateFormsOS`. To visit "
+            "every form: [entry.LexemeFormOA] (if not None) + "
+            "list(entry.AlternateFormsOS)."
+        ),
+    },
+    # ILexSense.MorphoSyntaxAnalysisRA / ILexEntry.MorphoSyntaxAnalysesOC
+    "MorphoSyntaxAnalysisRA": {
+        "list_sibling": "MorphoSyntaxAnalysesOC",
+        "hint": (
+            "A sense points at ONE MSA. Every MSA an entry owns is the list "
+            "`MorphoSyntaxAnalysesOC` on the ILexEntry (not on the sense)."
+        ),
+    },
+}
+
+_EMPTY_ATOMIC_ITERATION = {
+    "has_atomic_iteration": False,
+    "findings": [],
+    "message": "",
+    "next_steps": [],
+}
+
+
+def _atomic_property_suggestion(prop: str, kind: str) -> str:
+    label = (
+        "Owning-Atomic (OA)" if kind == "owning_atomic" else "Reference-Atomic (RA)"
+    )
+    text = (
+        f"{prop} is {label}: it holds ONE object (or None), not a collection "
+        f"-- do not iterate it. Use `x = obj.{prop}` then `if x is not None:`."
+    )
+    sibling = _ATOMIC_LIST_SIBLINGS.get(prop)
+    if sibling:
+        text += " " + sibling["hint"]
+    return text
+
+
+def detect_atomic_property_iteration(
+    code: str, code_tree: Optional[ast.AST] = None
+) -> dict:
+    """Detect iteration over an LCM *OA / *RA (single-object) property.
+
+    Issue #313: flags an ``ast.Attribute`` whose attr follows LCM atomic
+    naming when it is the ITERABLE of a ``for`` / ``async for`` loop, of a
+    comprehension generator, or the first argument to one of
+    ``list/tuple/set/sorted/enumerate/len/reversed/iter``. Plain reads
+    (``lf = entry.LexemeFormOA``) are not flagged.
+
+    Returns::
+
+        {"has_atomic_iteration": bool,
+         "findings": [{"line", "col", "property", "expr",
+                       "kind": "owning_atomic" | "reference_atomic",
+                       "list_sibling" (only when curated), "suggestion"}],
+         "message": str,
+         "next_steps": [str]}
+    """
+    if code_tree is None:
+        try:
+            code_tree = ast.parse(code)
+        except SyntaxError:
+            return dict(_EMPTY_ATOMIC_ITERATION, findings=[], next_steps=[])
+
+    iterables: List[ast.AST] = []
+    for node in ast.walk(code_tree):
+        if isinstance(node, (ast.For, ast.AsyncFor)):
+            iterables.append(node.iter)
+        elif isinstance(node, ast.comprehension):
+            iterables.append(node.iter)
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in _ITERATING_BUILTINS
+            and node.args
+        ):
+            iterables.append(node.args[0])
+
+    findings: List[Dict[str, Any]] = []
+    seen: Set[Tuple[int, int]] = set()
+    for it in iterables:
+        if not isinstance(it, ast.Attribute):
+            continue
+        match = _ATOMIC_PROPERTY_RE.match(it.attr)
+        if not match:
+            continue
+        key = (it.lineno, it.col_offset)
+        if key in seen:
+            continue
+        seen.add(key)
+        kind = "owning_atomic" if match.group(1) == "OA" else "reference_atomic"
+        finding: Dict[str, Any] = {
+            "line": it.lineno,
+            "col": it.col_offset,
+            "property": it.attr,
+            "expr": ast.unparse(it),
+            "kind": kind,
+            "suggestion": _atomic_property_suggestion(it.attr, kind),
+        }
+        sibling = _ATOMIC_LIST_SIBLINGS.get(it.attr)
+        if sibling:
+            finding["list_sibling"] = sibling["list_sibling"]
+        findings.append(finding)
+
+    if not findings:
+        return dict(_EMPTY_ATOMIC_ITERATION, findings=[], next_steps=[])
+
+    findings.sort(key=lambda f: (f["line"], f["col"]))
+    where = ", ".join(f"`{f['expr']}` (line {f['line']})" for f in findings[:5])
+    message = (
+        "Refused: this code iterates a single-object LCM property -- "
+        f"{where}. Properties ending in OA/RA hold ONE object (or None); "
+        "iterating one raises `TypeError: '<type>' object is not iterable`. "
+        "Collections end in OS/OC/RS/RC. "
+        + " ".join(dict.fromkeys(f["suggestion"] for f in findings))
+    )
+    next_steps = [
+        "1. Replace `for x in obj.<Name>OA:` with `x = obj.<Name>OA` then "
+        "`if x is not None:` (same for *RA)",
+    ]
+    sibling_hints = list(dict.fromkeys(
+        _ATOMIC_LIST_SIBLINGS[f["property"]]["hint"]
+        for f in findings if f["property"] in _ATOMIC_LIST_SIBLINGS
+    ))
+    if sibling_hints:
+        next_steps.append("2. " + " ".join(sibling_hints))
+    next_steps.append(f"{len(next_steps) + 1}. Re-run flextools_run_module()")
+    return {
+        "has_atomic_iteration": True,
+        "findings": findings,
+        "message": message,
+        "next_steps": next_steps,
+    }
+
+
+_NOT_ITERABLE_RE = re.compile(r"'([^']+)' object is not iterable")
+
+_GENERIC_NOT_ITERABLE_HINT = (
+    "A single LCM object is not a collection -- e.g. the value of an *OA "
+    "(Owning-Atomic) or *RA (Reference-Atomic) property holds ONE object or "
+    "None. Collection properties end in OS/OC/RS/RC. Read the atomic value "
+    "with `x = obj.<Name>OA` then `if x is not None:` instead of looping."
+)
+
+
+def detect_not_iterable_error(
+    error_msg: str, code: str, code_tree: Optional[ast.AST] = None
+) -> dict:
+    """Map a runtime ``'X' object is not iterable`` to an actionable hint.
+
+    Issue #313: when the executed code iterates an *OA/*RA property (per
+    ``detect_atomic_property_iteration``) the hint names that property and
+    its list sibling; otherwise a generic atomic-vs-collection hint is
+    returned. ``is_not_iterable_error`` is False when the message does not
+    match at all.
+    """
+    match = _NOT_ITERABLE_RE.search(error_msg or "")
+    if not match:
+        return {"is_not_iterable_error": False, "is_atomic_iteration_error": False}
+    object_type = match.group(1)
+    check = detect_atomic_property_iteration(code or "", code_tree)
+    if check["has_atomic_iteration"]:
+        finding = check["findings"][0]
+        return {
+            "is_not_iterable_error": True,
+            "is_atomic_iteration_error": True,
+            "object_type": object_type,
+            "property": finding["property"],
+            "line": finding["line"],
+            "suggestion": (
+                f"'{object_type}' object is not iterable: line {finding['line']} "
+                f"iterates `{finding['expr']}`. {finding['suggestion']}"
+            ),
+        }
+    return {
+        "is_not_iterable_error": True,
+        "is_atomic_iteration_error": False,
+        "object_type": object_type,
+        "property": None,
+        "line": None,
+        "suggestion": f"'{object_type}' object is not iterable. {_GENERIC_NOT_ITERABLE_HINT}",
+    }
+
+
+# ============================================================
 # Nested-UnitOfWork detection (issue #92 follow-up; re-derived for #144)
 # ============================================================
 #

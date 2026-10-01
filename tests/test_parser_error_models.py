@@ -500,8 +500,8 @@ class TestCP3IsPurelyAdditive:
     def test_union_carries_all_forty_one_codes(self):
         import typing
         members = typing.get_args(AnyDetail)
-        assert len(members) == 45, (
-            "expected 45 detail models: CP3's five additions on top of main's "
+        assert len(members) == 46, (
+            "expected 46 detail models: CP3's five additions on top of main's "
             "26 (incl. invalid_api_mode), internal_error (#89), CP4's two "
             "(parser_filing_in_progress, grammar_load_unclean), CP5's two "
             "(parser_config_failed, parse_sandbox_refused), #243's three "
@@ -509,7 +509,8 @@ class TestCP3IsPurelyAdditive:
             "deprecated_member (curated_deprecations.py), "
             "raw_addcustomfield_write_risk (#70), top_level_main_invocation (#279), "
             "reflection_bypass_detected (#277), recipe_not_found "
-            "(unified-recipes FR-024), and no_unit_of_work (#310); found "
+            "(unified-recipes FR-024), no_unit_of_work (#310), and "
+            "atomic_property_iteration (#313); found "
             + str(len(members))
         )
         for model in CP3_MODELS.values():

@@ -212,6 +212,20 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "replacement_example": "entry.LexemeFormOA.IsAbstract = True",
         "next_steps": ["Set IsAbstract on the entry's forms (LexemeFormOA, AlternateFormsOS)"],
     },
+    # Issue #313
+    "atomic_property_iteration": {
+        "message": "Refused: this code iterates a single-object LCM property -- `entry.LexemeFormOA` (line 2).",
+        "findings": [{
+            "line": 2,
+            "col": 14,
+            "property": "LexemeFormOA",
+            "expr": "entry.LexemeFormOA",
+            "kind": "owning_atomic",
+            "suggestion": "LexemeFormOA is Owning-Atomic (OA): it holds ONE object (or None), not a collection -- do not iterate it.",
+            "list_sibling": "AlternateFormsOS",
+        }],
+        "next_steps": ["1. Replace `for x in obj.<Name>OA:` with `x = obj.<Name>OA` then `if x is not None:` (same for *RA)"],
+    },
     # Unified-recipes FR-024: detail fields in contracts/tools.md s.3 order
     # (recipe_id, closest_matches, hint).
     "recipe_not_found": {

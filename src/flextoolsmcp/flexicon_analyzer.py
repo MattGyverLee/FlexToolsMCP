@@ -345,6 +345,25 @@ def generate_method_usage_hint(method_name: str, return_type: str = "") -> str:
             return "enumeration"
 
 
+#: Issue #306 follow-up: verbs that reorder or splice an owning sequence, so a
+#: method named with one is a write. Move* is already "manipulation" in
+#: generate_method_usage_hint; these were missing, which left
+#: BaseOperations.Sort / Swap is_mutating False. Kept out of
+#: generate_method_usage_hint so the indexed usage_hint values do not change.
+_SEQUENCE_REORDER_VERBS = ("Sort", "Swap", "Reorder", "Insert")
+
+
+def _name_reorders_sequence(method_name: str) -> bool:
+    """True for Sort / Swap / Reorder* / Insert* names (camelCase word
+    boundary, so `Sorted...` or `Insertion...` do not match)."""
+    for verb in _SEQUENCE_REORDER_VERBS:
+        if method_name == verb:
+            return True
+        if method_name.startswith(verb) and method_name[len(verb)].isupper():
+            return True
+    return False
+
+
 def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
                           raises: List[str], is_flexicon: bool = True) -> Dict[str, Any]:
     """
@@ -1051,6 +1070,16 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
                     and isinstance(child.func.value, ast.Name)
                     and child.func.value.id == 'self'):
                 result["calls_ensure_write_enabled"] = True
+            # Issue #306 follow-up: `with self._TransactionCM(...)` brackets a
+            # multi-step write (BaseOperations.Sort / Swap reorder a sequence
+            # with MoveTo inside one); no read-only public flexicon method
+            # opens one, so it is write evidence even without a
+            # _EnsureWriteEnabled call in the same body.
+            elif (isinstance(child.func, ast.Attribute)
+                    and child.func.attr == '_TransactionCM'
+                    and isinstance(child.func.value, ast.Name)
+                    and child.func.value.id == 'self'):
+                result["calls_ensure_write_enabled"] = True
 
         # Track parameter usage in calls
         if isinstance(child, ast.Call) and param_names:
@@ -1355,7 +1384,10 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None,
     # Ground truth: self._EnsureWriteEnabled() call in method body
     _WRITE_HINTS = {"modification", "creation", "deletion", "manipulation", "persistence"}
     _asm_confirmed = lcm_calls.get("calls_ensure_write_enabled", False)
-    _name_suggests = generate_method_usage_hint(node.name, return_type) in _WRITE_HINTS
+    _name_suggests = (
+        generate_method_usage_hint(node.name, return_type) in _WRITE_HINTS
+        or _name_reorders_sequence(node.name)
+    )
     is_mutating = _asm_confirmed or _name_suggests
 
     method_info = {

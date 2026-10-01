@@ -111,6 +111,21 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   runs after the `unprotected_writes` gate. The call is reported as
   `unknown_method` with the fix as did-you-mean, which is the same answer the
   aliased form gets.
+- `BaseOperations.Sort` and `BaseOperations.Swap` are now marked as writes
+  (`is_mutating: true`) in the flexicon index
+  ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306),
+  follow-up). Both reorder a sequence, but the index generator only counted
+  a `self._EnsureWriteEnabled()` call or a write-verb name prefix as a write,
+  and they have neither. Since the #306 fix resolves inherited methods from
+  the index, an unguarded `project.LexEntry.Sort(e)` was certified
+  read-only. The generator now also counts a `self._TransactionCM(...)`
+  bracket, and the names Sort, Swap, Reorder* and Insert*, as writes. On the
+  flexicon 4.11.0 source that changes exactly 12 flags. The shipped
+  `flexicon_api_v4.11.0.json` has those 12 patched by hand rather than
+  regenerated, because the installed flexicon is not the 4.11.0 release:
+  Sort, Swap, `LocalizedListsOperations.Import`, and nine `FLExProject`
+  Lexicon* writers (`LexiconSetFieldText`, `LexiconClearField`,
+  `LexiconDeleteObject`, `LexiconAddComplexForm`, ...).
 - `flextools_run_module` now returns a structured `no_unit_of_work` error
   when liblcm raises `InvalidOperationException: Not in the right state to
   register a change`

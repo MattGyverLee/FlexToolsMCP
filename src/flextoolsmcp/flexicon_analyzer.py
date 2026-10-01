@@ -2317,7 +2317,162 @@ def analyze_flexicon(flexicon_path: str) -> Dict[str, Any]:
             }
         result["categories"][cat]["entities"].append(entity_id)
 
+    # Issue #306 follow-up: thin delegators (FLExProject.LexiconSetLexemeForm
+    # -> self.LexEntry.SetLexemeForm) inherit their callee's write flag.
+    _propagate_delegated_mutation(base_path, result["entities"], facade_access_paths)
+
     return result
+
+
+#: Calls on `self` that are direct write evidence (see extract_lcm_calls).
+_WRITE_EVIDENCE_SELF_CALLS = frozenset({"_EnsureWriteEnabled", "_TransactionCM", "_MakeFeatStruc"})
+
+#: Delegation receiver marker for `super().M(...)`.
+_SUPER = "<super>"
+
+
+def _self_delegations(func: ast.FunctionDef) -> List[Tuple[Optional[str], str]]:
+    """Flexicon-method calls a method body makes, as (receiver, method).
+
+    (None, M)   `self.M(...)` -- same class or inherited, private included
+    (_SUPER, M) `super().M(...)` -- a base class's M
+    (A, M)      `self.A.M(...)` (FLExProject facade accessor) or
+                `self.project.A.M(...)` (an Operations class reaching another
+                through its project)
+    """
+    out: List[Tuple[Optional[str], str]] = []
+    for call in ast.walk(func):
+        if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Attribute):
+            continue
+        method = call.func.attr
+        recv = call.func.value
+        if isinstance(recv, ast.Name) and recv.id == "self":
+            out.append((None, method))
+        elif (isinstance(recv, ast.Call) and isinstance(recv.func, ast.Name)
+                and recv.func.id == "super" and not recv.args):
+            out.append((_SUPER, method))
+        elif (isinstance(recv, ast.Attribute) and not recv.attr.startswith("_")
+                and not method.startswith("_")):
+            inner = recv.value
+            if isinstance(inner, ast.Name) and inner.id == "self":
+                out.append((recv.attr, method))
+            elif (isinstance(inner, ast.Attribute) and inner.attr == "project"
+                    and isinstance(inner.value, ast.Name) and inner.value.id == "self"):
+                out.append((recv.attr, method))
+    return out
+
+
+def _propagate_delegated_mutation(base_path: Path, entities: Dict[str, Any],
+                                  facade_access_paths: Dict[str, str]) -> List[Tuple[str, str]]:
+    """Mark a method mutating when it calls a mutating flexicon method.
+
+    Issue #306 follow-up: `FLExProject.LexiconSetLexemeForm` is a one-line
+    `self.LexEntry.SetLexemeForm(...)`, so it has no write evidence of its own
+    and its name matches no write verb; it shipped is_mutating False and
+    `project.LexiconSetLexemeForm(...)` certified read-only. Same shape:
+    ApplySyncableProperties overrides that only add to
+    `super().ApplySyncableProperties(...)`, and ImportCatalog methods that
+    hand off to the private `self._import_lcm_native_catalog(...)`.
+
+    Delegation targets are resolved through the facade accessors
+    (accessor -> class from FLExProject's properties), same-class and
+    inherited `self.M`, and `super().M`. Private helpers are not in the index,
+    so their flag here comes only from their own write evidence
+    (_WRITE_EVIDENCE_SELF_CALLS) or their own delegations. Iterated to a
+    fixpoint so chains propagate (LexiconAddTagToField -> LexiconSetFieldText
+    -> _TransactionCM). Only ever turns flags on. Returns the public
+    (class, method) pairs it flipped.
+    """
+    accessor_to_class = {
+        path.split(".", 1)[1]: cls
+        for cls, path in (facade_access_paths or {}).items()
+        if path.startswith("project.")
+    }
+
+    # Source facts for every method of every indexed class, private included.
+    calls_of: Dict[Tuple[str, str], List[Tuple[Optional[str], str]]] = {}
+    private_flag: Dict[Tuple[str, str], bool] = {}
+    for py_file in base_path.rglob("*.py"):
+        if py_file.name.startswith("__"):
+            continue
+        try:
+            tree = ast.parse(py_file.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError, UnicodeDecodeError):
+            continue
+        for cls_node in ast.walk(tree):
+            if not isinstance(cls_node, ast.ClassDef) or cls_node.name not in entities:
+                continue
+            for item in cls_node.body:
+                if not isinstance(item, ast.FunctionDef):
+                    continue
+                calls = _self_delegations(item)
+                key = (cls_node.name, item.name)
+                calls_of[key] = calls
+                if item.name.startswith("_"):
+                    private_flag[key] = any(
+                        recv is None and m in _WRITE_EVIDENCE_SELF_CALLS for recv, m in calls
+                    )
+
+    def _mro(cls: str) -> List[str]:
+        order, pending, seen = [], [cls], set()
+        while pending:
+            name = pending.pop(0)
+            if name in seen or name not in entities:
+                continue
+            seen.add(name)
+            order.append(name)
+            pending.extend(entities[name].get("base_classes") or [])
+        return order
+
+    def _public_record(cls: str, method: str) -> Optional[Dict[str, Any]]:
+        for m in entities.get(cls, {}).get("methods", []):
+            if m.get("name") == method:
+                return m
+        return None
+
+    def _is_mutating(classes: List[str], method: str) -> bool:
+        for name in classes:
+            if (name, method) in private_flag:
+                return private_flag[(name, method)]
+            record = _public_record(name, method)
+            if record is not None:
+                return bool(record.get("is_mutating"))
+        return False
+
+    def _target_classes(cls: str, recv: Optional[str]) -> List[str]:
+        if recv is None:
+            return _mro(cls)
+        if recv == _SUPER:
+            return _mro(cls)[1:]
+        target = accessor_to_class.get(recv)
+        return _mro(target) if target else []
+
+    flipped: List[Tuple[str, str]] = []
+    changed = True
+    while changed:
+        changed = False
+        for (cls, method), calls in calls_of.items():
+            if method.startswith("_"):
+                if private_flag.get((cls, method)):
+                    continue
+                record = None
+            else:
+                record = _public_record(cls, method)
+                if record is None or record.get("is_mutating") or record.get("is_property"):
+                    continue
+            if not any(
+                not (recv is None and callee == method)
+                and _is_mutating(_target_classes(cls, recv), callee)
+                for recv, callee in calls
+            ):
+                continue
+            if record is None:
+                private_flag[(cls, method)] = True
+            else:
+                record["is_mutating"] = True
+                flipped.append((cls, method))
+            changed = True
+    return flipped
 
 
 def get_category_from_method_name(method_name: str) -> str:

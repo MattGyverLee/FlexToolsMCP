@@ -116,23 +116,52 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   method: at least 0.9 similar, and not that method's name plus a suffix. So
   `GetLexemeFrom` is caught, while a getter newer than the index, such as
   `GetGlossText` next to `GetGloss`, still runs and is never auto-fixed.
-- `BaseOperations.Sort` and `BaseOperations.Swap` are now marked as writes
+- 40 flexicon methods that write are now marked as writes
   (`is_mutating: true`) in the flexicon index
   ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306),
-  follow-up). Both reorder a sequence, but the index generator only counted
-  a `self._EnsureWriteEnabled()` call or a write-verb name prefix as a write,
-  and they have neither. Since the #306 fix resolves inherited methods from
-  the index, an unguarded `project.LexEntry.Sort(e)` was certified
-  read-only. The generator now also counts a `self._TransactionCM(...)`
-  bracket as a write. As a backstop, the exact names Sort and Swap,
-  Reorder*, and InsertAt/InsertBefore/InsertAfter also count as writes
-  (nouns such as SortKey, SortOrder, SwapPair and InsertXml do not). On the
-  flexicon 4.11.0 source that changes exactly 12 flags. The shipped
-  `flexicon_api_v4.11.0.json` has those 12 patched by hand rather than
-  regenerated, because the installed flexicon is not the 4.11.0 release:
-  Sort, Swap, `LocalizedListsOperations.Import`, and nine `FLExProject`
-  Lexicon* writers (`LexiconSetFieldText`, `LexiconClearField`,
-  `LexiconDeleteObject`, `LexiconAddComplexForm`, ...).
+  follow-up). An unguarded call to any of them used to certify as read-only.
+  This mattered more once #306 began reading inherited methods from the
+  index: an unguarded `project.LexEntry.Sort(e)` passed. The methods are:
+  - `BaseOperations.Sort` and `BaseOperations.Swap`, inherited by every
+    Operations class;
+  - `FLExProject`: `LexiconSetLexemeForm`, `LexiconSetSenseGloss`,
+    `LexiconSetExample`, `LexiconSetMorphType`, `LexiconSetFieldText`,
+    `LexiconSetFieldInteger`, `LexiconSetListFieldSingle`,
+    `LexiconSetListFieldMultiple`, `LexiconSetComplexFormType`,
+    `LexiconAddEntry`, `LexiconAddSense`, `LexiconAddAllomorph`,
+    `LexiconAddPronunciation`, `LexiconAddVariantForm`,
+    `LexiconAddComplexForm`, `LexiconAddTagToField`, `LexiconClearField`,
+    `LexiconClearListFieldSingle`, `LexiconDeleteObject`,
+    `ImportLocalizedLists` and `ImportLocalizedListsForEnabledWS`;
+  - `LocalizedListsOperations.Import` and
+    `ImportForAllAnalysisWritingSystems`, and
+    `CustomFieldOperations.ClearField`;
+  - `ImportCatalog` on Anthropology and SemanticDomain, and
+    `AnthropologyOperations.ImportFrameCatalog`;
+  - the `ApplySyncableProperties` override on Allomorph, Environment,
+    InflectionFeature, MSA, MorphRule, NaturalClass, POS, PhonFeature,
+    Phoneme, PhonologicalRule and Stratum.
+
+  The index generator used to count only a `self._EnsureWriteEnabled()`
+  call or a write-verb name prefix as a write. It now also counts:
+  - a `self._TransactionCM(...)` bracket (12 methods);
+  - delegation to a method that writes (28 methods), resolved to a
+    fixpoint. Delegation is `self.<Accessor>.M(...)`, `self.M(...)` (private
+    helpers included, judged by their own write evidence) or
+    `super().M(...)`. For example, `LexiconSetLexemeForm` is one call to
+    `self.LexEntry.SetLexemeForm`.
+
+  As a backstop, the exact names Sort and Swap, Reorder*, and
+  InsertAt/InsertBefore/InsertAfter also count as writes. They change no
+  flag today, and nouns such as SortKey, SortOrder, SwapPair and InsertXml
+  are not matched. Readers stay read-only, for example
+  `FilterOperations.ApplyFilter` and `CheckOperations.RunCheck`. The shipped
+  `flexicon_api_v4.11.0.json` was patched by hand (40 flags) rather than
+  regenerated, because the installed flexicon is not the 4.11.0 release.
+  The generator run on the v4.11.0 source reproduces its `is_mutating`
+  flags exactly. One side effect is by design (#130): the write gate fails
+  closed on calls to `Sort`, `Swap` or `Import` on a receiver it cannot type,
+  treating them as suspected writes that need an `if modifyAllowed:` guard.
 - The `validate_only` descriptions no longer say "11-gate preflight"
   ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306),
   follow-up). It runs 16 checks now (`unknown_method` and

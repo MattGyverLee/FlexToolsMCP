@@ -256,12 +256,16 @@ is now the only engine version there is to report, not one of several).
   "parameters_source": "cache_key_json | fwdata_stream_read | flex_defaults",
   "generation": {"reused_cache": true, "cache_key": "...", "load_error_count": 0, "load_errors": []},
   "copy": {"bytes": 0, "cleanup": "deleted | failed | not_made", "path_if_failed": null},
-  "worker": {"exit_code": 0, "timed_out": false, "in_flight_index": null, "duration_ms": 0, "counters": "ok | unavailable_timeout"},
+  "worker": {"exit_code": 0, "timed_out": false, "in_flight_index": null, "duration_ms": 0, "counters": "ok | unavailable_timeout", "reused_worker": false, "worker_pid": 1234},
   "shaping": {"applied": true, "id_map": "valid | invalid | absent"},
   "truncated_by_limit": false,
   "advisories": ["sandbox_predates_project_grammar", "grammar_load_errors"]
 }
 ```
+
+`worker.exit_code` is `null` (not `0`) when `reused_worker` is `true`: the pooled worker is still
+alive when the outcome is folded, so there is no exit code to report. `worker_pid`
+identifies the process, which is how a warm run proves it shared the cold run's worker.
 
 **`shaping`** (new, additive, CP5 re-plan correction 2026-09-24, D4 reversed, FR-050). `id_map` is
 `"valid"` when the cache entry's `lcm-ids.json` validated cleanly and shaping rules a-d were

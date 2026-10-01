@@ -91,6 +91,7 @@ from .stages import (
 )
 from .worker_client import MEASUREMENT_ROLE, SHARED_ROLE, WorkerError, WorkerPool
 from ..sandbox.client import SANDBOX_ROLE, SandboxClient
+from ..sandbox.pool import SandboxWorkerPool
 
 __all__ = [
     "DEFAULT_GRACE_WINDOW_SECONDS",
@@ -312,11 +313,16 @@ class ParseRunner:
         self,
         *,
         pool: Optional[WorkerPool] = None,
+        sandbox_pool: Optional[SandboxWorkerPool] = None,
         grace_window: Optional[float] = None,
         record_dir=None,
         stub: bool = False,
     ) -> None:
         self._pool = pool if pool is not None else WorkerPool(stub=stub)
+        # CP5 Phase 11 (#242): idle --sandbox workers stay warm between runs.
+        self._sandbox_pool = (
+            sandbox_pool if sandbox_pool is not None else SandboxWorkerPool()
+        )
         self._grace_window = (
             grace_window if grace_window is not None else _grace_window_default()
         )
@@ -690,6 +696,7 @@ class ParseRunner:
                 record=record,
                 wordforms=list(wordforms),
                 launch=sandbox_launch,
+                sandbox_pool=self._sandbox_pool,
             )
         handle = RunHandle(
             run_id=record.run_id,
@@ -1372,3 +1379,4 @@ class ParseRunner:
     async def aclose(self) -> None:
         """Reap every worker. The runs' records are already on disk."""
         await self._pool.aclose()
+        await self._sandbox_pool.aclose()

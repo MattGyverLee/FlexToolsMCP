@@ -21,6 +21,7 @@ Provides:
   unknown_tool, invalid_input
   + deprecated_member (curated_deprecations.py)
   + recipe_not_found (unified-recipes FR-024)
+  + no_unit_of_work (#310)
   + atomic_property_iteration (#313))
 
 All field aliases reference KEY_* constants from response_keys so renames
@@ -364,6 +365,32 @@ class NestedUnitOfWorkDetail(BaseModel):
     error_code: Literal["nested_unit_of_work"] = "nested_unit_of_work"
     constructs: List[Any] = Field(default_factory=list)
     guidance: Optional[str] = None
+
+
+class NoUnitOfWorkDetail(BaseModel):
+    """Detail payload for no_unit_of_work runtime failures (issue #310).
+
+    liblcm raised InvalidOperationException("Not in the right state to
+    register a change"): a raw LCM mutation ran while no unit of work was
+    open. `uow_mode` names why none was open and so which fix applies:
+
+    - ``read_only``: write_enabled=false; nothing opens a unit of work.
+    - ``per_operation``: per-operation-uow flexicon (every supported
+      install); the runner opens no session task, each Flexicon operation
+      opens its own. Raw path: ``with project.UndoableOperation(label):``.
+    - ``session_envelope``: legacy build; the script closed the runner's
+      session-long task.
+
+    Emitted by run_module's post-exec diagnosis, not by a preflight gate.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["no_unit_of_work"] = "no_unit_of_work"
+    uow_mode: Optional[Literal["read_only", "per_operation", "session_envelope"]] = None
+    write_enabled: Optional[bool] = None
+    undoable: Optional[bool] = None
+    lcm_message: Optional[str] = None
+    guidance: Optional[str] = None
+    next_steps: List[Any] = Field(default_factory=list)
 
 
 class ProjectLockedDetail(BaseModel):
@@ -969,6 +996,7 @@ AnyDetail = Union[
     InvalidApiChainDetail,
     ReflectionBypassDetectedDetail,
     NestedUnitOfWorkDetail,
+    NoUnitOfWorkDetail,
     ProjectLockedDetail,
     ProjectDriveUnavailableDetail,
     ProjectPathMismatchDetail,

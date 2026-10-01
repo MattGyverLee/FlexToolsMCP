@@ -39,6 +39,13 @@ try:
 except ImportError:
     from server.subprocess_helpers import run_script_async
 
+# Issue #302: teardown AbandonedMutexException recovery. The same source is
+# embedded into the generated runner scripts, so it is stdlib-only.
+from .teardown_recovery import (
+    RUNNER_HELPER_SOURCE as TEARDOWN_HELPER_SOURCE,
+    teardown_next_steps,
+)
+
 # Import kernel dependencies with fallback
 json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_deps()
 _, get_operations_logger = safe_import_logging_helpers()
@@ -1425,6 +1432,161 @@ def _diagnose_project_open_error(
         }
 
     return None
+
+
+# Issue #310: liblcm's UnitOfWorkService.RegisterCommon raises
+# InvalidOperationException("Not in the right state to register a change")
+# when a change is registered while no unit of work is open. Matched
+# case-insensitively on the stable prefix.
+_NO_UOW_MARKERS = (
+    "not in the right state to register a change",
+)
+
+# The supported raw-LCM path on per-operation-uow builds. Not refused by the
+# nested_unit_of_work gate (validators.detect_nested_unit_of_work flags only
+# the raw helpers and Begin*Task calls): flexicon's _FLExUndoableOperation
+# opens an UndoableUnitOfWorkHelper when none is open and joins the enclosing
+# one otherwise, so it never nests.
+_RAW_UOW_PATH = 'with project.UndoableOperation("<label>"):'
+
+
+def _no_uow_error_text(execution_result: Dict[str, Any]) -> Optional[str]:
+    """Return the text carrying the no-unit-of-work marker, or None.
+
+    Looks at the runner's `error` string first, then at ERROR-level report
+    messages -- a script that catches the exception and calls report.Error()
+    turns it into a ReportedError whose `error` no longer carries the text.
+    """
+    candidates: List[str] = []
+    raw_error = execution_result.get("error")
+    if isinstance(raw_error, str):
+        candidates.append(raw_error)
+    for m in execution_result.get("messages") or []:
+        if isinstance(m, dict) and str(m.get("type", "")).upper() == "ERROR":
+            msg = m.get("message")
+            if isinstance(msg, str):
+                candidates.append(msg)
+    for text in candidates:
+        low = text.lower()
+        if any(marker in low for marker in _NO_UOW_MARKERS):
+            return text
+    return None
+
+
+def _diagnose_no_unit_of_work_error(
+    execution_result: Dict[str, Any], write_enabled: bool
+) -> Optional[Dict[str, Any]]:
+    """Map liblcm's "Not in the right state to register a change" (issue #310).
+
+    That InvalidOperationException means a raw LCM mutation ran while no unit
+    of work was open. The guidance depends on the run's mode:
+
+    - read-only (write_enabled=False): nothing opens a unit of work, so no
+      write can register by any route. Guard writes under `if modifyAllowed:`
+      and re-run write-enabled.
+    - write-enabled on a per-operation-uow build (the runner's `undoable`
+      flag True -- every supported install): the runner opens no
+      session-long task; each Flexicon operation opens its own. A raw write
+      outside one has nothing to register in. The supported raw path is
+      `with project.UndoableOperation(label):`. The raw
+      UndoableUnitOfWorkHelper / BeginUndoTask route is refused by the
+      nested_unit_of_work gate, and project.Transaction() opens no unit of
+      work on these builds.
+    - write-enabled legacy (`undoable` False): the session-long task should
+      be open around the whole run, so the script must have closed it.
+
+    Returns None when the error does not carry the marker; otherwise a dict
+    the caller merges into execution_result (same shape as
+    _diagnose_project_open_error).
+    """
+    matched = _no_uow_error_text(execution_result)
+    if matched is None:
+        return None
+
+    wrappers = "project.POS.*, project.LexEntry.*, project.Senses.*"
+    undoable = execution_result.get("undoable")
+    if not write_enabled:
+        uow_mode = "read_only"
+        message = (
+            "A raw LCM mutation ran with no unit of work open (liblcm: 'Not "
+            "in the right state to register a change'). This run is "
+            "read-only (write_enabled=false): no unit of work is ever open, "
+            "so no write can register by any route, wrapper or raw."
+        )
+        guidance = (
+            "Put every write under `if modifyAllowed:` so the dry run skips "
+            "it, then re-run with write_enabled=true. Prefer the Flexicon "
+            f"operations wrappers ({wrappers}); each opens its own unit of "
+            "work. For a raw LCM write in the write-enabled run, wrap it in "
+            f"`{_RAW_UOW_PATH}`."
+        )
+        next_steps = [
+            "1. Guard the mutation with `if modifyAllowed:` -- a read-only "
+            "run cannot write.",
+            f"2. Prefer a Flexicon operations wrapper ({wrappers}) over the "
+            "raw LCM call.",
+            "3. If you must write raw LCM, wrap it in "
+            f"`{_RAW_UOW_PATH}` (inside the modifyAllowed guard).",
+            "4. Re-run flextools_run_module() with write_enabled=true.",
+        ]
+    elif undoable is False:
+        uow_mode = "session_envelope"
+        message = (
+            "A raw LCM mutation ran with no unit of work open (liblcm: 'Not "
+            "in the right state to register a change'). This flexicon build "
+            "holds one session-long non-undoable task for the whole run, so "
+            "the script must have closed it (EndNonUndoableTask, a failed "
+            "SaveChanges, or a raw helper that rolled it back)."
+        )
+        guidance = (
+            "Remove whatever ends the runner's session task. In this mode raw "
+            "LCM writes under `if modifyAllowed:` are legal as they are. "
+            f"Prefer the Flexicon operations wrappers ({wrappers})."
+        )
+        next_steps = [
+            "1. Remove EndNonUndoableTask/EndUndoTask/SaveChanges calls and "
+            "raw UnitOfWork helpers from the script.",
+            "2. Keep raw writes under `if modifyAllowed:`; the session task "
+            "covers them.",
+            "3. Re-run flextools_run_module().",
+        ]
+    else:
+        uow_mode = "per_operation"
+        message = (
+            "A raw LCM mutation ran outside any undo task (liblcm: 'Not in "
+            "the right state to register a change'). The runner opens no "
+            "session-long unit of work on this flexicon build: each Flexicon "
+            "operation opens its own, so a raw LCM write outside one has "
+            "nothing to register in."
+        )
+        guidance = (
+            f"Prefer the Flexicon operations wrappers ({wrappers}); they "
+            "open their own unit of work. For a raw LCM write, the supported "
+            f"path is `{_RAW_UOW_PATH}` around it (under `if modifyAllowed:`) "
+            "-- it opens a unit of work, or joins the enclosing one. Do not "
+            "use UndoableUnitOfWorkHelper or BeginUndoTask (refused by the "
+            "nested_unit_of_work gate), and do not rely on "
+            "project.Transaction(): it opens no unit of work on this build."
+        )
+        next_steps = [
+            f"1. Prefer a Flexicon operations wrapper ({wrappers}) over the "
+            "raw LCM call.",
+            "2. Otherwise wrap the raw LCM writes in "
+            f"`{_RAW_UOW_PATH}` inside the `if modifyAllowed:` guard.",
+            "3. Re-run flextools_run_module() with write_enabled=true.",
+        ]
+
+    return {
+        "error_code": "no_unit_of_work",
+        "message": message,
+        "hint": guidance,
+        "guidance": guidance,
+        "next_steps": next_steps,
+        "uow_mode": uow_mode,
+        "write_enabled": bool(write_enabled),
+        "undoable": undoable if isinstance(undoable, bool) else None,
+        "lcm_message": matched.split("\n", 1)[0][:500],
+    }
 
 
 def _inline_discovery_docs(
@@ -3508,32 +3670,49 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     "inside it and will discard that operation's writes before "
                     "the error is raised."
                 )
+                # Issue #310: on these builds the runner opens NO session
+                # task, so a raw LCM write outside a flexicon op has no unit
+                # of work at all. Name the legal raw path instead of "just
+                # write directly" (which raises no_unit_of_work at runtime).
+                _nested_uow_steps = [
+                    "1. Replace the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
+                    "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) with "
+                    f"`{_RAW_UOW_PATH}` -- the supported raw-LCM path. It opens a unit "
+                    "of work when none is open and joins the enclosing one otherwise, "
+                    "so it never nests.",
+                    "2. Better: use the Flexicon operations wrappers (project.POS.*, "
+                    "project.LexEntry.*, project.Senses.*); each opens its own unit "
+                    "of work and needs no wrapper.",
+                    "3. Keep the writes under `if modifyAllowed:`. Do not drop the "
+                    "wrapper and write raw LCM bare: the runner opens no session "
+                    "task on this build, so that raises no_unit_of_work. "
+                    "project.Transaction() opens no unit of work here either.",
+                    "4. Re-run flextools_run_module()",
+                ]
             else:
                 _nested_uow_message = (
                     "Code opens its own raw liblcm UnitOfWork, which nests inside "
                     "the runner's already-open non-undoable task and will discard "
                     "this run's writes."
                 )
+                _nested_uow_steps = [
+                    "1. Drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
+                    "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
+                    "the runner's session-long task is already open around the "
+                    "whole run on this flexicon build.",
+                    "2. Just perform the mutation directly (guarded by "
+                    "`if modifyAllowed:` as usual); that session task captures it.",
+                    "3. project.UndoableOperation() is unavailable in this mode "
+                    "(it needs undoable=True); Flexicon operations wrappers "
+                    "(project.POS.*, project.LexEntry.*) work as usual.",
+                    "4. Re-run flextools_run_module()",
+                ]
             return _attach_assistance_if_loop(
                 error_response(
                     "nested_unit_of_work",
                     _nested_uow_message,
                     constructs=constructs,
-                    next_steps=[
-                        "1. Drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
-                        "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
-                        "there is already a unit of work open around this mutation "
-                        "(the runner's session task, or flexicon's own per-operation "
-                        "task, depending on the flexicon build).",
-                        "2. Just perform the mutation directly (guarded by "
-                        "`if modifyAllowed:` as usual); it will be captured by that "
-                        "already-open unit of work.",
-                        "3. If you need FLEx Ctrl+Z grouping for this specific change, "
-                        "use `project.UndoableOperation(label)` / `project.Transaction(label)` "
-                        "instead of the raw liblcm helper -- those join an already-open "
-                        "UnitOfWork instead of nesting a second one.",
-                        "4. Re-run flextools_run_module()",
-                    ],
+                    next_steps=_nested_uow_steps,
                     op_id=op_id,
                 ),
                 error_code="nested_unit_of_work",
@@ -3806,7 +3985,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     ]
                     hint_msg = (
                         "Each entry in casting_issues carries `rewrite` (the cast-wrapped "
-                        "expression) and `imports_needed` (the SIL.LCModel imports to add). "
+                        "or ClassName-guarded expression) and `imports_needed` (the "
+                        "SIL.LCModel imports to add). "
                         "Apply them line-by-line and re-run."
                     )
                 else:
@@ -4620,6 +4800,21 @@ def run_module():
 
         FLExInitialize()
 
+        # Issue #302: a process that died holding the global writing-system
+        # store mutex leaves it abandoned, and every later LcmCache.Dispose
+        # then fails with AbandonedMutexException (and re-abandons it on
+        # exit). Clear a stale one before opening. Best-effort, never fatal.
+        try:
+            _ws_mutex_state = clear_stale_ws_mutex()
+            result["stale_ws_mutex_cleared"] = bool(_ws_mutex_state.get("cleared"))
+            if _ws_mutex_state.get("cleared"):
+                report.Warning(
+                    "Cleared a stale (abandoned) global writing-system mutex "
+                    "left by an earlier process (issue #302)."
+                )
+        except Exception:
+            result["stale_ws_mutex_cleared"] = False
+
         # Issue #159: the `ui=` kwarg only exists on flexicon builds >=4.4.0
         # (OpenProject(..., ui=None)); on older builds passing it -- even as
         # ui=None -- raises TypeError and kills the session's very first
@@ -4921,29 +5116,58 @@ def run_module():
         # rather than clobbering them, since a teardown failure can follow
         # either a successful or an already-failed script body.
         if project:
+            _close_started = False
             try:
                 _maybe_refresh_from_disk(project)
+                _close_started = True
                 project.CloseProject()
             except Exception as e:
-                _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
                 _teardown_tb = traceback.format_exc()
-                if result.get("error"):
-                    result["error"] = (
-                        "{}\\n\\nAdditionally, project teardown failed (writes "
-                        "may not have been committed): {}\\n{}"
-                    ).format(result["error"], _teardown_msg, _teardown_tb)
+                _td = classify_teardown_failure(
+                    e, _teardown_tb, write_enabled=WRITE_ENABLED,
+                    close_started=_close_started,
+                )
+                # Issue #302: AbandonedMutexException means this thread now
+                # OWNS the writing-system mutex. Release it and retry the
+                # dispose once; always release before exiting so this
+                # process does not abandon it again for the next run.
+                _td_recovery = None
+                if _td["abandoned_mutex"]:
+                    _td_recovery = retry_dispose_after_abandoned_mutex(project)
                 else:
-                    result["error"] = (
-                        "Project teardown failed after script execution "
-                        "(writes may not have been committed): {}\\n{}"
-                    ).format(_teardown_msg, _teardown_tb)
-                result["success"] = False
-                result["error_type"] = "TeardownError"
-                result["teardown_error"] = {
+                    release_owned_ws_mutex()
+                result["writes_committed"] = _td["writes_committed"]
+                _td_record = {
                     "type": type(e).__name__,
                     "message": str(e),
                     "traceback": _teardown_tb,
+                    "phase": _td["phase"],
+                    "writes_committed": _td["writes_committed"],
+                    "abandoned_mutex": _td["abandoned_mutex"],
+                    "recovery": _td_recovery,
                 }
+                if (_td_recovery and _td_recovery.get("retry_ok")
+                        and _td["phase"] == "dispose"):
+                    # Data committed before the failure and the retried
+                    # dispose succeeded: nothing is lost, so the run keeps
+                    # its own success/failure. Surface it as a warning.
+                    result["teardown_warning"] = _td_record
+                else:
+                    _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
+                    _status = teardown_error_message(_td, write_enabled=WRITE_ENABLED)
+                    if result.get("error"):
+                        result["error"] = (
+                            "{}\\n\\nAdditionally, project teardown failed "
+                            "({}): {}\\n{}"
+                        ).format(result["error"], _status, _teardown_msg, _teardown_tb)
+                    else:
+                        result["error"] = (
+                            "Project teardown failed after script execution "
+                            "({}): {}\\n{}"
+                        ).format(_status, _teardown_msg, _teardown_tb)
+                    result["success"] = False
+                    result["error_type"] = "TeardownError"
+                    result["teardown_error"] = _td_record
         try:
             FLExCleanup()
         except:
@@ -4969,11 +5193,16 @@ PROJECT_NAME = {project_name}
 WRITE_ENABLED = {write_enabled}
 MODULE_CODE = {code}
 
+# --- issue #302 teardown recovery helpers (teardown_recovery.py) ---
+{teardown_helpers}
+# --- end teardown recovery helpers ---
+
 {runner_script}
 '''.format(
         project_name=repr(project_name),
         write_enabled=repr(write_enabled),
         code=escaped_code,
+        teardown_helpers=TEARDOWN_HELPER_SOURCE,
         runner_script=runner_script
     )
 
@@ -5366,6 +5595,11 @@ MODULE_CODE = {code}
         # of the bare .NET exception string.
         if execution_result.get("error"):
             open_diag = _diagnose_project_open_error(execution_result, project_name)
+            if open_diag is None:
+                # Issue #310: raw LCM write with no unit of work open.
+                open_diag = _diagnose_no_unit_of_work_error(
+                    execution_result, write_enabled
+                )
             if open_diag is not None:
                 execution_result["error_code"] = open_diag["error_code"]
                 execution_result["help"] = open_diag.get("hint")
@@ -5666,9 +5900,25 @@ MODULE_CODE = {code}
                 polymorphic_hint=polymorphic_hint,
             log_dir_fn=get_log_dir,
             )
+            # Issue #302: a teardown failure needs explicit recovery advice --
+            # without it, callers re-ran the same write 20 times in a row
+            # (possibly duplicating already-committed changes).
+            if execution_result.get("error_type") == "TeardownError":
+                _td_info = execution_result.get("teardown_error") or {}
+                execution_result.setdefault(
+                    "writes_committed", _td_info.get("writes_committed")
+                )
+                execution_result[KEY_NEXT_STEPS] = teardown_next_steps(
+                    _td_info, write_enabled=write_enabled
+                )
             # Issue #28: record a runtime-failure signal. Use the structured
             # error_type when available; fall back to a generic bucket.
-            runtime_error_code = execution_result.get("error_type") or "runtime_error"
+            # Issue #310: a diagnosed no_unit_of_work keys the loop detector
+            # on its own code so the tailored assistance hint fires.
+            if execution_result.get("error_code") == "no_unit_of_work":
+                runtime_error_code = "no_unit_of_work"
+            else:
+                runtime_error_code = execution_result.get("error_type") or "runtime_error"
             return _attach_assistance_if_loop(
                 json_response(
                     _finalize_run_module_response(execution_result),
@@ -5895,6 +6145,11 @@ def run_scan():
             )
 
         FLExInitialize()
+        # Issue #302: clear a stale abandoned writing-system mutex first.
+        try:
+            result["stale_ws_mutex_cleared"] = bool(clear_stale_ws_mutex().get("cleared"))
+        except Exception:
+            result["stale_ws_mutex_cleared"] = False
         project = FLExProject()
 
         # Issue #159: `ui=` only exists on flexicon >=4.4.0 OpenProject();
@@ -5971,15 +6226,30 @@ def run_scan():
                 _maybe_refresh_from_disk(project)
                 project.CloseProject()
             except Exception as e:
-                _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
-                if result.get("error"):
-                    result["error"] = "{}\\n\\nAdditionally, project teardown failed: {}".format(
-                        result["error"], _teardown_msg
-                    )
+                # Issue #302: classify, release the owned WS mutex, retry once.
+                _td = classify_teardown_failure(e, traceback.format_exc(), write_enabled=WRITE_ENABLED)
+                _td_recovery = None
+                if _td["abandoned_mutex"]:
+                    _td_recovery = retry_dispose_after_abandoned_mutex(project)
                 else:
-                    result["error"] = "Project teardown failed after scan execution: {}".format(_teardown_msg)
-                result["error_type"] = result["error_type"] or "TeardownError"
-                result["success"] = False
+                    release_owned_ws_mutex()
+                result["writes_committed"] = _td["writes_committed"]
+                if (_td_recovery and _td_recovery.get("retry_ok")
+                        and _td["phase"] == "dispose"):
+                    result["teardown_warning"] = dict(_td, recovery=_td_recovery, message=str(e))
+                else:
+                    _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
+                    _status = teardown_error_message(_td, write_enabled=WRITE_ENABLED)
+                    if result.get("error"):
+                        result["error"] = "{}\\n\\nAdditionally, project teardown failed ({}): {}".format(
+                            result["error"], _status, _teardown_msg
+                        )
+                    else:
+                        result["error"] = "Project teardown failed after scan execution ({}): {}".format(
+                            _status, _teardown_msg
+                        )
+                    result["error_type"] = result["error_type"] or "TeardownError"
+                    result["success"] = False
         try:
             FLExCleanup()
         except Exception:
@@ -5994,7 +6264,8 @@ if __name__ == "__main__":
     print(json.dumps(_result, indent=2, ensure_ascii=False))
 '''
 
-    return header + body
+    # Issue #302: teardown recovery helpers, embedded verbatim.
+    return header + "\n" + TEARDOWN_HELPER_SOURCE + "\n" + body
 
 
 async def run_scan_module(

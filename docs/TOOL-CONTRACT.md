@@ -79,7 +79,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 45 codes below |
+| `error_code` | string | one of the 46 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -127,7 +127,8 @@ authoritative. All detail fields are optional unless noted.
 | `invalid_api_mode` | `allowed_modes` (required list), `received`, `hint` |
 | `invalid_api_chain` | `issues` (list), `guidance` |
 | `reflection_bypass_detected` | `findings` (list), `reflection_bypass_count` (int), `next_steps` (list) -- issue #277; write-enabled runs only; READ-ONLY runs proceed with warnings |
-| `nested_unit_of_work` | `constructs` (list), `guidance` |
+| `nested_unit_of_work` | `constructs` (list), `guidance` -- `next_steps` are mode-accurate (issue #310): on per-operation-uow builds they name `with project.UndoableOperation(label):` as the supported raw-LCM replacement, since the runner opens no session task there |
+| `no_unit_of_work` | `uow_mode` (`read_only` \| `per_operation` \| `session_envelope`), `write_enabled` (bool), `undoable` (bool or null), `lcm_message`, `guidance`, `next_steps` (list) -- issue #310; **runtime**, not preflight: liblcm raised `InvalidOperationException: Not in the right state to register a change` (a raw LCM mutation with no unit of work open), seen in the runner's `error` or in an ERROR report message. `read_only`: the run is `write_enabled=false`, so no write can register by any route -- guard under `if modifyAllowed:` and re-run write-enabled. `per_operation` (every supported install): the runner opens no session task and each Flexicon operation opens its own, so raw writes need `with project.UndoableOperation(label):` (opens a unit of work or joins the enclosing one; not refused by `nested_unit_of_work`). Raw `UndoableUnitOfWorkHelper`/`BeginUndoTask` is refused by `nested_unit_of_work`, and `project.Transaction()` opens no unit of work. `session_envelope` (legacy build): the script closed the runner's session task. The original liblcm text survives in `raw_error`; `help` mirrors `guidance` |
 | `hvo_literal_write_risk` | `findings` (list), `next_steps` (list) -- issue #103; write-enabled runs only, a bare integer literal reached an `*_or_hvo` parameter (see `validators.detect_hvo_literal_args`) |
 | `deprecated_member` | `findings` (list of `{member, deprecation_id, access, expr, line, col_offset}`), `deprecations` (list of `{id, note, replacement_paths, replacement_owner, example, evidence}`), `replacement_example` (string), `next_steps` (list) -- read-only AND write-enabled runs: the code reads, writes or calls a member listed in `curated_deprecations.CURATED_DEPRECATIONS` (see `validators.detect_deprecated_members`). Today: `ILexEntry.DoNotUseForParsing` and flexicon `LexEntryOperations.Get/SetDoNotUseForParsing`, which no FLEx parser reads; the redirect is `IsAbstract` on the entry's forms (`LexemeFormOA`, each `AlternateFormsOS` item -- IMoForm, not ILexEntry). Not bypassable by `skip_module_check` or `source='existing'`. |
 | `atomic_property_iteration` | `findings` (list of `{line, col, property, expr, kind, list_sibling?, suggestion}`; `kind` is `owning_atomic` or `reference_atomic`), `next_steps` (list) -- issue #313; read-only AND write-enabled runs: the code iterates an LCM `*OA` / `*RA` property (a `for` loop, a comprehension, or `list/tuple/set/sorted/enumerate/len/reversed/iter(...)`), which holds ONE object or None and raises `'IMoForm' object is not iterable` at runtime (see `validators.detect_atomic_property_iteration`). Runs before the casting gate, so no casting advisory is emitted for the same line. At runtime, a `... object is not iterable` error carries `error_type` `AtomicPropertyIterationError` / `NotIterableError` and a `help` hint. |
@@ -186,6 +187,32 @@ use discovery" (`did_you_mean == []`) without parsing `help`.
 `project.LexDbOA` are mapped to `project.lexDB`. These aliases always win over
 the fuzzy matcher and produce `did_you_mean: ["lp"]` / `["lexDB"]` rather than
 an empty list.
+
+---
+
+## `TeardownError` on `run_module` (issue #302)
+
+When `project.CloseProject()` fails after the script body ran, the
+`run_module` failure payload has `error_type: "TeardownError"` and these
+extra top-level keys:
+
+| Key | Type | Description |
+|---|---|---|
+| `writes_committed` | bool or null | `true` when the failure came from `LcmCache.Dispose` (the writing-system sync) AFTER the data save; `false` when the save itself failed, or teardown failed before `CloseProject()`; `null` when unknown or on a read-only run. The `error` text states the same status. |
+| `teardown_error` | object | `type`, `message`, `traceback`, `phase` (`pre_close` \| `save` \| `dispose` \| `unknown`), `writes_committed`, `abandoned_mutex` (bool), `recovery` (the retry record below, or null). |
+| `next_steps` | list[str] | Always set. On a write run: do not re-run a write that was (or may have been) committed; check with a read-only query first. For an abandoned mutex: close FieldWorks/FLEx and other SIL apps; the next run clears the stale mutex itself; do not retry in a loop. |
+
+**Abandoned writing-system mutex.** `AbandonedMutexException` from SIL's
+global writing-system store (named mutex
+`C:_ProgramData_SIL_WritingSystemRepository_3`, derived at runtime from
+`GlobalWritingSystemRepository<T>.CurrentVersionPath(DefaultBasePath)`)
+means the wait still acquired the mutex. The runner releases it and retries
+the dispose once. If the retry succeeds and the failure was in the dispose
+phase, nothing was lost: the run keeps its own success/failure and carries a
+`teardown_warning` object (same shape as `teardown_error`) instead of a
+`TeardownError`. Every run also clears a stale abandoned mutex before opening
+the project and reports `stale_ws_mutex_cleared` (bool). The scan runner does
+the same.
 
 ---
 

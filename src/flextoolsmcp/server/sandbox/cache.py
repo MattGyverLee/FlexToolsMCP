@@ -62,7 +62,7 @@ import re
 import shutil
 import sys
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -478,6 +478,13 @@ def invalidate(project: str) -> int:
                 _log.warning("Could not invalidate %s: %s", entry_dir, exc)
                 continue
         count += 1
+    # Phase 11 (#242): their entries are unusable, so pooled workers holding
+    # those grammars are stale by definition. Lazy import -- pool imports the
+    # worker client, and a cache must never break its caller.
+    if count:
+        with suppress(Exception):
+            from . import pool as _pool_mod
+            _pool_mod.notify_project_invalidated(project)
     return count
 
 
@@ -522,6 +529,13 @@ def prune(project: str, keep: int = DEFAULT_KEEP) -> List[str]:
             _log.warning("Could not prune cache entry %s/%s: %s", project, key, exc)
             continue
         deleted.append(key)
+    # Phase 11 (#242): pooled workers holding these entry keys load grammars
+    # from directories that no longer exist. Same lazy-import discipline as
+    # invalidate() above.
+    if deleted:
+        with suppress(Exception):
+            from . import pool as _pool_mod
+            _pool_mod.notify_keys_pruned(deleted)
     return deleted
 
 

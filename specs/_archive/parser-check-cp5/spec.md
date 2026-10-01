@@ -871,8 +871,10 @@ remain, at most three cached configurations per project remain, and run retentio
 - **SC-004**: Every word sent produces exactly one result. Zero words disappear silently.
 - **SC-005**: In a corpus with one deliberate regression and one deliberate new ambiguity, exactly
   those two assertions are classified as such, and each lists the right parse.
-- **SC-006**: A second run against an unchanged grammar skips generation, and in the maintainer's
-  test it runs at least twice as fast as a cold run.
+- **SC-006**: A second run against an unchanged grammar skips generation, reuses the
+  already-warm sandbox worker -- the same worker process, no new spawn and no grammar
+  reload -- and completes faster than a cold run. Reuse is asserted on the mechanism
+  (the run record names the reused worker process), not on a wall-clock ratio (#242).
 - **SC-007**: No cache operation changes a sandbox or corpus file. Their bytes are identical across
   cache refresh, invalidation and pruning.
 - **SC-008**: A run that times out preserves 100% of the results produced before the kill, and names

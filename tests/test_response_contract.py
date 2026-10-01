@@ -51,6 +51,7 @@ from flextoolsmcp.server.response_models import (
     HvoLiteralWriteRiskDetail,
     DeprecatedMemberDetail,
     RawAddCustomFieldWriteRiskDetail,
+    NoUnitOfWorkDetail,
 )
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "responses"
@@ -203,6 +204,11 @@ GOLDEN_REQUIRED_KEYS = {
         "_contract", "status", "error_code", "message", "error",
         "recipe_id", "closest_matches", "hint",
     },
+    # Issue #310: runtime diagnosis of a raw LCM write with no unit of work.
+    "no_unit_of_work": {
+        "_contract", "status", "error_code", "message", "error",
+        "uow_mode", "write_enabled", "undoable", "guidance", "next_steps",
+    },
 }
 
 
@@ -254,6 +260,13 @@ ALL_ERROR_CODES = [
         next_steps=["1. Replace reflection with casts."],
     )),
     ("nested_unit_of_work", dict(constructs=[{"construct": "UndoableUnitOfWorkHelper(...)", "line": 3}])),
+    ("no_unit_of_work", dict(
+        uow_mode="per_operation",
+        write_enabled=True,
+        undoable=True,
+        guidance='wrap raw writes in with project.UndoableOperation("<label>"):',
+        next_steps=["1. Prefer a Flexicon operations wrapper."],
+    )),
     ("project_locked", dict(
         guidance="Enable project sharing in FLEx, then retry",
         lock_file_path="C:\\Projects\\Demo\\Demo.fwdata.lock",
@@ -359,6 +372,7 @@ DETAIL_MODEL_MAP = {
     "hvo_literal_write_risk": HvoLiteralWriteRiskDetail,
     "deprecated_member": DeprecatedMemberDetail,
     "raw_addcustomfield_write_risk": RawAddCustomFieldWriteRiskDetail,
+    "no_unit_of_work": NoUnitOfWorkDetail,
 }
 
 #: CP2b's three. Separate from the map above because two of them have
@@ -503,8 +517,9 @@ class TestParserCheckCP2bCodes:
         # #279 adds top_level_main_invocation -> 42;
         # #277 adds reflection_bypass_detected -> 43.
         # unified-recipes adds recipe_not_found -> 44.
-        # #313 adds atomic_property_iteration -> 45.
-        assert union_size == 45, f"the detail union holds {union_size} models"
+        # #310 adds no_unit_of_work -> 45.
+        # #313 adds atomic_property_iteration -> 46.
+        assert union_size == 46, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

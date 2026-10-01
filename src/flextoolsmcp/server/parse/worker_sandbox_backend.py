@@ -435,6 +435,10 @@ class _StubSandboxBackend(_SandboxBackend):
             return [[hc_engine.RawMorph(form=wordform, gloss="stub", guessed=False,
                                         form_id=1, msa_id=2, morpheme_key=wordform)]]
         if isinstance(scripted, dict):
+            if "stderr" in scripted:
+                # A line on the worker's stderr that the run survives, so a
+                # test can prove which run's sink received it (#242).
+                print(str(scripted["stderr"]), file=sys.stderr, flush=True)
             if "invalid_segment" in scripted:
                 raise _InvalidSegment(scripted["invalid_segment"])
             if "crash" in scripted:

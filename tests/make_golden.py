@@ -162,6 +162,20 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "message": "Code opens its own raw liblcm UnitOfWork. flexicon already wraps each mutation in its own named unit of work; a raw helper call executing while one of those is open nests inside it and will discard that operation's writes before the error is raised.",
         "constructs": [],
     },
+    # Issue #310: runtime diagnosis, per_operation (supported-install) wording.
+    "no_unit_of_work": {
+        "message": "A raw LCM mutation ran outside any undo task (liblcm: 'Not in the right state to register a change'). The runner opens no session-long unit of work on this flexicon build: each Flexicon operation opens its own, so a raw LCM write outside one has nothing to register in.",
+        "uow_mode": "per_operation",
+        "write_enabled": True,
+        "undoable": True,
+        "lcm_message": "Execution error: Not in the right state to register a change",
+        "guidance": "Prefer the Flexicon operations wrappers (project.POS.*, project.LexEntry.*, project.Senses.*); they open their own unit of work. For a raw LCM write, the supported path is `with project.UndoableOperation(\"<label>\"):` around it (under `if modifyAllowed:`) -- it opens a unit of work, or joins the enclosing one.",
+        "next_steps": [
+            "1. Prefer a Flexicon operations wrapper (project.POS.*, project.LexEntry.*, project.Senses.*) over the raw LCM call.",
+            "2. Otherwise wrap the raw LCM writes in `with project.UndoableOperation(\"<label>\"):` inside the `if modifyAllowed:` guard.",
+            "3. Re-run flextools_run_module() with write_enabled=true.",
+        ],
+    },
     "project_locked": {
         "message": "Project 'Demo' is held for exclusive access (verdict: open_exclusive) and this script requests write access.",
         "guidance": "FieldWorks has this project open and project sharing is OFF...",

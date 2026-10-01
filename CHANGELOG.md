@@ -96,6 +96,40 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   `unprotected_writes` guidance now says `modifyAllowed` is predefined in
   bare snippets and adds `bare_snippet_fix` (plus `main_wrapper_note` for
   Main-wrapped code). validate_only and the eval preflight runner match.
+- `flextools_run_module` now returns a structured `no_unit_of_work` error
+  when liblcm raises `InvalidOperationException: Not in the right state to
+  register a change`
+  ([#310](https://github.com/MattGyverLee/FlexToolsMCP/issues/310)). That
+  error means a raw LCM write ran with no unit of work open. Before, it came
+  back as a bare runtime failure. The new error's guidance depends on the
+  run's mode, given in `uow_mode`. On a read-only run (`read_only`) no write
+  can register by any route: guard writes under `if modifyAllowed:` and run
+  write-enabled. On a per-operation build (`per_operation`, every supported
+  install) the runner opens no session task, so raw writes need
+  `with project.UndoableOperation(label):`, which opens a unit of work or
+  joins the enclosing one. The Flexicon operations wrappers (`project.POS.*`,
+  `project.LexEntry.*`) remain the first choice. The error also matches when
+  the script caught the exception and passed it to `report.Error()`. The
+  `nested_unit_of_work` rejection used to say "drop the wrapper and write
+  directly", which raises this same error on per-operation builds. It now
+  names `project.UndoableOperation()` as the replacement, and no longer
+  offers `project.Transaction()`, which opens no unit of work. The error-code
+  count in `docs/TOOL-CONTRACT.md` moves from 44 to 45.
+- The casting preflight no longer rejects a guarded flexicon call inside a
+  comprehension
+  ([#308](https://github.com/MattGyverLee/FlexToolsMCP/issues/308)). Before,
+  `[project.LexEntry.GetHeadword(c) if c.ClassName == "LexEntry" else ... for
+  c in project.LexEntry.GetComplexFormComponents(e)]` was rejected. A
+  `c.ClassName` guard now counts in a conditional expression, in a
+  comprehension's `if` filter, and in a short-circuit `and`, the same way the
+  `if` statement from #278 does. A guard on one arm of a one-line conditional
+  no longer clears the other arm. Comprehension targets are now tracked in
+  every generator, including polymorphic LCM collections. A comprehension or
+  nested `for` that rebinds a name hides the outer polymorphic loop variable
+  of the same name. An unguarded call on a mixed collection is still
+  rejected, but now it comes with a `rewrite` wrapped in a ClassName guard,
+  and `pattern` holds the flagged call rather than the first 80 characters of
+  the line.
 - Runtime `AttributeError`s whose receiver no cast can fix no longer get the
   `PolymorphicAttributeError` cast hint
   ([#307](https://github.com/MattGyverLee/FlexToolsMCP/issues/307)). Plain

@@ -141,19 +141,26 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "methods so preflight can verify casting and write safety."
     ),
     "nested_unit_of_work": (
-        # Re-scoped for issue #144: what's already open around the mutation
-        # is the runner's session-long task on older flexicon, or
-        # flexicon's own per-operation task on builds with the
-        # "per-operation-uow" capability -- either way, opening a second
-        # raw one nests and rolls back.
-        "drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
-        "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
-        "there is already a unit of work open around this mutation (the "
-        "runner's session task, or flexicon's own per-operation task, "
-        "depending on the flexicon build). Just perform the mutation "
-        "directly under `if modifyAllowed:`; use "
-        "project.UndoableOperation()/project.Transaction() instead if you "
-        "need FLEx Ctrl+Z grouping."
+        # Re-scoped for issue #144, corrected for #310: on per-operation-uow
+        # builds (every supported install) the runner opens NO session task,
+        # so "just write raw LCM directly" raises no_unit_of_work.
+        "replace the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
+        "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) with "
+        "`with project.UndoableOperation(\"<label>\"):` -- the supported "
+        "raw-LCM path; it opens a unit of work or joins the enclosing one, so "
+        "it never nests. Better still, use the Flexicon operations wrappers "
+        "(project.POS.*, project.LexEntry.*), which open their own. Keep "
+        "writes under `if modifyAllowed:`."
+    ),
+    "no_unit_of_work": (
+        # Issue #310: raw LCM mutation with no unit of work open.
+        "a raw LCM write ran outside any undo task. Use the Flexicon "
+        "operations wrappers (project.POS.*, project.LexEntry.*), or wrap the "
+        "raw writes in `with project.UndoableOperation(\"<label>\"):` under "
+        "`if modifyAllowed:` and run write-enabled. Do not reach for "
+        "UndoableUnitOfWorkHelper/BeginUndoTask (refused by the "
+        "nested_unit_of_work gate) or project.Transaction() (opens no unit "
+        "of work)."
     ),
 }
 

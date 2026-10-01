@@ -1,7 +1,7 @@
 """
 id: wordform-analyses
 intent: Show the existing analyses (morph and gloss per morpheme) of given words, with human and parser approval
-match_terms: ["wordform analyses", "how is this word analyzed", "existing analyses of a word", "morpheme breakdown of a word", "interlinear analysis of a word", "comparator analyses"]
+match_terms: ["wordform analyses", "how is this word analyzed", "existing analyses of a word", "morpheme breakdown of a word", "interlinear analysis of a word", "comparator analyses", "parse a wordform and get morphological decomposition", "morph bundles of a wordform", "verify parses of words"]
 entities: ["WfiWordform", "WfiAnalysis", "WfiMorphBundle"]
 operations: ["read", "iterate", "search"]
 requires_write: false

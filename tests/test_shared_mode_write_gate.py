@@ -18,7 +18,8 @@ Verdict table under test (SPEC "CP4 -- Writes allowed in shared mode", T4.1):
     open_shared    -> proceed, `shared_mode` advisory on the result
     stale_lock     -> proceed, `shared_mode` advisory naming the dead PID
     open_exclusive -> refuse `project_locked` + the enable-sharing remedy
-    held_by_other  -> refuse `project_locked` + the wait-for-PID remedy
+    held_by_other  -> refuse `project_locked` + the foreign-holder remedy and
+                      model-actionable `next_steps` (issue #315)
 
 Covers:
 - TestBuildAccessRemedy: the remedy text is produced for exactly the two
@@ -48,6 +49,7 @@ from flextoolsmcp.server.handlers import execution as execution_mod
 from flextoolsmcp.server.project_access import (
     LockHolder,
     ProjectAccess,
+    build_access_next_steps,
     build_access_remedy,
 )
 
@@ -99,10 +101,129 @@ class TestBuildAccessRemedy:
         remedy = build_access_remedy(
             _access("held_by_other", pid=4242, process="python", sharing=True)
         )
-        assert "4242" in remedy
+        assert "PID 4242" in remedy
         assert "python" in remedy
         # Sharing is already on here -- must not tell the user to enable it.
         assert "does not resolve it" in remedy
+
+    def test_held_by_other_remedy_never_tells_the_model_to_end_it(self):
+        """Issue #315: the model has no tool to end a process. The remedy
+        points at what it CAN do and leaves ending the PID to the user."""
+        remedy = build_access_remedy(
+            _access("held_by_other", pid=4242, process="python", sharing=False),
+            own_workers_ruled_out=True,
+        )
+        assert "(or end it)" not in remedy
+        # Sharing is off: even a read-only open takes the lock.
+        assert "will likely fail too" in remedy
+        assert "still work" not in remedy
+        # Our own workers were ruled out, so releasing them cannot help.
+        assert "flextools_parse_release" not in remedy
+        assert "ask the user" in remedy
+        assert "end PID 4242 in Task Manager" in remedy
+        assert "do not try to end it yourself" in remedy
+        assert "NOT one of the parse workers this server tracks" in remedy
+        assert "another MCP server instance or Claude session" in remedy
+
+    def test_held_by_other_post_hoc_remedy_does_not_claim_foreign(self):
+        """Issue #315: only the write gate has ruled out our own workers;
+        a post-hoc diagnosis must not assert that the holder is foreign."""
+        remedy = build_access_remedy(
+            _access("held_by_other", pid=4242, process="python")
+        )
+        assert "NOT one of the parse workers" not in remedy
+        assert "Unless it is one of this server's own parse workers" in remedy
+        assert "flextools_parse_release" in remedy
+
+    @pytest.mark.parametrize("sharing,expected", [
+        (True, "still work"),
+        (False, "will likely fail too"),
+        (None, "will likely fail too"),
+    ])
+    def test_read_only_claim_depends_on_sharing(self, sharing, expected):
+        """Issue #315: on a non-shared project even a read-only open takes
+        the .fwdata.lock, so "read-only still works" holds only with
+        sharing on."""
+        remedy = build_access_remedy(
+            _access("held_by_other", pid=4242, process="python", sharing=sharing)
+        )
+        assert expected in remedy
+
+
+class TestBuildAccessNextSteps:
+    """Issue #315: `project_locked`'s `next_steps`, numbered like the
+    preflight refusals' (validators.py)."""
+
+    @pytest.mark.parametrize("verdict", ["free", "open_shared", "stale_lock", "unknown"])
+    def test_non_blocking_verdicts_have_no_steps(self, verdict):
+        assert build_access_next_steps(_access(verdict)) == []
+
+    def test_held_by_other_steps_are_actionable_and_numbered(self):
+        steps = build_access_next_steps(
+            _access("held_by_other", pid=4242, process="python")
+        )
+        assert [s.split(".", 1)[0] for s in steps] == ["1", "2", "3", "4"]
+        text = " ".join(steps)
+        assert "Read-only runs" in steps[0]
+        assert "will likely fail too" in steps[0]
+        assert "flextools_parse_release" in steps[1]
+        assert "600 s" in steps[2]
+        assert "ask the user" in steps[3]
+        assert "PID 4242" in steps[3]
+        assert "Do not try to end it yourself" in steps[3]
+        assert "(or end it)" not in text
+
+    def test_held_by_other_steps_drop_release_once_own_workers_ruled_out(self):
+        """Issue #315: the write gate refuses only after it has released our
+        own idle workers, so a flextools_parse_release step could not help."""
+        steps = build_access_next_steps(
+            _access("held_by_other", pid=4242, process="python", sharing=True),
+            own_workers_ruled_out=True,
+        )
+        assert [s.split(".", 1)[0] for s in steps] == ["1", "2", "3"]
+        assert not any("flextools_parse_release" in s for s in steps)
+        assert "still work" in steps[0]
+        assert "600 s" in steps[1]
+        assert "PID 4242" in steps[2]
+
+    def test_open_exclusive_steps_point_at_sharing(self):
+        steps = build_access_next_steps(_access("open_exclusive", sharing=False))
+        assert any("Sharing tab" in s for s in steps)
+        # FieldWorks holds the lock with sharing off: reads collide too.
+        assert "will likely fail too" in steps[0]
+
+    def test_open_exclusive_unreadable_lock_steps_do_not_blame_fieldworks(self):
+        steps = build_access_next_steps(_access("open_exclusive", pid=None, process=None))
+        assert steps
+        assert not any("Sharing tab" in s for s in steps)
+        assert any(".fwdata.lock" in s for s in steps)
+
+    @pytest.mark.parametrize("verdict,kwargs", [
+        ("held_by_other", {"pid": 4242, "process": "python"}),
+        ("open_exclusive", {"sharing": False}),
+        ("open_exclusive", {"pid": None, "process": None}),
+    ])
+    def test_write_ladder_refusal_validates_against_the_detail_model(
+        self, monkeypatch, tmp_path, verdict, kwargs
+    ):
+        """Every call site spreads `decision.refusal` into
+        error_response("project_locked", ...) (run_module, filing), so the
+        dict itself must fit ProjectLockedDetail, which is extra="forbid"."""
+        from flextoolsmcp.server import write_ladder
+        from flextoolsmcp.server.response_models import ProjectLockedDetail
+
+        _stub_probe(monkeypatch, _access(verdict, **kwargs))
+        monkeypatch.setattr(
+            project_discovery, "find_lock_file",
+            lambda name: tmp_path / f"{name}.fwdata.lock",
+        )
+        decision = write_ladder.probe_write_access("TestProj")
+        detail = ProjectLockedDetail.model_validate(decision.refusal)
+        assert detail.next_steps
+        assert detail.next_steps == build_access_next_steps(
+            decision.access, own_workers_ruled_out=True
+        )
+        assert not any("flextools_parse_release" in s for s in detail.next_steps)
 
 
 # ---------------------------------------------------------------------------
@@ -267,7 +388,13 @@ class TestGateWiring:
         data = _run("TestProj_other")
         assert data["error_code"] == "project_locked"
         assert data["verdict"] == "held_by_other"
-        assert "4242" in data["remedy"]
+        assert "PID 4242" in data["remedy"]
+        # Issue #315: actionable steps travel with the refusal -- but not
+        # flextools_parse_release: the gate already ruled out our workers.
+        assert any("ask the user" in s for s in data["next_steps"])
+        assert not any("flextools_parse_release" in s for s in data["next_steps"])
+        assert "flextools_parse_release" not in data["remedy"]
+        assert "(or end it)" not in data["remedy"]
 
     def test_refusal_payload_validates_against_the_detail_model(self, monkeypatch, tmp_path):
         """ProjectLockedDetail is extra="forbid" -- the handler must not send
@@ -281,6 +408,118 @@ class TestGateWiring:
         data = _run("TestProj_model")
         envelope = RejectionEnvelope.model_validate(data, by_alias=True)
         assert envelope.error_code == "project_locked"
+
+
+# ---------------------------------------------------------------------------
+# Issue #315: the run-time FP_FileLockedError diagnosis gets the same holder
+# check, remedy and next_steps as the pre-flight refusal.
+# ---------------------------------------------------------------------------
+
+_LOCKED_RESULT = {
+    "error": (
+        "Failed to open project 'TestProj': FP_FileLockedError: This project "
+        "is in use by another program."
+    ),
+}
+
+
+class _FakeRunner:
+    """Just the three methods the diagnosis asks of a ParseRunner."""
+
+    def __init__(self, pid, *, busy=False):
+        self._pid, self._busy = pid, busy
+
+    def own_worker_role_for_pid(self, project_name, pid):
+        return "shared" if pid == self._pid else None
+
+    def worker_busy(self, project_name, *, role):
+        return self._busy
+
+    def active_run_ids(self, project_name, *, role):
+        return ["run-7"] if self._busy else []
+
+
+def _stub_runner(monkeypatch, runner):
+    from flextoolsmcp.server.handlers import parse as parse_mod
+
+    monkeypatch.setattr(parse_mod, "peek_runner", lambda: runner)
+
+
+def _diagnose():
+    return execution_mod._diagnose_project_open_error(dict(_LOCKED_RESULT), "TestProj")
+
+
+def _detail_fields(diag):
+    """The diagnosis keys that ProjectLockedDetail declares, validated."""
+    from flextoolsmcp.server.response_models import ProjectLockedDetail
+
+    return ProjectLockedDetail.model_validate(
+        {k: v for k, v in diag.items() if k in ProjectLockedDetail.model_fields}
+    )
+
+
+class TestRuntimeLockDiagnosis:
+    def test_foreign_holder_matches_the_preflight_refusal(self, monkeypatch, tmp_path):
+        from flextoolsmcp.server import write_ladder
+
+        access = _access("held_by_other", pid=4242, process="python", sharing=False)
+        _stub_probe(monkeypatch, access)
+        _stub_runner(monkeypatch, _FakeRunner(pid=999))  # ours, but not the holder
+        monkeypatch.setattr(
+            project_discovery, "find_lock_file",
+            lambda name: tmp_path / f"{name}.fwdata.lock",
+        )
+
+        diag = _diagnose()
+        refusal = write_ladder.probe_write_access("TestProj").refusal
+        assert diag["error_code"] == "project_locked"
+        assert "Close FieldWorks" not in diag["hint"]
+        assert diag["remedy"] == refusal["remedy"]
+        assert diag["next_steps"] == refusal["next_steps"]
+        assert diag["holder_pid"] == 4242
+        assert not any("flextools_parse_release" in s for s in diag["next_steps"])
+        assert _detail_fields(diag).next_steps == diag["next_steps"]
+
+    def test_open_exclusive_carries_the_sharing_steps(self, monkeypatch):
+        _stub_probe(monkeypatch, _access("open_exclusive", sharing=False))
+        _stub_runner(monkeypatch, None)
+
+        diag = _diagnose()
+        assert diag["remedy"] == project_access.ENABLE_SHARING_REMEDY
+        assert any("Sharing tab" in s for s in diag["next_steps"])
+
+    def test_idle_own_worker_is_named_not_reported_foreign(self, monkeypatch):
+        _stub_probe(monkeypatch, _access("held_by_other", pid=4242, process="python"))
+        _stub_runner(monkeypatch, _FakeRunner(pid=4242))
+
+        diag = _diagnose()
+        assert diag["error_code"] == "project_locked"
+        assert "own idle parse worker" in diag["message"]
+        assert "do not end it" in diag["hint"]
+        assert diag["holder_process"] == "this server's own parse worker"
+        assert diag["holder_pid"] == 4242
+        assert "flextools_parse_release" in diag["next_steps"][0]
+        assert "Task Manager" not in " ".join(diag["next_steps"])
+        _detail_fields(diag)
+
+    def test_busy_own_worker_says_wait_or_cancel(self, monkeypatch):
+        _stub_probe(monkeypatch, _access("held_by_other", pid=4242, process="python"))
+        _stub_runner(monkeypatch, _FakeRunner(pid=4242, busy=True))
+
+        diag = _diagnose()
+        assert "busy running a parse (run run-7)" in diag["message"]
+        assert any("flextools_parse_cancel" in s for s in diag["next_steps"])
+        assert not any("flextools_parse_release" in s for s in diag["next_steps"])
+
+    def test_probe_failure_keeps_the_generic_hint(self, monkeypatch):
+        def boom(name):
+            raise OSError("registry unavailable")
+
+        monkeypatch.setattr(project_access, "probe_project_access", boom)
+        diag = _diagnose()
+        assert diag["error_code"] == "project_locked"
+        assert "Close FieldWorks" in diag["hint"]
+        assert "next_steps" not in diag
 
 
 class TestReadOnlyUnaffected:

@@ -1222,6 +1222,23 @@ def _extract_attempted_path(error_msg: str) -> Optional[str]:
     return None
 
 
+def _own_worker_lock_diagnosis(project_name: str, access) -> Optional[Dict[str, Any]]:
+    """Diagnosis fields if this server's own parse worker holds the lock,
+    else None (issue #315). Never spins up a runner (`peek_runner`).
+    """
+    try:
+        from ..parse import own_worker as _own_worker
+        from .parse import peek_runner
+    except (ImportError, ValueError):
+        from server.parse import own_worker as _own_worker
+        from server.handlers.parse import peek_runner
+    runner = peek_runner()
+    role = _own_worker.own_holder_role(runner, project_name, access)
+    if role is None:
+        return None
+    return _own_worker.own_worker_lock_diagnosis(runner, project_name, role)
+
+
 def _diagnose_project_open_error(
     execution_result: Dict[str, Any], project_name: str
 ) -> Optional[Dict[str, Any]]:
@@ -1287,24 +1304,42 @@ def _diagnose_project_open_error(
         try:
             try:
                 from ..project_access import (
+                    build_access_next_steps,
                     build_access_remedy,
                     build_lock_diagnosis,
                     probe_project_access,
                 )
             except (ImportError, ValueError):
                 from server.project_access import (
+                    build_access_next_steps,
                     build_access_remedy,
                     build_lock_diagnosis,
                     probe_project_access,
                 )
             access = probe_project_access(project_name)
-            specific_hint = build_lock_diagnosis(access)
+            holder = access.holder
+            # Issue #315: the same holder check the write gate makes before
+            # it refuses (`_release_own_worker_or_refuse`), so a lock held by
+            # our own parse worker is never reported as a foreign process.
+            # It cannot raise past here: a failure falls to the generic hint.
+            own = _own_worker_lock_diagnosis(project_name, access)
+            if own is not None:
+                own.update(
+                    verdict=access.verdict,
+                    sharing_enabled=access.sharing_enabled,
+                    holder_pid=holder.pid if holder else None,
+                )
+                diag.update(own)
+                return diag
+            # Our workers were checked just above, so the text may say the
+            # holder is not one of ours and skip flextools_parse_release --
+            # identical to the pre-flight refusal for the same verdict.
+            specific_hint = build_lock_diagnosis(access, own_workers_ruled_out=True)
             if specific_hint is not None:
                 # build_lock_diagnosis() only returns non-None for
                 # "open_exclusive", "held_by_other", and "stale_lock" --
                 # "free" / "open_shared" (and anything unrecognized) fall
                 # through and keep the generic dict built above.
-                holder = access.holder
                 extra: Dict[str, Any] = {
                     "hint": specific_hint,
                     "verdict": access.verdict,
@@ -1317,7 +1352,12 @@ def _diagnose_project_open_error(
                     # stale_lock there is genuinely nothing the user must
                     # DO, just information that the lock has already been
                     # vacated.
-                    "remedy": build_access_remedy(access),
+                    "remedy": build_access_remedy(access, own_workers_ruled_out=True),
+                    # Issue #315: the same numbered steps as the pre-flight
+                    # refusal (empty for stale_lock, like remedy).
+                    "next_steps": build_access_next_steps(
+                        access, own_workers_ruled_out=True
+                    ),
                 }
                 # Single atomic update so a failure in the block above (e.g.
                 # build_access_remedy() raising) can never leave `diag` with
@@ -3224,19 +3264,9 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     makes that sufficient rather than just narrower).
     """
     try:
-        from ..parse.own_worker import (
-            HELD_BY_OWN_READ_WORKER,
-            own_worker_role,
-            busy_own_worker_guidance,
-            busy_own_worker_run_note,
-        )
+        from ..parse import own_worker as _own_worker
     except (ImportError, ValueError):
-        from server.parse.own_worker import (
-            HELD_BY_OWN_READ_WORKER,
-            own_worker_role,
-            busy_own_worker_guidance,
-            busy_own_worker_run_note,
-        )
+        from server.parse import own_worker as _own_worker
     try:
         from .parse import peek_runner
     except (ImportError, ValueError):
@@ -3246,32 +3276,18 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     if runner is None:
         return None, decision
 
-    role = own_worker_role(runner, project_name, decision)
-    if role is None:
-        return None, decision
-
-    if runner.worker_busy(project_name, role=role):
-        run_ids = runner.active_run_ids(project_name, role=role)
-        run_note = busy_own_worker_run_note(run_ids)
-        guidance = busy_own_worker_guidance("resubmit the write")
-        refusal = error_response(
-            "project_locked",
-            f"Project '{project_name}' is held by this server's own parse "
-            f"worker, which is busy running a parse{run_note}. This is NOT "
-            f"a foreign process -- do not end it. {guidance}",
-            guidance=guidance,
-            remedy=guidance,
-            lock_file_path=decision.refusal.get("lock_file_path"),
-            verdict=decision.verdict,
-            sharing_enabled=decision.refusal.get("sharing_enabled"),
-            holder_pid=decision.refusal.get("holder_pid"),
-            holder_process="this server's own parse worker",
-            op_id=op_id,
+    # Issue #315: the decision itself lives in parse/own_worker.py, shared
+    # with filing's confirmed gate so the two cannot drift; only the
+    # response shapes are built here.
+    outcome, role, decision = await _own_worker.settle_own_worker_hold(
+        runner, project_name, decision, write_ladder.probe_write_access
+    )
+    if outcome == _own_worker.BUSY:
+        message, fields = _own_worker.busy_own_worker_refusal(
+            runner, project_name, role, decision, "resubmit the write"
         )
-        return refusal, decision
-
-    sharing = bool(decision.refusal.get("sharing_enabled"))
-    if sharing:
+        return error_response("project_locked", message, **fields, op_id=op_id), decision
+    if outcome == _own_worker.COEXISTS:
         # Mirror filing's confirmed gate (handlers/parse/filing.py row 11): on a
         # shared project our read worker coexists with a writable open, so
         # do not release it first -- the probe's `held_by_other` is our own
@@ -3279,37 +3295,13 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
         return None, write_ladder.AccessDecision(
             project_name=project_name,
             access=decision.access,
-            verdict=HELD_BY_OWN_READ_WORKER,
+            verdict=_own_worker.HELD_BY_OWN_READ_WORKER,
             refusal=None,
         )
-
-    if await runner.release_worker_if_idle(project_name, role=role):
-        try:
-            return None, write_ladder.probe_write_access(project_name)
-        except Exception:
-            # A re-probe failure here should read as "still refused with
-            # the original detail", not crash the write gate: fall back
-            # to the decision as it stood before the release attempt.
-            return None, decision
-
-    run_ids = runner.active_run_ids(project_name, role=role)
-    run_note = busy_own_worker_run_note(run_ids)
-    guidance = busy_own_worker_guidance("resubmit the write")
-    refusal = error_response(
-        "project_locked",
-        f"Project '{project_name}' is held by this server's own parse "
-        f"worker, which is busy running a parse{run_note}. This is NOT "
-        f"a foreign process -- do not end it. {guidance}",
-        guidance=guidance,
-        remedy=guidance,
-        lock_file_path=decision.refusal.get("lock_file_path"),
-        verdict=decision.verdict,
-        sharing_enabled=decision.refusal.get("sharing_enabled"),
-        holder_pid=decision.refusal.get("holder_pid"),
-        holder_process="this server's own parse worker",
-        op_id=op_id,
-    )
-    return refusal, decision
+    # NOT_OURS: unchanged. RELEASED: re-probed (or, if the re-probe failed,
+    # the decision as it stood before, so it reads as "still refused with
+    # the original detail" rather than crashing the write gate).
+    return None, decision
 
 
 async def handle_run_module(args: dict) -> list[TextContent]:

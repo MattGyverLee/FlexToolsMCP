@@ -60,11 +60,13 @@ is one of these verdicts, reported by `flextools_health(verbose=True)` under
 | `open_shared` | FLEx has it open, sharing on | proceeds, with a `shared_mode` note on the result |
 | `stale_lock` | Lock names a process that is no longer running | proceeds; LCM treats a stale lock as free |
 | `open_exclusive` | FLEx has it open, sharing off (or the lock file is unreadable) | refused as `project_locked`, with the enable-sharing steps |
-| `held_by_other` | A live process that is not FLEx holds it, usually a leftover FLExTools/MCP subprocess | refused as `project_locked`; enabling sharing does not help. Wait for that process to exit, or end it |
+| `held_by_other` | A live process that is not FLEx, and not one of this server's own parse workers, holds it: usually a leftover FLExTools/MCP subprocess, another MCP server or Claude session, or a FLExTools GUI run | refused as `project_locked`; enabling sharing does not help. This server's own idle workers are released before the refusal, so its `next_steps` say to retry after the holder exits, or ask the user to close the other session or end the PID in Task Manager |
 
-Read-only runs are never refused on these grounds. If LCM itself refuses to
-open the project (sharing off, FLEx open), the error carries the same
-diagnosis and remedy as a refused write.
+Read-only runs are never refused on these grounds, but with sharing off LCM
+may still refuse them: even a read-only open takes the `.fwdata.lock`. If LCM
+itself refuses to open the project, the error carries the same diagnosis,
+remedy and `next_steps` as a refused write, or, when the holder is this
+server's own parse worker, says so and tells you to release or wait for it.
 
 The server never deletes lock files. If a lock is unreadable and you are sure
 no FieldWorks or python process is running, delete it yourself.

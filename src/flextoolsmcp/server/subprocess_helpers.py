@@ -130,6 +130,22 @@ async def run_script_async(
                 "stderr": f"Process terminated after {timeout_seconds} seconds",
                 "timeout": True,
             }
+        except asyncio.CancelledError:
+            # Issue #315: CancelledError is a BaseException, so neither
+            # handler above sees it. When the MCP client cancels the tool
+            # call, the child would otherwise keep running with the LCM
+            # project open -- untracked, and on a non-shared project still
+            # holding the .fwdata.lock -- so later writes are refused as a
+            # foreign `held_by_other`. Kill the tree and re-raise so the
+            # cancellation is never masked -- guarded, because an exception
+            # from the kill would replace the CancelledError and be turned
+            # into a result dict by the `except Exception` below. Mirrors
+            # sandbox/cache.py's one-shot helper.
+            try:
+                _kill_process_tree(process.pid)
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("tree kill on cancel failed for PID %s: %s", process.pid, exc)
+            raise
 
     except Exception as e:
         return {

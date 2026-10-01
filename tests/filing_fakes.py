@@ -25,7 +25,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pytest
 
@@ -266,6 +266,9 @@ class FakePool:
         self.filing = filing_worker or FakeFilingWorker()
         self.spawned: List[str] = []
         self.released: List[tuple] = []
+        #: Further roles' workers (e.g. MEASUREMENT_ROLE), role -> worker, so
+        #: a test can put the lock in the hands of any of our workers (#315).
+        self.extra: Dict[str, Any] = {}
 
     async def get(self, name, *, role=SHARED_ROLE):
         if role == FILING_ROLE:
@@ -283,10 +286,19 @@ class FakePool:
             workers[SHARED_ROLE] = self.read
         if FILING_ROLE in self.spawned and self.filing is not None:
             workers[FILING_ROLE] = self.filing
+        workers.update(self.extra)
         return workers
 
     async def release(self, name, *, role=None):
         self.released.append((name, role))
+        self.extra.pop(role, None)
+
+    async def release_if_idle(self, name, *, role, is_busy):
+        """Mirrors `WorkerPool.release_if_idle`: the atomic check-and-release."""
+        if is_busy():
+            return False
+        await self.release(name, role=role)
+        return True
 
     async def terminate(self, name, *, role):
         return False

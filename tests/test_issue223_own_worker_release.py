@@ -190,6 +190,8 @@ class TestRunModuleOwnWorkerGate:
             assert "kill" not in text
             assert "end the process" not in text
         assert "do not end it" in data["message"].lower()
+        # Issue #315: the shared busy-refusal builder adds numbered steps.
+        assert data["next_steps"][-1] == "3. Then resubmit the write."
 
     def test_a_foreign_holder_is_still_refused_as_before(self, monkeypatch, tmp_path):
         """No worker of ours matches this PID -- own_worker_role_for_pid
@@ -208,6 +210,20 @@ class TestRunModuleOwnWorkerGate:
         assert data["error_code"] == "project_locked"
         assert data["holder_pid"] == 999
         assert runner.released == []
+        # Issue #315: the foreign refusal says it is not ours and gives steps
+        # the model can take; ending the PID is left to the user.
+        assert "NOT one of the parse workers this server tracks" in data["remedy"]
+        assert "(or end it)" not in data["remedy"]
+        # Our workers were ruled out before refusing, so no release step.
+        assert not any("flextools_parse_release" in s for s in data["next_steps"])
+        assert any("end PID 999 in Task Manager" in s for s in data["next_steps"])
+        from flextoolsmcp.server.response_models import ProjectLockedDetail
+
+        detail_keys = set(ProjectLockedDetail.model_fields)
+        detail = ProjectLockedDetail.model_validate(
+            {k: v for k, v in data.items() if k in detail_keys}
+        )
+        assert detail.next_steps == data["next_steps"]
 
     def test_no_runner_at_all_behaves_exactly_as_before(self, monkeypatch, tmp_path):
         """peek_runner() returning None (no worker ever started this
@@ -312,6 +328,8 @@ class TestParseRelease:
         assert "flextools_parse_cancel" in data["message"] or (
             "flextools_parse_cancel" in data.get("guidance", "")
         )
+        # Issue #315: numbered next_steps on every project_locked refusal.
+        assert data["next_steps"][-1] == "3. Then retry flextools_parse_release."
 
     def test_multiple_idle_roles_are_all_released(self, monkeypatch):
         monkeypatch.setattr(parse_mod.common, "_resolve_project", lambda name: (name or "P", None))

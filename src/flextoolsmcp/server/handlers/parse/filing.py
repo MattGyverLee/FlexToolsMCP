@@ -165,8 +165,12 @@ def _filing_needs_write_session() -> List[TextContent]:
 #: differently (#223). Kept as a module attribute here too since existing
 #: imports and tests read it from `handlers.parse`.
 from ...parse.own_worker import (  # noqa: E402
+    BUSY as OWN_WORKER_BUSY,
+    COEXISTS as OWN_WORKER_COEXISTS,
     HELD_BY_OWN_READ_WORKER,
+    busy_own_worker_refusal,
     own_worker_role,
+    settle_own_worker_hold,
 )
 
 
@@ -640,6 +644,26 @@ async def _handle_filing_request(
 
         await runner.release_worker(project_name, role=SHARED_ROLE)
         decision = write_ladder.probe_write_access(project_name)
+    if decision.refusal is not None:
+        # Issue #315: the refusal below says the holder is NOT one of our
+        # workers, so rule out every role here, not just SHARED_ROLE above
+        # (e.g. the measurement worker) -- the same core run_module's write
+        # gate uses. Busy: refuse as ours. Idle: release and re-probe.
+        # Shared project: coexists, as SHARED_ROLE already does at row 8.
+        outcome, role, decision = await settle_own_worker_hold(
+            runner, project_name, decision, write_ladder.probe_write_access
+        )
+        if outcome == OWN_WORKER_BUSY:
+            message, fields = busy_own_worker_refusal(
+                runner, project_name, role, decision,
+                "re-send the confirmed filing call",
+                message_suffix=" Nothing was written.",
+            )
+            return error_response("project_locked", message, **fields)
+        if outcome == OWN_WORKER_COEXISTS:
+            decision = write_ladder.AccessDecision(
+                project_name=project_name, access=decision.access,
+                verdict=HELD_BY_OWN_READ_WORKER)
     if decision.refusal is not None:
         return error_response(
             "project_locked",

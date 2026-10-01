@@ -13,7 +13,11 @@ from ...parse.fingerprint import build_fingerprint
 from ...parse.priority import Priority
 from ...parse.stages import RunStage
 from ...parse.worker_client import WorkerError
-from ...parse.own_worker import busy_own_worker_guidance, busy_own_worker_run_note
+from ...parse.own_worker import (
+    busy_own_worker_guidance,
+    busy_own_worker_next_steps,
+    busy_own_worker_run_note,
+)
 
 try:
     from ....response_utils import build_response_with_context, error_response
@@ -538,6 +542,8 @@ async def handle_flextools_parse_release(args: dict) -> List[TextContent]:
             sharing_enabled=None,
             holder_pid=None,
             holder_process="this server's own parse worker",
+            # Issue #315: numbered steps, like every project_locked refusal.
+            next_steps=busy_own_worker_next_steps("retry flextools_parse_release"),
         )
 
     # THE PER-ROLE RELEASE IS ATOMIC, CHECK-AND-POP UNDER ONE LOCK (#223 QC

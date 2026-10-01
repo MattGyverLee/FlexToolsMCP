@@ -34,7 +34,7 @@ from preflight_runner import run_preflight_chain  # noqa: E402
 
 CORPUS_DIR = Path(__file__).parent / "corpus"
 
-# All 13 preflight error codes the corpus must cover at least once (issue #51
+# All 14 preflight error codes the corpus must cover at least once (issue #51
 # acceptance criteria). Enumerated from the ordered gate chain in
 # preflight_runner.py / handlers/execution.py.
 ALL_PREFLIGHT_CODES = {
@@ -43,6 +43,7 @@ ALL_PREFLIGHT_CODES = {
     "server_state_error",
     "partial_module_structure",
     "deprecated_member",
+    "atomic_property_iteration",
     "unprotected_writes",
     "casting_issues_detected",
     "api_discovery_required",

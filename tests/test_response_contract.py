@@ -43,6 +43,7 @@ from flextoolsmcp.server.response_models import (
     WrongLibraryImportsDetail,
     InvalidApiModeDetail,
     InvalidApiChainDetail,
+    UnknownMethodDetail,
     ProjectLockedDetail,
     ProjectDriveUnavailableDetail,
     ProjectPathMismatchDetail,
@@ -52,7 +53,6 @@ from flextoolsmcp.server.response_models import (
     DeprecatedMemberDetail,
     RawAddCustomFieldWriteRiskDetail,
     NoUnitOfWorkDetail,
-    UnknownMethodDetail,
 )
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "responses"
@@ -167,6 +167,10 @@ GOLDEN_REQUIRED_KEYS = {
     "missing_imports": {"_contract", "status", "error_code", "message", "error"},
     "wrong_library_imports": {"_contract", "status", "error_code", "message", "error"},
     "invalid_api_chain": {"_contract", "status", "error_code", "message", "error"},
+    "unknown_method": {
+        "_contract", "status", "error_code", "message", "error",
+        "issues", "did_you_mean",
+    },
     "project_locked": {"_contract", "status", "error_code", "message", "error"},
     "project_drive_unavailable": {"_contract", "status", "error_code", "message", "error"},
     "project_path_mismatch": {"_contract", "status", "error_code", "message", "error"},
@@ -175,6 +179,11 @@ GOLDEN_REQUIRED_KEYS = {
     "deprecated_member": {
         "_contract", "status", "error_code", "message", "error",
         "findings", "deprecations", "replacement_example", "next_steps",
+    },
+    # Issue #313
+    "atomic_property_iteration": {
+        "_contract", "status", "error_code", "message", "error",
+        "findings", "next_steps",
     },
     # Parser-check CP4 (FR-035): the detail fields ride at top level too.
     "parser_filing_in_progress": {
@@ -204,11 +213,6 @@ GOLDEN_REQUIRED_KEYS = {
     "no_unit_of_work": {
         "_contract", "status", "error_code", "message", "error",
         "uow_mode", "write_enabled", "undoable", "guidance", "next_steps",
-    },
-    # Issue #306: a method its Operations class does not have.
-    "unknown_method": {
-        "_contract", "status", "error_code", "message", "error",
-        "unknown_methods", "did_you_mean", "next_steps",
     },
 }
 
@@ -255,12 +259,7 @@ ALL_ERROR_CODES = [
     ("wrong_library_imports", dict(wrong_imports=["flexlibs"], api_mode="flexicon", affected_symbols=["LexOps"])),
     ("invalid_api_mode", dict(allowed_modes=["flexicon", "flexlibs_stable", "liblcm"], received="bogus")),
     ("invalid_api_chain", dict(issues=[], guidance="Fix chain")),
-    ("unknown_method", dict(
-        unknown_methods=[{"class": "ParserOperations", "method": "TryWord", "line": 2,
-                          "did_you_mean": ["ParseWord"]}],
-        did_you_mean=["ParseWord"],
-        next_steps=["1. Replace ParserOperations.TryWord with a real method."],
-    )),
+    ("unknown_method", dict(issues=[], did_you_mean=["ParseWord"], next_steps=["Use ParseWord."])),
     ("reflection_bypass_detected", dict(
         findings=[{"kind": "operator.methodcaller", "line": 2, "expr": "operator.methodcaller(\"Add\", ...)(...)"}],
         reflection_bypass_count=1,
@@ -296,6 +295,12 @@ ALL_ERROR_CODES = [
         deprecations=[{"id": "lexentry-donotuseforparsing"}],
         replacement_example="entry.LexemeFormOA.IsAbstract = True",
         next_steps=["Set IsAbstract on the entry's forms"],
+    )),
+    ("atomic_property_iteration", dict(
+        findings=[{"line": 2, "col": 14, "property": "LexemeFormOA",
+                   "expr": "entry.LexemeFormOA", "kind": "owning_atomic",
+                   "list_sibling": "AlternateFormsOS", "suggestion": "..."}],
+        next_steps=["1. Use `x = obj.LexemeFormOA` then `if x is not None:`"],
     )),
     ("raw_addcustomfield_write_risk", dict(
         findings=[{"line": 2, "detail": "mdc.AddCustomField(...)"}],
@@ -365,6 +370,7 @@ DETAIL_MODEL_MAP = {
     "wrong_library_imports": WrongLibraryImportsDetail,
     "invalid_api_mode": InvalidApiModeDetail,
     "invalid_api_chain": InvalidApiChainDetail,
+    "unknown_method": UnknownMethodDetail,
     "project_locked": ProjectLockedDetail,
     "project_drive_unavailable": ProjectDriveUnavailableDetail,
     "project_path_mismatch": ProjectPathMismatchDetail,
@@ -374,7 +380,6 @@ DETAIL_MODEL_MAP = {
     "deprecated_member": DeprecatedMemberDetail,
     "raw_addcustomfield_write_risk": RawAddCustomFieldWriteRiskDetail,
     "no_unit_of_work": NoUnitOfWorkDetail,
-    "unknown_method": UnknownMethodDetail,
 }
 
 #: CP2b's three. Separate from the map above because two of them have
@@ -520,8 +525,8 @@ class TestParserCheckCP2bCodes:
         # #277 adds reflection_bypass_detected -> 43.
         # unified-recipes adds recipe_not_found -> 44.
         # #310 adds no_unit_of_work -> 45.
-        # #306 adds unknown_method -> 46.
-        assert union_size == 46, f"the detail union holds {union_size} models"
+        # #313 adds atomic_property_iteration -> 46; #306 adds unknown_method -> 47.
+        assert union_size == 47, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

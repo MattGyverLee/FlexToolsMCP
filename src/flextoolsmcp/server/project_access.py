@@ -42,7 +42,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 if sys.platform == "win32":
     import ctypes.wintypes  # noqa: E402 -- platform-gated, must follow sys import
@@ -287,13 +287,58 @@ ENABLE_SHARING_REMEDY = (
 )
 
 
-def build_access_remedy(access: "ProjectAccess") -> Optional[str]:
+def _foreign_holder_origin(own_workers_ruled_out: bool) -> str:
+    """What a live non-FieldWorks holder most likely is (issue #315)."""
+    likely = (
+        "most likely a leftover FLExTools/MCP subprocess from an earlier "
+        "run, another MCP server instance or Claude session, or a FLExTools "
+        "GUI run"
+    )
+    if own_workers_ruled_out:
+        return (
+            "It is NOT one of the parse workers this server tracks for the "
+            f"project, so it is {likely}."
+        )
+    return f"Unless it is one of this server's own parse workers, it is {likely}."
+
+
+def _read_only_note(access: "ProjectAccess") -> str:
+    """Whether read-only runs survive this lock (issue #315).
+
+    Only with sharing on: on a non-shared project even a read-only LCM open
+    takes the .fwdata.lock (verified live, CP4 L-0), so it collides with the
+    same holder. Unknown sharing is treated as off.
+    """
+    if access.sharing_enabled is True:
+        return (
+            "Read-only runs (write_enabled=False) still work while this lock "
+            "is held, since project sharing is on."
+        )
+    return (
+        "Read-only runs (write_enabled=False) will likely fail too: without "
+        "project sharing, even a read-only open takes the .fwdata.lock."
+    )
+
+
+def build_access_remedy(
+    access: "ProjectAccess", *, own_workers_ruled_out: bool = False
+) -> Optional[str]:
     """The user-actionable next step for a verdict that blocks a write.
 
     Returns None for verdicts that do not block ("free", "open_shared",
     "stale_lock", "unknown") -- there is nothing for the user to do. Shared by the CP4
     write gate and (CP3) the post-hoc FP_FileLockedError diagnosis, so the
     two can never drift apart.
+
+    Issue #315: the `held_by_other` text used to end "Wait for that process
+    to exit (or end it)", which the model cannot do. It now says what the
+    holder likely is and points at steps the model CAN take, leaving ending
+    the process to the user. `own_workers_ruled_out` is True only where the
+    caller has checked the holder PID against this server's own pool
+    workers first (the write gate's `_release_own_worker_or_refuse` and
+    filing's release-then-reprobe; the post-hoc diagnosis when its own
+    check ran). Then the text asserts the holder is foreign and drops the
+    `flextools_parse_release` advice, which could not help.
     """
     if access.verdict == "open_exclusive":
         if access.holder is None or access.holder.pid is None:
@@ -310,17 +355,78 @@ def build_access_remedy(access: "ProjectAccess") -> Optional[str]:
     if access.verdict == "held_by_other":
         pid = access.holder.pid if access.holder else None
         name = (access.holder.process_name if access.holder else None) or "unknown"
+        release = (
+            "" if own_workers_ruled_out else
+            "call flextools_parse_release for this project (it releases only "
+            "this server's own workers) and retry. Otherwise, "
+        )
         return (
             f"The lock is held by a live process that is not FieldWorks: PID "
-            f"{pid} ({name}) -- most often a leftover FLExTools/MCP subprocess "
-            "from an earlier run. This is a real collision, and enabling "
-            "project sharing does not resolve it. Wait for that process to "
-            "exit (or end it), then retry."
+            f"{pid} ({name}). {_foreign_holder_origin(own_workers_ruled_out)} "
+            "This is a real collision, and enabling project sharing does not "
+            f"resolve it. {_read_only_note(access)} To free it: {release}"
+            "the holder usually exits within minutes (idle parse workers shut "
+            "down after 600 s), so retrying later often succeeds. If it "
+            "persists, ask the user to close the other FLExTools/Claude "
+            f"session or to end PID {pid} in Task Manager -- do not try to "
+            "end it yourself."
         )
     return None
 
 
-def build_lock_diagnosis(access: "ProjectAccess") -> Optional[str]:
+def build_access_next_steps(
+    access: "ProjectAccess", *, own_workers_ruled_out: bool = False
+) -> List[str]:
+    """Numbered next steps for a write-blocking verdict (issue #315).
+
+    The `project_locked` refusal's `next_steps` field, formatted like the
+    preflight refusals' ("1. ..."; validators.py). Empty for verdicts that
+    do not block a write, mirroring build_access_remedy(). Every step is one
+    the model can act on itself, or an explicit ask of the user -- never
+    "end the process". `own_workers_ruled_out` as for build_access_remedy():
+    when set, the `flextools_parse_release` step is dropped.
+    """
+    holder = access.holder
+    pid = holder.pid if holder else None
+    if access.verdict == "held_by_other":
+        steps = [_read_only_note(access)]
+        if not own_workers_ruled_out:
+            steps.append(
+                "Call flextools_parse_release(project_name=...) to release "
+                "this server's own parse workers for the project, then retry "
+                "the write."
+            )
+        steps += [
+            "Wait a few minutes and retry: the holder usually exits on its "
+            "own (idle parse workers shut down after 600 s).",
+            "If it persists, ask the user to close the other FLExTools/Claude "
+            f"session, or to end PID {pid} in Task Manager. Do not try to end "
+            "it yourself.",
+        ]
+    elif access.verdict == "open_exclusive":
+        if pid is None:
+            steps = [
+                _read_only_note(access),
+                "Ask the user to confirm no FieldWorks or python process is "
+                "running; if none is, the lock is stale and the user can "
+                "delete the .fwdata.lock file manually, then retry.",
+            ]
+        else:
+            steps = [
+                _read_only_note(access),
+                "Ask the user to turn on project sharing in FieldWorks (File > "
+                "Project Management > FieldWorks Project Properties > Sharing "
+                "tab), then re-submit this same call.",
+                "Or ask the user to close FieldWorks, then retry.",
+            ]
+    else:
+        return []
+    return [f"{i}. {text}" for i, text in enumerate(steps, 1)]
+
+
+def build_lock_diagnosis(
+    access: "ProjectAccess", *, own_workers_ruled_out: bool = False
+) -> Optional[str]:
     """Full read-only diagnosis text for a live LcmFileLockedException /
     FP_FileLockedError (CP3, issue #93 T3.1-T3.4).
 
@@ -349,7 +455,7 @@ def build_lock_diagnosis(access: "ProjectAccess") -> Optional[str]:
         their own generic hint.
     """
     if access.verdict in ("open_exclusive", "held_by_other"):
-        return build_access_remedy(access)
+        return build_access_remedy(access, own_workers_ruled_out=own_workers_ruled_out)
     if access.verdict == "stale_lock":
         pid = access.holder.pid if access.holder else None
         pid_text = f"PID {pid}" if pid is not None else "an unreadable PID"

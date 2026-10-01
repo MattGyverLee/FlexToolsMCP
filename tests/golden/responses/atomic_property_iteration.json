@@ -1,0 +1,38 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "atomic_property_iteration",
+  "message": "Refused: this code iterates a single-object LCM property -- `entry.LexemeFormOA` (line 2).",
+  "findings": [
+    {
+      "line": 2,
+      "col": 14,
+      "property": "LexemeFormOA",
+      "expr": "entry.LexemeFormOA",
+      "kind": "owning_atomic",
+      "suggestion": "LexemeFormOA is Owning-Atomic (OA): it holds ONE object (or None), not a collection -- do not iterate it.",
+      "list_sibling": "AlternateFormsOS"
+    }
+  ],
+  "next_steps": [
+    "1. Replace `for x in obj.<Name>OA:` with `x = obj.<Name>OA` then `if x is not None:` (same for *RA)"
+  ],
+  "error": {
+    "code": "atomic_property_iteration",
+    "message": "Refused: this code iterates a single-object LCM property -- `entry.LexemeFormOA` (line 2).",
+    "findings": [
+      {
+        "line": 2,
+        "col": 14,
+        "property": "LexemeFormOA",
+        "expr": "entry.LexemeFormOA",
+        "kind": "owning_atomic",
+        "suggestion": "LexemeFormOA is Owning-Atomic (OA): it holds ONE object (or None), not a collection -- do not iterate it.",
+        "list_sibling": "AlternateFormsOS"
+      }
+    ],
+    "next_steps": [
+      "1. Replace `for x in obj.<Name>OA:` with `x = obj.<Name>OA` then `if x is not None:` (same for *RA)"
+    ]
+  }
+}

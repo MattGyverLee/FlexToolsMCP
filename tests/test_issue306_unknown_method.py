@@ -1,60 +1,53 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Issue #306: a method its Operations class does not have is unknown_method.
+"""Issue #306: a method an indexed Operations class does not have is a wrong
+NAME, not a write.
 
-Field report (run_module preflight):
+`project.Parser.TryWord(...)` (ParserOperations has ParseWord / ParseWordXml /
+TraceWordXml) used to be classified mutating by certify_script_readonly's
+"method not in index" branch and rejected as unprotected_writes, so a weak
+model kept adding guards. The fix:
 
-    writeability: class=ParserOperations method=TryWord source=unknown
-    mutating_calls=['TryWord']
-
-ParserOperations has no TryWord (real: ParseWord, ParseWordXml,
-TraceWordXml). certify_script_readonly() reported a name absent from a KNOWN
-class as a suspected mutation, so run_module refused it as unprotected_writes
-and the model looped adding guards to a call that could never run.
-
-Now:
-  * a name that is on neither the class nor any indexed base is reported in
-    ``cert["unknown_methods"]`` (with did-you-mean), NOT as a mutation;
-  * run_module rejects it as ``unknown_method``;
-  * every receiver shape (project.Parser.X, alias, inline construction,
-    attached facade) and guarded/unguarded code get the same verdict;
-  * real indexed mutating methods are still unprotected writes, real
-    read-only methods still pass, inherited base-class methods are not
-    "unknown", and an unindexed class keeps its old behavior.
+  * detect_unknown_operations_methods reports it as unknown_method with
+    did-you-mean candidates, for the direct AND every aliased receiver shape;
+  * certify_script_readonly no longer counts it as a mutation (when the class's
+    whole ancestry is indexed), and resolves inherited methods;
+  * a genuinely mutating indexed method still triggers unprotected_writes.
 """
 
+import ast
 import asyncio
 import json
-from functools import lru_cache
 
 import pytest
 
 from flextoolsmcp.server import kernel, project_discovery
 from flextoolsmcp.server.handlers import execution as execution_mod
 from flextoolsmcp.server.validators import (
-    build_unknown_method_rejection,
     certify_script_readonly,
-    suggest_ops_methods,
+    detect_unknown_operations_methods,
 )
 
 
 class _FakeIndex:
-    casting_index = {}
+    casting_index = None
     flexicon = {
         "entities": {
             "FLExProject": {
+                "methods": [],
                 "properties": [
                     {"name": "Parser", "return_type": "ParserOperations"},
                     {"name": "LexEntry", "return_type": "LexEntryOperations"},
                 ],
-                "methods": [{"name": "FromOpenProject", "return_type": ""}],
             },
             "BaseOperations": {
                 "base_classes": [],
                 "methods": [
                     {"name": "MoveUp", "is_mutating": True},
-                    {"name": "CompareTo", "is_mutating": False},
+                    {"name": "GetSyncableProperties", "is_mutating": False},
+                    {"name": "__init__", "is_mutating": False},
                 ],
+                "properties": [],
             },
             "ParserOperations": {
                 "access_path": "project.Parser",
@@ -65,22 +58,23 @@ class _FakeIndex:
                     {"name": "TraceWordXml", "is_mutating": False},
                     {"name": "Reload", "is_mutating": False},
                 ],
+                "properties": [],
             },
             "LexEntryOperations": {
                 "access_path": "project.LexEntry",
                 "base_classes": ["BaseOperations"],
                 "methods": [
-                    {"name": "GetAll", "is_mutating": False},
-                    {"name": "GetLexemeForm", "is_mutating": False},
-                    {"name": "SetLexemeForm", "is_mutating": True},
                     {"name": "Create", "is_mutating": True},
+                    {"name": "GetLexemeForm", "is_mutating": False},
                 ],
+                "properties": [],
             },
-            # Base chain names a class the index does not have: the member
-            # list is incomplete, so the pre-#306 path must apply.
-            "MysteryOperations": {
-                "base_classes": ["NotIndexedBase"],
+            # Ancestor not indexed -> membership undecidable.
+            "OddOperations": {
+                "access_path": "project.Odd",
+                "base_classes": ["SomeUnindexedMixin"],
                 "methods": [{"name": "Known", "is_mutating": False}],
+                "properties": [],
             },
         }
     }
@@ -88,136 +82,163 @@ class _FakeIndex:
 
 IDX = _FakeIndex()
 
-DIRECT = 'result = project.Parser.TryWord("kitabu")\n'
-ALIAS = 'parser_ops = project.Parser\nresult = parser_ops.TryWord("kitabu")\n'
-INLINE = (
+DIRECT = "res = project.Parser.TryWord('abc')\nprint(res)\n"
+ALIASED = "parser_ops = project.Parser\nres = parser_ops.TryWord('abc')\nprint(res)\n"
+CTOR_ALIAS = (
     "from flexicon import ParserOperations\n"
-    'result = ParserOperations(project).TryWord("kitabu")\n'
+    "p = ParserOperations(project)\n"
+    "p.TryWord('abc')\n"
 )
-FACADE = (
-    "from flexicon import FLExProject\n"
-    "fx = FLExProject.FromOpenProject(project)\n"
-    'result = fx.Parser.TryWord("kitabu")\n'
-)
-GUARDED = 'if modifyAllowed:\n    result = project.Parser.TryWord("kitabu")\n'
+INLINE_CTOR = "from flexicon import ParserOperations\nParserOperations(project).TryWord('x')\n"
+STATIC = "from flexicon import ParserOperations\nParserOperations.TryWord('x')\n"
 
 
-def _verdict(cert):
-    """The parts of a cert that decide the run_module verdict."""
-    return (
-        cert["is_certified_readonly"],
-        tuple((c["class"], c["method"]) for c in cert["mutating_calls"]),
-        tuple((f["class"], f["method"], tuple(f["did_you_mean"])) for f in cert["unknown_methods"]),
+def _detect(code):
+    return detect_unknown_operations_methods(ast.parse(code), IDX)
+
+
+class TestDetector:
+    @pytest.mark.parametrize(
+        "code", [DIRECT, ALIASED, CTOR_ALIAS, INLINE_CTOR, STATIC],
+        ids=["direct", "aliased", "ctor_alias", "inline_ctor", "static"],
+    )
+    def test_every_receiver_shape_reports_unknown_method(self, code):
+        result = _detect(code)
+        assert result["has_unknown"] is True
+        assert len(result["issues"]) == 1
+        issue = result["issues"][0]
+        assert issue["class"] == "ParserOperations"
+        assert issue["method"] == "TryWord"
+
+    def test_did_you_mean_names_the_real_methods(self):
+        issue = _detect(DIRECT)["issues"][0]
+        assert issue["did_you_mean"]
+        assert set(issue["did_you_mean"]) <= {"ParseWord", "ParseWordXml", "TraceWordXml"}
+        assert "ParseWord" in issue["available_methods"]
+        assert "__init__" not in issue["available_methods"]
+        assert "TryWord" in issue["suggestion"]
+        assert issue["expr"] == "project.Parser.TryWord"
+
+    def test_aliased_expr_names_the_alias(self):
+        issue = _detect(ALIASED)["issues"][0]
+        assert issue["expr"] == "parser_ops.TryWord"
+        assert issue["lineno"] == 2
+
+    def test_real_and_inherited_methods_pass(self):
+        code = (
+            "project.Parser.ParseWord('abc')\n"
+            "p = project.Parser\n"
+            "p.TraceWordXml('abc')\n"
+            "project.LexEntry.MoveUp(e)\n"
+            "project.LexEntry.GetSyncableProperties(e)\n"
+        )
+        assert _detect(code)["has_unknown"] is False
+
+    def test_unindexed_getter_still_passes_issue32(self):
+        """#32: a Get*/Find*/... method missing from a lagging index must run."""
+        code = "project.Parser.GetNewThing()\nParserOperations(project).FindIt()\n"
+        assert _detect(code)["has_unknown"] is False
+        assert certify_script_readonly(code, IDX)["is_certified_readonly"] is True
+
+    def test_underscore_names_are_skipped(self):
+        code = "project.Parser._internal()\np = project.Parser\np.__dir__()\n"
+        assert _detect(code)["has_unknown"] is False
+
+    def test_same_class_bound_twice_is_still_reported(self):
+        code = (
+            "def a():\n    ops = project.Parser\n    ops.TryWord('x')\n"
+            "def b():\n    ops = ParserOperations(project)\n    ops.ParseWord('y')\n"
+        )
+        issues = _detect(code)["issues"]
+        assert [(i["method"], i["lineno"]) for i in issues] == [("TryWord", 3)]
+
+    def test_undecidable_ancestry_is_skipped(self):
+        assert _detect("project.Odd.Whatever()\n")["has_unknown"] is False
+
+    def test_unrelated_receivers_are_ignored(self):
+        assert _detect("x = []\nx.TryWord()\nreport.Info('hi')\n")["has_unknown"] is False
+
+    def test_no_close_match_gives_empty_list_and_discovery_pointer(self):
+        issue = _detect("project.Parser.Zzzqqq()\n")["issues"][0]
+        assert issue["did_you_mean"] == []
+        assert "flextools_get_object_api" in issue["suggestion"]
+
+
+class TestAmbiguousAliases:
+    """QC follow-up: `_resolve_alias_maps` is whole-script, last-write-wins.
+    A name bound to more than one thing cannot be typed at the call site, so
+    the rejecting gate must skip it (certify keeps the pre-#306 fail-closed
+    classification for those calls)."""
+
+    # `ops` is ParserOperations in a(), LexEntryOperations in b(); the
+    # last-write-wins map says LexEntryOperations, which has no ParseWord.
+    TWO_CLASSES = (
+        "def a():\n    ops = project.Parser\n    ops.ParseWord('x')\n"
+        "def b():\n    ops = project.LexEntry\n    ops.Create('y')\n"
     )
 
+    def test_name_bound_to_two_classes_is_not_rejected(self):
+        assert _detect(self.TWO_CLASSES)["has_unknown"] is False
 
-class TestCertifyUnknownMethod:
-    @pytest.mark.parametrize("code", [DIRECT, ALIAS, INLINE, FACADE, GUARDED],
-                             ids=["direct", "alias", "inline", "facade", "guarded"])
+    def test_two_classes_certify_falls_back_to_fail_closed(self):
+        cert = certify_script_readonly(self.TWO_CLASSES, IDX)
+        rows = {(m["class"], m["method"], m["source"]) for m in cert["mutating_calls"]}
+        assert ("LexEntryOperations", "ParseWord", "unknown") in rows
+        assert ("LexEntryOperations", "Create", "index") in rows
+
+    @pytest.mark.parametrize("code", [
+        # rebound to a non-Operations value
+        "ops = project.Parser\nops = make_thing()\nops.Frobnicate()\n",
+        # also a function parameter
+        "ops = project.Parser\ndef f(ops):\n    ops.Frobnicate()\n",
+        # also a loop variable over something else
+        "ops = project.Parser\nfor ops in things:\n    ops.Frobnicate()\n",
+        # also an augmented assignment
+        "ops = project.Parser\nops += 1\nops.Frobnicate()\n",
+    ], ids=["rebound_non_ops", "param", "loop_var", "augassign"])
+    def test_rebound_name_is_not_rejected(self, code):
+        assert _detect(code)["has_unknown"] is False
+
+    def test_rebound_facade_root_is_not_rejected(self):
+        code = (
+            "fx = FLExProject.FromOpenProject(project)\n"
+            "fx = other_thing\n"
+            "fx.Parser.Frobnicate()\n"
+        )
+        assert _detect(code)["has_unknown"] is False
+
+
+class TestCertifyNoLongerCallsItMutating:
+    @pytest.mark.parametrize("code", [DIRECT, ALIASED, CTOR_ALIAS], ids=["direct", "aliased", "ctor_alias"])
     def test_unknown_method_is_not_a_mutation(self, code):
         cert = certify_script_readonly(code, IDX)
         assert cert["is_certified_readonly"] is True
         assert cert["mutating_calls"] == []
-        assert [(f["class"], f["method"]) for f in cert["unknown_methods"]] == [
+        assert [(u["class"], u["method"]) for u in cert["unknown_calls"]] == [
             ("ParserOperations", "TryWord")
         ]
-        assert cert["unknown_calls"][0]["reason"] == "unknown_method"
 
-    def test_all_receiver_shapes_get_the_same_verdict(self):
-        verdicts = {_verdict(certify_script_readonly(c, IDX))
-                    for c in (DIRECT, ALIAS, INLINE, FACADE, GUARDED)}
-        assert len(verdicts) == 1, verdicts
-
-    def test_did_you_mean_names_the_real_parser_methods(self):
-        cert = certify_script_readonly(DIRECT, IDX)
-        finding = cert["unknown_methods"][0]
-        assert finding["did_you_mean"][:3] == ["ParseWord", "ParseWordXml", "TraceWordXml"]
-        # available_methods includes inherited base-class methods.
-        assert "MoveUp" in finding["available_methods"]
-        assert "ParseWord" in finding["available_methods"]
-
-    def test_real_indexed_mutating_method_still_unprotected(self):
-        cert = certify_script_readonly('project.LexEntry.SetLexemeForm(e, "x")\n', IDX)
+    def test_genuinely_mutating_indexed_method_still_flagged(self):
+        cert = certify_script_readonly("project.LexEntry.Create('x')\n", IDX)
         assert cert["is_certified_readonly"] is False
-        assert [(c["class"], c["method"], c["source"]) for c in cert["mutating_calls"]] == [
-            ("LexEntryOperations", "SetLexemeForm", "index")
+        assert [(m["class"], m["method"], m["source"]) for m in cert["mutating_calls"]] == [
+            ("LexEntryOperations", "Create", "index")
         ]
-        assert cert["unknown_methods"] == []
 
-    def test_aliased_real_mutating_method_still_unprotected(self):
-        code = 'ops = project.LexEntry\nops.SetLexemeForm(e, "x")\n'
-        cert = certify_script_readonly(code, IDX)
+    def test_inherited_mutating_method_classified_from_index(self):
+        cert = certify_script_readonly("project.LexEntry.MoveUp(e)\n", IDX)
         assert cert["is_certified_readonly"] is False
-        assert cert["unknown_methods"] == []
-
-    def test_real_readonly_method_passes(self):
-        cert = certify_script_readonly('r = project.Parser.ParseWord("kitabu")\n', IDX)
-        assert cert["is_certified_readonly"] is True
-        assert cert["unknown_methods"] == []
+        assert [(m["method"], m["source"]) for m in cert["mutating_calls"]] == [("MoveUp", "index")]
         assert cert["unknown_calls"] == []
 
-    def test_inherited_base_method_is_not_unknown(self):
-        """MoveUp lives on BaseOperations; it must not be an unknown_method,
-        and (unguarded) keeps the conservative pre-#306 mutating verdict."""
-        cert = certify_script_readonly("project.LexEntry.MoveUp(e)\n", IDX)
-        assert cert["unknown_methods"] == []
+    def test_undecidable_class_stays_fail_closed(self):
+        cert = certify_script_readonly("project.Odd.Whatever()\n", IDX)
         assert cert["is_certified_readonly"] is False
-
-    def test_unindexed_class_behavior_unchanged(self):
-        cert = certify_script_readonly(
-            "from flexicon import ZzzOperations\nZzzOperations(project).TryWord(x)\n", IDX
-        )
-        assert cert["unknown_methods"] == []
-        assert cert["is_certified_readonly"] is True
-
-    def test_incomplete_base_chain_keeps_old_conservative_path(self):
-        code = "from flexicon import MysteryOperations\nMysteryOperations(project).Frobnicate(x)\n"
-        cert = certify_script_readonly(code, IDX)
-        assert cert["unknown_methods"] == []
-        assert [(c["class"], c["method"], c["source"]) for c in cert["mutating_calls"]] == [
-            ("MysteryOperations", "Frobnicate", "unknown")
-        ]
-
-    def test_issue32_unindexed_getter_still_tolerated(self):
-        """A Get* name with no confident close match is still let through
-        as read-only (issue #32: getter added before the index refresh)."""
-        cert = certify_script_readonly("x = project.LexEntry.GetHeadwordAndCategory()\n", IDX)
-        assert cert["is_certified_readonly"] is True
-        assert cert["unknown_methods"] == []
-
-    def test_getter_typo_is_unknown_in_alias_form_too(self):
-        """GetLexemForm is a confident typo of GetLexemeForm: the direct form
-        was already caught by invalid_api_chain; the alias form now matches."""
-        for code in ("x = project.LexEntry.GetLexemForm(e)\n",
-                     "ops = project.LexEntry\nx = ops.GetLexemForm(e)\n"):
-            cert = certify_script_readonly(code, IDX)
-            assert [f["did_you_mean"][0] for f in cert["unknown_methods"]] == ["GetLexemeForm"], code
-
-
-class TestSuggestions:
-    def test_typo_ranks_first(self):
-        assert suggest_ops_methods("SetLexemForm", ["Create", "SetLexemeForm", "GetLexemeForm"])[0] == "SetLexemeForm"
-
-    def test_shared_noun_beats_unrelated(self):
-        assert suggest_ops_methods("TryWord", ["Reload", "ParseWord", "TraceWordXml", "ParseWordXml"]) == [
-            "ParseWord", "ParseWordXml", "TraceWordXml"
-        ]
-
-    def test_rejection_payload(self):
-        rej = build_unknown_method_rejection(certify_script_readonly(ALIAS, IDX))
-        assert rej is not None
-        assert "ParserOperations.TryWord" in rej["message"]
-        assert "does not exist" in rej["message"]
-        assert "not a write-safety problem" in rej["message"]
-        assert rej["did_you_mean"][:3] == ["ParseWord", "ParseWordXml", "TraceWordXml"]
-        assert rej["next_steps"]
-        assert build_unknown_method_rejection(
-            certify_script_readonly('project.Parser.ParseWord("x")\n', IDX)
-        ) is None
+        assert [(m["method"], m["source"]) for m in cert["mutating_calls"]] == [("Whatever", "unknown")]
 
 
 # ---------------------------------------------------------------------------
-# run_module end to end (preflight only; never reaches the subprocess)
+# End to end through handle_run_module
 # ---------------------------------------------------------------------------
 
 def _parse(resp_list):
@@ -238,80 +259,107 @@ def _stub_env(monkeypatch, tmp_path):
     )
 
 
-def _run(code, write_enabled=False, **extra):
+def _run(code, **extra):
     args = {
         "code": code,
-        "project_name": "TestProj_306",
-        "write_enabled": write_enabled,
-        "skip_api_check": True,
+        "project_name": "TestProject",
         "skip_module_check": True,
-        "auto_fix": False,
-        **extra,
+        "skip_api_check": True,
+        "write_enabled": False,
     }
-    if write_enabled:
-        args["confirmed"] = True
+    args.update(extra)
     return _parse(asyncio.run(execution_mod.handle_run_module(args)))
 
 
 class TestRunModule:
-    @pytest.mark.parametrize("code", [DIRECT, ALIAS, GUARDED], ids=["direct", "alias", "guarded"])
-    @pytest.mark.parametrize("write_enabled", [False, True], ids=["ro", "rw"])
-    def test_rejects_as_unknown_method(self, monkeypatch, tmp_path, code, write_enabled):
+    @pytest.mark.parametrize("code", [DIRECT, ALIASED], ids=["direct", "aliased"])
+    def test_rejects_with_unknown_method_not_unprotected_writes(self, monkeypatch, tmp_path, code):
         _stub_env(monkeypatch, tmp_path)
-        data = _run(code, write_enabled=write_enabled)
+        data = _run(code)
         assert data["status"] == "error"
-        assert data["error_code"] == "unknown_method", data.get("message")
-        assert data["error"]["code"] == "unknown_method"
-        assert data["did_you_mean"][:3] == ["ParseWord", "ParseWordXml", "TraceWordXml"]
-        assert data["unknown_methods"][0]["class"] == "ParserOperations"
-        assert data["unknown_methods"][0]["method"] == "TryWord"
-        assert data.get("next_steps")
+        assert data["error_code"] == "unknown_method", data
+        assert data["did_you_mean"]
+        assert set(data["did_you_mean"]) <= {"ParseWord", "ParseWordXml", "TraceWordXml"}
+        assert data["issues"][0]["method"] == "TryWord"
+        assert any("modifyAllowed" in step for step in data["next_steps"])
+        # QC: stale-index recovery is named, with the real refresh commands.
+        assert any("python -m flextoolsmcp.refresh" in s for s in data["next_steps"])
+        assert "flextools-mcp-refresh" in data["message"]
 
-    def test_direct_and_alias_same_payload(self, monkeypatch, tmp_path):
+    def test_guarded_unknown_method_is_still_unknown_method(self, monkeypatch, tmp_path):
         _stub_env(monkeypatch, tmp_path)
-        a, b = _run(DIRECT), _run(ALIAS)
-        assert (a["error_code"], a["did_you_mean"]) == (b["error_code"], b["did_you_mean"])
+        data = _run(
+            "if modifyAllowed:\n    project.Parser.TryWord('abc')\n",
+            write_enabled=True,
+        )
+        assert data["error_code"] == "unknown_method", data
 
-    def test_real_mutating_method_still_unprotected_writes(self, monkeypatch, tmp_path):
+    def test_unprotected_write_wins_over_unknown_method(self, monkeypatch, tmp_path):
         _stub_env(monkeypatch, tmp_path)
-        data = _run('project.LexEntry.SetLexemeForm(e, "x")\n', write_enabled=True)
+        data = _run("project.Parser.TryWord('abc')\nproject.LexEntry.Create('x')\n")
+        assert data["error_code"] == "unprotected_writes", data
+        assert [m["method"] for m in data["mutating_calls"]] == ["Create"]
+
+    def test_typo_auto_fix_runs_before_unknown_method(self, monkeypatch, tmp_path):
+        """#46: a high-confidence single-candidate typo (Reloadd -> Reload) is
+        auto-fixed on a read-only run before the unknown_method gate looks."""
+        _stub_env(monkeypatch, tmp_path)
+        seen = []
+
+        class _Stop(Exception):
+            pass
+
+        def _spy(tree, idx):
+            seen.append(ast.unparse(tree))
+            raise _Stop()
+
+        monkeypatch.setattr(execution_mod, "detect_unknown_operations_methods", _spy)
+        with pytest.raises(_Stop):
+            asyncio.run(execution_mod.handle_run_module({
+                "code": "project.Parser.Reloadd()\n",
+                "project_name": "TestProject",
+                "skip_module_check": True,
+                "skip_api_check": True,
+                "write_enabled": False,
+                "auto_fix": True,
+            }))
+        assert seen and "Reloadd" not in seen[-1] and "project.Parser.Reload()" in seen[-1]
+
+    @pytest.mark.parametrize("code", [DIRECT, ALIASED], ids=["direct", "aliased"])
+    def test_validate_only_agrees(self, code):
+        class _Session:
+            def get_discovered_apis(self):
+                return set()
+
+        checks, _w = execution_mod._build_validate_only_checks(
+            code=code,
+            code_tree=ast.parse(code),
+            syntax_error=None,
+            api_idx=IDX,
+            session_state_obj=_Session(),
+            write_enabled=False,
+            api_mode="flexicon",
+            skip_api_check=True,
+            provenance_existing=False,
+            skip_module_check=True,
+        )
+        by_gate = {c["gate"]: c for c in checks}
+        assert by_gate["unprotected_writes"]["passed"] is True
+        assert by_gate["invalid_api_chain"]["passed"] is True
+        assert by_gate["unknown_method"]["passed"] is False
+        assert by_gate["unknown_method"]["issues"][0]["method"] == "TryWord"
+
+    def test_mutating_indexed_method_still_unprotected_writes(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path)
+        data = _run("project.LexEntry.Create('x')\n")
+        assert data["status"] == "error"
         assert data["error_code"] == "unprotected_writes"
 
-    def test_validate_only_reports_unknown_method_once(self, monkeypatch, tmp_path):
-        _stub_env(monkeypatch, tmp_path)
-        data = _run(DIRECT, validate_only=True)
-        by_gate = {c["gate"]: c for c in data["checks"]}
-        assert by_gate["unknown_method"]["passed"] is False
-        assert by_gate["unknown_method"]["did_you_mean"][0] == "ParseWord"
-        assert by_gate["unprotected_writes"]["passed"] is True
-        # Not double-listed by the chain gate.
-        assert by_gate["invalid_api_chain"]["passed"] is True
 
+def test_unknown_method_has_retry_loop_hint():
+    """A retry loop on unknown_method gets a tailored hint, not the generic one."""
+    from flextoolsmcp.server.session import _ASSISTANCE_HINTS_BY_ERROR_CODE
 
-# ---------------------------------------------------------------------------
-# Against the shipped index (the issue's environment)
-# ---------------------------------------------------------------------------
-
-@lru_cache(maxsize=1)
-def _real_index():
-    from flextoolsmcp.server import APIIndex, get_index_dir
-
-    return APIIndex.load(get_index_dir())
-
-
-class TestShippedIndex:
-    def test_trywords_on_shipped_index(self):
-        try:
-            idx = _real_index()
-        except Exception as exc:  # pragma: no cover - packaging-dependent
-            pytest.skip(f"shipped index unavailable: {exc}")
-        if "ParserOperations" not in (idx.flexicon or {}).get("entities", {}):
-            pytest.skip("shipped index has no ParserOperations")
-        verdicts = set()
-        for code in (DIRECT, ALIAS):
-            cert = certify_script_readonly(code, idx)
-            assert cert["mutating_calls"] == [], code
-            [finding] = cert["unknown_methods"]
-            assert {"ParseWord", "ParseWordXml", "TraceWordXml"} <= set(finding["did_you_mean"])
-            verdicts.add(_verdict(cert))
-        assert len(verdicts) == 1
+    hint = _ASSISTANCE_HINTS_BY_ERROR_CODE["unknown_method"]
+    assert "did_you_mean" in hint
+    assert "modifyAllowed" in hint

@@ -88,9 +88,10 @@ try:
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        build_unknown_method_rejection,
+        detect_unknown_operations_methods,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
+        detect_atomic_property_iteration, detect_not_iterable_error,
         detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
@@ -111,9 +112,10 @@ except ImportError:
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        build_unknown_method_rejection,
+        detect_unknown_operations_methods,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
+        detect_atomic_property_iteration, detect_not_iterable_error,
         detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
@@ -1220,6 +1222,23 @@ def _extract_attempted_path(error_msg: str) -> Optional[str]:
     return None
 
 
+def _own_worker_lock_diagnosis(project_name: str, access) -> Optional[Dict[str, Any]]:
+    """Diagnosis fields if this server's own parse worker holds the lock,
+    else None (issue #315). Never spins up a runner (`peek_runner`).
+    """
+    try:
+        from ..parse import own_worker as _own_worker
+        from .parse import peek_runner
+    except (ImportError, ValueError):
+        from server.parse import own_worker as _own_worker
+        from server.handlers.parse import peek_runner
+    runner = peek_runner()
+    role = _own_worker.own_holder_role(runner, project_name, access)
+    if role is None:
+        return None
+    return _own_worker.own_worker_lock_diagnosis(runner, project_name, role)
+
+
 def _diagnose_project_open_error(
     execution_result: Dict[str, Any], project_name: str
 ) -> Optional[Dict[str, Any]]:
@@ -1285,24 +1304,42 @@ def _diagnose_project_open_error(
         try:
             try:
                 from ..project_access import (
+                    build_access_next_steps,
                     build_access_remedy,
                     build_lock_diagnosis,
                     probe_project_access,
                 )
             except (ImportError, ValueError):
                 from server.project_access import (
+                    build_access_next_steps,
                     build_access_remedy,
                     build_lock_diagnosis,
                     probe_project_access,
                 )
             access = probe_project_access(project_name)
-            specific_hint = build_lock_diagnosis(access)
+            holder = access.holder
+            # Issue #315: the same holder check the write gate makes before
+            # it refuses (`_release_own_worker_or_refuse`), so a lock held by
+            # our own parse worker is never reported as a foreign process.
+            # It cannot raise past here: a failure falls to the generic hint.
+            own = _own_worker_lock_diagnosis(project_name, access)
+            if own is not None:
+                own.update(
+                    verdict=access.verdict,
+                    sharing_enabled=access.sharing_enabled,
+                    holder_pid=holder.pid if holder else None,
+                )
+                diag.update(own)
+                return diag
+            # Our workers were checked just above, so the text may say the
+            # holder is not one of ours and skip flextools_parse_release --
+            # identical to the pre-flight refusal for the same verdict.
+            specific_hint = build_lock_diagnosis(access, own_workers_ruled_out=True)
             if specific_hint is not None:
                 # build_lock_diagnosis() only returns non-None for
                 # "open_exclusive", "held_by_other", and "stale_lock" --
                 # "free" / "open_shared" (and anything unrecognized) fall
                 # through and keep the generic dict built above.
-                holder = access.holder
                 extra: Dict[str, Any] = {
                     "hint": specific_hint,
                     "verdict": access.verdict,
@@ -1315,13 +1352,18 @@ def _diagnose_project_open_error(
                     # stale_lock there is genuinely nothing the user must
                     # DO, just information that the lock has already been
                     # vacated.
-                    "remedy": build_access_remedy(access),
+                    "remedy": build_access_remedy(access, own_workers_ruled_out=True),
+                    # Issue #315: the same numbered steps as the pre-flight
+                    # refusal (empty for stale_lock, like remedy).
+                    "next_steps": build_access_next_steps(
+                        access, own_workers_ruled_out=True
+                    ),
                 }
                 # Single atomic update so a failure in the block above (e.g.
                 # build_access_remedy() raising) can never leave `diag` with
                 # some CP3 keys set (verdict/hint/...) but no `remedy` --
                 # a third payload shape neither the generic nor CP3 path
-                # intends. See specs/shared-mode-access/reviews/cycle5-qc.md
+                # intends. See specs/_archive/shared-mode-access/reviews/cycle5-qc.md
                 # P1-1.
                 diag.update(extra)
         except Exception as exc:
@@ -2108,6 +2150,21 @@ def _compute_casting_decision(
         ) + typo_check["issues"]
         casting_check["has_casting_issues"] = True
         casting_check["severity"] = "error"
+    # Issue #313 (defense in depth): a casting advisory on a property the
+    # code ITERATES as an *OA/*RA atomic is the wrong diagnosis -- the
+    # atomic_property_iteration gate owns that line. Drop it here so no
+    # caller can surface "cast LexemeFormOA" for `for x in e.LexemeFormOA:`.
+    atomic_check = detect_atomic_property_iteration(code, code_tree)
+    if atomic_check["has_atomic_iteration"] and casting_check.get("casting_issues"):
+        _atomic_keys = {(f["property"], f["line"]) for f in atomic_check["findings"]}
+        kept = [
+            i for i in casting_check["casting_issues"]
+            if (i.get("property"), i.get("line")) not in _atomic_keys
+        ]
+        if len(kept) != len(casting_check["casting_issues"]):
+            casting_check["casting_issues"] = kept
+            casting_check["has_casting_issues"] = bool(kept)
+            casting_check["severity"] = "error" if kept else "none"
     casting_check["has_error_severity"] = _has_error_severity_casting_issue(
         casting_check.get("casting_issues") or []
     )
@@ -2230,6 +2287,21 @@ def _build_validate_only_checks(
         })
     else:
         checks.append({"gate": "deprecated_member", "passed": True})
+
+    # --- Gate 3b2: atomic_property_iteration (issue #313) ---
+    # Same detector handle_run_module uses; hard-rejects there on read-only
+    # and write-enabled runs alike (a guaranteed "not iterable" TypeError).
+    atomic_iteration_check = detect_atomic_property_iteration(code, code_tree)
+    if atomic_iteration_check["has_atomic_iteration"]:
+        checks.append({
+            "gate": "atomic_property_iteration",
+            "passed": False,
+            "issues": atomic_iteration_check["findings"],
+            "message": atomic_iteration_check["message"],
+            "next_steps": atomic_iteration_check["next_steps"],
+        })
+    else:
+        checks.append({"gate": "atomic_property_iteration", "passed": True})
 
     # --- Gate 3c: reflection_bypass (issue #277) ---
     # Same detector + refusal rule handle_run_module uses (reject on write
@@ -2381,39 +2453,25 @@ def _build_validate_only_checks(
         checks.append({"gate": "wrong_library_imports", "passed": True})
 
     # --- Gate 11: invalid_api_chain ---
-    # Issue #306: a project.<X>.<Y> method typo that Gate 12 reports as an
-    # unknown method is left to Gate 12 (the live run rejects it as
-    # unknown_method too), so one call is not listed twice.
-    unknown_method_rejection = build_unknown_method_rejection(cert)
-    _unknown_seen = {
-        (f.get("method"), f.get("line"))
-        for f in ((unknown_method_rejection or {}).get("unknown_methods") or [])
-    }
-    chain_check = detect_invalid_project_chains(code_tree, api_idx)
-    _chain_issues = [
-        i for i in (chain_check.get("issues") or [])
-        if not (i.get("kind") == "method"
-                and (i.get("typo_attr"), i.get("lineno")) in _unknown_seen)
-    ]
-    if any(i.get("blocking", True) for i in _chain_issues):
+    chain_check = _defer_chain_method_issues_to_unknown_method(
+        detect_invalid_project_chains(code_tree, api_idx), code_tree, api_idx
+    )
+    if chain_check["has_invalid"]:
         checks.append({
             "gate": "invalid_api_chain",
             "passed": False,
-            "issues": _chain_issues,
+            "issues": chain_check.get("issues") or [],
         })
     else:
         checks.append({"gate": "invalid_api_chain", "passed": True})
 
     # --- Gate 12: unknown_method (issue #306) ---
-    # Calls to a name that is not a member of its Operations class at all.
-    if unknown_method_rejection is not None:
+    unknown_method_check = detect_unknown_operations_methods(code_tree, api_idx)
+    if unknown_method_check["has_unknown"]:
         checks.append({
             "gate": "unknown_method",
             "passed": False,
-            "issues": [unknown_method_rejection["message"]],
-            "unknown_methods": unknown_method_rejection["unknown_methods"],
-            "did_you_mean": unknown_method_rejection["did_you_mean"],
-            "next_steps": unknown_method_rejection["next_steps"],
+            "issues": unknown_method_check.get("issues") or [],
         })
     else:
         checks.append({"gate": "unknown_method", "passed": True})
@@ -2474,7 +2532,7 @@ async def _handle_validate_only(
     if _lock_path is not None:
         project_lock["lock_file"] = str(_lock_path)
 
-    # Issue #93 sweep follow-up (see specs/shared-mode-access/reviews/
+    # Issue #93 sweep follow-up (see specs/_archive/shared-mode-access/reviews/
     # cycle5-qc.md P1-2): `locked` above is bare .fwdata.lock existence,
     # the exact false positive CP3 exists to remove (a stale lock, or a
     # live open_shared holder, both leave a lock file on disk without
@@ -2942,6 +3000,56 @@ def _try_auto_fix_casting(
     return {"patched_code": patched, "fixes": fix_records}
 
 
+#: Issue #306 QC: unknown_method trusts the API index, so a real method that
+#: is newer than the index is rejected too. Name the recovery: the refresh
+#: entry points are `python -m flextoolsmcp.refresh` and the
+#: `flextools-mcp-refresh` console script (pyproject [project.scripts]).
+_UNKNOWN_METHOD_STALE_INDEX_HINT = (
+    "If the method is new in your installed flexicon version, the API index "
+    "may be stale: run `python -m flextoolsmcp.refresh` (or "
+    "`flextools-mcp-refresh`), restart the MCP server, and re-run."
+)
+
+
+def _defer_chain_method_issues_to_unknown_method(
+    chain_check: Dict[str, Any],
+    code_tree: Optional[ast.AST],
+    api_idx: Any,
+) -> Dict[str, Any]:
+    """Drop `kind == "method"` chain issues the unknown_method gate also reports.
+
+    Issue #306: a direct TryWord call on `project.Parser` is both an invalid_api_chain
+    method issue (when difflib finds a close-enough name) and an
+    unknown_method call, while the aliased `p.TryWord(...)` is only the
+    latter. Leaving the shared ones to unknown_method makes the direct and
+    aliased forms answer with the same code. Applied AFTER the typo auto-fix
+    (issue #46), so auto-correction of high-confidence typos is unchanged.
+    Issues the unknown_method gate does not cover (accessor typos, non-call
+    references) are kept.
+    """
+    if not chain_check.get("has_invalid"):
+        return chain_check
+    covered = {
+        (i["lineno"], i["method"])
+        for i in detect_unknown_operations_methods(code_tree, api_idx).get("issues", [])
+    }
+    if not covered:
+        return chain_check
+    kept = [
+        i for i in chain_check.get("issues", [])
+        if not (i.get("kind") == "method" and (i.get("lineno"), i.get("typo_attr")) in covered)
+    ]
+    if len(kept) == len(chain_check.get("issues", [])):
+        return chain_check
+    if not kept:
+        return {"has_invalid": False, "issues": []}
+    return {
+        "has_invalid": any(i.get("blocking", True) for i in kept),
+        "issues": kept,
+        "suggestion": " ".join(i["suggestion"] for i in kept),
+    }
+
+
 def _try_auto_fix_typos(
     code: str,
     issues: List[Dict[str, Any]],
@@ -3156,19 +3264,9 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     makes that sufficient rather than just narrower).
     """
     try:
-        from ..parse.own_worker import (
-            HELD_BY_OWN_READ_WORKER,
-            own_worker_role,
-            busy_own_worker_guidance,
-            busy_own_worker_run_note,
-        )
+        from ..parse import own_worker as _own_worker
     except (ImportError, ValueError):
-        from server.parse.own_worker import (
-            HELD_BY_OWN_READ_WORKER,
-            own_worker_role,
-            busy_own_worker_guidance,
-            busy_own_worker_run_note,
-        )
+        from server.parse import own_worker as _own_worker
     try:
         from .parse import peek_runner
     except (ImportError, ValueError):
@@ -3178,32 +3276,18 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     if runner is None:
         return None, decision
 
-    role = own_worker_role(runner, project_name, decision)
-    if role is None:
-        return None, decision
-
-    if runner.worker_busy(project_name, role=role):
-        run_ids = runner.active_run_ids(project_name, role=role)
-        run_note = busy_own_worker_run_note(run_ids)
-        guidance = busy_own_worker_guidance("resubmit the write")
-        refusal = error_response(
-            "project_locked",
-            f"Project '{project_name}' is held by this server's own parse "
-            f"worker, which is busy running a parse{run_note}. This is NOT "
-            f"a foreign process -- do not end it. {guidance}",
-            guidance=guidance,
-            remedy=guidance,
-            lock_file_path=decision.refusal.get("lock_file_path"),
-            verdict=decision.verdict,
-            sharing_enabled=decision.refusal.get("sharing_enabled"),
-            holder_pid=decision.refusal.get("holder_pid"),
-            holder_process="this server's own parse worker",
-            op_id=op_id,
+    # Issue #315: the decision itself lives in parse/own_worker.py, shared
+    # with filing's confirmed gate so the two cannot drift; only the
+    # response shapes are built here.
+    outcome, role, decision = await _own_worker.settle_own_worker_hold(
+        runner, project_name, decision, write_ladder.probe_write_access
+    )
+    if outcome == _own_worker.BUSY:
+        message, fields = _own_worker.busy_own_worker_refusal(
+            runner, project_name, role, decision, "resubmit the write"
         )
-        return refusal, decision
-
-    sharing = bool(decision.refusal.get("sharing_enabled"))
-    if sharing:
+        return error_response("project_locked", message, **fields, op_id=op_id), decision
+    if outcome == _own_worker.COEXISTS:
         # Mirror filing's confirmed gate (handlers/parse/filing.py row 11): on a
         # shared project our read worker coexists with a writable open, so
         # do not release it first -- the probe's `held_by_other` is our own
@@ -3211,37 +3295,13 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
         return None, write_ladder.AccessDecision(
             project_name=project_name,
             access=decision.access,
-            verdict=HELD_BY_OWN_READ_WORKER,
+            verdict=_own_worker.HELD_BY_OWN_READ_WORKER,
             refusal=None,
         )
-
-    if await runner.release_worker_if_idle(project_name, role=role):
-        try:
-            return None, write_ladder.probe_write_access(project_name)
-        except Exception:
-            # A re-probe failure here should read as "still refused with
-            # the original detail", not crash the write gate: fall back
-            # to the decision as it stood before the release attempt.
-            return None, decision
-
-    run_ids = runner.active_run_ids(project_name, role=role)
-    run_note = busy_own_worker_run_note(run_ids)
-    guidance = busy_own_worker_guidance("resubmit the write")
-    refusal = error_response(
-        "project_locked",
-        f"Project '{project_name}' is held by this server's own parse "
-        f"worker, which is busy running a parse{run_note}. This is NOT "
-        f"a foreign process -- do not end it. {guidance}",
-        guidance=guidance,
-        remedy=guidance,
-        lock_file_path=decision.refusal.get("lock_file_path"),
-        verdict=decision.verdict,
-        sharing_enabled=decision.refusal.get("sharing_enabled"),
-        holder_pid=decision.refusal.get("holder_pid"),
-        holder_process="this server's own parse worker",
-        op_id=op_id,
-    )
-    return refusal, decision
+    # NOT_OURS: unchanged. RELEASED: re-probed (or, if the re-probe failed,
+    # the decision as it stood before, so it reads as "still refused with
+    # the original detail" rather than crashing the write gate).
+    return None, decision
 
 
 async def handle_run_module(args: dict) -> list[TextContent]:
@@ -3563,6 +3623,31 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id=op_id,
             ),
             error_code="deprecated_member",
+            code_size_bytes=_code_size_bytes,
+        )
+
+    # Issue #313: iterating an *OA / *RA (single-object) property -- e.g.
+    # `for hf in entry.LexemeFormOA:` -- is a guaranteed
+    # `TypeError: 'IMoForm' object is not iterable`. HARD BLOCK on read-only
+    # and write-enabled runs alike, and ahead of the casting gate so the
+    # misleading casting advisory on the same property never fires.
+    atomic_iteration_check = detect_atomic_property_iteration(code, code_tree)
+    if atomic_iteration_check["has_atomic_iteration"]:
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "atomic_property_iteration",
+            f"findings={[f.get('expr') for f in atomic_iteration_check['findings'][:5]]}",
+        log_dir_fn=get_log_dir,
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "atomic_property_iteration",
+                atomic_iteration_check["message"],
+                findings=atomic_iteration_check["findings"],
+                next_steps=atomic_iteration_check["next_steps"],
+                op_id=op_id,
+            ),
+            error_code="atomic_property_iteration",
             code_size_bytes=_code_size_bytes,
         )
 
@@ -4376,55 +4461,75 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                         "[AUTO-FIX] typo: patch did not pass re-preflight; falling back to rejection"
                     )
 
-    # Issue #306: a call to a name its Operations class does not have
-    # (ParserOperations.TryWord). certify_script_readonly reports these
-    # separately from mutations, so the unprotected_writes gate no longer
-    # sends the caller to guard a call that could never run; this gate names
-    # the real methods instead. It runs after invalid_api_chain's typo
-    # auto-fix (re-certifying, since that may have patched the code) but
-    # BEFORE that gate's rejection, so a direct `project.<X>.<Y>` call and an
-    # aliased one get the same unknown_method verdict; the chain rejection
-    # still covers accessor typos.
-    unknown_method_rejection = build_unknown_method_rejection(
-        certify_script_readonly(code, api_idx, code_tree)
-    )
-    if unknown_method_rejection is not None:
+        # Issue #306: method-name issues that the unknown_method gate below
+        # also reports are left to it, so a direct TryWord call on
+        # `project.Parser` and the same call through an alias get the same
+        # error code.
+        chain_check = _defer_chain_method_issues_to_unknown_method(
+            chain_check, code_tree, api_idx
+        )
+        if chain_check["has_invalid"]:
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
+                "invalid_api_chain",
+                f"issues={chain_check.get('issues')}",
+            log_dir_fn=get_log_dir,
+            )
+            return _attach_assistance_if_loop(
+                error_response(
+                    "invalid_api_chain",
+                    chain_check["suggestion"],
+                    issues=chain_check["issues"],
+                    guidance="Replace each flagged expression with the suggested correct name and re-run.",
+                    op_id=op_id,
+                ),
+                error_code="invalid_api_chain",
+                code_size_bytes=_code_size_bytes,
+            )
+
+    # Issue #306: a call to a method an indexed Operations class does not
+    # have (TryWord on `project.Parser`), on any receiver shape -- facade,
+    # alias, inline construction. Runs after the typo auto-fix above so
+    # high-confidence typos are still auto-corrected first. Before #306 the
+    # writeability gate classified such calls as mutating and returned
+    # unprotected_writes, so guarding them was the only "fix" offered.
+    unknown_method_check = detect_unknown_operations_methods(code_tree, api_idx)
+    if unknown_method_check["has_unknown"]:
+        _um_issues = unknown_method_check["issues"]
         _log_preflight_reject(
             op_id, seq, time.monotonic() - t_start,
             "unknown_method",
-            "calls="
-            f"{[f['class'] + '.' + f['method'] for f in unknown_method_rejection['unknown_methods'][:5]]}",
-            log_dir_fn=get_log_dir,
+            f"calls={[i['class'] + '.' + i['method'] for i in _um_issues[:5]]}",
+        log_dir_fn=get_log_dir,
         )
+        _um_steps = []
+        for _i in _um_issues:
+            if _i["did_you_mean"]:
+                _um_steps.append(
+                    f"Line {_i['lineno']}: replace {_i['method']} with one of "
+                    f"{', '.join(_i['did_you_mean'])} (check the signature with "
+                    f"flextools_get_object_api(\"{_i['class']}\"))."
+                )
+            else:
+                _um_steps.append(
+                    f"Line {_i['lineno']}: {_i['class']} has no {_i['method']}; "
+                    f"call flextools_get_object_api(\"{_i['class']}\") for its methods."
+                )
+        _um_steps.append(
+            "Do not add an `if modifyAllowed:` guard for this -- the method is "
+            "not in the API index, so a guard does not change this rejection."
+        )
+        _um_steps.append(_UNKNOWN_METHOD_STALE_INDEX_HINT)
         return _attach_assistance_if_loop(
             error_response(
                 "unknown_method",
-                unknown_method_rejection["message"],
-                unknown_methods=unknown_method_rejection["unknown_methods"],
-                did_you_mean=unknown_method_rejection["did_you_mean"],
-                next_steps=unknown_method_rejection["next_steps"],
+                unknown_method_check["suggestion"] + " " + _UNKNOWN_METHOD_STALE_INDEX_HINT,
+                issues=_um_issues,
+                did_you_mean=_um_issues[0]["did_you_mean"],
+                next_steps=_um_steps,
                 op_id=op_id,
             ),
             error_code="unknown_method",
-            code_size_bytes=_code_size_bytes,
-        )
-
-    if chain_check["has_invalid"]:
-        _log_preflight_reject(
-            op_id, seq, time.monotonic() - t_start,
-            "invalid_api_chain",
-            f"issues={chain_check.get('issues')}",
-        log_dir_fn=get_log_dir,
-        )
-        return _attach_assistance_if_loop(
-            error_response(
-                "invalid_api_chain",
-                chain_check["suggestion"],
-                issues=chain_check["issues"],
-                guidance="Replace each flagged expression with the suggested correct name and re-run.",
-                op_id=op_id,
-            ),
-            error_code="invalid_api_chain",
             code_size_bytes=_code_size_bytes,
         )
 
@@ -5733,6 +5838,22 @@ MODULE_CODE = {code}
                 execution_result["given_arg_types"] = overload_info.get("given_arg_types")
                 execution_result["candidate_overloads"] = overload_info.get("candidates")
                 execution_result["help"] = overload_info.get("suggestion")
+
+        # Issue #313: "'IMoForm' object is not iterable" -- almost always a
+        # loop over an *OA/*RA single-object property. `code`/`code_tree`
+        # here are the EXECUTED (possibly auto-patched) source.
+        elif execution_result.get("error") and "object is not iterable" in execution_result.get("error", ""):
+            not_iterable_info = detect_not_iterable_error(execution_result["error"], code, code_tree)
+            if not_iterable_info.get("is_not_iterable_error"):
+                execution_result["error_type"] = (
+                    "AtomicPropertyIterationError"
+                    if not_iterable_info["is_atomic_iteration_error"]
+                    else "NotIterableError"
+                )
+                execution_result["object_type"] = not_iterable_info["object_type"]
+                if not_iterable_info.get("property"):
+                    execution_result["property_name"] = not_iterable_info["property"]
+                execution_result["help"] = not_iterable_info["suggestion"]
 
         # Record API usage patterns for learning
         from ..kernel import get_pattern_tracker

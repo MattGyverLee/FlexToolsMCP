@@ -148,6 +148,11 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "message": "Invalid API method chain detected",
         "issues": [],
     },
+    "unknown_method": {
+        "message": "'TryWord' is not a method on ParserOperations",
+        "issues": [],
+        "did_you_mean": [],
+    },
     "reflection_bypass_detected": {
         "message": "Refused: this code reaches LCM through reflection",
         "findings": [],
@@ -174,31 +179,6 @@ GOLDEN_FIXTURES: dict[str, dict] = {
             "1. Prefer a Flexicon operations wrapper (project.POS.*, project.LexEntry.*, project.Senses.*) over the raw LCM call.",
             "2. Otherwise wrap the raw LCM writes in `with project.UndoableOperation(\"<label>\"):` inside the `if modifyAllowed:` guard.",
             "3. Re-run flextools_run_module() with write_enabled=true.",
-        ],
-    },
-    # Issue #306: a method its Operations class does not have, via an alias.
-    "unknown_method": {
-        "message": "ParserOperations.TryWord (line 2) does not exist. Did you mean: ParseWord, ParseWordXml, TraceWordXml? This is not a write-safety problem: a call to a method the class does not have raises AttributeError, so no guard makes it work.",
-        "unknown_methods": [
-            {
-                "class": "ParserOperations",
-                "method": "TryWord",
-                "line": 2,
-                "protected": False,
-                "did_you_mean": ["ParseWord", "ParseWordXml", "TraceWordXml"],
-                "available_methods": [
-                    "ApplySyncableProperties", "CompareTo", "GetAvailability",
-                    "GetSyncableProperties", "IsUpToDate", "MoveAfter", "MoveBefore",
-                    "MoveDown", "MoveToIndex", "MoveUp", "ParseWord", "ParseWordXml",
-                    "Reload", "Sort", "Swap", "TraceWordXml",
-                ],
-            }
-        ],
-        "did_you_mean": ["ParseWord", "ParseWordXml", "TraceWordXml"],
-        "next_steps": [
-            "1. Replace ParserOperations.TryWord with a real method (e.g. ParseWord). The rejection's `available_methods` lists the class's methods.",
-            "2. Check the signature first: flextools_get_object_api(object_type='ParserOperations').",
-            "3. Re-run flextools_run_module().",
         ],
     },
     "project_locked": {
@@ -236,6 +216,20 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "deprecations": [{"id": "lexentry-donotuseforparsing"}],
         "replacement_example": "entry.LexemeFormOA.IsAbstract = True",
         "next_steps": ["Set IsAbstract on the entry's forms (LexemeFormOA, AlternateFormsOS)"],
+    },
+    # Issue #313
+    "atomic_property_iteration": {
+        "message": "Refused: this code iterates a single-object LCM property -- `entry.LexemeFormOA` (line 2).",
+        "findings": [{
+            "line": 2,
+            "col": 14,
+            "property": "LexemeFormOA",
+            "expr": "entry.LexemeFormOA",
+            "kind": "owning_atomic",
+            "suggestion": "LexemeFormOA is Owning-Atomic (OA): it holds ONE object (or None), not a collection -- do not iterate it.",
+            "list_sibling": "AlternateFormsOS",
+        }],
+        "next_steps": ["1. Replace `for x in obj.<Name>OA:` with `x = obj.<Name>OA` then `if x is not None:` (same for *RA)"],
     },
     # Unified-recipes FR-024: detail fields in contracts/tools.md s.3 order
     # (recipe_id, closest_matches, hint).

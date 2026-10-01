@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 46 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 47 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + raw_addcustomfield_write_risk + invalid_api_mode
   + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
@@ -22,6 +22,7 @@ Provides:
   + deprecated_member (curated_deprecations.py)
   + recipe_not_found (unified-recipes FR-024)
   + no_unit_of_work (#310)
+  + atomic_property_iteration (#313)
   + unknown_method (#306))
 
 All field aliases reference KEY_* constants from response_keys so renames
@@ -333,19 +334,18 @@ class InvalidApiChainDetail(BaseModel):
 class UnknownMethodDetail(BaseModel):
     """Detail payload for unknown_method rejections (issue #306).
 
-    A call names a method that is neither on its Operations class nor on any
-    indexed base (a ``TryWord`` call on ParserOperations), whatever the
-    receiver shape: the ``project.Parser`` facade accessor, a local alias of
-    it, or an inline ``ParserOperations(project)``. Each
-    ``unknown_methods`` item is ``{class, method, line, protected,
-    did_you_mean, available_methods}``; top-level ``did_you_mean`` merges
-    their suggestions.
+    A call names a method that an indexed Operations class (inherited methods
+    included) does not have -- e.g. TryWord on ``project.Parser``. Each
+    ``issues`` item carries ``class``, ``method``, ``expr``, ``lineno``,
+    ``col_offset``, ``did_you_mean`` (list[str], may be empty),
+    ``available_methods`` and ``suggestion``. Top-level ``did_you_mean``
+    mirrors the first issue's list.
     """
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["unknown_method"] = "unknown_method"
-    unknown_methods: List[Any] = Field(default_factory=list)
+    issues: List[Any] = Field(default_factory=list)
     did_you_mean: List[str] = Field(default_factory=list)
-    next_steps: List[Any] = Field(default_factory=list)
+    next_steps: List[str] = Field(default_factory=list)
 
 
 class ReflectionBypassDetectedDetail(BaseModel):
@@ -435,6 +435,9 @@ class ProjectLockedDetail(BaseModel):
     holder_pid: Optional[int] = None
     holder_process: Optional[str] = None
     remedy: Optional[str] = None
+    # Issue #315: numbered steps the model can act on ("1. ..."), so a
+    # held_by_other refusal is not a dead end it cannot resolve.
+    next_steps: List[Any] = Field(default_factory=list)
 
 
 class ProjectDriveUnavailableDetail(BaseModel):
@@ -516,6 +519,21 @@ class DeprecatedMemberDetail(BaseModel):
     findings: List[Any] = Field(default_factory=list)
     deprecations: List[Any] = Field(default_factory=list)
     replacement_example: Optional[str] = None
+    next_steps: List[Any] = Field(default_factory=list)
+
+
+class AtomicPropertyIterationDetail(BaseModel):
+    """Detail payload for atomic_property_iteration rejections (issue #313).
+
+    Fires on ANY run (read-only or write-enabled) whose code iterates an
+    LCM *OA (Owning-Atomic) or *RA (Reference-Atomic) property -- e.g.
+    ``for hf in entry.LexemeFormOA:`` -- which holds ONE object or None and
+    raises "'IMoForm' object is not iterable" at runtime. See
+    validators.detect_atomic_property_iteration().
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["atomic_property_iteration"] = "atomic_property_iteration"
+    findings: List[Any] = Field(default_factory=list)
     next_steps: List[Any] = Field(default_factory=list)
 
 
@@ -976,7 +994,7 @@ class RecipeNotFoundDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 46 per-code detail models
+# Discriminated union over all 47 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -1008,6 +1026,7 @@ AnyDetail = Union[
     RuntimeErrorDetail,
     HvoLiteralWriteRiskDetail,
     DeprecatedMemberDetail,
+    AtomicPropertyIterationDetail,
     RawAddCustomFieldWriteRiskDetail,
     ParserEngineMismatchDetail,
     ParserCoreMissingDetail,

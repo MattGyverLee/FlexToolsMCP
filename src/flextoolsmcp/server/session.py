@@ -117,9 +117,9 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
     "unknown_method": (
         # Issue #306: the method does not exist; guarding it changes nothing.
         "the called method does not exist on that Operations class -- pick "
-        "one from the rejection's did_you_mean / available_methods (or "
-        "flextools_get_object_api). Do not add an `if modifyAllowed:` guard "
-        "or rename the receiver variable: neither makes the method exist."
+        "one from the rejection's did_you_mean (or flextools_get_object_api). "
+        "Do not add an `if modifyAllowed:` guard or rename the receiver "
+        "variable: neither makes the method exist."
     ),
     "top_level_main_invocation": (
         "remove the module-level Main(...) call -- flextools_run_module "
@@ -133,6 +133,13 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "its FORMS (entry.LexemeFormOA, if not None, and each item of "
         "entry.AlternateFormsOS), not on the entry. Copy the "
         "replacement_example from the rejection."
+    ),
+    "atomic_property_iteration": (
+        # Issue #313: `for hf in entry.LexemeFormOA:` -> "not iterable".
+        "a property ending in OA/RA holds ONE object (or None), not a list "
+        "-- do not loop over it. Use `x = obj.<Name>OA` then "
+        "`if x is not None:`. Lists end in OS/OC/RS/RC (e.g. the entry's "
+        "other forms are entry.AlternateFormsOS)."
     ),
     "reflection_bypass_detected": (
         "remove reflection shortcuts (operator.methodcaller, importlib "

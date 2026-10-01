@@ -42,17 +42,18 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Set
 
 from server.validators import (
-    build_unknown_method_rejection,
     validate_server_state,
     detect_partial_module_structure,
     detect_top_level_main_invocation,
     detect_deprecated_members,
+    detect_atomic_property_iteration,
     certify_script_readonly,
     detect_undiscovered_entities,
     detect_undefined_variables,
     detect_missing_operations_imports,
     detect_wrong_library_imports,
     detect_invalid_project_chains,
+    detect_unknown_operations_methods,
     detect_getall_unsafe_idiom,
 )
 from server import kernel
@@ -63,7 +64,10 @@ from server import kernel
 # docstring). Previously this runner called detect_casting_needs directly
 # and never modeled detect_interface_attribute_typos at all -- its own
 # comment admitted Tier-1 evals were blind to the whole #39 typo class.
-from server.handlers.execution import _compute_casting_decision
+from server.handlers.execution import (
+    _compute_casting_decision,
+    _defer_chain_method_issues_to_unknown_method,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -105,8 +109,9 @@ class _FakeAPIIndex:
                         {"name": "GetLexemeForm", "is_mutating": False},
                         {"name": "Create", "is_mutating": True},
                         {"name": "SetLexemeForm", "is_mutating": True},
-                        # Issue #306: the class's member list is now taken as
-                        # complete, so 16_ok_guarded_delete needs Delete here.
+                        # Issue #306: the real index has Delete; without it the
+                        # unknown_method gate would reject corpus 16's guarded
+                        # delete as a nonexistent method.
                         {"name": "Delete", "is_mutating": True},
                     ],
                 },
@@ -137,7 +142,7 @@ class _FakeAPIIndex:
                     ],
                 },
                 # Issue #306: a known class whose real methods do not include
-                # the invented TryWord.
+                # the invented TryWord (corpus issue306_unknown_method_*).
                 "ParserOperations": {
                     "methods": [
                         {"name": "ParseWord", "is_mutating": False},
@@ -248,6 +253,7 @@ _ORDERED_GATES = (
     "server_state_error",
     "partial_module_structure",
     "deprecated_member",
+    "atomic_property_iteration",
     "unprotected_writes",
     "casting_issues_detected",
     "api_discovery_required",
@@ -255,8 +261,8 @@ _ORDERED_GATES = (
     "undefined_variables",
     "missing_imports",
     "wrong_library_imports",
-    "unknown_method",
     "invalid_api_chain",
+    "unknown_method",
 )
 
 
@@ -352,6 +358,17 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
             str([f["expr"] for f in deprecated["findings"]]),
         )
 
+    # Gate 3b2: atomic_property_iteration (issue #313). Unconditional:
+    # iterating an *OA/*RA single-object property always raises TypeError.
+    atomic = detect_atomic_property_iteration(code, tree)
+    if atomic["has_atomic_iteration"]:
+        return PreflightResult(
+            "preflight_reject",
+            "atomic_property_iteration",
+            "atomic_property_iteration",
+            str([f["expr"] for f in atomic["findings"]]),
+        )
+
     # Gate 4: unprotected_writes.
     cert = certify_script_readonly(code, FAKE_API_INDEX, tree)
     if not cert["is_certified_readonly"]:
@@ -437,21 +454,21 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
             "preflight_reject", "wrong_library_imports", "wrong_library_imports", str(wrong["wrong_imports"])
         )
 
-    # Gate 12: unknown_method (issue #306). The handler checks it after the
-    # chain gate's auto-fix but before the chain rejection (no auto-fix here).
-    unknown = build_unknown_method_rejection(
-        certify_script_readonly(code, FAKE_API_INDEX, tree)
+    # Gate 11: invalid_api_chain (method issues the unknown_method gate also
+    # reports are deferred to it -- issue #306, as in handle_run_module).
+    chain = _defer_chain_method_issues_to_unknown_method(
+        detect_invalid_project_chains(tree, FAKE_API_INDEX), tree, FAKE_API_INDEX
     )
-    if unknown is not None:
-        return PreflightResult(
-            "preflight_reject", "unknown_method", "unknown_method", unknown["message"]
-        )
-
-    # Gate 11: invalid_api_chain.
-    chain = detect_invalid_project_chains(tree, FAKE_API_INDEX)
     if chain["has_invalid"]:
         return PreflightResult(
             "preflight_reject", "invalid_api_chain", "invalid_api_chain", str(chain["issues"])
+        )
+
+    # Gate 12: unknown_method (issue #306).
+    unknown_method = detect_unknown_operations_methods(tree, FAKE_API_INDEX)
+    if unknown_method["has_unknown"]:
+        return PreflightResult(
+            "preflight_reject", "unknown_method", "unknown_method", str(unknown_method["issues"])
         )
 
     # Non-blocking advisory (getall-contract SPEC §6 Level 3): never rejects,

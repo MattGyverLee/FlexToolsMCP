@@ -241,6 +241,66 @@ async def test_on_a_shared_project_our_read_worker_stays_open_and_the_claim_is_s
     await asyncio.wait_for(filing_env.runner.get(started["run_id"]).done.wait(), timeout=10)
 
 
+# ---------------------------------------------------------------------------
+# Issue #315: the foreign-holder refusal says "NOT one of the parse workers
+# this server tracks", so filing's confirmed gate rules out EVERY role, not
+# just the SHARED_ROLE read worker -- e.g. our measurement worker.
+# ---------------------------------------------------------------------------
+
+
+_MEASUREMENT_PID = 5555
+
+
+def _hold_with_our_measurement_worker(filing_env):
+    from flextoolsmcp.server.parse.worker_client import MEASUREMENT_ROLE
+
+    filing_env.install(_PidReadWorker(facts={"pukul": [analysis("a1")]}), FakeFilingWorker())
+    filing_env.pool.extra[MEASUREMENT_ROLE] = types.SimpleNamespace(worker_pid=_MEASUREMENT_PID)
+    return MEASUREMENT_ROLE
+
+
+async def test_a_lock_held_by_our_idle_measurement_worker_is_released_then_filing_starts(
+        filing_env, monkeypatch):
+    role = _hold_with_our_measurement_worker(filing_env)
+    # Preview and confirm see the measurement worker's lock; after its release: free.
+    _probe_sequence(monkeypatch, _access("held_by_other", _MEASUREMENT_PID),
+                    _access("held_by_other", _MEASUREMENT_PID), _access("free"))
+    preview = await call(filing_args())
+    assert preview["error_code"] == "confirmation_required"
+    started = await call(filing_args(confirmed=True, plan_id=preview["plan_id"]))
+    assert started.get("run_id"), started
+    assert (PROJECT, role) in filing_env.pool.released
+    await asyncio.wait_for(filing_env.runner.get(started["run_id"]).done.wait(), timeout=10)
+
+
+async def test_a_lock_held_by_our_busy_measurement_worker_refuses_as_ours(filing_env, monkeypatch):
+    from flextoolsmcp.server.response_models import ProjectLockedDetail
+
+    role = _hold_with_our_measurement_worker(filing_env)
+    _probe_sequence(monkeypatch, _access("held_by_other", _MEASUREMENT_PID))
+    preview = await call(filing_args())
+    assert preview["error_code"] == "confirmation_required"
+    # The measurement run starts after the preview, so the plan is unchanged.
+    filing_env.runner._runs["m-run"] = types.SimpleNamespace(
+        run_id="run-meas1", is_terminal=False, project_name=PROJECT, worker_role=role)
+
+    refused = await call(filing_args(confirmed=True, plan_id=preview["plan_id"]))
+
+    assert refused["error_code"] == "project_locked", refused
+    assert "this server's own parse worker" in refused["message"]
+    assert "NOT a foreign process" in refused["message"]
+    assert "run-meas1" in refused["message"]
+    assert "Nothing was written." in refused["message"]
+    # Never the foreign wording, which would be false here.
+    assert "NOT one of the parse workers" not in refused["remedy"]
+    assert refused["holder_process"] == "this server's own parse worker"
+    assert any("flextools_parse_cancel" in s for s in refused["next_steps"])
+    assert (PROJECT, role) not in filing_env.pool.released, "a busy worker is never released"
+    assert filing_env.pool.spawned == []
+    detail_keys = set(ProjectLockedDetail.model_fields)
+    ProjectLockedDetail.model_validate({k: v for k, v in refused.items() if k in detail_keys})
+
+
 def test_the_in_progress_hint_does_not_promise_reads_on_a_non_shared_project():
     """Live (S6): on a non-shared project a try-word IS refused during filing."""
     from flextoolsmcp.server.filing import claims

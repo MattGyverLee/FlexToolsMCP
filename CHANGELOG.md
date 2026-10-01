@@ -81,6 +81,15 @@ Two deprecations, both with removal at `tool-responses/2.0`:
 Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
 4.11.0.
 
+One new error code lands: `requires_exclusive_access` (a write-enabled script
+that changes writing systems or custom fields while FieldWorks holds the
+project, carrying `guidance`, `verdict`, `holder_pid`, `holder_process`,
+`operations` and `remedy`). The error code count in `docs/TOOL-CONTRACT.md`
+moves from 46 to 47. `validate_only` gains `project_lock.exclusive_access`
+(`required`, `operations`, `blocking`). Existing keys are unchanged; only the
+text of the `open_shared` `shared_mode` advisory and of the `open_shared`
+project-open diagnosis changes.
+
 ### Fixed
 
 - `flextools_run_module` no longer ping-pongs between `partial_module_structure`
@@ -168,6 +177,30 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   class name. `project.Segments.GetAll(paragraph)` (it takes the owning
   IStTxtPara) is no longer rejected, and neither are about 88 other flexicon
   methods that take an owner or related object.
+- `flextools_run_module` refuses writing-system and custom-field changes while
+  FieldWorks has the project open (specs/exclusive-access-gate). A
+  write-enabled script that creates, deletes or modifies a writing system, or
+  creates, deletes or renames a custom field, is refused with the new
+  `requires_exclusive_access` error when the access probe says FieldWorks
+  holds the project with sharing on (`open_shared`), or cannot confirm it is
+  closed (`unknown`). From a peer, those changes crash FLEx (writing systems)
+  or are silently lost (custom-field definitions). The refusal comes before
+  the confirmation step, the backup and the run. Recovery: close FieldWorks,
+  re-submit the same call, reopen FieldWorks. Detection covers the flexicon
+  wrappers through every receiver shape the read-only certifier resolves
+  (accessor, alias, facade, `XOperations(project)`) and raw LCM names; setting
+  a custom field's value stays an ordinary edit. A write-enabled run that
+  certified read-only is still probed when it contains such a call.
+  `open_exclusive` / `held_by_other` keep `project_locked`, and read-only runs
+  are never gated. `validate_only` reports the same decision as
+  `project_lock.exclusive_access.blocking`. The `open_shared` advisory now
+  points at this refusal instead of warning after the fact, and an
+  `open_shared` project-open failure no longer says "Close FieldWorks and
+  retry". Docs: the remaining undo claims are gone (`workflow-summary.md`
+  Stage 6, the style guide's safety ladder, `flextools_start`'s description),
+  and `docs/SHARED-MODE.md` documents the refusal, how to see an MCP change in
+  FLEx (navigate away and back; F5 alone is not enough), and why FLEx's Undo
+  cannot reverse an MCP write.
 
 ## [2.14.0] - 2026-09-27
 

@@ -224,7 +224,7 @@ observe Class B.
 
 **Independent test**: quickstart V7 recorded with an outcome.
 
-- [ ] T029 [US3] Write the harness `specs/exclusive-access-gate/evidence/live_cf_peer.py`, modelled on `specs/_archive/shared-mode-access/evidence/live_shared_peer.py` and `run_live_peer.py`:
+- [X] T029 [US3] Write the harness `specs/exclusive-access-gate/evidence/live_cf_peer.py`, modelled on `specs/_archive/shared-mode-access/evidence/live_shared_peer.py` and `run_live_peer.py`:
   - assert the project name is `Sena 3`;
   - open as a peer with `writeEnabled=True`;
   - build `FieldDescription(cache)` for class `LexEntry`, name `zzExclTest`, type MultiUnicode, analysis WS;
@@ -240,14 +240,14 @@ observe Class B.
 
 **Independent test**: every item in `issues/filing-ledger.md` has an outcome.
 
-- [ ] T032 [P] [US6] Create `specs/exclusive-access-gate/issues/filing-ledger.md` with one row per item: Item | Target repo | Check result | Outcome (filed #N / duplicate of #N / already fixed in <sha> / not filing: reason) | Authorized by.
-- [ ] T033 [US6] Check each upstream hazard against the flexicon working tree (`C:\Github\flexicon`, `git log --oneline -5` for the version) and record the result:
+- [X] T032 [P] [US6] Create `specs/exclusive-access-gate/issues/filing-ledger.md` with one row per item: Item | Target repo | Check result | Outcome (filed #N / duplicate of #N / already fixed in <sha> / not filing: reason) | Authorized by.
+- [X] T033 [US6] Check each upstream hazard against the flexicon working tree (`C:\Github\flexicon`, `git log --oneline -5` for the version) and record the result:
   - the `ConflictingSave` modal: is `FwLcmUI` still passed in `flexicon/code/FLExLCM.py`, or does `headless_ui.py` replace it?
   - `BeginUndoTask` arity;
   - the `_transaction_depth` leak;
   - the nonexistent `RollbackToMark` call in `Transaction()`;
   - the inaccurate `CheckNotProcessingDataChanges` comment in `CustomFieldOperations.CreateField` (research R3).
-- [ ] T034 [US6] Triage each draft in `specs/_archive/shared-mode-access/issues/DRAFT-issues.md` against open and closed issues on MattGyverLee/FlexToolsMCP and MattGyverLee/flexicon (`gh issue list --search`). Record duplicate, already fixed, or still new for each.
+- [X] T034 [US6] Triage each draft in `specs/_archive/shared-mode-access/issues/DRAFT-issues.md` against open and closed issues on MattGyverLee/FlexToolsMCP and MattGyverLee/flexicon (`gh issue list --search`). Record duplicate, already fixed, or still new for each.
 - [ ] T035 [US6] **needs-human**. Present the "still new" items from T033-T034 to the maintainer and file only those they approve, one `gh issue create` per item, each with an authorization note. Record the issue numbers in the ledger.
 
 ---
@@ -261,8 +261,8 @@ observe Class B.
   - cleanup of every `zzExclTest` object, confirmed by a read-only listing.
 
   V3 and V6 need the maintainer to close and reopen FLEx (**needs-human**).
-- [ ] T037 Once T035 is done, replace "upstream issue not yet filed" in `docs/SHARED-MODE.md` (~:141) with the filed issue links, or with "already fixed in flexicon <version>".
-- [ ] T038 Add a CHANGELOG.md `[Unreleased]` entry. There is no issue for this feature, so it goes under Other, appended at the bottom, plus a Tool contract line appended at the section end:
+- [X] T037 Once T035 is done, replace "upstream issue not yet filed" in `docs/SHARED-MODE.md` (~:141) with the filed issue links, or with "already fixed in flexicon <version>".
+- [X] T038 Add a CHANGELOG.md `[Unreleased]` entry. There is no issue for this feature, so it goes under Other, appended at the bottom, plus a Tool contract line appended at the section end:
   - the new `requires_exclusive_access` code, moving the count from 46 to 47;
   - the `validate_only` `project_lock.exclusive_access` key;
   - the advisory and diagnose text changes;
@@ -270,8 +270,8 @@ observe Class B.
   - sync-at-open, if shipped.
 
   Model it on the `recipe_not_found` entry (~:69-72).
-- [ ] T039 Run the `sweep-pattern` skill on the detector's own shape (receiver/name matching, role disambiguation; plan.md Phase 3). Record the result in `specs/exclusive-access-gate/reviews/sweep-detector.md`, and fix any confirmed sibling.
-- [ ] T040 Run the full offline gate:
+- [X] T039 Run the `sweep-pattern` skill on the detector's own shape (receiver/name matching, role disambiguation; plan.md Phase 3). Record the result in `specs/exclusive-access-gate/reviews/sweep-detector.md`, and fix any confirmed sibling.
+- [X] T040 Run the full offline gate:
   - `.venv\Scripts\python -m pytest -q -m "not requires_flex" | tail -20`
   - `python tests/make_golden.py --regen` (no diff beyond T012)
   - `python scripts/validate_integrity.py server`

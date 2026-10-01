@@ -151,19 +151,22 @@ retrying:
 - Only idempotent setters (`SetGloss`, `SetLexemeForm`, and similar) are safe
   to re-run as-is. Otherwise, re-run only the items that failed.
 
-## Known hazard: save conflicts
+## Save conflicts
 
-flexicon opens projects with a UI helper (`FwLcmUI`, `FLExLCM.py:88`). If LCM
-detects a save conflict it calls `ConflictingSave()`, which tries to show a
-modal dialog with no close box from the server's hidden subprocess
-(`FwLcmUI.cs:47`). Nobody can answer it; the default answer discards the
-peer's writes (`RevertToSavedState()`). Separately, a message LCM posts from
-its commit thread can deadlock because the subprocess has no message loop.
+If LCM detects a save conflict it calls the UI helper's `ConflictingSave()`.
+flexicon used to open projects with FieldWorks' `FwLcmUI`, which tries to
+show a modal dialog from the server's hidden subprocess (`FwLcmUI.cs:47`):
+nobody could answer it, and the default answer discarded the peer's writes.
+A message LCM posts from its commit thread could also deadlock, because the
+subprocess has no message loop.
 
-What protects you today: every run has a timeout, after which the server
-kills the subprocess and its children. If a run with FLEx open hangs until
-the timeout, assume its writes did not land, and check the FLEx UI. The fix
-belongs in flexicon (upstream issue not yet filed).
+Already fixed in flexicon 4.6.0 (flexicon#285): `HeadlessLcmUI` is now the
+default UI. A save conflict raises `FP_ConflictingSaveError`, so the run fails
+with an error instead of hanging, and messages are marshalled through
+`SingleThreadedSynchronizeInvoke` instead of a message loop. Every supported
+install is on a later flexicon. If a run with FLEx open still fails this way,
+assume its writes did not land, and check the FLEx UI. Every run also has a
+timeout, after which the server kills the subprocess and its children.
 
 ## Undo
 

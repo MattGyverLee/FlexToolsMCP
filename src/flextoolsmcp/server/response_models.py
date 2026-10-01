@@ -344,7 +344,7 @@ class UnknownMethodDetail(BaseModel):
     error_code: Literal["unknown_method"] = "unknown_method"
     issues: List[Any] = Field(default_factory=list)
     did_you_mean: List[str] = Field(default_factory=list)
-    next_steps: Optional[List[str]] = None
+    next_steps: List[str] = Field(default_factory=list)
 
 
 class ReflectionBypassDetectedDetail(BaseModel):

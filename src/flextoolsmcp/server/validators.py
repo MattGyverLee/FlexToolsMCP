@@ -4857,6 +4857,88 @@ def _ops_class_member_records(
     return methods, properties
 
 
+def _ops_class_membership_decidable(
+    class_name: str,
+    members: Optional[Tuple[Dict[str, Dict[str, Any]], Set[str]]],
+) -> bool:
+    """True when "method not found on `class_name`" really means "no such
+    method": an Operations class whose whole ancestry is indexed and has at
+    least one method. Used by detect_unknown_operations_methods (issue #306);
+    certify_script_readonly keys its unknown-method branch on that gate's
+    findings, so it inherits this test rather than restating it.
+    """
+    return class_name.endswith("Operations") and bool(members and members[0])
+
+
+def _ambiguously_bound_names(
+    tree: ast.AST,
+    bindings: List[_BindingNode],
+    accessor_to_ops: Dict[str, str],
+    operations_aliases: Dict[str, str],
+    facade_names: Set[str],
+) -> Set[str]:
+    """Names bound to more than one distinct thing anywhere in the script.
+
+    `_resolve_alias_maps` is whole-script and last-write-wins (deliberately,
+    for the over-reporting write gate -- #8). The unknown_method gate
+    (#306) REJECTS, so it must not trust an alias that may point elsewhere at
+    the call site: `ops` bound to ParserOperations in one function and
+    LexEntryOperations in another, or rebound to a non-Operations value, or
+    also a function parameter / loop / import / except name.
+
+    Each assignment-style binding gets a signature (its resolved Operations
+    class, else its right-hand side's AST dump); every other way of binding
+    the name (parameters, imports, except-as, unpaired Store targets) gets a
+    signature of its own. More than one distinct signature = ambiguous.
+    """
+    signatures: Dict[str, Set[str]] = {}
+    paired_counts: Dict[str, int] = {}
+
+    def _sig(rhs: ast.AST) -> str:
+        if isinstance(rhs, ast.Call) and isinstance(rhs.func, ast.Name):
+            if rhs.func.id.endswith("Operations") and len(rhs.args) == 1:
+                return "ops:" + rhs.func.id
+        if (
+            isinstance(rhs, ast.Attribute)
+            and isinstance(rhs.value, ast.Name)
+            and rhs.value.id in facade_names
+            and rhs.attr in accessor_to_ops
+        ):
+            return "ops:" + accessor_to_ops[rhs.attr]
+        if isinstance(rhs, ast.Name) and rhs.id in operations_aliases:
+            return "ops:" + operations_aliases[rhs.id]
+        return "expr:" + ast.dump(rhs)
+
+    for node in bindings:
+        for target, rhs in _iter_assign_pairs(node):
+            if isinstance(target, ast.Name):
+                signatures.setdefault(target.id, set()).add(_sig(rhs))
+                paired_counts[target.id] = paired_counts.get(target.id, 0) + 1
+
+    store_counts: Dict[str, int] = {}
+    other = 0
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            store_counts[node.id] = store_counts.get(node.id, 0) + 1
+        elif isinstance(node, ast.arg):
+            other += 1
+            signatures.setdefault(node.arg, set()).add(f"other:{other}")
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            other += 1
+            signatures.setdefault(node.name, set()).add(f"other:{other}")
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                other += 1
+                bound = alias.asname or alias.name.split(".")[0]
+                signatures.setdefault(bound, set()).add(f"other:{other}")
+    for name, count in store_counts.items():
+        if count > paired_counts.get(name, 0):
+            other += 1
+            signatures.setdefault(name, set()).add(f"other:{other}")
+
+    return {name for name, sigs in signatures.items() if len(sigs) > 1}
+
+
 #: Issue #32: name prefixes that are unambiguously read-only, so an unindexed
 #: method with one is neither a suspected write nor an unknown_method reject.
 _UNINDEXED_READONLY_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains")
@@ -4909,6 +4991,9 @@ def detect_unknown_operations_methods(
         assigns + bindings, facade_names, accessor_to_ops
     )
     known_ops_classes = _indexed_operations_class_names(api_index)
+    ambiguous = _ambiguously_bound_names(
+        code_tree, assigns + bindings, accessor_to_ops, operations_aliases, facade_names
+    )
 
     issues: List[Dict[str, Any]] = []
     seen: Set[Tuple[str, str, int]] = set()
@@ -4920,6 +5005,12 @@ def detect_unknown_operations_methods(
         if method_name.startswith("_") or method_name.startswith(_UNINDEXED_READONLY_PREFIXES):
             continue
         receiver = node.func.value
+        # A receiver (or facade root) whose name is bound to more than one
+        # thing cannot be typed at this call site: leave it to the write gate
+        # and to runtime rather than hard-reject a possibly valid call.
+        _root = receiver.value if isinstance(receiver, ast.Attribute) else receiver
+        if isinstance(_root, ast.Name) and _root.id in ambiguous:
+            continue
         cls = _resolve_receiver_ops_class(
             receiver, accessor_to_ops, operations_aliases, facade_names
         )
@@ -4930,10 +5021,10 @@ def detect_unknown_operations_methods(
         if cls not in member_cache:
             member_cache[cls] = _ops_class_member_records(api_index, cls)
         members = member_cache[cls]
-        if members is None:
+        if not _ops_class_membership_decidable(cls, members):
             continue
         methods, properties = members
-        if not methods or method_name in methods or method_name in properties:
+        if method_name in methods or method_name in properties:
             continue
         key = (cls, method_name, node.lineno)
         if key in seen:
@@ -6413,6 +6504,15 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         entities = {}
 
     # Step 2: Look up each call in the API index and check if protected
+    # Issue #306: calls the unknown_method gate reports (and so rejects
+    # before they can run) are the only "method not in index" calls Step 2
+    # stops counting as mutations.
+    _unknown_method_gate_calls: Set[Tuple[str, str, int]] = set()
+    if tree is not None and api_index and api_index.flexicon:
+        _unknown_method_gate_calls = {
+            (i["class"], i["method"], i["lineno"])
+            for i in detect_unknown_operations_methods(tree, api_index)["issues"]
+        }
     if api_index and api_index.flexicon:
         for class_name, method_name, line_num in operations_calls_with_lines:
             # Check if this call is protected by a guard
@@ -6424,12 +6524,6 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                 # on BaseOperations), so an inherited call is classified by
                 # its real is_mutating flag instead of "method not in index".
                 _members = _ops_class_member_records(api_index, class_name)
-                # Decidable = the whole ancestry is indexed, so "not found"
-                # really means "no such method" (same test as the
-                # unknown_method gate, which skips undecidable classes).
-                _membership_decidable = (
-                    class_name.endswith("Operations") and bool(_members and _members[0])
-                )
                 if _members is not None:
                     methods = list(_members[0].values())
                 else:
@@ -6510,17 +6604,18 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                         # run_module rejects it as `unknown_method`
                         # (detect_unknown_operations_methods) before it can
                         # run, so this stays fail-closed; here it is only
-                        # recorded as unknown. When membership is NOT
-                        # decidable (an ancestor is missing from the index),
-                        # that gate skips the call, so keep the old
-                        # fail-closed mutating classification.
+                        # recorded as unknown. Any call that gate does NOT
+                        # report (undecidable ancestry, an alias bound to
+                        # more than one thing, ...) keeps the old fail-closed
+                        # mutating classification -- keyed on the gate's own
+                        # findings so the two can never disagree.
                         unknown_calls.append({
                             "class": class_name,
                             "method": method_name,
                             "reason": "method not in index",
                             "line": line_num
                         })
-                        if not _membership_decidable:
+                        if (class_name, method_name, line_num) not in _unknown_method_gate_calls:
                             mutating_calls.append({
                                 "class": class_name,
                                 "method": method_name,

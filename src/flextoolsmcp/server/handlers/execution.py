@@ -2928,6 +2928,17 @@ def _try_auto_fix_casting(
     return {"patched_code": patched, "fixes": fix_records}
 
 
+#: Issue #306 QC: unknown_method trusts the API index, so a real method that
+#: is newer than the index is rejected too. Name the recovery: the refresh
+#: entry points are `python -m flextoolsmcp.refresh` and the
+#: `flextools-mcp-refresh` console script (pyproject [project.scripts]).
+_UNKNOWN_METHOD_STALE_INDEX_HINT = (
+    "If the method is new in your installed flexicon version, the API index "
+    "may be stale: run `python -m flextoolsmcp.refresh` (or "
+    "`flextools-mcp-refresh`), restart the MCP server, and re-run."
+)
+
+
 def _defer_chain_method_issues_to_unknown_method(
     chain_check: Dict[str, Any],
     code_tree: Optional[ast.AST],
@@ -4456,13 +4467,14 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     f"call flextools_get_object_api(\"{_i['class']}\") for its methods."
                 )
         _um_steps.append(
-            "Do not add an `if modifyAllowed:` guard for this -- the method does "
-            "not exist, so no guard can make the call work."
+            "Do not add an `if modifyAllowed:` guard for this -- the method is "
+            "not in the API index, so a guard does not change this rejection."
         )
+        _um_steps.append(_UNKNOWN_METHOD_STALE_INDEX_HINT)
         return _attach_assistance_if_loop(
             error_response(
                 "unknown_method",
-                unknown_method_check["suggestion"],
+                unknown_method_check["suggestion"] + " " + _UNKNOWN_METHOD_STALE_INDEX_HINT,
                 issues=_um_issues,
                 did_you_mean=_um_issues[0]["did_you_mean"],
                 next_steps=_um_steps,

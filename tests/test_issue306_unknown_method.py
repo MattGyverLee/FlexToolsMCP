@@ -140,6 +140,18 @@ class TestDetector:
         assert _detect(code)["has_unknown"] is False
         assert certify_script_readonly(code, IDX)["is_certified_readonly"] is True
 
+    def test_underscore_names_are_skipped(self):
+        code = "project.Parser._internal()\np = project.Parser\np.__dir__()\n"
+        assert _detect(code)["has_unknown"] is False
+
+    def test_same_class_bound_twice_is_still_reported(self):
+        code = (
+            "def a():\n    ops = project.Parser\n    ops.TryWord('x')\n"
+            "def b():\n    ops = ParserOperations(project)\n    ops.ParseWord('y')\n"
+        )
+        issues = _detect(code)["issues"]
+        assert [(i["method"], i["lineno"]) for i in issues] == [("TryWord", 3)]
+
     def test_undecidable_ancestry_is_skipped(self):
         assert _detect("project.Odd.Whatever()\n")["has_unknown"] is False
 
@@ -150,6 +162,50 @@ class TestDetector:
         issue = _detect("project.Parser.Zzzqqq()\n")["issues"][0]
         assert issue["did_you_mean"] == []
         assert "flextools_get_object_api" in issue["suggestion"]
+
+
+class TestAmbiguousAliases:
+    """QC follow-up: `_resolve_alias_maps` is whole-script, last-write-wins.
+    A name bound to more than one thing cannot be typed at the call site, so
+    the rejecting gate must skip it (certify keeps the pre-#306 fail-closed
+    classification for those calls)."""
+
+    # `ops` is ParserOperations in a(), LexEntryOperations in b(); the
+    # last-write-wins map says LexEntryOperations, which has no ParseWord.
+    TWO_CLASSES = (
+        "def a():\n    ops = project.Parser\n    ops.ParseWord('x')\n"
+        "def b():\n    ops = project.LexEntry\n    ops.Create('y')\n"
+    )
+
+    def test_name_bound_to_two_classes_is_not_rejected(self):
+        assert _detect(self.TWO_CLASSES)["has_unknown"] is False
+
+    def test_two_classes_certify_falls_back_to_fail_closed(self):
+        cert = certify_script_readonly(self.TWO_CLASSES, IDX)
+        rows = {(m["class"], m["method"], m["source"]) for m in cert["mutating_calls"]}
+        assert ("LexEntryOperations", "ParseWord", "unknown") in rows
+        assert ("LexEntryOperations", "Create", "index") in rows
+
+    @pytest.mark.parametrize("code", [
+        # rebound to a non-Operations value
+        "ops = project.Parser\nops = make_thing()\nops.Frobnicate()\n",
+        # also a function parameter
+        "ops = project.Parser\ndef f(ops):\n    ops.Frobnicate()\n",
+        # also a loop variable over something else
+        "ops = project.Parser\nfor ops in things:\n    ops.Frobnicate()\n",
+        # also an augmented assignment
+        "ops = project.Parser\nops += 1\nops.Frobnicate()\n",
+    ], ids=["rebound_non_ops", "param", "loop_var", "augassign"])
+    def test_rebound_name_is_not_rejected(self, code):
+        assert _detect(code)["has_unknown"] is False
+
+    def test_rebound_facade_root_is_not_rejected(self):
+        code = (
+            "fx = FLExProject.FromOpenProject(project)\n"
+            "fx = other_thing\n"
+            "fx.Parser.Frobnicate()\n"
+        )
+        assert _detect(code)["has_unknown"] is False
 
 
 class TestCertifyNoLongerCallsItMutating:
@@ -203,14 +259,16 @@ def _stub_env(monkeypatch, tmp_path):
     )
 
 
-def _run(code):
-    return _parse(asyncio.run(execution_mod.handle_run_module({
+def _run(code, **extra):
+    args = {
         "code": code,
         "project_name": "TestProject",
         "skip_module_check": True,
         "skip_api_check": True,
         "write_enabled": False,
-    })))
+    }
+    args.update(extra)
+    return _parse(asyncio.run(execution_mod.handle_run_module(args)))
 
 
 class TestRunModule:
@@ -224,6 +282,48 @@ class TestRunModule:
         assert set(data["did_you_mean"]) <= {"ParseWord", "ParseWordXml", "TraceWordXml"}
         assert data["issues"][0]["method"] == "TryWord"
         assert any("modifyAllowed" in step for step in data["next_steps"])
+        # QC: stale-index recovery is named, with the real refresh commands.
+        assert any("python -m flextoolsmcp.refresh" in s for s in data["next_steps"])
+        assert "flextools-mcp-refresh" in data["message"]
+
+    def test_guarded_unknown_method_is_still_unknown_method(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path)
+        data = _run(
+            "if modifyAllowed:\n    project.Parser.TryWord('abc')\n",
+            write_enabled=True,
+        )
+        assert data["error_code"] == "unknown_method", data
+
+    def test_unprotected_write_wins_over_unknown_method(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path)
+        data = _run("project.Parser.TryWord('abc')\nproject.LexEntry.Create('x')\n")
+        assert data["error_code"] == "unprotected_writes", data
+        assert [m["method"] for m in data["mutating_calls"]] == ["Create"]
+
+    def test_typo_auto_fix_runs_before_unknown_method(self, monkeypatch, tmp_path):
+        """#46: a high-confidence single-candidate typo (Reloadd -> Reload) is
+        auto-fixed on a read-only run before the unknown_method gate looks."""
+        _stub_env(monkeypatch, tmp_path)
+        seen = []
+
+        class _Stop(Exception):
+            pass
+
+        def _spy(tree, idx):
+            seen.append(ast.unparse(tree))
+            raise _Stop()
+
+        monkeypatch.setattr(execution_mod, "detect_unknown_operations_methods", _spy)
+        with pytest.raises(_Stop):
+            asyncio.run(execution_mod.handle_run_module({
+                "code": "project.Parser.Reloadd()\n",
+                "project_name": "TestProject",
+                "skip_module_check": True,
+                "skip_api_check": True,
+                "write_enabled": False,
+                "auto_fix": True,
+            }))
+        assert seen and "Reloadd" not in seen[-1] and "project.Parser.Reload()" in seen[-1]
 
     @pytest.mark.parametrize("code", [DIRECT, ALIASED], ids=["direct", "aliased"])
     def test_validate_only_agrees(self, code):

@@ -6,7 +6,7 @@ entities: ["LexEntry", "LexSense", "MoStemMsa", "MoUnclassifiedAffixMsa", "MoMor
 operations: ["create", "search", "iterate"]
 requires_write: true
 origin: FlexToolsMCP log triage 2026-09-30 (Claude-Swahili morpheme-creation workflow, #335)
-verified_against: {"flexicon": "4.11.0", "verified_by": "sena3-dryrun"}
+verified_against: {"flexicon": "4.11.0", "verified_by": "sena3-live"}
 notes: Morph type comes from the affix markers in each form: "ku-" prefix, "-a" suffix, "-ku-" infix, "=ni" enclitic, "ni=" proclitic, bare form = stem. Markers are stripped before storing the lexeme form, as FLEx does. A morpheme already exists when some entry has the same NFC lexeme form and the same morph type; a same-form entry with another morph type is reported but does not count. Every morph type and POS name is validated before any write; an unknown name stops the whole run. New stems get a stem MSA and new affixes an unclassified affix MSA, with the POS when one is given. Inflectional affixes still need a template slot before HermitCrab can use them: follow up with the add-inflectional-affix recipe. Without modifyAllowed the run is a dry run that lists what it would create. Check parses afterwards with flextools_try_word, not in this script. Report through report.Info/Warning/Error only.
 """
 # --- PARAMS ---

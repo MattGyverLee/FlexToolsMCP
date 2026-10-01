@@ -2264,6 +2264,12 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
             if y in member_methods or y in member_props:
                 continue
             methods = [m for m in member_methods if not m.startswith("_")]
+            # Issue #306 QC: same #32 rule as the unknown_method gate -- a
+            # Get*/Find*/... name may be a getter newer than the index
+            # (`GetGlossText` next to an indexed GetGloss), so it only blocks
+            # (or is auto-fixed) when it is a confident typo of a real one.
+            if y.startswith(_UNINDEXED_READONLY_PREFIXES) and not _has_confident_member_typo_match(y, methods):
+                continue
             close = _suggest_attribute_matches(y, methods, cutoff=0.7)
             if close:
                 import difflib as _dl
@@ -5193,8 +5199,37 @@ def _ambiguously_bound_names(
 
 
 #: Issue #32: name prefixes that are unambiguously read-only, so an unindexed
-#: method with one is neither a suspected write nor an unknown_method reject.
+#: method with one is never a suspected write, and is an unknown_method /
+#: invalid_api_chain finding only when _has_confident_member_typo_match says
+#: it is a typo of a real method.
 _UNINDEXED_READONLY_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains")
+
+#: Similarity a read-prefixed unindexed name needs to an indexed method before
+#: it is treated as a typo of it rather than a newer getter (same floor as the
+#: #46 typo auto-fix).
+_CONFIDENT_MEMBER_TYPO_RATIO = 0.9
+
+
+def _has_confident_member_typo_match(name: str, candidates: List[str]) -> bool:
+    """True when `name` is very probably a misspelling of one of `candidates`.
+
+    Issue #306 QC: shared by the unknown_method and invalid_api_chain gates
+    for Get*/Find*/Is*/Has*/Count*/Contains* names (#32), so a getter newer
+    than the index still runs while `GetLexemeFrom` (GetLexemeForm) is caught.
+    A candidate counts when the case-insensitive similarity is at least
+    _CONFIDENT_MEMBER_TYPO_RATIO and `name` is not the candidate plus a
+    suffix: `GetGlossText` / `GetForms` extend GetGloss / GetForm, which is
+    what a newer method looks like, not a typo.
+    """
+    import difflib
+
+    lowered = name.lower()
+    for cand in candidates:
+        if name.startswith(cand):
+            continue
+        if difflib.SequenceMatcher(None, lowered, cand.lower()).ratio() >= _CONFIDENT_MEMBER_TYPO_RATIO:
+            return True
+    return False
 
 
 def detect_unknown_operations_methods(
@@ -5220,10 +5255,11 @@ def detect_unknown_operations_methods(
 
     Conservative: a class not in the index, or whose base classes are not all
     indexed, is skipped; so are `_`-prefixed names and property names. So are
-    Get*/Find*/Is*/Has*/Count*/Contains* names (issue #32): a getter added to
-    flexicon after the index was built must still run, and a wrong getter
-    name fails at runtime with an AttributeError the runner already turns
-    into a `did_you_mean` (runtime_error) -- it never needed a write guard.
+    Get*/Find*/Is*/Has*/Count*/Contains* names (issue #32) unless
+    _has_confident_member_typo_match calls them a typo of a real method: a
+    getter added to flexicon after the index was built must still run, and a
+    less certain wrong getter name fails at runtime with an AttributeError the
+    runner already turns into a `did_you_mean` (runtime_error).
 
     Returns dict with:
       - has_unknown: bool
@@ -5255,7 +5291,7 @@ def detect_unknown_operations_methods(
         if not isinstance(node.func, ast.Attribute):
             continue
         method_name = node.func.attr
-        if method_name.startswith("_") or method_name.startswith(_UNINDEXED_READONLY_PREFIXES):
+        if method_name.startswith("_"):
             continue
         receiver = node.func.value
         # A receiver (or facade root) whose name is bound to more than one
@@ -5279,11 +5315,18 @@ def detect_unknown_operations_methods(
         methods, properties = members
         if method_name in methods or method_name in properties:
             continue
+        public = sorted(m for m in methods if not m.startswith("_"))
+        # Issue #32 / #306 QC: a read-prefixed name absent from the index may
+        # be a getter newer than it, so it is only reported when it is a
+        # confident typo of a real method (the chain gate uses the same rule).
+        if method_name.startswith(_UNINDEXED_READONLY_PREFIXES) and not _has_confident_member_typo_match(
+            method_name, public
+        ):
+            continue
         key = (cls, method_name, node.lineno)
         if key in seen:
             continue
         seen.add(key)
-        public = sorted(m for m in methods if not m.startswith("_"))
         close = _suggest_attribute_matches(method_name, public, cutoff=0.5)
         if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name):
             expr = f"{receiver.func.id}(...).{method_name}"

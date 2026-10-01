@@ -181,12 +181,49 @@ class TestGateInterplay:
             (i["class"], i["method"], i["did_you_mean"]) for i in aliased["issues"]
         ]
 
-    def test_getter_typo_stays_on_invalid_api_chain(self):
-        """Get* names are skipped by unknown_method (#32), so the chain gate is
-        the only one that reports them -- once, not twice."""
-        by_gate = self._checks("project.Senses.GetGlos(s)\n")
-        assert by_gate["invalid_api_chain"]["passed"] is False
+    @pytest.mark.parametrize("code", [
+        "project.Senses.GetGlos(s)\n",
+        "ops = project.Senses\nops.GetGlos(s)\n",
+    ], ids=["direct", "aliased"])
+    def test_confident_getter_typo_is_unknown_method_once(self, code):
+        """#32 rule shared by both gates: a confident Get* typo is reported --
+        under unknown_method only (the chain issue is deferred to it)."""
+        by_gate = self._checks(code)
+        assert by_gate["invalid_api_chain"]["passed"] is True
+        assert by_gate["unknown_method"]["passed"] is False
+        assert [i["method"] for i in by_gate["unknown_method"]["issues"]] == ["GetGlos"]
+
+    @pytest.mark.parametrize("code", [
+        "project.Senses.GetGlossText(s)\n",
+        "ops = project.Senses\nops.GetGlossText(s)\n",
+        "project.Senses.GetDefinitionOrGloss(s)\n",
+        "project.LexEntry.FindByForm('x')\n",
+    ], ids=["direct_extension", "aliased_extension", "unrelated_getter", "find"])
+    def test_getter_newer_than_index_passes_both_gates(self, code):
+        by_gate = self._checks(code)
+        assert by_gate["invalid_api_chain"]["passed"] is True
         assert by_gate["unknown_method"]["passed"] is True
+
+
+class TestConfidentGetterTypoRule:
+    @pytest.mark.parametrize("name, expected", [
+        ("GetGlos", True),          # truncation typo
+        ("GetLexemeFrom", True),    # transposition (vs GetLexemeForm)
+        ("GetGlossText", False),    # extension: a newer getter
+        ("GetGlosses", False),      # extension
+        ("GetNewThing", False),     # unrelated
+    ])
+    def test_rule(self, name, expected):
+        from flextoolsmcp.server.validators import _has_confident_member_typo_match
+
+        cands = ["GetGloss", "SetGloss", "GetLexemeForm", "GetDefinition"]
+        assert _has_confident_member_typo_match(name, cands) is expected
+
+    def test_detectors_skip_unconfident_getter(self):
+        for code in ("project.Senses.GetGlossText(s)\n", "ops = project.Senses\nops.GetGlossText(s)\n"):
+            tree = ast.parse(code)
+            assert detect_invalid_project_chains(tree, IDX)["issues"] == []
+            assert detect_unknown_operations_methods(tree, IDX)["issues"] == []
 
 
 # ---------------------------------------------------------------------------

@@ -2491,7 +2491,10 @@ async def _handle_validate_only(
     seq: int,
     t_start: float,
 ) -> list[TextContent]:
-    """Issue #49: run the 11-gate preflight + a read-only lock probe, then STOP.
+    """Issue #49: run the full preflight + a read-only lock probe, then STOP.
+
+    The gate list lives in _build_validate_only_checks (one `checks[]` entry
+    per gate); do not restate its count here.
 
     Never opens the project, never spawns the subprocess. Reports ALL faults
     in one response (no short-circuit except syntax_error, which blocks the
@@ -3455,7 +3458,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     seq, op_id = _next_op_id()
     t_start = time.monotonic()
 
-    # Issue #49: validate_only mode -- run the 11-gate preflight (plus a
+    # Issue #49: validate_only mode -- run the full preflight (plus a
     # read-only project-lock probe) and STOP. Diverted here, before the
     # normal ast.parse()/SyntaxError early-return below, because validate_only
     # must surface a syntax failure as a `checks[]` entry (gate 1) rather than

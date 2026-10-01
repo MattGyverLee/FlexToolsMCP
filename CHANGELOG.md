@@ -126,6 +126,13 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   Sort, Swap, `LocalizedListsOperations.Import`, and nine `FLExProject`
   Lexicon* writers (`LexiconSetFieldText`, `LexiconClearField`,
   `LexiconDeleteObject`, `LexiconAddComplexForm`, ...).
+- The `validate_only` descriptions no longer say "11-gate preflight"
+  ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306),
+  follow-up). It runs 16 checks now (`unknown_method` and
+  `atomic_property_iteration` were added since). The `flextools_run_module`
+  tool description, the `validate_only` field, the style guide and the
+  handler docstrings now say "full preflight". The response's `checks[]`
+  names every gate, so the count is not repeated anywhere it could go stale.
 - `flextools_run_module` now returns a structured `no_unit_of_work` error
   when liblcm raises `InvalidOperationException: Not in the right state to
   register a change`

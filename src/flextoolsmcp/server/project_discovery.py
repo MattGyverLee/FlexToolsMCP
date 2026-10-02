@@ -55,6 +55,15 @@ _cache: dict = {
     "expires_at": 0.0,
 }
 
+# Issue #321: stale (acquirable) locks were logged at WARNING on every sweep
+# (server startup plus every flextools_health call), burying real warnings
+# in operations.log triage. Demoted findings are now logged at INFO at most
+# once per (project, lock state) per server process. WARNING is reserved for
+# a lock on the active session project that is held by another live process.
+# Keyed by (project_name, "live" | "stale") so a lock that transitions from
+# stale to live-held still gets logged again under its new state.
+_logged_stale_locks: set = set()
+
 
 @dataclass(frozen=True)
 class ResolveResult:
@@ -343,8 +352,16 @@ def get_project_fwdata_path(project_name: str) -> Optional[Path]:
     return fwdata if fwdata.is_file() else None
 
 
-def _describe_lock(project_name: str, lock_path: Path) -> str:
-    """Build the sweep_stale_locks() warning for one existing lock file."""
+def _describe_lock(project_name: str, lock_path: Path) -> tuple:
+    """Build the sweep_stale_locks() warning for one existing lock file.
+
+    Returns (message, holder_alive): holder_alive is True only when the
+    lock's claimed PID is confirmed still running. A dead-PID (stale) lock,
+    an unknown holder, or a lock whose holder cannot be identified all count
+    as NOT alive -- issue #321 demotes exactly those to INFO (once per
+    project per process), reserving WARNING for the active session project
+    when another live process holds its lock.
+    """
     # Local import: project_access imports get_projects_directory/_FWDATA_EXT
     # from this module at module load time, so importing it back at this
     # module's top level would be circular. Deferring the import to call
@@ -365,8 +382,13 @@ def _describe_lock(project_name: str, lock_path: Path) -> str:
     except OSError:
         age_str = "unknown age"
 
+    # Issue #321: default to "not a live holder" -- only a PID confirmed
+    # running via _pid_is_alive() below flips this to True.
+    holder_alive = False
+
     if holder is not None and holder.pid is not None:
         alive = _pid_is_alive(holder.pid)
+        holder_alive = bool(alive)
         holder_desc = f"held by {holder.process_name or 'unknown process'} (PID {holder.pid})"
         status_desc = "still running" if alive else "no longer running (stale)"
         if alive:
@@ -449,16 +471,29 @@ def _describe_lock(project_name: str, lock_path: Path) -> str:
             "manually and retry. This server never deletes lock files."
         )
 
-    return msg
+    return msg, holder_alive
 
 
-def sweep_stale_locks() -> list:
+def sweep_stale_locks(active_project: Optional[str] = None) -> list:
     """Issue #57 (C); rewritten for issue #93 CP2 (T2.6): scan for
     .fwdata.lock files at server startup and report what's known about
     each holder.
 
-    Logs each finding at WARNING level and returns a list of warning
-    strings suitable for inclusion in the flextools_health response.
+    Log policy (issue #321): only a lock on the active session project
+    that is held by another LIVE process is logged at WARNING. Everything
+    else -- stale (acquirable) locks, unknown holders, live holders on
+    unrelated projects -- is demoted to INFO and emitted at most once per
+    (project, lock state) per server process, so repeated sweeps (every
+    flextools_health call) no longer spam the log. The returned list still
+    carries every finding's message, so the flextools_health response is
+    unchanged.
+
+    Args:
+        active_project: name of the session's current project (from
+            flextools_start), or None when no session project is set yet
+            (e.g. at server startup). Compared after
+            normalize_project_name() so quoting/whitespace wrappers can't
+            defeat the match.
 
     Design: detection only, no deletion, ever. Previously this could only
     say "a lock file exists, we cannot be certain if it's stale." Now it
@@ -487,6 +522,8 @@ def sweep_stale_locks() -> list:
     except OSError:
         return warnings
 
+    active = normalize_project_name(active_project)
+
     for project_name in sorted(entries):
         lock_path = Path(projects_dir) / project_name / (project_name + _FWDATA_EXT + ".lock")
         if not lock_path.exists():
@@ -497,15 +534,26 @@ def sweep_stale_locks() -> list:
         # runs at server startup (an exception there fails startup) and on
         # every flextools_health call. Degrade to a holder-unknown warning.
         try:
-            msg = _describe_lock(project_name, lock_path)
+            msg, holder_alive = _describe_lock(project_name, lock_path)
         except Exception as exc:  # noqa: BLE001 -- detection only, never fatal
             msg = (
                 f"Lock detected: {lock_path}, but inspecting it failed "
                 f"({type(exc).__name__}: {exc}). Treating it as exclusively "
                 "held. This server never deletes lock files."
             )
+            holder_alive = False
 
-        _sweep_log.warning("[STARTUP-LOCK-SWEEP] %s", msg)
+        # Issue #321: WARNING only when the lock is on the active session
+        # project AND held by another live process. Everything else is
+        # demoted to INFO, once per (project, lock state) per process.
+        is_active = active is not None and normalize_project_name(project_name) == active
+        if holder_alive and is_active:
+            _sweep_log.warning("[STARTUP-LOCK-SWEEP] %s", msg)
+        else:
+            dedup_key = (project_name, "live" if holder_alive else "stale")
+            if dedup_key not in _logged_stale_locks:
+                _logged_stale_locks.add(dedup_key)
+                _sweep_log.info("[STARTUP-LOCK-SWEEP] %s", msg)
         warnings.append(msg)
 
     return warnings

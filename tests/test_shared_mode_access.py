@@ -546,6 +546,163 @@ class TestSweepStaleLocksHolderAware:
         assert ".fwdata.lock" in warnings[0]
 
 
+# ---------------------------------------------------------------------------
+# sweep_stale_locks(): issue #321 log-level policy
+# ---------------------------------------------------------------------------
+
+import logging as _logging  # noqa: E402 -- test-only import after helpers
+
+
+@pytest.fixture
+def _clear_lock_sweep_dedup():
+    """Reset the issue #321 once-per-process INFO dedup set around each
+    test so log-record assertions are isolated."""
+    import server.project_discovery as pd
+    pd._logged_stale_locks.clear()
+    yield
+    pd._logged_stale_locks.clear()
+
+
+def _sweep_records(caplog, **kwargs):
+    """(level, message) records emitted by sweep_stale_locks on its logger."""
+    import server.project_discovery as pd
+    with caplog.at_level(_logging.INFO, logger=pd.__name__):
+        result = pd.sweep_stale_locks(**kwargs)
+    return result, [
+        (rec.levelname, rec.getMessage())
+        for rec in caplog.records
+        if rec.name == pd.__name__
+    ]
+
+
+class TestSweepStaleLocksLogPolicy:
+    """Issue #321: stale (acquirable) locks are demoted to INFO, once per
+    project per process; WARNING survives only for the active session
+    project when another live process holds its lock."""
+
+    def test_stale_lock_logs_at_info_not_warning(
+        self, fw_dir, monkeypatch, caplog, _clear_lock_sweep_dedup
+    ):
+        proj_dir = _make_project(fw_dir, "Esperanto")
+        _write_lock(proj_dir, "Esperanto", REAL_LOCK_JSON)
+
+        import server.project_access as pa
+        monkeypatch.setattr(pa, "_pid_is_alive", lambda pid: False)
+
+        warnings, records = _sweep_records(caplog)
+
+        assert len(warnings) == 1
+        assert "no longer running (stale)" in warnings[0]
+        assert len(records) == 1
+        assert records[0][0] == "INFO"
+        assert "no longer running (stale)" in records[0][1]
+
+    def test_stale_lock_logged_only_once_per_process(
+        self, fw_dir, monkeypatch, caplog, _clear_lock_sweep_dedup
+    ):
+        proj_dir = _make_project(fw_dir, "Esperanto")
+        _write_lock(proj_dir, "Esperanto", REAL_LOCK_JSON)
+
+        import server.project_access as pa
+        monkeypatch.setattr(pa, "_pid_is_alive", lambda pid: False)
+
+        import server.project_discovery as pd
+        with caplog.at_level(_logging.INFO, logger=pd.__name__):
+            first = pd.sweep_stale_locks()
+            second = pd.sweep_stale_locks()
+            third = pd.sweep_stale_locks()
+        records = [r for r in caplog.records if r.name == pd.__name__]
+
+        # Every sweep still reports the finding for the health response ...
+        assert len(first) == len(second) == len(third) == 1
+        # ... but the INFO line is emitted only once per process.
+        assert len(records) == 1
+        assert records[0].levelname == "INFO"
+
+    def test_live_holder_on_active_project_still_warns(
+        self, fw_dir, monkeypatch, caplog, _clear_lock_sweep_dedup
+    ):
+        proj_dir = _make_project(fw_dir, "Target")
+        lock_json = (
+            '{"__type":"FileLockContent:#Palaso.IO.FileLock","PID":54480,'
+            '"ProcessName":"python","Timestamp":639222387834226079}'
+        )
+        _write_lock(proj_dir, "Target", lock_json)
+
+        import server.project_access as pa
+        monkeypatch.setattr(pa, "_pid_is_alive", lambda pid: True)
+
+        warnings, records = _sweep_records(caplog, active_project="Target")
+
+        assert len(warnings) == 1
+        assert "still running" in warnings[0]
+        assert len(records) == 1
+        assert records[0][0] == "WARNING"
+
+    def test_live_holder_on_other_project_demoted_to_info_once(
+        self, fw_dir, monkeypatch, caplog, _clear_lock_sweep_dedup
+    ):
+        proj_dir = _make_project(fw_dir, "Target")
+        lock_json = (
+            '{"__type":"FileLockContent:#Palaso.IO.FileLock","PID":54480,'
+            '"ProcessName":"python","Timestamp":639222387834226079}'
+        )
+        _write_lock(proj_dir, "Target", lock_json)
+
+        import server.project_access as pa
+        monkeypatch.setattr(pa, "_pid_is_alive", lambda pid: True)
+
+        import server.project_discovery as pd
+        with caplog.at_level(_logging.INFO, logger=pd.__name__):
+            warnings = pd.sweep_stale_locks(active_project="Esperanto")
+            pd.sweep_stale_locks(active_project="Esperanto")
+        records = [r for r in caplog.records if r.name == pd.__name__]
+
+        assert len(warnings) == 1
+        assert "still running" in warnings[0]
+        assert len(records) == 1
+        assert records[0].levelname == "INFO"
+
+    def test_unknown_holder_demoted_to_info_once(
+        self, fw_dir, caplog, _clear_lock_sweep_dedup
+    ):
+        proj_dir = _make_project(fw_dir, "LockedProject")
+        _write_lock(proj_dir, "LockedProject", "")
+
+        import server.project_discovery as pd
+        with caplog.at_level(_logging.INFO, logger=pd.__name__):
+            warnings = pd.sweep_stale_locks()
+            pd.sweep_stale_locks()
+        records = [r for r in caplog.records if r.name == pd.__name__]
+
+        assert len(warnings) == 1
+        assert "could not be identified" in warnings[0]
+        assert len(records) == 1
+        assert records[0].levelname == "INFO"
+
+    def test_stale_then_live_holder_logs_again_under_new_state(
+        self, fw_dir, monkeypatch, caplog, _clear_lock_sweep_dedup
+    ):
+        """The dedup key includes the lock state, so a lock that goes from
+        stale to live-held is logged again rather than swallowed."""
+        proj_dir = _make_project(fw_dir, "Esperanto")
+        _write_lock(proj_dir, "Esperanto", REAL_LOCK_JSON)
+
+        import server.project_access as pa
+        import server.project_discovery as pd
+
+        monkeypatch.setattr(pa, "_pid_is_alive", lambda pid: False)
+        with caplog.at_level(_logging.INFO, logger=pd.__name__):
+            pd.sweep_stale_locks()
+
+        monkeypatch.setattr(pa, "_pid_is_alive", lambda pid: True)
+        with caplog.at_level(_logging.INFO, logger=pd.__name__):
+            pd.sweep_stale_locks(active_project="Esperanto")
+        records = [r for r in caplog.records if r.name == pd.__name__]
+
+        assert [r.levelname for r in records] == ["INFO", "WARNING"]
+
+
 if __name__ == "__main__":
     import sys
     sys.exit(pytest.main([__file__, "-v"]))

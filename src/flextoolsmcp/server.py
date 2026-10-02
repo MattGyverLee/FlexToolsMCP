@@ -1180,15 +1180,16 @@ async def main():
         from .server.project_discovery import sweep_stale_locks
     else:
         from server.project_discovery import sweep_stale_locks
-    _stale_lock_warnings = sweep_stale_locks()
+    sweep_stale_locks()
     # Issue #145: no longer stored on api_index -- flextools_health now calls
     # sweep_stale_locks() itself on every invocation so it always reflects
     # current state (a lock present/absent at startup can change well before
-    # the next health check). This call remains only for the boot-time
-    # WARNING log lines below (issue #57 (C) intent).
-    if _stale_lock_warnings:
-        for _w in _stale_lock_warnings:
-            _log_warning(_w)
+    # the next health check). Issue #321: the sweep logs each finding itself
+    # at the right level (INFO once per project per process for stale /
+    # acquirable locks; WARNING only for the active session project held by
+    # another live process), so the old re-log loop here -- which re-emitted
+    # EVERY finding as a WARNING into operations.log -- is intentionally
+    # gone. At startup no session project is set yet, so nothing warns here.
 
     # Parser-check CP4 (FR-028, R-11): a filing run the previous server
     # process left saying `filing` belongs to a job nothing is executing; its

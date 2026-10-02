@@ -590,7 +590,10 @@ def _build_warnings(libraries: Dict[str, Dict[str, Any]]) -> List[str]:
     # released since (or a new one taken) by the time flextools_health runs.
     # Not once-per-process gated: health is explicitly diagnostic, so it
     # always reports current state.
-    warnings.extend(sweep_stale_locks())
+    # Issue #321: pass the active session project so a lock held by another
+    # live process on it still warns; stale locks on unrelated projects are
+    # demoted to INFO (once per process) inside the sweep.
+    warnings.extend(sweep_stale_locks(active_project=session_state.project_name or None))
 
     # "Why is the assistant behaving oddly?" is exactly what this tool is for,
     # and a checkout-as-workspace is one answer. Not once-per-process gated:

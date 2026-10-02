@@ -54,6 +54,7 @@ from server.validators import (
     detect_wrong_library_imports,
     detect_invalid_project_chains,
     detect_unknown_operations_methods,
+    detect_unknown_flexicon_imports,
     detect_getall_unsafe_idiom,
 )
 from server import kernel
@@ -252,6 +253,7 @@ _ORDERED_GATES = (
     "syntax_error",
     "server_state_error",
     "partial_module_structure",
+    "unknown_import",
     "deprecated_member",
     "atomic_property_iteration",
     "unprotected_writes",
@@ -345,6 +347,15 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
             "top_level_main_invocation",
             "top_level_main_invocation",
             str(top_level_main["call_lines"]),
+        )
+
+    # Gate 3a2: unknown_import (issue #305). Unconditional, like the handler.
+    # The fake index has no flexicon source of its own; the check reads the
+    # installed package statically and fails open when it is missing.
+    unknown_import = detect_unknown_flexicon_imports(tree, FAKE_API_INDEX)
+    if unknown_import["has_unknown"]:
+        return PreflightResult(
+            "preflight_reject", "unknown_import", "unknown_import", str(unknown_import["issues"])
         )
 
     # Gate 3b: deprecated_member (curated_deprecations.py). Unconditional:

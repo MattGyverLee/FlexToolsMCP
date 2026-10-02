@@ -88,7 +88,7 @@ try:
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_unknown_operations_methods,
+        detect_unknown_operations_methods, detect_unknown_flexicon_imports, detect_unknown_import_error,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
         detect_atomic_property_iteration, detect_not_iterable_error,
@@ -112,7 +112,7 @@ except ImportError:
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_unknown_operations_methods,
+        detect_unknown_operations_methods, detect_unknown_flexicon_imports, detect_unknown_import_error,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
         detect_atomic_property_iteration, detect_not_iterable_error,
@@ -2445,6 +2445,18 @@ def _build_validate_only_checks(
     else:
         checks.append({"gate": "top_level_main_invocation", "passed": True})
 
+    # --- Gate 3a2: unknown_import (issue #305) ---
+    unknown_import_check = detect_unknown_flexicon_imports(code_tree, api_idx)
+    if unknown_import_check["has_unknown"]:
+        checks.append({
+            "gate": "unknown_import",
+            "passed": False,
+            "issues": unknown_import_check["issues"],
+            "did_you_mean": unknown_import_check["did_you_mean"],
+        })
+    else:
+        checks.append({"gate": "unknown_import", "passed": True})
+
     # --- Gate 3b: deprecated_member (curated_deprecations.py) ---
     # Same detector + message builder handle_run_module uses; hard-rejects
     # there on read-only and write-enabled runs alike.
@@ -3805,6 +3817,43 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 code_size_bytes=_code_size_bytes,
             )
         _top_level_main_readonly_warning = top_level_main_check["message"]
+
+    # Issue #305: `from flexicon import X` / `import flexicon.X` where flexicon
+    # has no X. It would raise ImportError before any other line ran, so it is
+    # checked before the content gates, and answered with did-you-mean
+    # candidates instead of a bare traceback. Static (never imports flexicon);
+    # fails open when the library surface is unknown.
+    unknown_import_check = detect_unknown_flexicon_imports(code_tree, get_api_index())
+    if unknown_import_check["has_unknown"]:
+        _ui_issues = unknown_import_check["issues"]
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "unknown_import",
+            f"imports={[i['statement'] for i in _ui_issues[:5]]}",
+        log_dir_fn=get_log_dir,
+        )
+        _ui_steps = [f"Line {i['lineno']}: {i['suggestion']}" for i in _ui_issues]
+        _ui_steps.append(
+            "Re-run flextools_run_module() with the corrected import(s); "
+            "flextools_search_by_capability(query='...') finds the right class."
+        )
+        _ui_message = (
+            f"{len(_ui_issues)} flexicon import(s) would fail with ImportError: "
+            + "; ".join(i["statement"] for i in _ui_issues[:5])
+            + ". " + unknown_import_check["suggestion"]
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "unknown_import",
+                _ui_message,
+                issues=_ui_issues,
+                did_you_mean=unknown_import_check["did_you_mean"],
+                next_steps=_ui_steps,
+                op_id=op_id,
+            ),
+            error_code="unknown_import",
+            code_size_bytes=_code_size_bytes,
+        )
 
     # Deprecated-member check (curated_deprecations.py): HARD BLOCK on both
     # read-only and write-enabled runs. A curated-deprecated member exists in
@@ -5966,6 +6015,23 @@ MODULE_CODE = {code}
                         execution_result["error"] = value
                         continue
                     execution_result[key] = value
+
+        # Issue #305: an ImportError on a flexicon name/module (one the static
+        # gate could not see -- e.g. a dynamic import) gets the same
+        # did-you-mean candidates instead of a bare traceback.
+        _import_diag = (
+            detect_unknown_import_error(execution_result["error"], api_idx)
+            if execution_result.get("error") and (
+                "cannot import name" in execution_result["error"]
+                or "No module named" in execution_result["error"]
+            ) else {"is_unknown_import": False}
+        )
+        if _import_diag.get("is_unknown_import"):
+            execution_result["error_type"] = "UnknownImportError"
+            execution_result["did_you_mean"] = _import_diag.get("did_you_mean") or []
+            execution_result["help"] = _import_diag.get("suggestion")
+            if _import_diag.get("access_path"):
+                execution_result["access_path"] = _import_diag["access_path"]
 
         # Detect polymorphic attribute errors and suggest resolve_property
         if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):

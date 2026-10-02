@@ -83,6 +83,21 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
 
 ### Fixed
 
+- `flextools_run_module` now checks flexicon import names before the run
+  ([#305](https://github.com/MattGyverLee/FlexToolsMCP/issues/305)). Before,
+  `from flexicon import WfiWordformOperations`, `from flexicon import
+  InflectionFeatures` or `import flexicon.Lexicon` passed preflight and
+  then failed with a bare `ImportError`. A new `unknown_import` rejection
+  (read-only and write runs, and a `validate_only` gate of the same name)
+  lists each bad import with `did_you_mean` candidates, for example
+  `WordformOperations` or `flexicon.code.Lexicon`. When the name is a
+  FLExProject accessor, it also gives `access_path` (`project.Wordforms`,
+  `project.InflectionFeatures`), which needs no import. The check reads the
+  installed flexicon package statically and never imports it. It falls back
+  to the API index, and when neither is available it is skipped. A runtime
+  `ImportError` on a flexicon name now carries the same candidates
+  (`error_type: "UnknownImportError"`, `did_you_mean`, `help`). The
+  error-code count in `docs/TOOL-CONTRACT.md` moves from 47 to 48.
 - `flextools_run_module`'s `unknown_method` rejection
   ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306)) now has
   a retry-loop assistance hint (pick from `did_you_mean`; a guard or a

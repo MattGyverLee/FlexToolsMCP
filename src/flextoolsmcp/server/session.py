@@ -123,6 +123,13 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "Do not add an `if modifyAllowed:` guard or rename the receiver "
         "variable: neither makes the method exist."
     ),
+    "unknown_import": (
+        # Issue #305: the imported name does not exist in flexicon.
+        "the import names something flexicon does not export -- use the "
+        "rejection's did_you_mean (or the project.<Accessor> in access_path, "
+        "which needs no import). Every Operations class imports from the top "
+        "level: `from flexicon import <Name>Operations`."
+    ),
     "top_level_main_invocation": (
         "remove the module-level Main(...) call -- flextools_run_module "
         "invokes Main itself after loading the module; a top-level call "

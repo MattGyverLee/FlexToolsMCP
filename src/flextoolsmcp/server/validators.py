@@ -4473,6 +4473,39 @@ def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
     return result
 
 
+def detect_unknown_flexicon_imports(
+    code_tree: Optional[ast.AST], api_index: Optional[Any] = None
+) -> dict:
+    """Issue #305: flag ``from flexicon import X`` / ``import flexicon.X`` names
+    that flexicon does not export, with did-you-mean candidates.
+
+    Thin wrapper over ``flexicon_imports.check_imports`` (static read of the
+    installed package, index fallback, fail open) that supplies the
+    FLExProject accessor map so an accessor imported as if it were a class
+    (``InflectionFeatures``) is answered with ``project.InflectionFeatures``.
+    """
+    try:
+        try:
+            from .flexicon_imports import check_imports
+        except ImportError:
+            from server.flexicon_imports import check_imports
+        return check_imports(code_tree, api_index, _accessor_to_ops_map(api_index))
+    except Exception:  # noqa: BLE001 -- a checker bug must never block a run
+        return {"has_unknown": False, "issues": [], "did_you_mean": [], "suggestion": ""}
+
+
+def detect_unknown_import_error(error_msg: str, api_index: Optional[Any] = None) -> dict:
+    """Issue #305 runtime twin: candidates for a raised flexicon ImportError."""
+    try:
+        try:
+            from .flexicon_imports import diagnose_import_error
+        except ImportError:
+            from server.flexicon_imports import diagnose_import_error
+        return diagnose_import_error(error_msg, api_index, _accessor_to_ops_map(api_index))
+    except Exception:  # noqa: BLE001 -- enrichment only
+        return {"is_unknown_import": False}
+
+
 # ============================================================
 # getall-contract SPEC (specs/getall-contract/SPEC.md) Level 3:
 # raw one-shot iterator/generator unsafe-idiom advisory

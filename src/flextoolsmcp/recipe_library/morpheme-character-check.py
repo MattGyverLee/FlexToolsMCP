@@ -36,7 +36,7 @@ else:
         # Check headword
         if CHECK_HEADWORDS and has_disallowed(headword, disallowed_set):
             bad_chars = "".join(sorted(set(c for c in headword if c in disallowed_set)))
-            report.Error(
+            report.Warning(
                 f'Headword "{headword}" contains disallowed characters: {bad_chars}',
                 project.BuildGotoURL(entry),
             )
@@ -48,7 +48,7 @@ else:
                 gloss = project.Senses.GetGloss(sense) or ""
                 if gloss and has_disallowed(gloss, disallowed_set):
                     bad_chars = "".join(sorted(set(c for c in gloss if c in disallowed_set)))
-                    report.Error(
+                    report.Warning(
                         f'Affix gloss "{gloss}" in sense contains disallowed characters: {bad_chars}',
                         project.BuildGotoURL(entry),
                     )

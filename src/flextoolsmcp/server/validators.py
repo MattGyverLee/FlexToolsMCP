@@ -53,6 +53,23 @@ LCM_COLLECTION_NAMES = (
     "PronunciationsOS", "LexEntryRefsOS", "ComponentLexemesRS"
 )
 
+# Issue #351: receiver-name prefix guard for patterns such as `entry` or
+# `sense`. No structural boundary separates a compound receiver from an
+# English word -- `subsense`, `subentry` and `lexentry` are real FLEx
+# receivers, `nonsense` and `compose` are not -- so the keyword may still sit
+# anywhere inside the identifier (the fail-closed direction). Only these
+# exact whole words, which cannot be an LCM object's name in practice, are
+# skipped. The identifier must start at `\b` so the excluded word is matched
+# whole, then `\w*?` re-admits any prefix (`new_`, `sub`, `lex`, `self._`).
+_RECEIVER_NOT_ENGLISH_WORDS = (
+    "nonsense", "compose", "composes", "position", "positions", "purpose",
+    "purposes", "suppose", "propose", "expose", "dispose", "impose",
+    "oppose", "transpose", "deposit",
+)
+_RECEIVER_PREFIX_BOUNDARY = (
+    r'\b(?!(?:' + '|'.join(_RECEIVER_NOT_ENGLISH_WORDS) + r')\b)\w*?'
+)
+
 # Compiled regex patterns for efficiency
 _PATTERN_COMMENT = re.compile(r'#.*$', re.MULTILINE)
 _PATTERN_CREATE = re.compile(r'\.Create\s*\(', re.IGNORECASE)
@@ -60,7 +77,8 @@ _PATTERN_CREATE_COLLECTION = re.compile(
     r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Add\s*\(', re.IGNORECASE
 )
 _PATTERN_CREATE_GENERIC = re.compile(
-    r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', re.IGNORECASE
+    _RECEIVER_PREFIX_BOUNDARY
+    + r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', re.IGNORECASE
 )
 _PATTERN_CREATE_PROJECT = re.compile(r'project\.\w+\.Create\w*\s*\(', re.IGNORECASE)
 _PATTERN_INSERT_COLLECTION = re.compile(
@@ -77,7 +95,8 @@ _PATTERN_SET_PROPERTY = re.compile(
 )
 _PATTERN_COPY_ALTERNATIVES = re.compile(r'\.CopyAlternatives\s*\(', re.IGNORECASE)
 _PATTERN_PROPERTY_ASSIGNMENT = re.compile(
-    r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
+    _RECEIVER_PREFIX_BOUNDARY
+    + r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
     r'(LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
     r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
     r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
@@ -135,7 +154,8 @@ _LIBLCM_MUTABLE_PATTERNS = [
     (re.compile(r'\.Set(?:Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\('), 'Set*', 'Update'),
     # Raw LCM property assignments (entry.LexemeFormOA = ..., sense.Gloss = ..., etc.)
     (re.compile(
-        r'(?:entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
+        _RECEIVER_PREFIX_BOUNDARY
+        + r'(?:entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
         r'(?:LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
         r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
         r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
@@ -157,10 +177,10 @@ _LIBLCM_MUTABLE_PATTERNS = [
 # index lookup cannot see `fx.LexEntry.SetLexemeForm(...)` at all. These
 # regexes are then the only thing still holding the write gate.
 _FACADE_ACCESSOR_MUTABLE_TEMPLATES = [
-    (r'{receiver}\s*\.\s*\w+\s*\.\s*Create\w*\s*\(', 'Create', 'Create'),
-    (r'{receiver}\s*\.\s*\w+\s*\.\s*Delete\w*\s*\(', 'Delete', 'Delete'),
+    (r'{boundary}{receiver}\s*\.\s*\w+\s*\.\s*Create\w*\s*\(', 'Create', 'Create'),
+    (r'{boundary}{receiver}\s*\.\s*\w+\s*\.\s*Delete\w*\s*\(', 'Delete', 'Delete'),
     (
-        r'{receiver}\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(',
+        r'{boundary}{receiver}\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(',
         'Set/Update',
         'Update',
     ),
@@ -176,9 +196,16 @@ def _facade_accessor_mutable_patterns(receiver_name: str) -> List[tuple]:
     per call costs nothing measurable.
     """
     escaped = re.escape(receiver_name)
+    # Issue #351: a resolved facade is one exact identifier, so `fx` must not
+    # match inside `prefx`. The injected `project` keeps no left boundary on
+    # purpose: `self._project`, `srcProject` and `old_project` are all
+    # plausible FLExProject handles, and the gate fails closed.
+    boundary = '' if receiver_name == 'project' else r'\b'
     return [
         (
-            re.compile(template.format(receiver=escaped), re.IGNORECASE),
+            re.compile(
+                template.format(boundary=boundary, receiver=escaped), re.IGNORECASE
+            ),
             f'{receiver_name}.*.{label}',
             category,
         )
@@ -478,7 +505,10 @@ def detect_module_structure(code: str) -> dict:
 
 
 _DOCS_DICT_RE = re.compile(r'^\s*docs\s*=\s*\{', re.MULTILINE)
-_MODIFY_GUARD_RE = re.compile(r'\bif\s+(?:not\s+)?modifyAllowed\b')
+# Any `if` test that mentions modifyAllowed, so compound guards
+# (`if existing is None and modifyAllowed:`, issue #352) also mark the
+# scaffold as FTM_ModifiesDB.
+_MODIFY_GUARD_RE = re.compile(r'\bif\b[^\n:]*\bmodifyAllowed\b')
 
 _SCAFFOLD_IMPORT = "from flextoolslib import *"
 _SCAFFOLD_BINDING = "FlexToolsModule = FlexToolsModuleClass(Main, docs)"
@@ -6310,46 +6340,120 @@ def _is_local_container_constructor(value: ast.AST) -> bool:
 
 
 def _collect_local_container_names(tree: ast.AST) -> Set[str]:
-    """Names bound to locally constructed containers (issue #126).
+    """Names bound ONLY to locally constructed containers (issues #126, #350).
 
-    Reassigning a name to a non-local value removes it, so a variable that
-    later holds an LCM collection is not treated as local.
+    A name qualifies when every place it is stored -- anywhere in the tree --
+    binds a local container constructor (or another qualifying name). Any
+    other store disqualifies it, in particular:
+
+      - a ``for`` / comprehension target: the loop variable is an ELEMENT of
+        the iterable, not the iterable, so ``for coll in [e.SensesOS]:``
+        binds ``coll`` to a real LCM collection even though the iterable is a
+        list literal (issue #350);
+      - a tuple-unpacking target, ``with ... as``, a non-container right-hand
+        side, or a reassignment anywhere else in the script;
+      - a binding that is not an ``ast.Name`` store at all: a function or
+        lambda parameter (``def helper(senses, s): senses.Add(s)`` called
+        with ``e.SensesOS``), an import alias, an ``except ... as`` name, a
+        ``match`` capture, or a ``def`` / ``class`` name.
+
+    This is flow-insensitive on purpose: one non-local binding anywhere keeps
+    ``.Add`` on that name gated (the fail-closed direction), where "last
+    binding wins" let ``x = e.SensesOS; x.Add(s); x = []`` certify read-only.
     """
-    assigns, _, bindings = _collect_assign_call_nodes(tree)
-    binding_nodes = list(assigns) + list(bindings)
-    binding_nodes.sort(key=lambda n: getattr(n, "lineno", 0))
+    safe_values: Dict[int, ast.AST] = {}
+    store_nodes: Dict[str, List[ast.Name]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
+            for target, rhs in _iter_assign_pairs(node):
+                if isinstance(target, ast.Name):
+                    safe_values[id(target)] = rhs
+        elif isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
+            safe_values[id(node.target)] = node.value
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            store_nodes.setdefault(node.id, []).append(node)
+    other_bindings = _non_name_store_bindings(tree)
+
     local: Set[str] = set()
-    for node in binding_nodes:
-        for target, rhs in _iter_assign_pairs(node):
-            if not isinstance(target, ast.Name):
+    changed = True
+    while changed:
+        changed = False
+        for name, stores in store_nodes.items():
+            if name in local or name in other_bindings:
                 continue
-            name = target.id
-            if _is_local_container_constructor(rhs):
+            if all(
+                id(store) in safe_values
+                and _is_local_container_value(safe_values[id(store)], local)
+                for store in stores
+            ):
                 local.add(name)
-            elif isinstance(rhs, ast.Name) and rhs.id in local:
-                local.add(name)
-            else:
-                local.discard(name)
+                changed = True
     return local
 
 
-def _lines_with_local_collection_mutations(tree: ast.AST) -> Set[int]:
-    """Line numbers where a collection-mutation call targets a local container."""
+def _non_name_store_bindings(tree: ast.AST) -> Set[str]:
+    """Names bound by anything other than an ``ast.Name`` store (issue #350).
+
+    Parameters, import aliases, ``except ... as``, ``match`` captures and
+    ``def`` / ``class`` names can each hold a real LCM collection, so any of
+    them disqualifies a name from `_collect_local_container_names`.
+    """
+    names: Set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.arg):
+            names.add(node.arg)
+        elif isinstance(node, ast.alias):
+            names.add(node.asname or node.name.split(".")[0])
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            names.add(node.name)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, (ast.MatchAs, ast.MatchStar)) and node.name:
+            names.add(node.name)
+        elif isinstance(node, ast.MatchMapping) and node.rest:
+            names.add(node.rest)
+    return names
+
+
+def _is_local_container_value(rhs: ast.AST, local: Set[str]) -> bool:
+    if _is_local_container_constructor(rhs):
+        return True
+    return isinstance(rhs, ast.Name) and rhs.id in local
+
+
+def _local_collection_mutation_sites(code: str, tree: ast.AST) -> Set[Tuple[int, int]]:
+    """``(line, column)`` of each collection-mutation call on a local container.
+
+    Keyed by the call node rather than by line (issue #350): the column is the
+    character offset just past the method name, which is where a matching
+    ``.Add(`` pattern hit's ``start() + 1 + len(method)`` lands, so
+    ``tmp.Add(x); entry.SensesOS.Add(s)`` suppresses only the first call.
+    """
     local = _collect_local_container_names(tree)
     if not local:
         return set()
-    skip: Set[int] = set()
+    lines = code.split("\n")
+    sites: Set[Tuple[int, int]] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        if not isinstance(node.func, ast.Attribute):
+        func = node.func
+        if not isinstance(func, ast.Attribute):
             continue
-        if node.func.attr not in _COLLECTION_MUTATION_METHODS:
+        if func.attr not in _COLLECTION_MUTATION_METHODS:
             continue
-        recv = node.func.value
-        if isinstance(recv, ast.Name) and recv.id in local:
-            skip.add(node.lineno)
-    return skip
+        recv = func.value
+        if not (isinstance(recv, ast.Name) and recv.id in local):
+            continue
+        line_no = func.end_lineno or node.lineno
+        end_col = func.end_col_offset
+        if end_col is None or line_no - 1 >= len(lines):
+            continue
+        # ast columns are UTF-8 byte offsets; regex matches are str offsets.
+        line_bytes = lines[line_no - 1].encode("utf-8")
+        char_col = len(line_bytes[:end_col].decode("utf-8", errors="ignore"))
+        sites.add((line_no, char_col))
+    return sites
 
 
 def find_liblcm_mutations(
@@ -6377,9 +6481,9 @@ def find_liblcm_mutations(
     """
     mutations = []
 
-    skip_collection_lines: Set[int] = set()
+    skip_collection_sites: Set[Tuple[int, int]] = set()
     try:
-        skip_collection_lines = _lines_with_local_collection_mutations(ast.parse(code))
+        skip_collection_sites = _local_collection_mutation_sites(code, ast.parse(code))
     except SyntaxError:
         pass
 
@@ -6394,12 +6498,16 @@ def find_liblcm_mutations(
         line_content = line
 
         for pattern, method_name, category in patterns:
-            if (
-                method_name in _COLLECTION_MUTATION_METHODS
-                and line_num in skip_collection_lines
-            ):
-                continue
-            if re.search(pattern, line_content):
+            if method_name in _COLLECTION_MUTATION_METHODS and skip_collection_sites:
+                # Node-keyed (issue #350): report the line when ANY hit on it
+                # is not a local-container call.
+                hit = any(
+                    (line_num, m.start() + 1 + len(method_name)) not in skip_collection_sites
+                    for m in re.finditer(pattern, line_content)
+                )
+            else:
+                hit = re.search(pattern, line_content) is not None
+            if hit:
                 raw_context = (
                     original_lines[line_num - 1]
                     if line_num - 1 < len(original_lines)
@@ -6436,6 +6544,43 @@ def _is_project_receiver(node: ast.AST) -> bool:
     ):
         return True
     return False
+
+
+def _is_write_flag(node: ast.AST) -> bool:
+    """Bare ``modifyAllowed`` or the project's own ``writeEnabled`` flag."""
+    if isinstance(node, ast.Name):
+        return node.id == 'modifyAllowed'
+    if isinstance(node, ast.Attribute):
+        return node.attr == 'writeEnabled' and _is_project_receiver(node.value)
+    return False
+
+
+def _write_flag_compare_polarity(node: ast.Compare) -> Optional[bool]:
+    """Polarity of a ``<flag> ==/is/!=/is not <True|False>`` comparison.
+
+    Returns True when the comparison holding means writes are enabled
+    (``modifyAllowed == True``, ``modifyAllowed != False``), False when it
+    means they are disabled (``modifyAllowed is False``), and None for
+    anything else -- chained comparisons, ordering operators, or a non-literal
+    other side (``modifyAllowed == other``), none of which is a guard.
+    """
+    if len(node.ops) != 1 or len(node.comparators) != 1:
+        return None
+    left, right = node.left, node.comparators[0]
+    if _is_write_flag(left) and isinstance(right, ast.Constant):
+        const = right.value
+    elif _is_write_flag(right) and isinstance(left, ast.Constant):
+        const = left.value
+    else:
+        return None
+    if not isinstance(const, (bool, int)) or const not in (0, 1):
+        return None
+    op = node.ops[0]
+    if isinstance(op, (ast.Eq, ast.Is)):
+        return bool(const)
+    if isinstance(op, (ast.NotEq, ast.IsNot)):
+        return not const
+    return None
 
 
 def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]:
@@ -6511,6 +6656,16 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             """Find 'if modifyAllowed:' or 'if project.writeEnabled:' blocks."""
             if self._is_write_enabled_check(node.test):
                 start_line = node.lineno
+                if any(isinstance(n, ast.Call) for n in ast.walk(node.test)):
+                    # Issue #352: a compound test can itself call a mutator
+                    # before (or regardless of) the guard operand
+                    # (`if x.Add(s) and modifyAllowed:`,
+                    # `if not (x.Add(s) or not modifyAllowed):`), so the
+                    # range starts after the test's last line. Ranges are
+                    # line-keyed, so a body on that same line
+                    # (`if x.Add(s) and modifyAllowed: y.Add(t)`) is left
+                    # unprotected -- the fail-closed direction.
+                    start_line = (node.test.end_lineno or node.lineno) + 1
                 # end_lineno includes the if line, body starts after
                 if node.body:
                     end_line = node.body[-1].end_lineno or start_line + 1000
@@ -6535,7 +6690,7 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             return False
 
         def _is_write_enabled_check(self, node):
-            """Check if condition checks 'modifyAllowed', 'project.writeEnabled', etc.
+            """True when ``node`` being truthy implies writes are enabled.
 
             Issue #121 sibling: `project.writeEnabled` / `self.project.writeEnabled`
             require the attribute's receiver to actually be the project (see
@@ -6543,68 +6698,41 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             attribute (e.g. `cfg.writeEnabled`) must not be accepted as a guard.
             The bare-name `modifyAllowed` form (FLExTools' standard parameter)
             is unaffected -- it has no receiver to check.
+
+            Issue #352: `modifyAllowed and <cond>` implies the flag, so an
+            `and` guards when ANY operand does; an `or` only when EVERY
+            operand does. Comparisons count only against a literal True/False
+            in the enabling direction -- `modifyAllowed == False` used to be
+            accepted here because ANY Compare mentioning the flag passed.
             """
-            # Pattern: modifyAllowed (name - FLExTools standard parameter)
-            if isinstance(node, ast.Name):
-                return node.id == 'modifyAllowed'
-
-            # Pattern: project.writeEnabled / self.project.writeEnabled (attribute)
-            if isinstance(node, ast.Attribute):
-                return node.attr == 'writeEnabled' and _is_project_receiver(node.value)
-
-            # Pattern: project.writeEnabled == True (compare)
+            if _is_write_flag(node):
+                return True
+            if isinstance(node, ast.BoolOp):
+                if isinstance(node.op, ast.And):
+                    return any(self._is_write_enabled_check(v) for v in node.values)
+                return all(self._is_write_enabled_check(v) for v in node.values)
+            if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+                return self._is_write_disabled_check(node.operand)
             if isinstance(node, ast.Compare):
-                # Check left side
-                if isinstance(node.left, ast.Attribute):
-                    if node.left.attr == 'writeEnabled' and _is_project_receiver(node.left.value):
-                        return True
-                if isinstance(node.left, ast.Name):
-                    if node.left.id == 'modifyAllowed':
-                        return True
-                # Check comparators
-                for comp in node.comparators:
-                    if isinstance(comp, ast.Attribute):
-                        if comp.attr == 'writeEnabled' and _is_project_receiver(comp.value):
-                            return True
-                    if isinstance(comp, ast.Name):
-                        if comp.id == 'modifyAllowed':
-                            return True
+                return _write_flag_compare_polarity(node) is True
             return False
 
         def _is_write_disabled_check(self, node):
-            """Negated write guard: ``if not modifyAllowed:`` / ``== False`` forms."""
+            """True when ``node`` being truthy implies writes are DISABLED.
+
+            The early-return idiom (#139): ``if not modifyAllowed: return``,
+            ``== False`` forms, and (#352) ``not modifyAllowed or <cond>`` --
+            an `or` is disabling when ANY operand is, an `and` only when
+            EVERY operand is.
+            """
             if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
                 return self._is_write_enabled_check(node.operand)
-            if isinstance(node, ast.Compare) and len(node.ops) == 1:
-                if not isinstance(node.ops[0], (ast.Eq, ast.Is)):
-                    return False
-                # Tuple (not set): False == 0 so {False, 0} is B033-duplicate.
-                false_val = (False, 0)
-                if (
-                    isinstance(node.left, ast.Name)
-                    and node.left.id == 'modifyAllowed'
-                    and node.comparators
-                    and isinstance(node.comparators[0], ast.Constant)
-                    and node.comparators[0].value in false_val
-                ):
-                    return True
-                if (
-                    isinstance(node.left, ast.Constant)
-                    and node.left.value in false_val
-                    and node.comparators
-                    and isinstance(node.comparators[0], ast.Name)
-                    and node.comparators[0].id == 'modifyAllowed'
-                ):
-                    return True
-                if isinstance(node.left, ast.Attribute):
-                    if (
-                        node.left.attr == 'writeEnabled'
-                        and _is_project_receiver(node.left.value)
-                        and node.comparators
-                        and isinstance(node.comparators[0], ast.Constant)
-                        and node.comparators[0].value in false_val
-                    ):
-                        return True
+            if isinstance(node, ast.BoolOp):
+                if isinstance(node.op, ast.Or):
+                    return any(self._is_write_disabled_check(v) for v in node.values)
+                return all(self._is_write_disabled_check(v) for v in node.values)
+            if isinstance(node, ast.Compare):
+                return _write_flag_compare_polarity(node) is False
             return False
 
     finder = ProtectionFinder()

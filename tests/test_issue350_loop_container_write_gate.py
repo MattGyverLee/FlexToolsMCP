@@ -154,3 +154,61 @@ class TestGenuinelyLocalContainersStillSkipped:
             "seen.Add(2)\n"
         )
         assert _adds(code) == []
+
+
+class TestNonNameBindingsDisqualify:
+    """Pattern audit sibling: bindings that are not `ast.Name` stores."""
+
+    def test_helper_parameter_named_like_a_local_list(self):
+        code = (
+            "def helper(senses, s):\n"
+            "    senses.Add(s)\n"
+            "def Main(project, report, modifyAllowed):\n"
+            "    senses = []\n"
+            "    for e in project.LexiconAllEntries():\n"
+            "        helper(e.SensesOS, None)\n"
+        )
+        _assert_flagged(code)
+
+    def test_lambda_parameter(self):
+        code = (
+            "tmp = []\n"
+            "f = lambda tmp, s: tmp.Add(s)\n"
+            "f(e.SensesOS, None)\n"
+        )
+        _assert_flagged(code)
+
+    def test_import_alias(self):
+        code = (
+            "def a():\n"
+            "    tmp = []\n"
+            "def b():\n"
+            "    from x import y as tmp\n"
+            "    tmp.Add(s)\n"
+        )
+        _assert_flagged(code)
+
+    def test_except_and_match_names(self):
+        code = (
+            "tmp = []\n"
+            "try:\n"
+            "    pass\n"
+            "except Exception as tmp:\n"
+            "    tmp.Add(s)\n"
+        )
+        _assert_flagged(code)
+        code = (
+            "tmp = []\n"
+            "match e:\n"
+            "    case [*tmp]:\n"
+            "        tmp.Add(s)\n"
+        )
+        _assert_flagged(code)
+
+    def test_plain_local_list_still_not_flagged(self):
+        code = (
+            "def Main(project, report, modifyAllowed):\n"
+            "    results = []\n"
+            "    results.Add(1)\n"
+        )
+        assert _adds(code) == []

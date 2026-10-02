@@ -248,20 +248,27 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   script builds one; a loop target, unpacking or any other rebinding keeps
   its `.Add` gated. The skip is also tracked per call instead of per line, so
   `tmp.Add(x); entry.SensesOS.Add(s)` on one line no longer hides the real
-  write. Plain local lists and sets (`results = []`, `seen = set()`) are
-  still not flagged.
+  write. Function and lambda parameters, import aliases, `except ... as`
+  and `match` captures now count as bindings too, so
+  `def helper(senses, s): senses.Add(s)` stays gated even when `Main` has
+  its own `senses = []`. Plain local lists and sets (`results = []`,
+  `seen = set()`) are still not flagged.
 - `if modifyAllowed and <cond>:` now counts as a write guard
   ([#352](https://github.com/MattGyverLee/FlexToolsMCP/issues/352)), as
   does the early-return form `if not modifyAllowed or <cond>: return`. An
   `or` with a non-guard operand still does not. A comparison now counts
   only against a literal True/False in the enabling direction: before,
   `if modifyAllowed == False:` was wrongly accepted as protecting the write
-  in its body.
-- The write-gate patterns no longer match inside longer names
+  in its body. When the guard's test itself makes a call
+  (`if x.SensesOS.Add(s) and modifyAllowed:`), only the lines after the
+  test are protected, so that call is still reported.
+- The write-gate patterns no longer report `nonsense.Form = ...`,
+  `compose.Comment = ...` or `position.Note = ...` as writes, and a
+  resolved facade such as `fx` no longer matches inside `prefx`
   ([#351](https://github.com/MattGyverLee/FlexToolsMCP/issues/351)).
-  `myproject.LexEntry.Delete(...)`, `nonsense.Form = ...` and
-  `compose.Comment = ...` are no longer reported as writes, while
-  `self.project...`, `new_entry...` and `newEntry...` still are.
+  The gate still fails closed elsewhere on purpose: compound receivers
+  (`subsense`, `subentry`, `lexentry`, `newEntry`) and any name ending in
+  `project` (`self._project`, `srcProject`, `myproject`) stay gated.
 
 ### Other
 

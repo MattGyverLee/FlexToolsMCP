@@ -67,6 +67,30 @@ class TestCompoundAndGuardProtects:
         )
         assert not _certified(code)
 
+    def test_mutation_under_negated_compound_test_is_not_protected(self):
+        # `not (x or not flag)` is an enabling guard, but `x` always runs.
+        code = (
+            "if not (entry.SensesOS.Add(None) or not modifyAllowed):\n"
+            "    pass\n"
+        )
+        assert not _certified(code)
+
+    def test_one_line_compound_guard_with_mutating_test(self):
+        code = "if entry.SensesOS.Add(None) and modifyAllowed: pass\n"
+        assert not _certified(code)
+
+    def test_one_line_body_after_mutating_test_fails_closed(self):
+        # Ranges are line-keyed: the body cannot be told apart from the test.
+        code = "if entry.SensesOS.Add(None) and modifyAllowed: x.SensesOS.Add(s)\n"
+        assert not _certified(code)
+
+    def test_call_in_test_still_protects_next_line_body(self):
+        code = (
+            "if modifyAllowed and project.LexEntry.Find('x') is None:\n"
+            + _CREATE
+        )
+        assert _certified(code)
+
     def test_else_branch_not_protected(self):
         code = (
             "if modifyAllowed and a:\n"

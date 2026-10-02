@@ -571,6 +571,47 @@ class TestConditionalEnsure:
         assert data["error_code"] == "requires_exclusive_access"
         assert data["stage"] == "runtime"
         assert "already saved" in data["remedy"]
+        # Dual envelope (review finding on #343): the flat `message` plus the
+        # nested `error` object, carrying the operations and probe facts the
+        # contract documents for the preflight refusal.
+        assert "WritingSystemOperations.Ensure (line 2)" in data["message"]
+        assert data["error"]["code"] == "requires_exclusive_access"
+        assert data["error"]["message"] == data["message"]
+        assert data["error"]["operations"] == data["operations"]
+        assert data["verdict"] == "open_shared"
+        assert data["holder_pid"] == 68436
+        assert data["holder_process"] == "FieldWorks"
+        assert [op["key"] for op in data["operations"]] == ["ws.ensure"]
+        assert data["operations"][0]["conditional"] is True
+        # Runtime details retained: the raw .NET text and the messages.
+        assert "FP_ExclusiveAccessRequiredError" in data["raw_error"]
+        assert data["messages"] == []
+
+    def test_runtime_refusal_validates_against_the_models(self, monkeypatch, tmp_path):
+        """The published requires_exclusive_access envelope validates from the
+        runtime response too (review finding on #343)."""
+        from flextoolsmcp.server.response_models import (
+            RejectionEnvelope,
+            RequiresExclusiveAccessDetail,
+        )
+
+        _setup(monkeypatch, tmp_path)
+        _probe(monkeypatch, _access("open_shared", sharing=True))
+        _stub_snapshot(monkeypatch)
+        _capture_runner(monkeypatch, error=(
+            "Execution error: WritingSystems.Ensure('en') needs to change ...\n"
+            "Traceback ...\nflexicon.code.exceptions.FP_ExclusiveAccessRequiredError: ..."
+        ))
+
+        data = _run(ENSURE_OK)
+        envelope = RejectionEnvelope.model_validate(data, by_alias=True)
+        assert envelope.error_code == "requires_exclusive_access"
+        detail = RequiresExclusiveAccessDetail.model_validate(
+            {k: data[k] for k in RequiresExclusiveAccessDetail.model_fields}
+        )
+        assert detail.stage == "runtime"
+        assert detail.verdict == "open_shared"
+        assert [op.key for op in detail.operations] == ["ws.ensure"]
 
     def test_guard_unavailable_in_the_run_maps_to_the_same_code(self, monkeypatch, tmp_path):
         _setup(monkeypatch, tmp_path)
@@ -581,7 +622,9 @@ class TestConditionalEnsure:
         data = _run(ENSURE_OK)
         assert data["error_code"] == "requires_exclusive_access"
         assert data["stage"] == "runtime"
-        assert "was not run" in data["error"]
+        assert "was not run" in data["error"]["message"]
+        assert data["verdict"] == "open_shared"
+        assert [op["key"] for op in data["operations"]] == ["ws.ensure"]
 
 
 class TestPeerGuardBackstop:

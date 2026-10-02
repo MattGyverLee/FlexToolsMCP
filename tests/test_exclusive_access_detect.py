@@ -206,15 +206,39 @@ class TestDetect:
         m = detect(main('project.WritingSystems.Frobnicate("x")'))
         assert m == []
 
-    def test_j_unresolved_receiver(self):
+    def test_j_unresolved_receiver_ensure_needs_evidence(self):
+        """An `Ensure()` on an unknown receiver is NOT matched by method name
+        alone (review finding on #343): without receiver evidence it is an
+        ordinary cache call, not a writing-system change. The runtime peer
+        guard stays the backstop if it really is WritingSystems.Ensure."""
         code = main('ops = mystery(project)\nops.Ensure("en")')
         cert = certify_script_readonly(code, load_index())
         assert [(u["class"], u["method"]) for u in cert["unknown_calls"]] == [
             ("ops", "Ensure")
         ]
-        m = detect(code)
+        assert detect(code) == []
+
+    def test_j_unrelated_cache_ensure_is_not_refused(self):
+        """The finding's example: `cache.Ensure()` on a user-defined cache
+        must run while FieldWorks is open, not refuse as `ws.ensure`."""
+        code = main('cache = make_cache()\nif modifyAllowed:\n    cache.Ensure()')
+        assert detect(code) == []
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            'def f(p):\n    p.WritingSystems.Ensure("en", "x")',
+            'def f(p):\n    w = p.WritingSystems\n    w.Ensure("en", "x")',
+        ],
+    )
+    def test_j_unresolved_receiver_ensure_with_facade_evidence(self, body):
+        """...but a `.WritingSystems` facade on an untyped receiver IS the
+        evidence the bare name lacks, so it still takes the conditional
+        Ensure() path (plan_conditional decides it)."""
+        m = detect(main(body))
         assert keys(m) == ["ws.ensure"]
-        assert m[0].call == "ops.Ensure"
+        assert m[0].conditional is True
+        assert m[0].call == "WritingSystemOperations.Ensure"
 
     def test_j_unresolved_receiver_guarded(self):
         code = main('ops = mystery(project)\nif modifyAllowed:\n    ops.CreateField("a", "b", "c")')
@@ -270,6 +294,40 @@ class TestDetect:
     )
     def test_j_generic_names_off_the_facade_attribute_do_not_match(self, code):
         assert detect(code) == []
+
+    def test_j_rebound_facade_alias_does_not_match(self):
+        """`w` rebound from `.WritingSystems` to `.LexEntry`: the later
+        `w.Create()` is an ordinary entry edit, not a writing-system change
+        (review finding on #343)."""
+        code = main(
+            "w = project.WritingSystems\n"
+            "w = project.LexEntry\n"
+            "if modifyAllowed:\n"
+            '    w.Create("cat", "stem")'
+        )
+        assert detect(code) == []
+
+    def test_j_facade_alias_before_rebinding_still_matches(self):
+        """The rebinding only affects later calls: the `w.Delete()` before
+        `w` is rebound still refuses while FieldWorks is open."""
+        code = main(
+            "w = project.WritingSystems\n"
+            'w.Delete("en")\n'
+            "w = project.LexEntry\n"
+            'w.Create("cat", "stem")'
+        )
+        m = detect(code)
+        assert keys(m) == ["ws.wrapper"]
+        assert m[0].call == "WritingSystemOperations.Delete"
+
+    def test_j_shadowing_parameter_hides_the_module_alias(self):
+        """A function parameter shadows a module-level facade alias: the AST
+        pass must not classify the parameter's calls (review finding on
+        #343)."""
+        from flextoolsmcp.server.exclusive_access import _facade_generic_matches
+
+        code = "w = project.WritingSystems\ndef f(w):\n    w.Create('x')\n"
+        assert _facade_generic_matches(ast.parse(code)) == []
 
     def test_facade_attrs_match_the_index_access_paths(self):
         from flextoolsmcp.server.exclusive_access import _FACADE_ATTRS
@@ -472,6 +530,20 @@ class TestEnsureCallArgs:
     def test_non_literal_is_none(self, call):
         assert ensure_call_args(ast.parse(call)) == {1: [None]}
 
+    @pytest.mark.parametrize("call", [
+        "a.Ensure('en', 'English', **{'is_vernacular': False})",
+        "a.Ensure('en', 'English', **kw)",
+        "a.Ensure('en', 'English', is_vernacular=False, **kw)",
+        "a.Ensure(*args)",
+        "a.Ensure('en', *rest)",
+    ])
+    def test_unpacked_arguments_are_none(self, call):
+        """`**kwargs` may carry `is_vernacular` and `*args` shifts the
+        positional slots, so the effective arguments cannot be proven from
+        the source (review finding on #343). The call defers to the runtime
+        peer guard instead of being judged with a defaulted category."""
+        assert ensure_call_args(ast.parse(call)) == {1: [None]}
+
 
 class TestPlanConditional:
     def test_active_analysis_tag_is_satisfied(self):
@@ -489,6 +561,18 @@ class TestPlanConditional:
         p, _ = plan("project.WritingSystems.Ensure('en', 'English')")
         assert not p.allowed
         assert "would add a vernacular writing system" in p.notes[0]
+
+    def test_kwargs_unpacking_defers_instead_of_misjudging(self):
+        """The finding's example: `en` is analysis-only and the call passes
+        `is_vernacular=False` through `**kwargs`. The old reader defaulted it
+        to True and refused a no-op as a vernacular add; now the call defers
+        to the runtime guard, which runs the real arguments."""
+        p, _ = plan(
+            "project.WritingSystems.Ensure('en', 'English', **{'is_vernacular': False})"
+        )
+        assert p.allowed
+        assert [m.key for m in p.deferred] == ["ws.ensure"]
+        assert p.refuse == ()
 
     def test_absent_tag_refuses_with_note(self):
         p, _ = plan("project.WritingSystems.Ensure('qaa-x-new', 'New')")

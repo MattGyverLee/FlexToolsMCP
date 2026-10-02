@@ -25,7 +25,7 @@ import hashlib
 import heapq
 import time
 import itertools
-from typing import List, Dict, Any, Tuple, Optional, Set
+from typing import List, Dict, Any, Tuple, Optional, Set, Sequence
 from mcp.types import TextContent
 
 from ._import_helper import (
@@ -787,6 +787,17 @@ def _log_operation_end_success(
     )
 
 
+def _error_message_text(value: Any) -> Optional[str]:
+    """Human-readable text of an `error` payload that may be a string or the
+    dual-envelope nested error object ({code, message, ...})."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        message = value.get("message")
+        return message if isinstance(message, str) else None
+    return None
+
+
 def _log_operation_failure(
     op_id: Optional[str] = None,
     seq: Optional[int] = None,
@@ -834,6 +845,10 @@ def _log_operation_failure(
     logger.error("[FAIL] Operation failed")
     if error_type:
         logger.error(f"Error type:      {error_type}")
+    if isinstance(error, dict):
+        # Dual-envelope refusals (requires_exclusive_access at runtime) nest
+        # the message under "error"; log its text like the flat string.
+        error = _error_message_text(error)
     if error:
         first_line = error.strip().splitlines()[0] if error.strip() else ""
         if len(first_line) > 500:
@@ -1665,7 +1680,13 @@ _RUNTIME_EXCLUSIVE_MARKERS = ("FP_ExclusiveAccessRequiredError", "PeerSchemaGuar
 
 
 def _diagnose_exclusive_access_runtime_error(
-    execution_result: Dict[str, Any], project_name: str
+    execution_result: Dict[str, Any],
+    project_name: str,
+    *,
+    operations: Sequence[Dict[str, Any]] = (),
+    verdict: Optional[str] = None,
+    holder_pid: Optional[int] = None,
+    holder_process: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Map a runtime refusal by flexicon's peer schema guard (exclusive-access-gate).
 
@@ -1677,17 +1698,34 @@ def _diagnose_exclusive_access_runtime_error(
     code ("PeerSchemaGuardUnavailable"). Same code and recovery as the
     up-front refusal; `stage` says where it happened. Writes the script made
     BEFORE the refused call have already been saved.
+
+    `operations` are the conditional matches the preflight plan let through
+    (as `ExclusiveOnlyMatch.to_dict()` dicts); `verdict`/`holder_pid`/
+    `holder_process` are the probe facts from the run's access decision. They
+    travel into the response so the runtime refusal carries the same
+    `operations`/`verdict` detail the preflight refusal documents -- an empty
+    operation list means the guard refused a call the static gate never saw
+    (e.g. reached dynamically).
     """
     raw_error = execution_result.get("error") or ""
     if not isinstance(raw_error, str) or not any(m in raw_error for m in _RUNTIME_EXCLUSIVE_MARKERS):
         return None
     unavailable = "PeerSchemaGuardUnavailable" in raw_error
+    ops_text = ""
+    if operations:
+        calls = ", ".join(
+            f"{op.get('call')} (line {op.get('line')})"
+            if op.get("line") is not None else str(op.get("call"))
+            for op in operations
+        )
+        ops_text = f" Operations: {calls}."
     if unavailable:
         message = (
             "The script was not run: it calls WritingSystems.Ensure() while "
             f"FieldWorks has '{project_name}' open, and this run's flexicon cannot "
             "refuse an Ensure() that would change writing systems. Close FieldWorks, "
             "re-submit this same call, then reopen FieldWorks."
+            f"{ops_text}"
         )
         remedy = "Close FieldWorks, re-submit unchanged, reopen FieldWorks."
     else:
@@ -1697,6 +1735,7 @@ def _diagnose_exclusive_access_runtime_error(
             "project's writing systems (it was not a no-op after all). Nothing was "
             "written by that call. Close FieldWorks, re-submit this same call, then "
             "reopen FieldWorks."
+            f"{ops_text}"
         )
         remedy = (
             "Close FieldWorks, re-submit unchanged, reopen FieldWorks. Writes the "
@@ -1713,6 +1752,10 @@ def _diagnose_exclusive_access_runtime_error(
             "2. Re-submit this exact run_module call unchanged. "
             "3. Reopen FieldWorks after it finishes."
         ),
+        "verdict": verdict,
+        "holder_pid": holder_pid,
+        "holder_process": holder_process,
+        "operations": list(operations),
         "remedy": remedy,
         "stage": "runtime",
     }
@@ -6437,8 +6480,22 @@ MODULE_CODE = {code}
             open_diag = _diagnose_project_open_error(execution_result, project_name)
             if open_diag is None:
                 # exclusive-access-gate: the peer schema guard refused at run time.
+                # The conditional matches the preflight plan let through (and the
+                # probe verdict/holder behind them) travel into the diagnosis so
+                # the runtime refusal carries the documented operations/verdict
+                # detail, not just the error code.
+                _holder = _access.holder if _access is not None else None
                 open_diag = _diagnose_exclusive_access_runtime_error(
-                    execution_result, project_name
+                    execution_result, project_name,
+                    operations=[
+                        m.to_dict() for m in _exclusive_matches
+                        if getattr(m, "conditional", False)
+                    ],
+                    verdict=_decision.verdict if _decision is not None else None,
+                    holder_pid=_holder.pid if _holder is not None else None,
+                    holder_process=(
+                        _holder.process_name if _holder is not None else None
+                    ),
                 )
             if open_diag is None:
                 # Issue #310: raw LCM write with no unit of work open.
@@ -6448,19 +6505,40 @@ MODULE_CODE = {code}
             if open_diag is not None:
                 execution_result["error_code"] = open_diag["error_code"]
                 execution_result["help"] = open_diag.get("hint")
-                # Promote the diagnosis fields (message override, attempted_path,
-                # discovered_at, hint) onto the response payload.
-                for key, value in open_diag.items():
-                    if key == "error_code":
-                        continue
-                    if key == "message":
-                        # Replace the raw .NET-exception "error" string with the
-                        # human-readable diagnosis. Keep the original under
-                        # raw_error so debugging info isn't lost.
-                        execution_result["raw_error"] = execution_result["error"]
-                        execution_result["error"] = value
-                        continue
-                    execution_result[key] = value
+                if open_diag["error_code"] == "requires_exclusive_access":
+                    # Dual error envelope, mirroring error_response() for the
+                    # preflight refusal: the flat `message` plus the nested
+                    # `error` object ({code, message, ...detail}), with the
+                    # diagnosis detail (guidance, verdict, holder, operations,
+                    # remedy, stage) at the top level. The raw .NET text moves
+                    # to raw_error; the script's messages and backup status
+                    # already on the payload are untouched.
+                    execution_result["raw_error"] = execution_result["error"]
+                    execution_result["message"] = open_diag["message"]
+                    nested: Dict[str, Any] = {
+                        "code": open_diag["error_code"],
+                        "message": open_diag["message"],
+                    }
+                    for key, value in open_diag.items():
+                        if key in ("error_code", "message"):
+                            continue
+                        execution_result[key] = value
+                        nested[key] = value
+                    execution_result["error"] = nested
+                else:
+                    # Promote the diagnosis fields (message override, attempted_path,
+                    # discovered_at, hint) onto the response payload.
+                    for key, value in open_diag.items():
+                        if key == "error_code":
+                            continue
+                        if key == "message":
+                            # Replace the raw .NET-exception "error" string with the
+                            # human-readable diagnosis. Keep the original under
+                            # raw_error so debugging info isn't lost.
+                            execution_result["raw_error"] = execution_result["error"]
+                            execution_result["error"] = value
+                            continue
+                        execution_result[key] = value
 
         # Issue #305: an ImportError on a flexicon name/module (one the static
         # gate could not see -- e.g. a dynamic import) gets the same
@@ -6611,7 +6689,7 @@ MODULE_CODE = {code}
         from ..kernel import get_pattern_tracker
         tracker = get_pattern_tracker()
         if tracker:
-            error_msg = execution_result.get("error")
+            error_msg = _error_message_text(execution_result.get("error"))
             error_type = execution_result.get("error_type")
             tracker.record_operation(code, execution_result.get("success", False), error_msg, error_type)
 

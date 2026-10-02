@@ -155,6 +155,15 @@ class TestIdenticalResubmit:
         s.begin_submission("b" * 64, 101)
         assert s.record_failure_and_detect("partial_module_structure", 101) is None
 
+    def test_identical_code_with_a_different_answer_does_not_fire(self):
+        """Identical code that got past the first gate (recorded discovery,
+        skip_module_check, ...) did NOT get "the same answer"."""
+        s = SessionState()
+        s.begin_submission("a" * 64, 100)
+        s.record_failure_and_detect("api_discovery_required", 100)
+        s.begin_submission("a" * 64, 100)
+        assert s.record_failure_and_detect("RuntimeError", 100) is None
+
     def test_success_breaks_the_streak(self):
         s = SessionState()
         s.begin_submission("a" * 64, 100)

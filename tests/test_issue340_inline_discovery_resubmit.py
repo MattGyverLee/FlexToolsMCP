@@ -153,6 +153,33 @@ def test_refused_then_identical_resubmit_passes(stub_env):
     assert stub_env["n"] == 1, "identical resubmit should reach the runner"
 
 
+def test_resubmit_that_fails_later_is_not_flagged_identical(stub_env, monkeypatch):
+    """The resubmit the refusal prescribed passes the gate; if the script then
+    fails at runtime that is a new answer, not an identical resubmit."""
+    async def _failing_run(path, timeout_seconds):
+        payload = {
+            "success": False,
+            "error": "Execution error: boom",
+            "error_type": "RuntimeError",
+            "summary": {"info_count": 0, "warning_count": 0, "error_count": 0},
+            "messages": [],
+        }
+        return {
+            "stdout": "===FLEXTOOLS_RESULT_JSON===" + json.dumps(payload),
+            "stderr": "",
+            "timeout": False,
+            "returncode": 0,
+        }
+
+    monkeypatch.setattr(execution_mod, "run_script_async", _failing_run)
+    first = _parse(asyncio.run(execution_mod.handle_run_module(_write_args())))
+    assert first["error_code"] == "api_discovery_required"
+    second = _parse(asyncio.run(execution_mod.handle_run_module(_write_args())))
+    assert second.get("error_code") != "api_discovery_required", second
+    assert "identical_resubmit" not in second, second
+    assert (second.get("_assistance") or {}).get("pattern_detected") != "identical_resubmit"
+
+
 def test_record_inline_discovery_mirrors_get_object_api():
     session = SessionState()
     inline = {

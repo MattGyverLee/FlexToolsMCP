@@ -713,7 +713,14 @@ class SessionState:
         first repeat. The 5-in-a-row patterns still win when they also match
         (they carry the stronger "stop iterating" message).
         """
-        identical = self.is_identical_resubmit()
+        # Only call it an identical resubmit when it got the SAME answer.
+        # Identical code can legitimately pass this time: a gate satisfied by
+        # recorded state (#340 inline discovery) or by a different argument
+        # (skip_module_check, write_enabled, confirmed). Then the "same answer"
+        # message would be false.
+        identical = self.is_identical_resubmit() and (
+            (error_code or "") == self.current_previous_error_code
+        )
         self.record_op_signal(error_code=error_code, code_size_bytes=code_size_bytes)
         pattern = self.detect_retry_loop_pattern()
         if pattern is None and identical:

@@ -473,3 +473,216 @@ def find_recipes_for_examples(
             break
 
     return matches
+
+
+# ---------------------------------------------------------------------------
+# Issue #335: put library recipes in front of the model.
+#
+# Logs showed recipes nested under `results[0].recipe` / `recipes` were never
+# opened: 0 of 26 run_module calls started from one. These helpers back three
+# surfaces -- a top-level `recommended_recipe` on search_by_capability,
+# "closest recipes: ..." in run_module failure next_steps, and a non-blocking
+# `recipe_hint` when a run's user_intent matches a library recipe the code is
+# not from. Only shipped ("library") recipes are recommended: local-* rows are
+# unreviewed auto-captures (issue #309).
+# ---------------------------------------------------------------------------
+
+# A recommendation must be a clear, task-word win over the next library
+# recipe. Calibrated on the 2026-09-30 log queries: "create a new lexical
+# entry" (17.6, phrase hit, over a 15.3 word-overlap runner-up), "find or
+# create a lexentry by headword" (24.5 vs 12.5) and "list entries" (9.9,
+# phrase hit) recommend; "get gloss of sense" (9.2 tie) and the object-only
+# "entry" (2.7) do not.
+RECOMMEND_PHRASE_MIN_SCORE = 8.0
+RECOMMEND_MIN_SCORE = 15.0
+RECOMMEND_RATIO = 1.3
+
+# Fraction of a recipe's significant lines (outside PARAMS) that must appear
+# in submitted code for the code to count as "from" that recipe.
+_FROM_RECIPE_LINE_RATIO = 0.6
+# Query verbs that mean "change the data": recommend_recipe never answers
+# them with a read-only recipe (tokenize() forms, so singularized).
+WRITE_INTENT_VERBS = frozenset({
+    "add", "change", "clear", "create", "delete", "edit", "fix", "insert",
+    "merge", "modify", "move", "remove", "rename", "replace", "set",
+    "update", "write",
+})
+
+
+def _shipped_recipes() -> Dict[str, Dict[str, Any]]:
+    return {rid: r for rid, r in CURATED_RECIPES.items() if _is_shipped(r)}
+
+
+def recipe_how_to_run(recipe_id: str, requires_write: bool) -> str:
+    """One-line instruction for running a library recipe unchanged."""
+    steps = (
+        f'flextools_list_recipes(recipe_id="{recipe_id}") for the code; edit only '
+        "the values inside # --- PARAMS --- ... # --- END PARAMS ---; run it with "
+        'flextools_run_module(source="existing", user_intent=...)'
+    )
+    if requires_write:
+        steps += (
+            "; it writes, so dry-run first (write_enabled=False), then "
+            "write_enabled=True plus confirmed=True"
+        )
+    return steps + "."
+
+
+def _query_text(intent_or_code: str) -> str:
+    """Turn code into a word query (its call/attribute terms); pass text through."""
+    text = intent_or_code or ""
+    if "\n" in text or "project." in text:
+        try:
+            import ast as _ast
+            _ast.parse(text)
+        except SyntaxError:
+            return text
+        if _extract_code_terms is not None:
+            try:
+                return " ".join(_extract_code_terms(text))
+            except Exception:
+                return text
+    return text
+
+
+def closest_recipes(intent_or_code: str, k: int = 3) -> List[Dict[str, Any]]:
+    """Up to ``k`` library recipes nearest an intent sentence or a code body.
+
+    Rows are ``{id, intent, requires_write, score}`` -- no ``code``, so they
+    can ride on any response without breaking the at-most-one-code-body rule.
+    Never raises; returns ``[]`` when nothing clears the ranker's floor.
+    """
+    try:
+        ranked = rank_recipes(_query_text(intent_or_code),
+                              recipes=_shipped_recipes())
+    except Exception:
+        return []
+    rows: List[Dict[str, Any]] = []
+    for entry in ranked[: max(0, k)]:
+        recipe = entry["recipe"]
+        rows.append({
+            "id": entry["id"],
+            "intent": recipe.get("intent") or "",
+            "requires_write": bool(recipe.get("requires_write", False)),
+            "score": round(entry["_score"], 2),
+        })
+    return rows
+
+
+def closest_recipes_step(intent_or_code: str, k: int = 3,
+                         rows: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:
+    """``next_steps`` line naming the closest library recipes, or None.
+
+    ``rows`` (from closest_recipes) skips the re-rank when already in hand.
+    """
+    if rows is None:
+        rows = closest_recipes(intent_or_code, k)
+    if not rows:
+        return None
+    names = ", ".join(f"{r['id']} ({r['intent']})" for r in rows)
+    return (
+        f"closest recipes: {names}. Start from one instead of rewriting: "
+        'flextools_list_recipes(recipe_id="...") gives the code; edit only its '
+        'PARAMS block and run with source="existing".'
+    )
+
+
+def recommend_recipe(query: str) -> Optional[Dict[str, Any]]:
+    """The library recipe to recommend for ``query``, or None.
+
+    Returned shape: ``{id, intent, params, requires_write, how_to_run}``
+    (compact params, no ``code``). Requires a clear winner among shipped
+    recipes: a match_terms phrase hit at RECOMMEND_PHRASE_MIN_SCORE, or a
+    RECOMMEND_MIN_SCORE total, driven by task/code words (not object words
+    alone) and RECOMMEND_RATIO ahead of the runner-up -- except that a phrase
+    hit over a runner-up without one only has to lead. A query with a
+    WRITE_INTENT_VERBS word never gets a read-only recipe.
+    """
+    try:
+        ranked = rank_recipes(query or "", recipes=_shipped_recipes())
+    except Exception:
+        return None
+    if not ranked:
+        return None
+    top = ranked[0]
+    if not top["_non_object"]:
+        return None
+    score = top["_score"]
+    floor = RECOMMEND_PHRASE_MIN_SCORE if top["_has_phrase"] else RECOMMEND_MIN_SCORE
+    if score < floor:
+        return None
+    if len(ranked) > 1:
+        runner_up = ranked[1]
+        if top["_has_phrase"] and not runner_up["_has_phrase"]:
+            # A phrase hit over a word-overlap runner-up only needs to lead.
+            if score <= runner_up["_score"]:
+                return None
+        elif score < RECOMMEND_RATIO * runner_up["_score"]:
+            return None
+    recipe = top["recipe"]
+    requires_write = bool(recipe.get("requires_write", False))
+    if not requires_write and tokenize_set(query) & WRITE_INTENT_VERBS:
+        # A read-only recipe is not the answer to "delete/merge/set ...".
+        return None
+    return {
+        "id": top["id"],
+        "intent": recipe.get("intent") or "",
+        "params": _compact_params(recipe.get("params", [])),
+        "requires_write": requires_write,
+        "how_to_run": recipe_how_to_run(top["id"], requires_write),
+    }
+
+
+def _significant_lines(code: str) -> List[str]:
+    """Stripped non-blank, non-comment lines outside the PARAMS block."""
+    lines: List[str] = []
+    in_params = False
+    for raw in (code or "").splitlines():
+        line = raw.strip()
+        if line == "# --- PARAMS ---":
+            in_params = True
+            continue
+        if line == "# --- END PARAMS ---":
+            in_params = False
+            continue
+        if in_params or not line or line.startswith("#"):
+            continue
+        lines.append(line)
+    return lines
+
+
+def code_is_from_recipe(code: str, recipe: Dict[str, Any]) -> bool:
+    """True when ``code`` reuses most of ``recipe``'s body (PARAMS excluded)."""
+    wanted = _significant_lines(recipe.get("code", "") or "")
+    if not wanted:
+        return False
+    have = set(_significant_lines(code))
+    hits = sum(1 for ln in wanted if ln in have)
+    return hits >= _FROM_RECIPE_LINE_RATIO * len(wanted)
+
+
+def recipe_hint_for_run(user_intent: Optional[str], code: str) -> Optional[Dict[str, Any]]:
+    """Non-blocking run_module hint when ``user_intent`` strongly matches a
+    library recipe that ``code`` is not from; None otherwise. Never raises."""
+    try:
+        if not user_intent or not str(user_intent).strip():
+            return None
+        rec = recommend_recipe(str(user_intent))
+        if rec is None:
+            return None
+        recipe = CURATED_RECIPES.get(rec["id"]) or {}
+        if code_is_from_recipe(code, recipe):
+            return None
+        return {
+            "id": rec["id"],
+            "intent": rec["intent"],
+            "requires_write": rec["requires_write"],
+            "how_to_run": rec["how_to_run"],
+            "message": (
+                f"Library recipe '{rec['id']}' ({rec['intent']}) matches this "
+                "user_intent, but this code is not from it. If this run fails "
+                "or needs rework, start from the recipe instead."
+            ),
+        }
+    except Exception:
+        return None

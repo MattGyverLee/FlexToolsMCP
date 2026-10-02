@@ -53,6 +53,14 @@ LCM_COLLECTION_NAMES = (
     "PronunciationsOS", "LexEntryRefsOS", "ComponentLexemesRS"
 )
 
+# Issue #351: left boundary for a receiver-name prefix such as `entry` or
+# `sense`. A plain `\b` would stop over-matching inside a longer word
+# (`nonsense.Form`, `compose.Comment`) but would also drop the conventional
+# prefixed names of a real receiver (`new_entry`, `newEntry`), so this also
+# accepts the start of a snake_case or camelCase hump. The camelCase arm is
+# case-sensitive even inside IGNORECASE patterns.
+_RECEIVER_PREFIX_BOUNDARY = r'(?:\b|(?<=_)|(?-i:(?<=[a-z0-9])(?=[A-Z])))'
+
 # Compiled regex patterns for efficiency
 _PATTERN_COMMENT = re.compile(r'#.*$', re.MULTILINE)
 _PATTERN_CREATE = re.compile(r'\.Create\s*\(', re.IGNORECASE)
@@ -60,9 +68,10 @@ _PATTERN_CREATE_COLLECTION = re.compile(
     r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Add\s*\(', re.IGNORECASE
 )
 _PATTERN_CREATE_GENERIC = re.compile(
-    r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', re.IGNORECASE
+    _RECEIVER_PREFIX_BOUNDARY
+    + r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', re.IGNORECASE
 )
-_PATTERN_CREATE_PROJECT = re.compile(r'project\.\w+\.Create\w*\s*\(', re.IGNORECASE)
+_PATTERN_CREATE_PROJECT = re.compile(r'\bproject\.\w+\.Create\w*\s*\(', re.IGNORECASE)
 _PATTERN_INSERT_COLLECTION = re.compile(
     r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Insert\s*\(', re.IGNORECASE
 )
@@ -70,21 +79,22 @@ _PATTERN_DELETE = re.compile(r'\.Delete\s*\(', re.IGNORECASE)
 _PATTERN_DELETE_COLLECTION = re.compile(
     r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*(Remove|Clear)\s*\(', re.IGNORECASE
 )
-_PATTERN_DELETE_PROJECT = re.compile(r'project\.\w+\.Delete\w*\s*\(', re.IGNORECASE)
+_PATTERN_DELETE_PROJECT = re.compile(r'\bproject\.\w+\.Delete\w*\s*\(', re.IGNORECASE)
 _PATTERN_SET_STRING = re.compile(r'\.set_String\s*\(', re.IGNORECASE)
 _PATTERN_SET_PROPERTY = re.compile(
     r'\.Set(Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\(', re.IGNORECASE
 )
 _PATTERN_COPY_ALTERNATIVES = re.compile(r'\.CopyAlternatives\s*\(', re.IGNORECASE)
 _PATTERN_PROPERTY_ASSIGNMENT = re.compile(
-    r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
+    _RECEIVER_PREFIX_BOUNDARY
+    + r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
     r'(LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
     r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
     r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
     r'Bibliography|Etymology|Comment|Note)\s*=', re.IGNORECASE
 )
 _PATTERN_UPDATE_PROJECT = re.compile(
-    r'project\.\w+\.(Set|Update|Modify|Change|Edit|Replace)\w*\s*\(', re.IGNORECASE
+    r'\bproject\.\w+\.(Set|Update|Modify|Change|Edit|Replace)\w*\s*\(', re.IGNORECASE
 )
 _PATTERN_APPROVAL = re.compile(r'\.(Approve|Reject|SetApprovalStatus)\s*\(', re.IGNORECASE)
 _PATTERN_REPORT_INFO = re.compile(r'report\.(Info|Warning|Error|Blank|FileURL)\s*\(')
@@ -97,7 +107,7 @@ _PATTERN_OPERATIONS_CALL = re.compile(r'(\w+Operations)\s*(?:\(\s*\w+\s*\))?\s*\
 # access_path metadata at call time (Step 1c in certify_script_readonly), NOT
 # hardcoded here -- this regex only locates candidate call sites; it does not
 # itself decide what is mutating.
-_PATTERN_PROJECT_ACCESSOR_CALL = re.compile(r'project\s*\.\s*(\w+)\s*\.\s*(\w+)\s*\(')
+_PATTERN_PROJECT_ACCESSOR_CALL = re.compile(r'\bproject\s*\.\s*(\w+)\s*\.\s*(\w+)\s*\(')
 
 # Built-in variables (avoid recreating on every call)
 _BUILTIN_NAMES = {
@@ -135,7 +145,8 @@ _LIBLCM_MUTABLE_PATTERNS = [
     (re.compile(r'\.Set(?:Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\('), 'Set*', 'Update'),
     # Raw LCM property assignments (entry.LexemeFormOA = ..., sense.Gloss = ..., etc.)
     (re.compile(
-        r'(?:entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
+        _RECEIVER_PREFIX_BOUNDARY
+        + r'(?:entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
         r'(?:LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
         r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
         r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
@@ -157,10 +168,10 @@ _LIBLCM_MUTABLE_PATTERNS = [
 # index lookup cannot see `fx.LexEntry.SetLexemeForm(...)` at all. These
 # regexes are then the only thing still holding the write gate.
 _FACADE_ACCESSOR_MUTABLE_TEMPLATES = [
-    (r'{receiver}\s*\.\s*\w+\s*\.\s*Create\w*\s*\(', 'Create', 'Create'),
-    (r'{receiver}\s*\.\s*\w+\s*\.\s*Delete\w*\s*\(', 'Delete', 'Delete'),
+    (r'\b{receiver}\s*\.\s*\w+\s*\.\s*Create\w*\s*\(', 'Create', 'Create'),
+    (r'\b{receiver}\s*\.\s*\w+\s*\.\s*Delete\w*\s*\(', 'Delete', 'Delete'),
     (
-        r'{receiver}\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(',
+        r'\b{receiver}\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(',
         'Set/Update',
         'Update',
     ),

@@ -267,6 +267,36 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
     `report.Error`. The runner's success flag only means no uncaught
     exception; a run that reported errors did not do its job. Failed runs
     were already never remembered.
+- **Safety:** an unguarded write through a loop over a list of LCM
+  collections no longer passes the `unprotected_writes` gate
+  ([#350](https://github.com/MattGyverLee/FlexToolsMCP/issues/350)).
+  `for coll in [e.SensesOS, f.SensesOS]: coll.Add(s)` was certified
+  read-only because the loop variable was taken for a local Python list. A
+  name now counts as a local container only when every binding of it in the
+  script builds one; a loop target, unpacking or any other rebinding keeps
+  its `.Add` gated. The skip is also tracked per call instead of per line, so
+  `tmp.Add(x); entry.SensesOS.Add(s)` on one line no longer hides the real
+  write. Function and lambda parameters, import aliases, `except ... as`
+  and `match` captures now count as bindings too, so
+  `def helper(senses, s): senses.Add(s)` stays gated even when `Main` has
+  its own `senses = []`. Plain local lists and sets (`results = []`,
+  `seen = set()`) are still not flagged.
+- `if modifyAllowed and <cond>:` now counts as a write guard
+  ([#352](https://github.com/MattGyverLee/FlexToolsMCP/issues/352)), as
+  does the early-return form `if not modifyAllowed or <cond>: return`. An
+  `or` with a non-guard operand still does not. A comparison now counts
+  only against a literal True/False in the enabling direction: before,
+  `if modifyAllowed == False:` was wrongly accepted as protecting the write
+  in its body. When the guard's test itself makes a call
+  (`if x.SensesOS.Add(s) and modifyAllowed:`), only the lines after the
+  test are protected, so that call is still reported.
+- The write-gate patterns no longer report `nonsense.Form = ...`,
+  `compose.Comment = ...` or `position.Note = ...` as writes, and a
+  resolved facade such as `fx` no longer matches inside `prefx`
+  ([#351](https://github.com/MattGyverLee/FlexToolsMCP/issues/351)).
+  The gate still fails closed elsewhere on purpose: compound receivers
+  (`subsense`, `subentry`, `lexentry`, `newEntry`) and any name ending in
+  `project` (`self._project`, `srcProject`, `myproject`) stay gated.
 
 ### Other
 

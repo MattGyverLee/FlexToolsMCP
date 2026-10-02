@@ -87,9 +87,16 @@ a fresh process:
 | write-enabled, confirmed, as-is, `v_read.py` | `op-082717294` | `['zzgloss-v4']` |
 | write-enabled, `project.SaveChanges()` first, `v5_read_synced.py` (`SaveChanges ok`) | `op-082747578` | `['zzgloss-v4']` |
 
-All three saw the peer write at once. Sync-at-open adds nothing, so T026 and
-T027 are **not shipped**. Reason: a peer's commit reaches disk at commit time,
-and a fresh peer reads it whether or not it syncs first. (The unguarded
+All three saw the peer write. Sync-at-open made no difference, so T026 and
+T027 are **not shipped**.
+
+Corrected reading (2026-10-02): a fresh session reads the `.fwdata`, which
+only the master writes, on idle. The `.fwdata` mtime, 08:26:49, came seconds
+after the V4 commit, because FLEx was sitting idle. These read-backs succeeded
+because the master had already flushed; that is the favourable case, not a
+guarantee. The runtime primer's rule ("a fresh read-only session under a live
+FLEx master shows the last master save, not your write") still holds in
+general, and the notes now say that this run was the favourable case. (The unguarded
 first try of the sync variant was refused as `unprotected_writes`, which is
 correct, because `SaveChanges()` is a write.)
 
@@ -197,10 +204,47 @@ step unless it is `open_shared`.
   open during the write; a fresh start always shows the current data.
   SHARED-MODE.md now says so.
 
+## V7: custom-field definition from a peer (Class B) -- observed: LOST (2026-10-02)
+
+Harness `evidence/live_cf_peer.py`. Sena 3 was held by FieldWorks PID 6468
+(`open_shared`, sharing on). A second FLEx had Claude-Swahili open; it was not
+touched, and the harness asserts Sena 3.
+
+1. `dry` (read-only): `zzExclTest` defined = False.
+2. `add` (writable peer): `FieldDescription(cache)` for LexEntry, MultiUnicode,
+   analysis WS, via `UpdateCustomField()` inside
+   `NonUndoableUnitOfWorkHelper.Do`, then commit. No data was written to the
+   field. In-process: defined = True. FieldWorks kept responding. (A first
+   attempt failed before opening the project, because .NET was imported
+   before `FLExInitialize`; it wrote nothing, and the harness was fixed.)
+3. `check` from a **fresh peer** while FLEx was still open: defined = **False**.
+   The `.fwdata` was unchanged (mtime 2026-10-01 11:38:53); its only
+   `zzExclTest` text is the V4 entry's lexeme form.
+4. Maintainer, in the **master** FLEx: Tools > Configure > Custom Fields
+   showed **no zzExclTest field**.
+5. The maintainer closed Sena 3 (verdict then `free`). `check`: defined =
+   **False**. The `.fwdata` mtime was still unchanged.
+
+**Outcome:** the definition never reached the master, any other peer, or
+disk, so it is silently lost. This is stronger than research R9 expected (R9
+expected it to be visible and then gone after a restart). It confirms the
+`silently_lost` failure class live: the gate's custom-field rows protect real
+users. Nothing to clean up for the field itself.
+
+## Cleanup (2026-10-02, Sena 3 closed)
+
+- `qaa-x-zzexcl` residue (maintainer-approved):
+  - deleted `WritingSystemStore/qaa-x-zzexcl.ldml`;
+  - removed its single `<Add Producer="???">` block from `idchangelog.xml`,
+    leaving the 15 original entries (2016-2017). XML still parses; encoding
+    (UTF-8, no BOM) and CRLF preserved.
+  - Copies of both files before the edit are in the session scratchpad, not
+    the project folder.
+- `zzExclTest` entry (from V4): `cleanup_zzexcltest_entry.py` with
+  `--expect free`; dry run, then write (`op-092650017`). A fresh read
+  (`v_read.py`) shows "zzExclTest: absent".
+
 ## Pending
 
-- V7: add the custom-field definition, check the Custom Fields dialog,
-  close and reopen FLEx, then `check`.
-- Cleanup: the `zzExclTest` entry; the custom field if it survived; the
-  `qaa-x-zzexcl` `.ldml` and `idchangelog` residue (awaiting the
-  maintainer's decision).
+- The maintainer reopens Sena 3 and confirms no `zzExclTest` field or entry
+  and no `qaa-x-zzexcl`.

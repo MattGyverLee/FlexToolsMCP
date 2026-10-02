@@ -132,10 +132,13 @@ already been saved. The server warns when an `Ensure()` comes after other
 writes. Every other write-enabled run while FLEx is open also has the guard
 on, as a backstop.
 
-The custom-field row comes from reading the LCM source; it has not been
-reproduced live. Today flexicon's `CustomFieldOperations.CreateField` fails
-with `FP_TransactionError` whether or not FLEx is open, so that route cannot
-lose data yet.
+The custom-field row was seen live on 2026-10-02. A second program added a
+custom-field definition the way FLEx's own dialog does, and committed. The
+definition never appeared in the open FLEx's Custom Fields dialog, nor to a
+fresh reader, nor on disk, and it was gone after FLEx closed
+(`specs/exclusive-access-gate/evidence/live-gate.md`, V7). Today flexicon's
+`CustomFieldOperations.CreateField` fails with `FP_TransactionError` whether
+or not FLEx is open, so that wrapper cannot lose data yet; raw LCM calls can.
 
 These are known to be fine from a peer:
 

@@ -5545,11 +5545,12 @@ MODULE_CODE = {code}
                 "holder_process": _access.holder.process_name if _access.holder else None,
                 "note": (
                     "This read was opened as a fresh non-master peer while FLEx is "
-                    "the shared-mode master. A fresh read-only session shows the "
-                    "last master flush and may read pre-write state even when a peer "
+                    "the shared-mode master. A fresh session reads the .fwdata, which "
+                    "only the master writes, when FLEx is idle. If FLEx has not "
+                    "flushed yet, this read can show pre-write state even when a peer "
                     "write already committed to the shared commit log. Do not treat "
                     "this read-back as proof a write was lost, and do not retry a "
-                    "write solely based on this result."
+                    "write solely based on this result; check the FLEx window."
                 ),
             }
 

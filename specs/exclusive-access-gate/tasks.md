@@ -201,19 +201,19 @@ describes the gate as shipped.
 
 **Independent test**: quickstart V5 recorded, plus T027 if the step ships.
 
-- [ ] T025 [US5] Live V5 (`requires_flex`, Sena 3, FLEx open, sharing on, `FLEXLIBS_REQUIRE_LIVE=1`), following quickstart.md:
+- [X] T025 [US5] Live V5 (`requires_flex`, Sena 3, FLEx open, sharing on, `FLEXLIBS_REQUIRE_LIVE=1`), following quickstart.md:
   - call A creates a `zzExclTest` entry and sets its gloss;
   - call B (write-enabled, confirmed, a script that only reads that gloss) runs once as-is, and once with `project.SaveChanges()` added as its first statement (`SyncForeignChanges()` if `_undoable` is false);
   - record both read values, `run_mode: live`, the exact commands, and the cleanup (delete `zzExclTest`, confirmed by a read-only listing) in `specs/exclusive-access-gate/evidence/live-gate.md` under "V5";
   - decide SHIP or NO-SHIP.
-- [ ] T026 [US5] Only if T025 says SHIP:
+- [X] T026 [US5] Only if T025 says SHIP:
   - in the generated runner template in `src/flextoolsmcp/server/handlers/execution.py` (after the open-failure `except` ~:4880-4889, before `FLEX_EMPTY_PLACEHOLDER` ~:4892), add a step guarded by `if WRITE_ENABLED and SHARED_PEER:` that calls `project.SaveChanges()` (or `SyncForeignChanges()` when not `_undoable`);
   - wrap it in try/except. On failure, log it and record `shared_mode.sync_at_open = {attempted, ok, error}`; never fail the run;
   - inject `SHARED_PEER` from `_live_fw_peer`.
 
   If NO-SHIP, write "not shipped" plus the reason in `evidence/live-gate.md` and skip T027.
-- [ ] T027 [P] [US5] Only if T026 shipped: add a test in `tests/test_exclusive_access_gate.py` that the generated runner source contains the guarded sync call when write-enabled on `open_shared`, and does not contain it otherwise.
-- [ ] T028 [US5] Update the `shared_mode_read_back` note in `src/flextoolsmcp/server/handlers/admin.py` (~:277-313) and its source in `execution.py` (~:5263-5278). Replace "this path is untested" with the result: read-only sessions cannot pull in a peer's recent writes (`FP_ReadOnlyError`); write-enabled sessions do / do not (per T025). Add a text assertion to `tests/test_shared_mode_write_gate.py`.
+- [X] T027 [P] [US5] Only if T026 shipped: add a test in `tests/test_exclusive_access_gate.py` that the generated runner source contains the guarded sync call when write-enabled on `open_shared`, and does not contain it otherwise.
+- [X] T028 [US5] Update the `shared_mode_read_back` note in `src/flextoolsmcp/server/handlers/admin.py` (~:277-313) and its source in `execution.py` (~:5263-5278). Replace "this path is untested" with the result: read-only sessions cannot pull in a peer's recent writes (`FP_ReadOnlyError`); write-enabled sessions do / do not (per T025). Add a text assertion to `tests/test_shared_mode_write_gate.py`.
 
 ---
 
@@ -231,8 +231,8 @@ observe Class B.
   - inside `NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, ...)`, call `fd.UpdateCustomField()` then `FieldDescription.ClearDataAbout()`;
   - commit, close, and print plain-ASCII results;
   - write no data to the field.
-- [ ] T030 [US3] **needs-human**. Ask the maintainer to open Sena 3 in FLEx (sharing on), then run the harness with `FLEXLIBS_REQUIRE_LIVE=1`. Record whether `zzExclTest` shows in FLEx's Custom Fields dialog. Ask them to close and reopen FLEx and check again. Record everything in `evidence/live-gate.md` under "V7". If the definition survived, have them delete it in the dialog and confirm.
-- [ ] T031 [US3] Update the custom-field row's evidence in `docs/SHARED-MODE.md` (~:81) and `EXCLUSIVE_ONLY_OPERATIONS` `cf.*` evidence to the V7 outcome ("seen live" or what was observed). If V7 could not run, file the gap upstream per FR-014. This needs maintainer authorization, so record it in `issues/filing-ledger.md`.
+- [X] T030 [US3] **needs-human**. Ask the maintainer to open Sena 3 in FLEx (sharing on), then run the harness with `FLEXLIBS_REQUIRE_LIVE=1`. Record whether `zzExclTest` shows in FLEx's Custom Fields dialog. Ask them to close and reopen FLEx and check again. Record everything in `evidence/live-gate.md` under "V7". If the definition survived, have them delete it in the dialog and confirm.
+- [X] T031 [US3] Update the custom-field row's evidence in `docs/SHARED-MODE.md` (~:81) and `EXCLUSIVE_ONLY_OPERATIONS` `cf.*` evidence to the V7 outcome ("seen live" or what was observed). If V7 could not run, file the gap upstream per FR-014. This needs maintainer authorization, so record it in `issues/filing-ledger.md`.
 
 ---
 
@@ -254,7 +254,7 @@ observe Class B.
 
 ## Phase 9: Polish & cross-cutting
 
-- [ ] T036 Live US1/US2 verification (`requires_flex`, Sena 3, `FLEXLIBS_REQUIRE_LIVE=1`): quickstart V1, V2, V3, V4 and V6, recorded in `evidence/live-gate.md`. Each step needs:
+- [X] T036 Live US1/US2 verification (`requires_flex`, Sena 3, `FLEXLIBS_REQUIRE_LIVE=1`): quickstart V1, V2, V3, V4 and V6, recorded in `evidence/live-gate.md`. Each step needs:
   - `run_mode: live`, cross-checked against `tests/live_status.json`;
   - the exact call;
   - pre/post values re-queried from LCM (V1: `.ldml` mtimes; V3: the WS list before and after; V4: the gloss before and after; V6: whether Undo offers the change);

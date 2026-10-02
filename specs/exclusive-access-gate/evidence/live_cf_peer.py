@@ -87,13 +87,13 @@ def mode_dry():
 
 
 def mode_add():
+    p = _open(True)  # FLExInitialize() loads the CLR; .NET imports must follow it
     from System import Action
     from SIL.LCModel import FieldDescription, LexEntryTags
     from SIL.LCModel.Core.Cellar import CellarPropertyType
     from SIL.LCModel.DomainServices import WritingSystemServices
     from SIL.LCModel.Infrastructure import NonUndoableUnitOfWorkHelper
 
-    p = _open(True)
     cache = p.project
     print(f"[INFO] backend = {_backend(cache)}", flush=True)
     pre = _defined(cache)

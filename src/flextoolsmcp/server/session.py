@@ -301,6 +301,10 @@ class SessionState:
     recent_op_signals: Deque[Tuple[datetime, Optional[str], int]] = field(
         default_factory=lambda: deque(maxlen=5)
     )
+    # Issue #335: consecutive run_module failures that shared one user_intent
+    # (normalized intent, count). The 2nd such failure points at the closest
+    # library recipes; a success or a different intent restarts the streak.
+    intent_failure_streak: Tuple[str, int] = ("", 0)
 
     def reset(self) -> None:
         """Reset all session fields to defaults without replacing the object.
@@ -636,6 +640,22 @@ class SessionState:
     def reset_op_signals(self) -> None:
         """Drop all retry-loop signals (e.g., after a successful op)."""
         self.recent_op_signals.clear()
+        self.intent_failure_streak = ("", 0)
+
+    def record_intent_failure(self, user_intent: Optional[str]) -> int:
+        """Count a failed run against its user_intent (issue #335).
+
+        Returns how many consecutive failures share this intent, 0 when the
+        run had no intent (which also ends any streak).
+        """
+        key = " ".join((user_intent or "").lower().split())
+        if not key:
+            self.intent_failure_streak = ("", 0)
+            return 0
+        prev_key, prev_count = self.intent_failure_streak
+        count = prev_count + 1 if key == prev_key else 1
+        self.intent_failure_streak = (key, count)
+        return count
 
     def detect_retry_loop_pattern(self) -> Optional[Dict[str, Any]]:
         """Inspect the last 5 op signals for stuck-in-a-loop patterns.

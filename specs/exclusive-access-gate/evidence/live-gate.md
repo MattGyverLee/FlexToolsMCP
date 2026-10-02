@@ -193,6 +193,9 @@ step unless it is `open_shared`.
   navigating away and back (and not on F5 alone, #96), or that Undo omits
   the peer write. The docs cite #96 for the first, and LCM source (research
   R4) for the second.
+- The maintainer confirmed that navigating away is only needed when FLEx was
+  open during the write; a fresh start always shows the current data.
+  SHARED-MODE.md now says so.
 
 ## Pending
 

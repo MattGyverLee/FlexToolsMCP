@@ -165,9 +165,13 @@ write because of it. Check the FLEx UI instead.
 
 ## Seeing an MCP change in FLEx
 
-FLEx picks up a peer's change when it next refreshes the view you are on.
-**Navigate away and back** (for example, click another entry and then return)
-to see it. Pressing **F5** alone is not enough (#96).
+If FLEx was open when the MCP made the change, FLEx picks it up when it next
+refreshes the view you are on. **Navigate away and back** (for example, click
+another entry and then return) to see it. Pressing **F5** alone is not enough
+(#96).
+
+If FLEx was closed, or you close and reopen it, there is nothing to do: a
+fresh start always shows the current data.
 
 ## Retrying after `ReportedError`
 

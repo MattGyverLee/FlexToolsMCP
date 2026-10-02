@@ -248,7 +248,7 @@ observe Class B.
   - the nonexistent `RollbackToMark` call in `Transaction()`;
   - the inaccurate `CheckNotProcessingDataChanges` comment in `CustomFieldOperations.CreateField` (research R3).
 - [X] T034 [US6] Triage each draft in `specs/_archive/shared-mode-access/issues/DRAFT-issues.md` against open and closed issues on MattGyverLee/FlexToolsMCP and MattGyverLee/flexicon (`gh issue list --search`). Record duplicate, already fixed, or still new for each.
-- [ ] T035 [US6] **needs-human**. Present the "still new" items from T033-T034 to the maintainer and file only those they approve, one `gh issue create` per item, each with an authorization note. Record the issue numbers in the ledger.
+- [X] T035 [US6] **needs-human**. Present the "still new" items from T033-T034 to the maintainer and file only those they approve, one `gh issue create` per item, each with an authorization note. Record the issue numbers in the ledger.
 
 ---
 

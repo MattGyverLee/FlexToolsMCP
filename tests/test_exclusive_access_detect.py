@@ -238,6 +238,46 @@ class TestDetect:
         open -- the exact over-refusal US2 forbids."""
         assert detect(main(body)) == []
 
+    @pytest.mark.parametrize(
+        "code",
+        [
+            'def f(p):\n    p.WritingSystems.Delete("fr")\nf(project)',
+            'def f(p):\n    w = p.WritingSystems\n    w.Create("fr", "F")',
+            'def f(p):\n    w = p.WritingSystems\n    w2 = w\n    w2.Create("fr", "F")',
+            'for w in [project.WritingSystems]:\n    w.Create("fr", "F")',
+            'w = project.WritingSystems\ndef f():\n    w.Delete("fr")',
+        ],
+    )
+    def test_j_generic_names_on_a_facade_attribute_match(self, code):
+        """The certifier cannot type a helper's `p` parameter, so its row is
+        `unresolved_receiver` and the generic-name exclusion would drop it.
+        The `.WritingSystems` attribute (direct or via a local alias) is the
+        evidence the bare name lacks, so these are refused like the typed
+        `project.WritingSystems.Delete` (review finding on #343)."""
+        m = detect(code)
+        assert keys(m) == ["ws.wrapper"]
+        assert m[0].source == "wrapper"
+        assert m[0].call.startswith("WritingSystemOperations.")
+
+    @pytest.mark.parametrize(
+        "code",
+        [
+            'def f(p):\n    p.LexEntry.Create("x")',
+            "def f(p):\n    e = p.LexEntry\n    e.Delete(x)",
+            'def f(p):\n    c = p.CustomFields\n    c.Create("x")',
+            "def f(p):\n    ws = p.WritingSystems.GetAll()\n    ws.Delete(x)",
+        ],
+    )
+    def test_j_generic_names_off_the_facade_attribute_do_not_match(self, code):
+        assert detect(code) == []
+
+    def test_facade_attrs_match_the_index_access_paths(self):
+        from flextoolsmcp.server.exclusive_access import _FACADE_ATTRS
+
+        entities = load_index().flexicon["entities"]
+        for cls, attr in _FACADE_ATTRS.items():
+            assert entities[cls]["access_path"] == f"project.{attr}"
+
     def test_k_dead_code_still_matches(self):
         m = detect(main('if False:\n    project.WritingSystems.Delete("qaa")'))
         assert keys(m) == ["ws.wrapper"]

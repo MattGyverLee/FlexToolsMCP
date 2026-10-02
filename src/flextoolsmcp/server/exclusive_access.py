@@ -218,6 +218,16 @@ ROWS_BY_KEY: Dict[str, ExclusiveOnlyOperation] = {
 # (or nearly so) and still matches by name.
 _GENERIC_WRAPPER_NAMES = frozenset({"Create", "Delete"})
 
+# The facade attribute each wrapper class is reached through (the index's
+# `access_path`, `project.WritingSystems`). An untyped receiver whose text ends
+# in one of these (`p.WritingSystems.Delete(...)` inside a helper that takes
+# the project as `p`), or a local name bound from one, still matches the
+# generic names above: the attribute is the evidence the bare name lacks.
+_FACADE_ATTRS: Dict[str, str] = {
+    "WritingSystemOperations": "WritingSystems",
+    "CustomFieldOperations": "CustomFields",
+}
+
 _CERT_BUCKETS = ("mutating_calls", "protected_calls", "unknown_calls")
 
 
@@ -268,6 +278,87 @@ def _wrapper_matches(cert: dict) -> List[ExclusiveOnlyMatch]:
                 op = None
             if op is not None:
                 out.append(_match(op, f"{cls}.{method}", row.get("line"), "wrapper"))
+    return out
+
+
+def _facade_attr_aliases(scope: ast.AST, attrs: Set[str], inherited: Dict[str, str]) -> Dict[str, str]:
+    """Local names bound to `<x>.<facade attr>` (or to such a name).
+
+    `w = p.WritingSystems` -> {"w": "WritingSystems"}; a `for w in
+    [p.WritingSystems]` loop over a literal list/tuple binds the same way.
+    Unlike `_receiver_aliases`, only a value that IS the attribute counts:
+    `w = p.WritingSystems.GetAll()` is a list of writing systems, not the
+    facade.
+    """
+    aliases = dict(inherited)
+    pending: List[Tuple[str, ast.AST]] = []
+    for node in _scope_nodes(scope):
+        if isinstance(node, ast.Assign):
+            pending.extend(
+                (t.id, node.value) for t in node.targets if isinstance(t, ast.Name)
+            )
+        elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)) and node.value is not None:
+            if isinstance(node.target, ast.Name):
+                pending.append((node.target.id, node.value))
+        elif isinstance(node, (ast.For, ast.AsyncFor)) and isinstance(node.target, ast.Name):
+            if isinstance(node.iter, (ast.List, ast.Tuple, ast.Set)):
+                pending.extend((node.target.id, elt) for elt in node.iter.elts)
+    changed = True
+    while changed:
+        changed = False
+        for name, value in pending:
+            if name in aliases:
+                continue
+            hit = None
+            if isinstance(value, ast.Attribute) and value.attr in attrs:
+                hit = value.attr
+            elif isinstance(value, ast.Name) and value.id in aliases:
+                hit = aliases[value.id]
+            if hit is not None:
+                aliases[name] = hit
+                changed = True
+    return aliases
+
+
+def _facade_generic_matches(tree: ast.AST) -> List[ExclusiveOnlyMatch]:
+    """Generic wrapper names (`Create`/`Delete`) on a receiver the certifier
+    could not type but whose source names the facade attribute: directly
+    (`p.WritingSystems.Delete(...)`) or through a local alias. Matched as
+    `wrapper` rows, so the refusal reads the same as for a typed receiver."""
+    by_attr_method: Dict[Tuple[str, str], ExclusiveOnlyOperation] = {}
+    for op in EXCLUSIVE_ONLY_OPERATIONS:
+        if op.wrapper is None or op.wrapper[0] not in _FACADE_ATTRS:
+            continue
+        for method in op.wrapper[1] & _GENERIC_WRAPPER_NAMES:
+            by_attr_method[(_FACADE_ATTRS[op.wrapper[0]], method)] = op
+    if not by_attr_method:
+        return []
+    attrs = {attr for attr, _ in by_attr_method}
+
+    out: List[ExclusiveOnlyMatch] = []
+    module_aliases = _facade_attr_aliases(tree, attrs, {})
+    scopes = [tree] + [n for n in ast.walk(tree) if isinstance(n, _SCOPE_TYPES[1:])]
+    for scope in scopes:
+        aliases = (
+            module_aliases if scope is tree
+            else _facade_attr_aliases(scope, attrs, module_aliases)
+        )
+        for node in _scope_nodes(scope):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+                continue
+            receiver = node.func.value
+            if isinstance(receiver, ast.Attribute) and receiver.attr in attrs:
+                attr = receiver.attr
+            elif isinstance(receiver, ast.Name) and receiver.id in aliases:
+                attr = aliases[receiver.id]
+            else:
+                continue
+            op = by_attr_method.get((attr, node.func.attr))
+            if op is not None:
+                out.append(_match(
+                    op, f"{op.wrapper[0]}.{node.func.attr}",
+                    getattr(node, "lineno", None), "wrapper",
+                ))
     return out
 
 
@@ -488,6 +579,7 @@ def detect_exclusive_only_operations(
 
     found = _wrapper_matches(cert or {})
     if tree is not None:
+        found.extend(_facade_generic_matches(tree))
         found.extend(_raw_matches(tree))
 
     seen: Set[Tuple[str, Optional[int]]] = set()

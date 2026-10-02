@@ -275,7 +275,9 @@ project-open diagnosis changes.
   the confirmation step, the backup and the run. Recovery: close FieldWorks,
   re-submit the same call, reopen FieldWorks. Detection covers the flexicon
   wrappers through every receiver shape the read-only certifier resolves
-  (accessor, alias, facade, `XOperations(project)`) and raw LCM names; setting
+  (accessor, alias, facade, `XOperations(project)`) and raw LCM names, plus
+  `Create`/`Delete` on a `.WritingSystems` receiver the certifier cannot type
+  (a helper's `p.WritingSystems`, or a local name bound from one); setting
   a custom field's value stays an ordinary edit. A write-enabled run that
   certified read-only is still probed when it contains such a call.
   `open_exclusive` / `held_by_other` keep `project_locked`, and read-only runs

@@ -244,7 +244,14 @@ users. Nothing to clean up for the field itself.
   `--expect free`; dry run, then write (`op-092650017`). A fresh read
   (`v_read.py`) shows "zzExclTest: absent".
 
-## Pending
+## Final state -- confirmed by the maintainer (2026-10-02)
 
-- The maintainer reopens Sena 3 and confirms no `zzExclTest` field or entry
-  and no `qaa-x-zzexcl`.
+After reopening Sena 3 in FLEx:
+
+- Tools > Configure > Custom Fields lists no `zzExclTest`;
+- the `zzExclTest` entry is gone;
+- the writing systems are `seh`, `seh-fonipa-x-etic` / `en`, `pt`, with no
+  `qaa-x-zzexcl`.
+
+Every live step (V1-V8) is complete, and every test object has been cleaned
+up.

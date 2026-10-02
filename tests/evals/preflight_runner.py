@@ -87,6 +87,7 @@ class _FakeAPIIndex:
                         {"name": "POS", "return_type": "POSOperations"},
                         {"name": "Senses", "return_type": "LexSenseOperations"},
                         {"name": "Segments", "return_type": "SegmentOperations"},
+                        {"name": "Parser", "return_type": "ParserOperations"},
                     ],
                     "methods": [
                         {"name": "LexiconGetSense"},
@@ -138,6 +139,15 @@ class _FakeAPIIndex:
                         {"name": "GetAll", "is_mutating": False, "return_type": "EnumerableWrapper[ISegment]"},
                         {"name": "IsLabel", "is_mutating": False},
                         {"name": "GetFreeTranslation", "is_mutating": False},
+                    ],
+                },
+                # Issue #306: a known class whose real methods do not include
+                # the invented TryWord (corpus issue306_unknown_method_*).
+                "ParserOperations": {
+                    "methods": [
+                        {"name": "ParseWord", "is_mutating": False},
+                        {"name": "ParseWordXml", "is_mutating": False},
+                        {"name": "TraceWordXml", "is_mutating": False},
                     ],
                 },
                 "WordformOperations": {

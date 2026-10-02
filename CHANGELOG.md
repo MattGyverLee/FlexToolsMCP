@@ -83,6 +83,11 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
 
 ### Fixed
 
+- `flextools_run_module`'s `unknown_method` rejection
+  ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306)) now has
+  a retry-loop assistance hint (pick from `did_you_mean`; a guard or a
+  renamed receiver does not make the method exist), and the eval corpus
+  covers the direct and aliased `project.Parser.TryWord(...)` forms.
 - `flextools_run_module` no longer ping-pongs between `partial_module_structure`
   and `unprotected_writes`
   ([#303](https://github.com/MattGyverLee/FlexToolsMCP/issues/303)). Code

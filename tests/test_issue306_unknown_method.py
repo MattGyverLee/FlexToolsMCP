@@ -354,3 +354,12 @@ class TestRunModule:
         data = _run("project.LexEntry.Create('x')\n")
         assert data["status"] == "error"
         assert data["error_code"] == "unprotected_writes"
+
+
+def test_unknown_method_has_retry_loop_hint():
+    """A retry loop on unknown_method gets a tailored hint, not the generic one."""
+    from flextoolsmcp.server.session import _ASSISTANCE_HINTS_BY_ERROR_CODE
+
+    hint = _ASSISTANCE_HINTS_BY_ERROR_CODE["unknown_method"]
+    assert "did_you_mean" in hint
+    assert "modifyAllowed" in hint

@@ -382,6 +382,40 @@ ultimately rejects or proceeds with a warning.
 
 ---
 
+## `report.Error` => `success: false`, and the audit-findings convention (`run_module`, issue #317)
+
+The `success` flag on a `flextools_run_module` result envelope is derived
+from what the script itself reported, not only from whether it raised (see
+CP1, issue #92). Concretely:
+
+- **Any** `report.Error()` call demotes the run to a failure:
+  `result["success"] = False`, `result["error_type"] = "ReportedError"`,
+  and `result["error"] = "Operation reported N error(s) via
+  report.Error(); see messages for details."`
+- `report.Warning()` and `report.Info()` never affect `success`. Their
+  messages still appear in `messages` and are counted in
+  `summary.warning_count` / `summary.info_count`.
+
+**Recipe convention (issue #317):** read-only audit recipes must report
+data findings via `report.Warning`, never `report.Error`. An audit that
+finds 254 disallowed characters and reports them as errors returns
+`success: false`, which weaker models read as "my call broke" even though
+the run completed exactly as intended. `report.Error` is reserved for
+validation failures and failed runs (e.g. a required input not found, a
+script that caught its own exception partway through). Recipe examples of
+the convention:
+
+- `recipe_library/morpheme-character-check.py` -- read-only audit;
+  findings are `report.Warning` (fixed in #317).
+- `recipe_library/publication-readiness-check.py`,
+  `case-duplicate-entries.py`, `text-interlinear-walk.py` -- audit
+  findings already use `report.Warning`.
+- `recipe_library/phoneme-feature-uniqueness.py` -- validation recipe
+  ("Validate phoneme inventory has no duplicates"); duplicate feature
+  bundles stay `report.Error`.
+
+---
+
 ## Parser diagnostic-level result fields (`flextools_try_word`, `flextools_parse_status`)
 
 `flextools_try_word`'s `explain` and `restricted` levels, and

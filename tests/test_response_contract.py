@@ -46,6 +46,7 @@ from flextoolsmcp.server.response_models import (
     UnknownMethodDetail,
     UnknownImportDetail,
     ProjectLockedDetail,
+    RequiresExclusiveAccessDetail,
     ProjectDriveUnavailableDetail,
     ProjectPathMismatchDetail,
     ProjectNotFoundDetail,
@@ -173,6 +174,7 @@ GOLDEN_REQUIRED_KEYS = {
         "issues", "did_you_mean",
     },
     "project_locked": {"_contract", "status", "error_code", "message", "error"},
+    "requires_exclusive_access": {"_contract", "status", "error_code", "message", "error"},
     "project_drive_unavailable": {"_contract", "status", "error_code", "message", "error"},
     "project_path_mismatch": {"_contract", "status", "error_code", "message", "error"},
     "project_not_found": {"_contract", "status", "error_code", "message", "error"},
@@ -283,6 +285,18 @@ ALL_ERROR_CODES = [
         holder_process="FieldWorks",
         remedy="Enable project sharing in FLEx, then retry",
     )),
+    ("requires_exclusive_access", dict(
+        guidance="1. Close FieldWorks. 2. Re-submit unchanged. 3. Reopen FieldWorks.",
+        verdict="open_shared",
+        holder_pid=68436,
+        holder_process="FieldWorks",
+        operations=[{
+            "key": "ws.wrapper", "category": "writing_system",
+            "failure_class": "crashes_holder", "call": "WritingSystemOperations.Create",
+            "line": 2, "source": "wrapper",
+        }],
+        remedy="Close FieldWorks, re-submit unchanged, reopen FieldWorks.",
+    )),
     ("project_drive_unavailable", dict(attempted_path="V:\\share")),
     ("project_path_mismatch", dict(attempted_path="C:\\old", discovered_at="C:\\new")),
     ("project_not_found", dict(hint="List projects")),
@@ -374,6 +388,7 @@ DETAIL_MODEL_MAP = {
     "unknown_method": UnknownMethodDetail,
     "unknown_import": UnknownImportDetail,
     "project_locked": ProjectLockedDetail,
+    "requires_exclusive_access": RequiresExclusiveAccessDetail,
     "project_drive_unavailable": ProjectDriveUnavailableDetail,
     "project_path_mismatch": ProjectPathMismatchDetail,
     "project_not_found": ProjectNotFoundDetail,
@@ -528,8 +543,10 @@ class TestParserCheckCP2bCodes:
         # unified-recipes adds recipe_not_found -> 44.
         # #310 adds no_unit_of_work -> 45.
         # #313 adds atomic_property_iteration -> 46; #306 adds unknown_method -> 47.
+        # #313 adds atomic_property_iteration -> 46; #306 adds unknown_method -> 47.
         # #305 adds unknown_import -> 48.
-        assert union_size == 48, f"the detail union holds {union_size} models"
+        # exclusive-access-gate adds requires_exclusive_access -> 49.
+        assert union_size == 49, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

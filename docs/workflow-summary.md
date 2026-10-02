@@ -13,7 +13,7 @@ A compact view of the six-stage workflow: what the user does, what it unlocks, a
 | 3 | API Discovery | 8 search/lookup tools | Replaces guessing with cited signatures from the indexed source |
 | 4 | Code Authoring | (LLM-side) | AI writes against real APIs and the runtime primer's invariants |
 | 5 | Run Module | `flextools_run_module` (twice) | Dry-run first, write-mode second — both pass the same gauntlet |
-| 6 | Inspect & Undo | `get_operation_logs` · `get_session_history` · `undo_last_operation` | Review, learn, and roll back |
+| 6 | Inspect | `get_operation_logs` · `get_session_history` | Review what ran and learn from it |
 
 ---
 
@@ -134,7 +134,7 @@ The runtime primer + discovery citations + style guide produce code that is corr
 
 **5b · Write-mode** (only after 5a is clean)
 - `write_enabled=True` → `modifyAllowed=True`
-- Per-project lock acquired; mutations actually run; undo entry recorded
+- Per-project lock acquired; a pre-write backup is taken on the first write per session and project; mutations actually run
 
 Both passes traverse the same 12-gate gauntlet.
 
@@ -167,26 +167,23 @@ Additional runtime safeguards:
 
 ---
 
-## Stage 6 — Inspect & Undo
+## Stage 6 — Inspect
 
 ### Workflow
-Three review-and-rollback tools, each addressing a different question.
+Two review tools, each addressing a different question.
 
 | Tool | Question it answers |
 | --- | --- |
 | `flextools_get_operation_logs` | What worked, what failed, and what should I prefer next time? |
-| `flextools_get_session_history` | What happened in this session, and what can I undo? |
-| `flextools_undo_last_operation` | Queue a rollback for the most recent CUD operation |
+| `flextools_get_session_history` | What happened in this session? |
 
 ### Opportunity
 - **Pattern learning loop** — every run records success/failure; recommendations sharpen over sessions and feed back into Stage 3 discovery
 - **Audit trail** — every operation captured with timestamp, code, output, and project
-- **Review-first undo** — `undo_last_operation` returns the operation summary but does *not* auto-execute `ActionHandler.Undo()`. The user reviews, then runs the rollback intentionally.
 
 ### Safeguards
-- Undo stack only populates when `write_enabled=True`
+- **There is no undo.** LCM's undo stack lives in memory, and every `run_module` runs in a fresh process, so nothing survives to undo. The safety nets are the automatic pre-write backup and, for Send/Receive projects, the repository — see [`RECOVERY.md`](RECOVERY.md)
 - Pattern tracker persists across sessions, so bad-pattern advisories survive restart
-- Three stacks (history / undo / redo) — full operation context preserved
 
 ---
 
@@ -208,6 +205,6 @@ No single check is load-bearing; failure of any one is recoverable.
 
 ### Learning & visibility
 - **Pattern learning loop** — success/failure recorded, recommendations surfaced, fed back into discovery
-- **Undo stack with review-first semantics** — rollback is intentional, never automatic
+- **Pre-write backup instead of undo** — the first write per session and project copies the `.fwdata` first ([`RECOVERY.md`](RECOVERY.md))
 - **Cross-flavor coverage gaps surfaced explicitly** — `gaps[]` in `find_wrappers_for_lcm` responses turns silent absence into actionable guidance
 - **Runtime primer pushed at session start** — the AI sees the conventions before authoring, not after a failure

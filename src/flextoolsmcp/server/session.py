@@ -178,6 +178,14 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "nested_unit_of_work gate) or project.Transaction() (opens no unit "
         "of work)."
     ),
+    "requires_exclusive_access": (
+        # specs/exclusive-access-gate FR-010: the script is correct; only
+        # FieldWorks being open blocks it.
+        "ask the user to close FieldWorks, wait until they confirm, then "
+        "re-submit the identical call. Do not rewrite the script to avoid the "
+        "gate, and do not ask them to close FieldWorks for ordinary edits. "
+        "Tell them they can reopen FieldWorks once the run finishes."
+    ),
 }
 
 

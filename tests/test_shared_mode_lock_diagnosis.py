@@ -106,13 +106,23 @@ class TestLockDiagnosisWiring(unittest.TestCase):
         self.assertNotIn("verdict", diag)
         self.assertNotIn("remedy", diag)
 
-    def test_non_blocking_verdicts_fall_back_to_generic_hint(self):
-        for verdict in ("free", "open_shared"):
-            with self.subTest(verdict=verdict):
-                diag = self._diagnose(_access(verdict, sharing=True))
-                assert diag is not None
-                self.assertIn("Close FieldWorks", diag["hint"])
-                self.assertNotIn("verdict", diag)
+    def test_free_falls_back_to_generic_hint(self):
+        diag = self._diagnose(_access("free", sharing=True, holder=False))
+        assert diag is not None
+        self.assertIn("Close FieldWorks", diag["hint"])
+        self.assertNotIn("verdict", diag)
+
+    def test_open_shared_does_not_say_close_fieldworks(self):
+        """exclusive-access-gate scenario 2.2 / FR-011: with sharing on, the
+        lock file is not the cause of an open failure, so telling the user to
+        close FieldWorks sends them down the wrong road."""
+        diag = self._diagnose(_access("open_shared", sharing=True))
+        assert diag is not None
+        self.assertNotIn("Close FieldWorks", diag["hint"])
+        self.assertNotIn("close FieldWorks and retry", diag["hint"].lower())
+        self.assertIn("sharing on", diag["hint"])
+        self.assertIn("closing FieldWorks is not required", diag["hint"])
+        self.assertNotIn("verdict", diag)
 
     def test_unrelated_error_still_returns_none(self):
         from server.handlers.execution import _diagnose_project_open_error

@@ -81,6 +81,16 @@ Two deprecations, both with removal at `tool-responses/2.0`:
 Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
 4.11.0.
 
+One new error code lands: `requires_exclusive_access` (a write-enabled script
+that changes writing systems or custom fields while FieldWorks holds the
+project, carrying `guidance`, `verdict`, `holder_pid`, `holder_process`,
+`operations` and `remedy`). The error code count in `docs/TOOL-CONTRACT.md`
+moves from 47 to 49 (`unknown_method`, #306, took it to 47; `unknown_import`,
+#305, lands alongside this change). `validate_only`
+gains `project_lock.exclusive_access` (`required`, `operations`, `blocking`). Existing keys are unchanged; only the
+text of the `open_shared` `shared_mode` advisory and of the `open_shared`
+project-open diagnosis changes.
+
 ### Fixed
 
 - Guessed `project.<Name>Operations` accessors now get the real accessor
@@ -121,8 +131,9 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   installed flexicon package statically and never imports it. It falls back
   to the API index, and when neither is available it is skipped. A runtime
   `ImportError` on a flexicon name now carries the same candidates
-  (`error_type: "UnknownImportError"`, `did_you_mean`, `help`). The
-  error-code count in `docs/TOOL-CONTRACT.md` moves from 47 to 48.
+   (`error_type: "UnknownImportError"`, `did_you_mean`, `help`). The
+   error-code count in `docs/TOOL-CONTRACT.md` moves from 47 to 49
+   (with `requires_exclusive_access` landing alongside).
 - `flextools_run_module`'s `unknown_method` rejection
   ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306)) now has
   a retry-loop assistance hint (pick from `did_you_mean`; a guard or a
@@ -393,6 +404,49 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   class name. `project.Segments.GetAll(paragraph)` (it takes the owning
   IStTxtPara) is no longer rejected, and neither are about 88 other flexicon
   methods that take an owner or related object.
+- `flextools_run_module` refuses writing-system and custom-field changes while
+  FieldWorks has the project open (specs/exclusive-access-gate). A
+  write-enabled script that creates, deletes or modifies a writing system, or
+  creates, deletes or renames a custom field, is refused with the new
+  `requires_exclusive_access` error when the access probe says FieldWorks
+  holds the project with sharing on (`open_shared`), or cannot confirm it is
+  closed (`unknown`). From a peer, those changes crash FLEx (writing systems)
+  or are silently lost (custom-field definitions). The refusal comes before
+  the confirmation step, the backup and the run. Recovery: close FieldWorks,
+  re-submit the same call, reopen FieldWorks. Detection covers the flexicon
+  wrappers through every receiver shape the read-only certifier resolves
+  (accessor, alias, facade, `XOperations(project)`) and raw LCM names, plus
+  `Create`/`Delete` on a `.WritingSystems` receiver the certifier cannot type
+  (a helper's `p.WritingSystems`, or a local name bound from one); setting
+  a custom field's value stays an ordinary edit. A write-enabled run that
+  certified read-only is still probed when it contains such a call.
+  `open_exclusive` / `held_by_other` keep `project_locked`, and read-only runs
+  are never gated. `validate_only` reports the same decision as
+  `project_lock.exclusive_access.blocking`. The `open_shared` advisory now
+  points at this refusal instead of warning after the fact, and an
+  `open_shared` project-open failure no longer says "Close FieldWorks and
+  retry". Docs: the remaining undo claims are gone (`workflow-summary.md`
+  Stage 6, the style guide's safety ladder, `flextools_start`'s description),
+  and `docs/SHARED-MODE.md` documents the refusal, how to see an MCP change in
+  FLEx (navigate away and back; F5 alone is not enough), and why FLEx's Undo
+  cannot reverse an MCP write.
+- `WritingSystems.Ensure()` is checked first instead of refused outright
+  while FieldWorks has the project open. When `Ensure()` calls are a script's
+  only writing-system changes, the server reads the project's active
+  writing-system lists from its `.fwdata` just before the run (about 150 ms,
+  then cached until the file changes; the project is not opened):
+  - an already-active tag runs normally (the result carries
+    `exclusive_access`);
+  - a tag that would be added is refused up front, with the reason;
+  - a non-literal tag, or an unreadable file, is left to flexicon's peer
+    schema guard, which refuses the call at the moment it would write. That
+    refusal comes back as `requires_exclusive_access` with `stage: runtime`.
+
+  `validate_only` makes the same decision from the same read. The guard is
+  also on for every other write-enabled run while FieldWorks holds the
+  project, as a backstop. A warning names any `Ensure()` that comes after
+  other writes. This needs a flexicon with the `peer-schema-guard`
+  capability. Without it, `Ensure()` is refused as before.
 
 ## [2.14.0] - 2026-09-27
 

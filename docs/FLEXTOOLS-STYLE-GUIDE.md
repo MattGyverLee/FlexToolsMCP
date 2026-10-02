@@ -683,16 +683,16 @@ changes what a subsequent real run is allowed to do.
 
 ## Write-Path Safety Ladder
 
-Three layers protect a mutating run, in addition to the `if modifyAllowed:`
-guard checked above:
+Two layers protect a mutating run, in addition to the `if modifyAllowed:`
+guard checked above and the `requires_exclusive_access` refusal for
+writing-system and custom-field changes while FieldWorks has the project open
+([SHARED-MODE.md](SHARED-MODE.md)):
 
-1. **Undoable by default.** `flextools_start(write_enabled=True)` opens the
-   project with `undoable=True` (LCM's persistent undo stack, matching FLEx
-   UI Ctrl+Z) unless you explicitly pass `undoable=False`. This means
-   `flextools_undo_last_operation` can reverse a write from a later session.
-   The session-local checkpoint log is capped at 500 entries -- past that,
-   the oldest LOCAL checkpoint record is silently evicted (the real LCM undo
-   stack itself is unbounded and unaffected).
+1. **There is no undo.** LCM keeps its undo stack in memory, and every
+   `run_module` call runs in a fresh process, so nothing survives to undo
+   (FLEx's own Edit > Undo cannot reverse an MCP write either). Your safety
+   nets are the automatic pre-write backup below and, for Send/Receive
+   projects, the repository. See [RECOVERY.md](RECOVERY.md).
 
 2. **Automatic pre-write backup.** Before the FIRST mutating run per
    (session, project), the server copies the project's `.fwdata` to

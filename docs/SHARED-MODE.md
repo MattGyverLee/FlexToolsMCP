@@ -6,7 +6,9 @@ one project setting: **project sharing**. This page explains what works with
 FLEx open, what does not and why, and how to turn sharing on.
 
 Tracked as issue #93. The design record, with source citations for every
-claim below, is `specs/_archive/shared-mode-access/spec.md`.
+claim below, is `specs/_archive/shared-mode-access/spec.md`; the
+writing-system and custom-field refusal is
+`specs/exclusive-access-gate/spec.md`.
 
 ## The short version
 
@@ -17,7 +19,8 @@ claim below, is `specs/_archive/shared-mode-access/spec.md`.
 | Open | off | refused, with the enable-sharing steps below | refused, with the enable-sharing steps below |
 
 Two kinds of change must **not** be made while FLEx has the project open,
-even with sharing on: **custom fields** and **writing systems**. See
+even with sharing on: **custom fields** and **writing systems**. The server
+refuses them with `requires_exclusive_access`. See
 [Close FLEx for these](#close-flex-for-these).
 
 ## Why sharing matters
@@ -57,7 +60,7 @@ is one of these verdicts, reported by `flextools_health(verbose=True)` under
 | Verdict | Meaning | Write behavior |
 |---|---|---|
 | `free` | No lock file | proceeds |
-| `open_shared` | FLEx has it open, sharing on | proceeds, with a `shared_mode` note on the result |
+| `open_shared` | FLEx has it open, sharing on | proceeds, with a `shared_mode` note on the result; writing-system and custom-field changes are refused as `requires_exclusive_access` |
 | `stale_lock` | Lock names a process that is no longer running | proceeds; LCM treats a stale lock as free |
 | `open_exclusive` | FLEx has it open, sharing off (or the lock file is unreadable) | refused as `project_locked`, with the enable-sharing steps |
 | `held_by_other` | A live process that is not FLEx, and not one of this server's own parse workers, holds it: usually a leftover FLExTools/MCP subprocess, another MCP server or Claude session, or a FLExTools GUI run | refused as `project_locked`; enabling sharing does not help. This server's own idle workers are released before the refusal, so its `next_steps` say to retry after the holder exits, or ask the user to close the other session or end the PID in Task Manager |
@@ -73,20 +76,72 @@ no FieldWorks or python process is running, delete it yourself.
 
 ## Close FLEx for these
 
-Some changes a peer cannot make safely. Until the planned refusal gate
-(`requires_exclusive_access`, CP5) ships, **nothing in the server refuses
-these** while FLEx is open. Close FLEx first, make the change, then reopen
-FLEx.
+Some changes a peer cannot make safely. A write-enabled `run_module` whose
+script makes one of them is **refused** with `requires_exclusive_access`
+while FLEx has the project open with sharing on (verdict `open_shared`), or
+when the server cannot confirm FLEx is closed (verdict `unknown`). The
+refusal comes before the confirmation step, the backup and the run, so
+nothing has happened yet. To recover:
+
+1. Close FLEx (all windows for this project).
+2. Re-submit the **same** `run_module` call, unchanged. Do not rewrite the
+   script to get around the refusal.
+3. Reopen FLEx after the run finishes.
+
+`validate_only` reports the same decision ahead of time as
+`project_lock.exclusive_access.blocking`. Read-only runs are never refused
+for this. Ordinary edits are never refused for this either: closing FLEx is
+needed only for the changes below.
 
 | Change | What goes wrong from a peer | Evidence |
 |---|---|---|
-| **Custom field** create, delete or rename | *Silently lost.* Only the master writes custom-field definitions to disk, and the commit log has nowhere to carry them, so the field is gone after the next restart with no error. FLEx blocks its own Custom Fields dialog in the same situation. | `SharedXMLBackendProvider.cs:408,478`; `CommitLogRecord.cs:17-49`; `XWorksViewBase.cs:715` |
-| **Writing system** add or modify | *Crashes FLEx.* The change reaches disk, then the running FLEx throws `NullReferenceException` in `WritingSystemListHandler.AddWritingSystemList` (`TextListeners.cs:286`). Seen live on FieldWorks 9.3.10. | `specs/_archive/shared-mode-access/evidence/live-cp4.md`, Item 5 |
+| **Custom field** create, delete or rename (`CustomFieldOperations.CreateField` / `DeleteField` / `SetFieldName`; raw `AddCustomField`, `UpdateCustomField`, `DeleteCustomField`, `MarkForDeletion`) | *Silently lost.* Only the master writes custom-field definitions to disk, and the commit log has nowhere to carry them, so the field is gone after the next restart with no error. FLEx blocks its own Custom Fields dialog in the same situation. | `SharedXMLBackendProvider.cs:429,479`; `CommitLogRecord.cs:23-48`; `XWorksViewBase.cs:715` |
+| **Writing system** add, delete or modify (`WritingSystemOperations.Create` / `Ensure` / `Delete` / `SetFontName` / `SetFontSize` / `SetRightToLeft` / `SetDefaultVernacular` / `SetDefaultAnalysis`; the raw writing-system manager, lists and services) | *Crashes FLEx.* The change reaches disk, then the running FLEx throws `NullReferenceException` in `WritingSystemListHandler.AddWritingSystemList` (`TextListeners.cs:286`). Seen live on FieldWorks 9.3.10. | `specs/_archive/shared-mode-access/evidence/live-cp4.md`, Item 5 |
 
-The custom-field row comes from reading the LCM source; it has not been
-reproduced live. Today flexicon's `CustomFieldOperations.CreateField` fails
-with `FP_TransactionError` whether or not FLEx is open, so that route cannot
-lose data yet.
+The full list, with the raw LCM names, is
+`EXCLUSIVE_ONLY_OPERATIONS` in `src/flextoolsmcp/server/exclusive_access.py`.
+Setting a custom field's **value** (`CustomFieldOperations.SetValue` and the
+other value methods) is an ordinary edit and is not refused.
+
+### `WritingSystems.Ensure()` is checked first
+
+`Ensure()` changes nothing when the writing system is already active in the
+category you ask for. A script whose only writing-system calls are
+`Ensure()` is not refused outright while FLEx is open:
+
+- Just before the run, the server reads the project's **active**
+  writing-system lists straight from its `.fwdata` file. It does not open the
+  project. The `.ldml` files in `WritingSystemStore` are not enough for this:
+  a writing system can have an `.ldml` and still be inactive, and `Ensure()`
+  would then activate it. The result is kept until the file changes, so most
+  calls cost a single file-timestamp check. Any save by FLEx, and any MCP
+  write, refreshes it.
+- An `Ensure('en', 'English', is_vernacular=False)` whose tag is already
+  active in that category runs normally. A tag that would be added, or added
+  to the other category, is refused up front with the reason. Remember that
+  `is_vernacular` defaults to True.
+- If the tag is not a plain literal (for example a variable), or the file
+  could not be read, the run goes ahead, and flexicon's peer schema guard
+  refuses that `Ensure()` at the moment it would write, before anything
+  changes. The same guard also covers a file that lags FLEx, for example a
+  writing system removed in FLEx but not yet saved.
+- `validate_only` makes the same decision from the same file read.
+
+This needs a flexicon that offers the peer schema guard (capability
+`peer-schema-guard`). Without it, `Ensure()` is refused like the other
+changes above. Put `Ensure()` calls at the top of the script: if one is
+refused part way through a run, writes the script made before it have
+already been saved. The server warns when an `Ensure()` comes after other
+writes. Every other write-enabled run while FLEx is open also has the guard
+on, as a backstop.
+
+The custom-field row was seen live on 2026-10-02. A second program added a
+custom-field definition the way FLEx's own dialog does, and committed. The
+definition never appeared in the open FLEx's Custom Fields dialog, nor to a
+fresh reader, nor on disk, and it was gone after FLEx closed
+(`specs/exclusive-access-gate/evidence/live-gate.md`, V7). Today flexicon's
+`CustomFieldOperations.CreateField` fails with `FP_TransactionError` whether
+or not FLEx is open, so that wrapper cannot lose data yet; raw LCM calls can.
 
 These are known to be fine from a peer:
 
@@ -114,6 +169,16 @@ committed. Results in this situation carry a `shared_mode_read_back` note.
 Do not treat such a read as proof that a write was lost, and do not retry the
 write because of it. Check the FLEx UI instead.
 
+## Seeing an MCP change in FLEx
+
+If FLEx was open when the MCP made the change, FLEx picks it up when it next
+refreshes the view you are on. **Navigate away and back** (for example, click
+another entry and then return) to see it. Pressing **F5** alone is not enough
+(#96).
+
+If FLEx was closed, or you close and reopen it, there is nothing to do: a
+fresh start always shows the current data.
+
 ## Retrying after `ReportedError`
 
 A run whose script called `report.Error()` comes back with `success: false`
@@ -128,24 +193,41 @@ retrying:
 - Only idempotent setters (`SetGloss`, `SetLexemeForm`, and similar) are safe
   to re-run as-is. Otherwise, re-run only the items that failed.
 
-## Known hazard: save conflicts
+## Save conflicts
 
-flexicon opens projects with a UI helper (`FwLcmUI`, `FLExLCM.py:88`). If LCM
-detects a save conflict it calls `ConflictingSave()`, which tries to show a
-modal dialog with no close box from the server's hidden subprocess
-(`FwLcmUI.cs:47`). Nobody can answer it; the default answer discards the
-peer's writes (`RevertToSavedState()`). Separately, a message LCM posts from
-its commit thread can deadlock because the subprocess has no message loop.
+If LCM detects a save conflict it calls the UI helper's `ConflictingSave()`.
+flexicon used to open projects with FieldWorks' `FwLcmUI`, which tries to
+show a modal dialog from the server's hidden subprocess (`FwLcmUI.cs:47`):
+nobody could answer it, and the default answer discarded the peer's writes.
+A message LCM posts from its commit thread could also deadlock, because the
+subprocess has no message loop.
 
-What protects you today: every run has a timeout, after which the server
-kills the subprocess and its children. If a run with FLEx open hangs until
-the timeout, assume its writes did not land, and check the FLEx UI. The fix
-belongs in flexicon (upstream issue not yet filed).
+Already fixed in flexicon 4.6.0 (flexicon#285): `HeadlessLcmUI` is now the
+default UI. A save conflict raises `FP_ConflictingSaveError`, so the run fails
+with an error instead of hanging, and messages are marshalled through
+`SingleThreadedSynchronizeInvoke` instead of a message loop. Every supported
+install is on a later flexicon. If a run with FLEx open still fails this way,
+assume its writes did not land, and check the FLEx UI. Every run also has a
+timeout, after which the server kills the subprocess and its children.
 
 ## Undo
 
-There is no undo tool. LCM keeps its undo stack in memory only, and each
-`run_module` call runs in a fresh process, so nothing survives to undo. The
-old `flextools_undo_last_operation` tool never worked and was removed (#92).
-Your safety nets are the automatic backup and, for Send/Receive projects,
-the repository.
+There is no undo for an MCP write, from either side:
+
+- **No MCP undo.** LCM keeps its undo stack in memory only, and each
+  `run_module` call runs in a fresh process, so nothing survives to undo. The
+  old `flextools_undo_last_operation` tool never worked and was removed (#92).
+- **FLEx starts with an empty undo history.** Each time FLEx opens a project
+  its undo stacks are new and empty; no undo history is saved with the
+  project (`UnitOfWorkService.cs:169-172`).
+- **FLEx records peer writes as non-undoable.** When FLEx picks up a peer's
+  change, it wraps it in a non-undoable unit of work
+  (`ChangeReconciler.cs:200-204`, `UndoStack.cs:859-870`). So Edit > Undo in
+  FLEx does not offer an MCP change, whether FLEx was open or closed when it
+  was made.
+- **Programmatic undo is not built.** Under `undoable=True` LCM keeps an undo
+  stack inside one `run_module` process, so a script could in principle undo
+  its own work before it exits. The server offers no such feature.
+
+Your safety nets are the automatic pre-write backup and, for Send/Receive
+projects, the repository. See [RECOVERY.md](RECOVERY.md).

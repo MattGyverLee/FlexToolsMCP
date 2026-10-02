@@ -6310,46 +6310,91 @@ def _is_local_container_constructor(value: ast.AST) -> bool:
 
 
 def _collect_local_container_names(tree: ast.AST) -> Set[str]:
-    """Names bound to locally constructed containers (issue #126).
+    """Names bound ONLY to locally constructed containers (issues #126, #350).
 
-    Reassigning a name to a non-local value removes it, so a variable that
-    later holds an LCM collection is not treated as local.
+    A name qualifies when every place it is stored -- anywhere in the tree --
+    binds a local container constructor (or another qualifying name). Any
+    other store disqualifies it, in particular:
+
+      - a ``for`` / comprehension target: the loop variable is an ELEMENT of
+        the iterable, not the iterable, so ``for coll in [e.SensesOS]:``
+        binds ``coll`` to a real LCM collection even though the iterable is a
+        list literal (issue #350);
+      - a tuple-unpacking target, ``with ... as``, a non-container right-hand
+        side, or a reassignment anywhere else in the script.
+
+    This is flow-insensitive on purpose: one non-local binding anywhere keeps
+    ``.Add`` on that name gated (the fail-closed direction), where "last
+    binding wins" let ``x = e.SensesOS; x.Add(s); x = []`` certify read-only.
     """
-    assigns, _, bindings = _collect_assign_call_nodes(tree)
-    binding_nodes = list(assigns) + list(bindings)
-    binding_nodes.sort(key=lambda n: getattr(n, "lineno", 0))
+    safe_values: Dict[int, ast.AST] = {}
+    store_nodes: Dict[str, List[ast.Name]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
+            for target, rhs in _iter_assign_pairs(node):
+                if isinstance(target, ast.Name):
+                    safe_values[id(target)] = rhs
+        elif isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
+            safe_values[id(node.target)] = node.value
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            store_nodes.setdefault(node.id, []).append(node)
+
     local: Set[str] = set()
-    for node in binding_nodes:
-        for target, rhs in _iter_assign_pairs(node):
-            if not isinstance(target, ast.Name):
+    changed = True
+    while changed:
+        changed = False
+        for name, stores in store_nodes.items():
+            if name in local:
                 continue
-            name = target.id
-            if _is_local_container_constructor(rhs):
+            if all(
+                id(store) in safe_values
+                and _is_local_container_value(safe_values[id(store)], local)
+                for store in stores
+            ):
                 local.add(name)
-            elif isinstance(rhs, ast.Name) and rhs.id in local:
-                local.add(name)
-            else:
-                local.discard(name)
+                changed = True
     return local
 
 
-def _lines_with_local_collection_mutations(tree: ast.AST) -> Set[int]:
-    """Line numbers where a collection-mutation call targets a local container."""
+def _is_local_container_value(rhs: ast.AST, local: Set[str]) -> bool:
+    if _is_local_container_constructor(rhs):
+        return True
+    return isinstance(rhs, ast.Name) and rhs.id in local
+
+
+def _local_collection_mutation_sites(code: str, tree: ast.AST) -> Set[Tuple[int, int]]:
+    """``(line, column)`` of each collection-mutation call on a local container.
+
+    Keyed by the call node rather than by line (issue #350): the column is the
+    character offset just past the method name, which is where a matching
+    ``.Add(`` pattern hit's ``start() + 1 + len(method)`` lands, so
+    ``tmp.Add(x); entry.SensesOS.Add(s)`` suppresses only the first call.
+    """
     local = _collect_local_container_names(tree)
     if not local:
         return set()
-    skip: Set[int] = set()
+    lines = code.split("\n")
+    sites: Set[Tuple[int, int]] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        if not isinstance(node.func, ast.Attribute):
+        func = node.func
+        if not isinstance(func, ast.Attribute):
             continue
-        if node.func.attr not in _COLLECTION_MUTATION_METHODS:
+        if func.attr not in _COLLECTION_MUTATION_METHODS:
             continue
-        recv = node.func.value
-        if isinstance(recv, ast.Name) and recv.id in local:
-            skip.add(node.lineno)
-    return skip
+        recv = func.value
+        if not (isinstance(recv, ast.Name) and recv.id in local):
+            continue
+        line_no = func.end_lineno or node.lineno
+        end_col = func.end_col_offset
+        if end_col is None or line_no - 1 >= len(lines):
+            continue
+        # ast columns are UTF-8 byte offsets; regex matches are str offsets.
+        line_bytes = lines[line_no - 1].encode("utf-8")
+        char_col = len(line_bytes[:end_col].decode("utf-8", errors="ignore"))
+        sites.add((line_no, char_col))
+    return sites
 
 
 def find_liblcm_mutations(
@@ -6377,9 +6422,9 @@ def find_liblcm_mutations(
     """
     mutations = []
 
-    skip_collection_lines: Set[int] = set()
+    skip_collection_sites: Set[Tuple[int, int]] = set()
     try:
-        skip_collection_lines = _lines_with_local_collection_mutations(ast.parse(code))
+        skip_collection_sites = _local_collection_mutation_sites(code, ast.parse(code))
     except SyntaxError:
         pass
 
@@ -6394,12 +6439,16 @@ def find_liblcm_mutations(
         line_content = line
 
         for pattern, method_name, category in patterns:
-            if (
-                method_name in _COLLECTION_MUTATION_METHODS
-                and line_num in skip_collection_lines
-            ):
-                continue
-            if re.search(pattern, line_content):
+            if method_name in _COLLECTION_MUTATION_METHODS and skip_collection_sites:
+                # Node-keyed (issue #350): report the line when ANY hit on it
+                # is not a local-container call.
+                hit = any(
+                    (line_num, m.start() + 1 + len(method_name)) not in skip_collection_sites
+                    for m in re.finditer(pattern, line_content)
+                )
+            else:
+                hit = re.search(pattern, line_content) is not None
+            if hit:
                 raw_context = (
                     original_lines[line_num - 1]
                     if line_num - 1 < len(original_lines)

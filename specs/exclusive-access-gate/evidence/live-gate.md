@@ -173,10 +173,31 @@ taken just before V8b is `~/.flextoolsmcp/backups/Sena 3/20261001T163719Z`.
 Lesson for the driver: probe and print the verdict, and refuse to run a V8
 step unless it is `open_shared`.
 
+## V3: FLEx closed -- PASS (closed 2026-10-02)
+
+- Run: `Ensure('en', analysis)` with FieldWorks closed (`verdict: free`,
+  `op-113709844`). The gate did not apply, and the call wrote nothing
+  (`created=False`).
+- The maintainer then reopened FLEx on Sena 3: it opened cleanly, and
+  `qaa-x-zzexcl` (created and then deleted during the incident above) is not
+  listed among the writing systems.
+
+## V6: FLEx side -- PASS, with one caveat (2026-10-02, maintainer)
+
+- After reopening FLEx, the `zzExclTest` entry shows its gloss `zzgloss-v4`,
+  the MCP peer write from V4. It persisted across a FLEx close and reopen.
+- Edit > Undo is empty on open. This confirms the "FLEx starts with an empty
+  undo history" fact in SHARED-MODE.md.
+- **Caveat.** Because FLEx had been reopened, this round did not re-test,
+  within one running FLEx session, either that the change appears after
+  navigating away and back (and not on F5 alone, #96), or that Undo omits
+  the peer write. The docs cite #96 for the first, and LCM source (research
+  R4) for the second.
+
 ## Pending
 
-- V6 (FLEx side: navigate away and back, Edit > Undo): needs the maintainer.
-- V7 add, then check the Custom Fields dialog, close and reopen FLEx, then
-  `check`.
-- V3 (FLEx closed: re-submit V1).
-- Cleanup of `zzExclTest` (entry, and the custom field if it survived).
+- V7: add the custom-field definition, check the Custom Fields dialog,
+  close and reopen FLEx, then `check`.
+- Cleanup: the `zzExclTest` entry; the custom field if it survived; the
+  `qaa-x-zzexcl` `.ldml` and `idchangelog` residue (awaiting the
+  maintainer's decision).

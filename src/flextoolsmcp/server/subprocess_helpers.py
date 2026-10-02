@@ -26,6 +26,31 @@ _log = logging.getLogger(__name__)
 _STREAM_LIMIT_BYTES = 64 * 1024 * 1024
 
 
+def utf8_child_env(base: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    """Child-process environment with UTF-8 forced on.
+
+    Issue #320: the ``run_module`` runner executes user scripts in a child
+    process with ``env=None`` (plain inheritance). On a Windows console the
+    inherited locale is cp1252, so a script that writes non-ASCII text with a
+    plain ``open(path, "w")`` -- e.g. U+02BC MODIFIER LETTER APOSTROPHE,
+    common in minority-language orthographies -- dies with
+    ``UnicodeEncodeError: 'charmap' codec can't encode character``.
+
+    ``PYTHONUTF8=1`` puts the child in UTF-8 mode (``open()`` defaults to
+    UTF-8, stdio is UTF-8); ``PYTHONIOENCODING=utf-8`` covers stdio that is
+    configured before UTF-8 mode takes effect. This mirrors the
+    ``PYTHONIOENCODING`` the server already sets for its other child
+    processes (refresh.py, project_discovery.py, server.py, the parse
+    worker), and adds the UTF-8-mode flag those do not set.
+
+    Built on top of ``os.environ`` (or ``base``) so nothing else is dropped.
+    """
+    env = dict(base if base is not None else os.environ)
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
+    return env
+
+
 def _kill_process_tree(pid: int) -> None:
     """Kill a process and all of its descendants.
 
@@ -73,7 +98,11 @@ async def run_script_async(
     Args:
         script_path: Full path to the Python script to run
         timeout_seconds: Maximum execution time before terminating
-        env: Optional environment variables dict
+        env: Optional environment variables dict. When None, the child
+            inherits ``os.environ`` with UTF-8 forced on via
+            :func:`utf8_child_env` (issue #320) so non-ASCII writes cannot
+            fail with a cp1252 ``UnicodeEncodeError`` on Windows. An
+            explicitly passed env is used verbatim.
 
     Returns:
         Dict with keys:
@@ -91,6 +120,13 @@ async def run_script_async(
     extra_kwargs: Dict[str, Any] = {}
     if sys.platform != "win32":
         extra_kwargs["start_new_session"] = True
+
+    if env is None:
+        # Issue #320: run_module/run_scan_module children inherit the
+        # parent env otherwise, which on Windows is cp1252 -- plain
+        # open(path, "w") writes of non-ASCII text then raise
+        # UnicodeEncodeError. Force UTF-8 mode on the child.
+        env = utf8_child_env()
 
     try:
         process = await asyncio.create_subprocess_exec(

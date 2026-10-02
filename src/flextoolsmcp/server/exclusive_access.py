@@ -274,6 +274,14 @@ def _wrapper_matches(cert: dict) -> List[ExclusiveOnlyMatch]:
                 op = by_class_method.get((cls, method))
             elif _is_unresolved_row(row):
                 op = by_name.get(method)
+                if op is not None and op.conditional:
+                    # A conditional Ensure() on an unknown receiver needs
+                    # receiver evidence -- a resolved WritingSystemOperations
+                    # class (handled above) or a `.WritingSystems` facade in
+                    # the source (matched by _facade_generic_matches). Matching
+                    # by method name alone refuses unrelated Ensure() calls
+                    # (e.g. on a user-defined cache) while FieldWorks is open.
+                    op = None
             else:
                 op = None
             if op is not None:
@@ -281,82 +289,140 @@ def _wrapper_matches(cert: dict) -> List[ExclusiveOnlyMatch]:
     return out
 
 
-def _facade_attr_aliases(scope: ast.AST, attrs: Set[str], inherited: Dict[str, str]) -> Dict[str, str]:
-    """Local names bound to `<x>.<facade attr>` (or to such a name).
+def _scope_param_names(scope: ast.AST) -> Set[str]:
+    """Parameter names of a function/lambda scope (they shadow outer aliases)."""
+    args = getattr(scope, "args", None)
+    if args is None:
+        return set()
+    names = [a.arg for a in (*args.posonlyargs, *args.args, *args.kwonlyargs)]
+    if args.vararg is not None:
+        names.append(args.vararg.arg)
+    if args.kwarg is not None:
+        names.append(args.kwarg.arg)
+    return set(names)
 
-    `w = p.WritingSystems` -> {"w": "WritingSystems"}; a `for w in
-    [p.WritingSystems]` loop over a literal list/tuple binds the same way.
-    Unlike `_receiver_aliases`, only a value that IS the attribute counts:
-    `w = p.WritingSystems.GetAll()` is a list of writing systems, not the
-    facade.
+
+def _facade_binding_pairs(node: ast.AST) -> List[Tuple[str, ast.AST]]:
+    """`(name, value)` pairs a binding node assigns, in source order."""
+    if isinstance(node, ast.Assign):
+        return [(t.id, node.value) for t in node.targets if isinstance(t, ast.Name)]
+    if isinstance(node, (ast.AnnAssign, ast.NamedExpr)) and node.value is not None:
+        if isinstance(node.target, ast.Name):
+            return [(node.target.id, node.value)]
+        return []
+    if isinstance(node, (ast.For, ast.AsyncFor)) and isinstance(node.target, ast.Name):
+        if isinstance(node.iter, (ast.List, ast.Tuple, ast.Set)):
+            return [(node.target.id, elt) for elt in node.iter.elts]
+    return []
+
+
+def _sweep_facade_scope(
+    scope: ast.AST, attrs: Set[str], inherited: Dict[str, str]
+) -> Tuple[Dict[str, str], List[Tuple[ast.AST, Optional[str]]]]:
+    """Source-ordered sweep of one scope for facade-attribute evidence.
+
+    Returns the alias map as it stands after the scope's last binding, plus
+    every `X.Method(...)` call in the scope paired with the facade attribute
+    its receiver resolved to *at that point* (`None` when there is none).
+
+    `w = p.WritingSystems` maps `"w"` to `"WritingSystems"`; a `for w in
+    [p.WritingSystems]` loop over a literal list/tuple/set binds the same
+    way, element by element. Unlike `_receiver_aliases`, only a value that
+    IS the attribute counts: `w = p.WritingSystems.GetAll()` is a list of
+    writing systems, not the facade.
+
+    A rebinding replaces the alias: after `w = p.WritingSystems` then
+    `w = p.LexEntry`, `w` carries no facade, so a later `w.Create(...)` is
+    an ordinary entry edit rather than a writing-system change. Rebinding
+    to a value that is not a facade attribute (or an alias of one) declines
+    to infer -- the name is dropped from the map. A `for` target over a
+    non-literal iterable is left alone (its values cannot be seen).
+    Function/lambda parameters shadow inherited aliases: a parameter named
+    like a module-level facade alias starts the scope unaliased.
     """
     aliases = dict(inherited)
-    pending: List[Tuple[str, ast.AST]] = []
+    for param in _scope_param_names(scope):
+        aliases.pop(param, None)
+
+    events: List[ast.AST] = []
     for node in _scope_nodes(scope):
-        if isinstance(node, ast.Assign):
-            pending.extend(
-                (t.id, node.value) for t in node.targets if isinstance(t, ast.Name)
-            )
-        elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)) and node.value is not None:
-            if isinstance(node.target, ast.Name):
-                pending.append((node.target.id, node.value))
-        elif isinstance(node, (ast.For, ast.AsyncFor)) and isinstance(node.target, ast.Name):
-            if isinstance(node.iter, (ast.List, ast.Tuple, ast.Set)):
-                pending.extend((node.target.id, elt) for elt in node.iter.elts)
-    changed = True
-    while changed:
-        changed = False
-        for name, value in pending:
-            if name in aliases:
-                continue
-            hit = None
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            events.append(node)
+        elif _facade_binding_pairs(node):
+            events.append(node)
+    events.sort(key=lambda n: (
+        getattr(n, "lineno", 0) or 0, getattr(n, "col_offset", 0) or 0,
+    ))
+
+    calls: List[Tuple[ast.AST, Optional[str]]] = []
+    for node in events:
+        if isinstance(node, ast.Call):
+            receiver = node.func.value  # type: ignore[union-attr]
+            if isinstance(receiver, ast.Attribute) and receiver.attr in attrs:
+                calls.append((node, receiver.attr))
+            elif isinstance(receiver, ast.Name):
+                calls.append((node, aliases.get(receiver.id)))
+            else:
+                calls.append((node, None))
+            continue
+        for name, value in _facade_binding_pairs(node):
             if isinstance(value, ast.Attribute) and value.attr in attrs:
-                hit = value.attr
+                aliases[name] = value.attr
             elif isinstance(value, ast.Name) and value.id in aliases:
-                hit = aliases[value.id]
-            if hit is not None:
-                aliases[name] = hit
-                changed = True
-    return aliases
+                aliases[name] = aliases[value.id]
+            else:
+                # Rebound to something that is not the facade: decline to
+                # infer the receiver's facade from this name on.
+                aliases.pop(name, None)
+    return aliases, calls
 
 
 def _facade_generic_matches(tree: ast.AST) -> List[ExclusiveOnlyMatch]:
-    """Generic wrapper names (`Create`/`Delete`) on a receiver the certifier
-    could not type but whose source names the facade attribute: directly
-    (`p.WritingSystems.Delete(...)`) or through a local alias. Matched as
-    `wrapper` rows, so the refusal reads the same as for a typed receiver."""
+    """Generic wrapper names (`Create`/`Delete`), and conditional `Ensure()`,
+    on a receiver the certifier could not type but whose source names the
+    facade attribute: directly (`p.WritingSystems.Delete(...)`) or through a
+    local alias. Matched as `wrapper` rows, so the refusal reads the same as
+    for a typed receiver.
+
+    The alias map is swept in source order, so a rebinding replaces the
+    alias (`w = p.WritingSystems` then `w = p.LexEntry` leaves `w` with no
+    facade) and a shadowing parameter hides an inherited one.
+    """
     by_attr_method: Dict[Tuple[str, str], ExclusiveOnlyOperation] = {}
+    ensure_op: Optional[ExclusiveOnlyOperation] = None
     for op in EXCLUSIVE_ONLY_OPERATIONS:
         if op.wrapper is None or op.wrapper[0] not in _FACADE_ATTRS:
             continue
+        attr = _FACADE_ATTRS[op.wrapper[0]]
         for method in op.wrapper[1] & _GENERIC_WRAPPER_NAMES:
-            by_attr_method[(_FACADE_ATTRS[op.wrapper[0]], method)] = op
-    if not by_attr_method:
+            by_attr_method[(attr, method)] = op
+        if "Ensure" in op.wrapper[1] and op.conditional:
+            ensure_op = op
+    if not by_attr_method and ensure_op is None:
         return []
     attrs = {attr for attr, _ in by_attr_method}
+    if ensure_op is not None:
+        attrs.add(_FACADE_ATTRS[ensure_op.wrapper[0]])  # type: ignore[index]
 
     out: List[ExclusiveOnlyMatch] = []
-    module_aliases = _facade_attr_aliases(tree, attrs, {})
+    module_aliases, module_calls = _sweep_facade_scope(tree, attrs, {})
     scopes = [tree] + [n for n in ast.walk(tree) if isinstance(n, _SCOPE_TYPES[1:])]
     for scope in scopes:
-        aliases = (
-            module_aliases if scope is tree
-            else _facade_attr_aliases(scope, attrs, module_aliases)
+        calls = (
+            module_calls if scope is tree
+            else _sweep_facade_scope(scope, attrs, module_aliases)[1]
         )
-        for node in _scope_nodes(scope):
-            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+        for node, attr in calls:
+            if attr is None:
                 continue
-            receiver = node.func.value
-            if isinstance(receiver, ast.Attribute) and receiver.attr in attrs:
-                attr = receiver.attr
-            elif isinstance(receiver, ast.Name) and receiver.id in aliases:
-                attr = aliases[receiver.id]
-            else:
-                continue
-            op = by_attr_method.get((attr, node.func.attr))
+            method = node.func.attr  # type: ignore[union-attr]
+            op = by_attr_method.get((attr, method))
+            if op is None and ensure_op is not None and method == "Ensure":
+                if attr == _FACADE_ATTRS[ensure_op.wrapper[0]]:  # type: ignore[index]
+                    op = ensure_op
             if op is not None:
                 out.append(_match(
-                    op, f"{op.wrapper[0]}.{node.func.attr}",
+                    op, f"{op.wrapper[0]}.{method}",  # type: ignore[index]
                     getattr(node, "lineno", None), "wrapper",
                 ))
     return out
@@ -647,6 +713,12 @@ def ensure_call_args(tree: Optional[ast.AST]) -> Dict[int, List[Optional[Tuple[s
 
     A call whose tag or `is_vernacular` is not a literal maps to None (decided
     at run time). `is_vernacular` defaults to True, as in flexicon.
+
+    A call with unpacked arguments (`*args`) or unpacked keywords (`**kwargs`)
+    also maps to None: the expansion can carry `is_vernacular` (or shift the
+    positional slots), so the effective arguments cannot be proven from the
+    source. Such calls are deferred to the runtime peer guard instead of
+    being judged against the wrong category's active list.
     """
     out: Dict[int, List[Optional[Tuple[str, bool]]]] = {}
     if tree is None:
@@ -654,6 +726,12 @@ def ensure_call_args(tree: Optional[ast.AST]) -> Dict[int, List[Optional[Tuple[s
     for node in ast.walk(tree):
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
                 and node.func.attr == "Ensure"):
+            continue
+        if any(isinstance(a, ast.Starred) for a in node.args) or any(
+            kw.arg is None for kw in node.keywords
+        ):
+            # `*args` / `**kwargs`: effective arguments unknowable statically.
+            out.setdefault(node.lineno, []).append(None)
             continue
         kwargs = {kw.arg: kw.value for kw in node.keywords if kw.arg}
         tag_node = node.args[0] if node.args else kwargs.get("language_tag")

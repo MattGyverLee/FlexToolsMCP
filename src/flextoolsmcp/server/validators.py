@@ -478,7 +478,10 @@ def detect_module_structure(code: str) -> dict:
 
 
 _DOCS_DICT_RE = re.compile(r'^\s*docs\s*=\s*\{', re.MULTILINE)
-_MODIFY_GUARD_RE = re.compile(r'\bif\s+(?:not\s+)?modifyAllowed\b')
+# Any `if` test that mentions modifyAllowed, so compound guards
+# (`if existing is None and modifyAllowed:`, issue #352) also mark the
+# scaffold as FTM_ModifiesDB.
+_MODIFY_GUARD_RE = re.compile(r'\bif\b[^\n:]*\bmodifyAllowed\b')
 
 _SCAFFOLD_IMPORT = "from flextoolslib import *"
 _SCAFFOLD_BINDING = "FlexToolsModule = FlexToolsModuleClass(Main, docs)"
@@ -6487,6 +6490,43 @@ def _is_project_receiver(node: ast.AST) -> bool:
     return False
 
 
+def _is_write_flag(node: ast.AST) -> bool:
+    """Bare ``modifyAllowed`` or the project's own ``writeEnabled`` flag."""
+    if isinstance(node, ast.Name):
+        return node.id == 'modifyAllowed'
+    if isinstance(node, ast.Attribute):
+        return node.attr == 'writeEnabled' and _is_project_receiver(node.value)
+    return False
+
+
+def _write_flag_compare_polarity(node: ast.Compare) -> Optional[bool]:
+    """Polarity of a ``<flag> ==/is/!=/is not <True|False>`` comparison.
+
+    Returns True when the comparison holding means writes are enabled
+    (``modifyAllowed == True``, ``modifyAllowed != False``), False when it
+    means they are disabled (``modifyAllowed is False``), and None for
+    anything else -- chained comparisons, ordering operators, or a non-literal
+    other side (``modifyAllowed == other``), none of which is a guard.
+    """
+    if len(node.ops) != 1 or len(node.comparators) != 1:
+        return None
+    left, right = node.left, node.comparators[0]
+    if _is_write_flag(left) and isinstance(right, ast.Constant):
+        const = right.value
+    elif _is_write_flag(right) and isinstance(left, ast.Constant):
+        const = left.value
+    else:
+        return None
+    if not isinstance(const, (bool, int)) or const not in (0, 1):
+        return None
+    op = node.ops[0]
+    if isinstance(op, (ast.Eq, ast.Is)):
+        return bool(const)
+    if isinstance(op, (ast.NotEq, ast.IsNot)):
+        return not const
+    return None
+
+
 def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]:
     """Find line ranges protected by modifyAllowed or modifyEnabled/writeEnabled guards.
 
@@ -6560,6 +6600,12 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             """Find 'if modifyAllowed:' or 'if project.writeEnabled:' blocks."""
             if self._is_write_enabled_check(node.test):
                 start_line = node.lineno
+                if isinstance(node.test, ast.BoolOp) and node.body:
+                    # Issue #352: a compound test can itself call a mutator
+                    # before the guard operand is evaluated
+                    # (`if x.Add(s) and modifyAllowed:`), so only the body
+                    # is protected, not the `if` line.
+                    start_line = node.body[0].lineno
                 # end_lineno includes the if line, body starts after
                 if node.body:
                     end_line = node.body[-1].end_lineno or start_line + 1000
@@ -6584,7 +6630,7 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             return False
 
         def _is_write_enabled_check(self, node):
-            """Check if condition checks 'modifyAllowed', 'project.writeEnabled', etc.
+            """True when ``node`` being truthy implies writes are enabled.
 
             Issue #121 sibling: `project.writeEnabled` / `self.project.writeEnabled`
             require the attribute's receiver to actually be the project (see
@@ -6592,68 +6638,41 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             attribute (e.g. `cfg.writeEnabled`) must not be accepted as a guard.
             The bare-name `modifyAllowed` form (FLExTools' standard parameter)
             is unaffected -- it has no receiver to check.
+
+            Issue #352: `modifyAllowed and <cond>` implies the flag, so an
+            `and` guards when ANY operand does; an `or` only when EVERY
+            operand does. Comparisons count only against a literal True/False
+            in the enabling direction -- `modifyAllowed == False` used to be
+            accepted here because ANY Compare mentioning the flag passed.
             """
-            # Pattern: modifyAllowed (name - FLExTools standard parameter)
-            if isinstance(node, ast.Name):
-                return node.id == 'modifyAllowed'
-
-            # Pattern: project.writeEnabled / self.project.writeEnabled (attribute)
-            if isinstance(node, ast.Attribute):
-                return node.attr == 'writeEnabled' and _is_project_receiver(node.value)
-
-            # Pattern: project.writeEnabled == True (compare)
+            if _is_write_flag(node):
+                return True
+            if isinstance(node, ast.BoolOp):
+                if isinstance(node.op, ast.And):
+                    return any(self._is_write_enabled_check(v) for v in node.values)
+                return all(self._is_write_enabled_check(v) for v in node.values)
+            if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+                return self._is_write_disabled_check(node.operand)
             if isinstance(node, ast.Compare):
-                # Check left side
-                if isinstance(node.left, ast.Attribute):
-                    if node.left.attr == 'writeEnabled' and _is_project_receiver(node.left.value):
-                        return True
-                if isinstance(node.left, ast.Name):
-                    if node.left.id == 'modifyAllowed':
-                        return True
-                # Check comparators
-                for comp in node.comparators:
-                    if isinstance(comp, ast.Attribute):
-                        if comp.attr == 'writeEnabled' and _is_project_receiver(comp.value):
-                            return True
-                    if isinstance(comp, ast.Name):
-                        if comp.id == 'modifyAllowed':
-                            return True
+                return _write_flag_compare_polarity(node) is True
             return False
 
         def _is_write_disabled_check(self, node):
-            """Negated write guard: ``if not modifyAllowed:`` / ``== False`` forms."""
+            """True when ``node`` being truthy implies writes are DISABLED.
+
+            The early-return idiom (#139): ``if not modifyAllowed: return``,
+            ``== False`` forms, and (#352) ``not modifyAllowed or <cond>`` --
+            an `or` is disabling when ANY operand is, an `and` only when
+            EVERY operand is.
+            """
             if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
                 return self._is_write_enabled_check(node.operand)
-            if isinstance(node, ast.Compare) and len(node.ops) == 1:
-                if not isinstance(node.ops[0], (ast.Eq, ast.Is)):
-                    return False
-                # Tuple (not set): False == 0 so {False, 0} is B033-duplicate.
-                false_val = (False, 0)
-                if (
-                    isinstance(node.left, ast.Name)
-                    and node.left.id == 'modifyAllowed'
-                    and node.comparators
-                    and isinstance(node.comparators[0], ast.Constant)
-                    and node.comparators[0].value in false_val
-                ):
-                    return True
-                if (
-                    isinstance(node.left, ast.Constant)
-                    and node.left.value in false_val
-                    and node.comparators
-                    and isinstance(node.comparators[0], ast.Name)
-                    and node.comparators[0].id == 'modifyAllowed'
-                ):
-                    return True
-                if isinstance(node.left, ast.Attribute):
-                    if (
-                        node.left.attr == 'writeEnabled'
-                        and _is_project_receiver(node.left.value)
-                        and node.comparators
-                        and isinstance(node.comparators[0], ast.Constant)
-                        and node.comparators[0].value in false_val
-                    ):
-                        return True
+            if isinstance(node, ast.BoolOp):
+                if isinstance(node.op, ast.Or):
+                    return any(self._is_write_disabled_check(v) for v in node.values)
+                return all(self._is_write_disabled_check(v) for v in node.values)
+            if isinstance(node, ast.Compare):
+                return _write_flag_compare_polarity(node) is False
             return False
 
     finder = ProtectionFinder()

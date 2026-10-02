@@ -666,6 +666,215 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
     return result
 
 
+_MAIN_PARAMS = ("project", "report", "modifyAllowed")
+_BARE_SNIPPET_MAX_LINES = 80
+
+
+def _is_scaffold_statement(node: ast.stmt) -> bool:
+    """A top-level ``docs = ...`` or ``X = FlexToolsModuleClass(...)`` binding."""
+    if not isinstance(node, ast.Assign):
+        return False
+    if any(isinstance(t, ast.Name) and t.id == "docs" for t in node.targets):
+        return True
+    value = node.value
+    if isinstance(value, ast.Call):
+        func = value.func
+        name = func.id if isinstance(func, ast.Name) else getattr(func, "attr", None)
+        return name == "FlexToolsModuleClass"
+    return False
+
+
+def _main_body_blocker(main: ast.FunctionDef) -> Optional[str]:
+    """Why Main's body cannot be lifted to module level, or None if it can."""
+    if main.decorator_list:
+        return "Main has decorators"
+    a = main.args
+    if a.vararg or a.kwarg or a.kwonlyargs or a.defaults or getattr(a, "posonlyargs", None):
+        return "Main's signature is not (project, report, modifyAllowed)"
+    names = [arg.arg for arg in a.args]
+    if len(names) > len(_MAIN_PARAMS) or tuple(names) != _MAIN_PARAMS[: len(names)]:
+        return "Main's parameters are not named (project, report, modifyAllowed)"
+    if main.body and main.body[0].lineno == main.lineno:
+        return "Main's body is on the def line"
+    stack: List[ast.AST] = list(main.body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue  # a nested scope may return/yield freely
+        if isinstance(node, (ast.Return, ast.Yield, ast.YieldFrom, ast.Await)):
+            return "Main's body uses return/yield, which is invalid at module level"
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
+            return "Main's body uses global/nonlocal"
+        stack.extend(ast.iter_child_nodes(node))
+    return None
+
+
+def _scope_bindings(stmts: List[ast.stmt]) -> Set[str]:
+    """Names the given statements bind in their own scope (not nested ones)."""
+    bound: Set[str] = set()
+    stack: List[ast.AST] = list(stmts)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            bound.add(node.name)
+            continue  # its body is a nested scope
+        if isinstance(node, ast.Lambda):
+            continue
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                bound.add((alias.asname or alias.name).split(".")[0])
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            bound.add(node.id)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            bound.add(node.name)
+        stack.extend(ast.iter_child_nodes(node))
+    return bound
+
+
+def _main_lift_blocker(
+    main: ast.FunctionDef, module: ast.Module, removed_names: Set[str]
+) -> Optional[str]:
+    """Why lifting Main's body changes what it does, or None if it does not.
+
+    Inlined, the body runs where ``def Main`` stood instead of after the whole
+    module loaded. So a name it reads that is bound only later at module level
+    (a helper/import/constant after Main) would raise NameError, maybe after
+    earlier statements wrote; a name the fix deletes (``docs``) would too. The
+    dedent also rewrites the contents of a multi-line string in the body.
+    """
+    for node in ast.walk(main):
+        if node is main:
+            continue
+        if isinstance(node, (ast.Constant, ast.JoinedStr)) and (
+            isinstance(node, ast.JoinedStr) or isinstance(node.value, (str, bytes))
+        ):
+            if getattr(node, "end_lineno", node.lineno) != node.lineno:
+                return "Main's body has a multi-line string the dedent would change"
+    loaded = {
+        n.id for n in ast.walk(main)
+        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)
+    }
+    free = loaded - _scope_bindings(main.body) - {a.arg for a in main.args.args}
+    gone = sorted(free & removed_names)
+    if gone:
+        return f"Main's body uses {', '.join(gone)}, which the fix removes"
+    idx = module.body.index(main)
+    later = _scope_bindings(module.body[idx + 1:]) - _scope_bindings(module.body[:idx])
+    late = sorted(free & later)
+    if late:
+        return (
+            f"Main's body uses {', '.join(late)}, defined after Main; inlined "
+            "it would run before that definition"
+        )
+    return None
+
+
+def build_bare_snippet_fix(code: str, code_tree: Optional[ast.AST] = None) -> dict:
+    """Mechanically turn half-module code into a bare snippet (issue #334).
+
+    A bare snippet is the cheapest form ``flextools_run_module`` accepts:
+    no ``def Main``, no scaffold. The transform deletes the ``def Main(...)``
+    line, dedents its body in place, and deletes any lone scaffold piece (the
+    ``docs`` dict / ``FlexToolsModule = FlexToolsModuleClass(...)`` binding),
+    keeping everything else (imports, helpers, comments) verbatim.
+    ``project``/``report``/``modifyAllowed`` are predefined in a bare
+    snippet, so the body runs unchanged.
+
+    Only offered when it is safe by construction: Main is a single top-level
+    function whose parameters are (a prefix of) ``(project, report,
+    modifyAllowed)``, whose body has no ``return``/``yield``/``global`` at
+    its own scope, reads no name bound only after Main or removed by the fix,
+    holds no multi-line string, and the result parses. Otherwise ``available`` is False
+    with a ``reason``.
+
+    Returns dict with: available, code, main_line (1-based), main_line_text
+    (the exact ``def Main`` line to delete), removed_scaffold (list of
+    {"lines": "a-b", "text": first line}), reason.
+    """
+    result: Dict[str, Any] = {
+        "available": False,
+        "code": "",
+        "main_line": None,
+        "main_line_text": "",
+        "removed_scaffold": [],
+        "reason": "",
+    }
+    if code_tree is None:
+        try:
+            code_tree = ast.parse(code)
+        except SyntaxError:
+            result["reason"] = "code does not parse"
+            return result
+    if not isinstance(code_tree, ast.Module):
+        result["reason"] = "not a module"
+        return result
+    mains = [
+        n for n in code_tree.body
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "Main"
+    ]
+    if len(mains) != 1 or not isinstance(mains[0], ast.FunctionDef):
+        result["reason"] = "Main is not a single top-level function"
+        return result
+    main = mains[0]
+    lines = code.splitlines()
+    result["main_line"] = main.lineno
+    result["main_line_text"] = lines[main.lineno - 1].strip() if main.lineno <= len(lines) else ""
+    if len(lines) > _BARE_SNIPPET_MAX_LINES:
+        result["reason"] = f"code is longer than {_BARE_SNIPPET_MAX_LINES} lines"
+        return result
+    blocker = _main_body_blocker(main)
+    if blocker:
+        result["reason"] = blocker
+        return result
+
+    drop: Set[int] = set()  # 0-based line indexes to delete
+    removed_names: Set[str] = set()
+    for node in code_tree.body:
+        if _is_scaffold_statement(node):
+            removed_names |= _scope_bindings([node])
+    blocker = _main_lift_blocker(main, code_tree, removed_names)
+    if blocker:
+        result["reason"] = blocker
+        return result
+    for node in code_tree.body:
+        if _is_scaffold_statement(node):
+            end = getattr(node, "end_lineno", node.lineno)
+            drop.update(range(node.lineno - 1, end))
+            result["removed_scaffold"].append({
+                "lines": f"{node.lineno}-{end}" if end != node.lineno else str(node.lineno),
+                "text": lines[node.lineno - 1].strip(),
+            })
+    body_start = main.body[0].lineno - 1
+    # The def header goes -- a signature may span lines, so drop through the
+    # last line of its arguments / return annotation. Comment lines between
+    # the header and the first body statement are kept (and dedented).
+    header_end = main.lineno
+    for sub in list(main.args.args) + ([main.returns] if main.returns else []):
+        header_end = max(header_end, getattr(sub, "end_lineno", sub.lineno))
+    header_end = min(header_end, body_start)  # 1-based last header line
+    drop.update(range(main.lineno - 1, header_end))
+    body_end = getattr(main, "end_lineno", len(lines))
+    indent = lines[body_start][: len(lines[body_start]) - len(lines[body_start].lstrip())]
+
+    out: List[str] = []
+    for i, line in enumerate(lines):
+        if i in drop:
+            continue
+        if header_end <= i < body_end and line.startswith(indent):
+            out.append(line[len(indent):])
+        else:
+            out.append(line)
+    fixed = "\n".join(out).strip("\n") + "\n"
+    try:
+        ast.parse(fixed)
+    except SyntaxError as exc:
+        result["reason"] = f"dedented body does not parse ({exc.msg})"
+        return result
+    result["available"] = True
+    result["code"] = fixed
+    return result
+
+
 _TOP_LEVEL_MAIN_MESSAGE = (
     "Code defines `Main(...)` and also calls `Main(...)` at module level. "
     "The runner invokes `Main` itself after loading the module, so the body "
@@ -2135,6 +2344,64 @@ _MIN_MEMBER_SUGGESTION_RATIO = 0.5
 # When adding a new suggestion surface, add a row here and apply the floor.
 
 
+def _guessed_operations_accessor_issue(
+    node: ast.Attribute,
+    attr: str,
+    accessor_to_ops: Dict[str, str],
+    accessors: Set[str],
+) -> Dict[str, Any]:
+    """invalid_api_chain issue for ``project.<Name>Operations`` (issue #304).
+
+    An exact class -> accessor mapping from the index gets ratio 1.0 (one right
+    answer, like PROJECT_ACCESSOR_ALIASES, so read-only auto-fix may apply it).
+    Without one, nearby accessors (compared on the stem) are offered below the
+    auto-fix threshold, and the issue still blocks: the attribute cannot exist.
+    """
+    ops_to_accessor: Dict[str, str] = {}
+    for acc, ops in sorted(accessor_to_ops.items()):
+        ops_to_accessor.setdefault(ops, acc)
+    stem = attr[: -len("Operations")]
+    mapped = ops_to_accessor.get(attr)
+    if mapped:
+        did_you_mean = [mapped]
+        ratio = 1.0
+        suggestion = (
+            f"'project.{attr}' does not exist: FLExProject has no attribute "
+            f"{attr!r}. {attr} is reached through its accessor -- use "
+            f"project.{mapped} (no import needed)."
+        )
+    else:
+        did_you_mean = _suggest_attribute_matches(stem, sorted(accessors), cutoff=0.6)
+        import difflib as _dl
+        ratio = (
+            _dl.SequenceMatcher(None, stem.lower(), did_you_mean[0].lower()).ratio()
+            if did_you_mean else 0.0
+        )
+        ratio = min(ratio, 0.89)  # never auto-fix a guess
+        if did_you_mean:
+            tail = "; did you mean " + ", ".join("project." + c for c in did_you_mean) + "?"
+        else:
+            tail = (
+                ". Call flextools_search_by_capability(query='...') to find "
+                "the right accessor."
+            )
+        suggestion = (
+            f"'project.{attr}' does not exist: FLExProject has no attribute "
+            f"{attr!r}. Accessors drop the Operations suffix and are usually "
+            "plural (project.Wordforms, project.Senses)" + tail
+        )
+    return {
+        "kind": "accessor",
+        "expr": f"project.{attr}",
+        "typo_attr": attr,
+        "lineno": node.lineno,
+        "col_offset": node.col_offset,
+        "did_you_mean": did_you_mean,
+        "match_ratio": ratio,
+        "suggestion": suggestion,
+    }
+
+
 def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optional[Any] = None) -> dict:
     """Pre-flight: scan AST for project.<X> / project.<X>.<Y> references and reject typos.
 
@@ -2238,6 +2505,17 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
                         f"Use project.{correct} instead."
                     ),
                 })
+                continue
+            # Issue #304: `project.WordformOperations` -- a class name guessed as
+            # an accessor. FLExProject has no attribute ending in "Operations",
+            # so this always fails at runtime; the fuzzy path below missed it
+            # (WordformOperations vs Wordforms is ~0.6). Map the class to its
+            # facade accessor through the index (WordformOperations ->
+            # project.Wordforms) and reject even when there is no mapping.
+            if x.endswith("Operations") and len(x) > len("Operations"):
+                issues.append(_guessed_operations_accessor_issue(
+                    node, x, accessor_to_ops, accessors
+                ))
                 continue
             if x.startswith(method_prefixes):
                 continue  # Looks like a direct project method, not an accessor typo
@@ -2661,14 +2939,35 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
     if api_index is None:
         return {}
     flexicon = getattr(api_index, "flexicon", None) or {}
-    fp = (flexicon.get("entities") or {}).get("FLExProject", {})
+    entities = flexicon.get("entities") or {}
+    fp = entities.get("FLExProject", {})
     mapping: Dict[str, str] = {}
     for prop in fp.get("properties", []) or []:
         name = prop.get("name") or ""
         ret = prop.get("return_type") or ""
         if name and ret.endswith("Operations"):
-            mapping[name] = ret
+            mapping[name] = _resolve_ops_alias(ret, entities)
     return mapping
+
+
+def _resolve_ops_alias(ops_class: str, entities: Dict[str, Any]) -> str:
+    """The indexed class an accessor's documented return type names (#304).
+
+    FLExProject documents some accessors with an import alias rather than
+    the class name: ``Wordforms`` returns ``WfiWordformOperations``, which is
+    ``WordformOperations`` imported under another name -- no index entry has
+    that name, so every gate keyed on the accessor's class (chain typos,
+    unknown_method, access_path) silently skipped project.Wordforms (called
+    out in PR #342). When the documented name is not an indexed entity, use
+    the longest indexed Operations class it ends with; otherwise keep it.
+    """
+    if not entities or ops_class in entities:
+        return ops_class
+    candidates = [
+        e for e in entities
+        if e.endswith("Operations") and len(e) > len("Operations") and ops_class.endswith(e)
+    ]
+    return max(candidates, key=len) if candidates else ops_class
 
 
 _IFACE_NAME_RE = re.compile(r"\bI[A-Z][A-Za-z]+\b")
@@ -4253,6 +4552,25 @@ def _collect_all_imported_names(code: str) -> Optional[Set[str]]:
     return names
 
 
+def _names_only_used_as_project_attribute(code: str, names: Set[str]) -> Set[str]:
+    """The subset of ``names`` that appear ONLY as ``project.<name>`` (issue #304)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return set()
+    as_project_attr: Set[str] = set()
+    as_other: Set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id in names:
+            as_other.add(node.id)
+        elif isinstance(node, ast.Attribute) and node.attr in names:
+            if isinstance(node.value, ast.Name) and node.value.id == "project":
+                as_project_attr.add(node.attr)
+            else:
+                as_other.add(node.attr)
+    return as_project_attr - as_other
+
+
 def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     """Detect Operations classes used without imports and suggest what to add.
 
@@ -4291,6 +4609,12 @@ def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     # Find missing imports
     used = set(matches)
     missing = used - imported
+    # Issue #304: `project.WordformOperations` is an attribute on project,
+    # not a use of the class -- importing it fixes nothing (the attribute
+    # still does not exist), so never suggest the import for a name that
+    # only appears that way. invalid_api_chain names the real accessor.
+    if missing:
+        missing -= _names_only_used_as_project_attribute(code, missing)
 
     if missing:
         result["has_missing"] = True
@@ -4361,6 +4685,39 @@ def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
             )
 
     return result
+
+
+def detect_unknown_flexicon_imports(
+    code_tree: Optional[ast.AST], api_index: Optional[Any] = None
+) -> dict:
+    """Issue #305: flag ``from flexicon import X`` / ``import flexicon.X`` names
+    that flexicon does not export, with did-you-mean candidates.
+
+    Thin wrapper over ``flexicon_imports.check_imports`` (static read of the
+    installed package, index fallback, fail open) that supplies the
+    FLExProject accessor map so an accessor imported as if it were a class
+    (``InflectionFeatures``) is answered with ``project.InflectionFeatures``.
+    """
+    try:
+        try:
+            from .flexicon_imports import check_imports
+        except ImportError:
+            from server.flexicon_imports import check_imports
+        return check_imports(code_tree, api_index, _accessor_to_ops_map(api_index))
+    except Exception:  # noqa: BLE001 -- a checker bug must never block a run
+        return {"has_unknown": False, "issues": [], "did_you_mean": [], "suggestion": ""}
+
+
+def detect_unknown_import_error(error_msg: str, api_index: Optional[Any] = None) -> dict:
+    """Issue #305 runtime twin: candidates for a raised flexicon ImportError."""
+    try:
+        try:
+            from .flexicon_imports import diagnose_import_error
+        except ImportError:
+            from server.flexicon_imports import diagnose_import_error
+        return diagnose_import_error(error_msg, api_index, _accessor_to_ops_map(api_index))
+    except Exception:  # noqa: BLE001 -- enrichment only
+        return {"is_unknown_import": False}
 
 
 # ============================================================
@@ -7321,7 +7678,12 @@ def get_unprotected_write_guidance(
     return guidance
 
 
-def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = None) -> dict:
+def build_partial_module_rejection(
+    partial_check: dict,
+    cert: Optional[dict] = None,
+    code: Optional[str] = None,
+    code_tree: Optional[ast.AST] = None,
+) -> dict:
     """Build the partial_module_structure rejection (issue #303).
 
     Shared by handle_run_module's live gate and validate_only's Gate 3 so the
@@ -7333,11 +7695,17 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
     other.
 
     ``skip_module_check=True`` is the FIRST next step: it is the one-move way
-    out when the code only needs to run here.
+    out when the code only needs to run here -- unless (issue #334) ``code``
+    is given and ``build_bare_snippet_fix`` can rewrite it mechanically and
+    it has no unguarded writes. Then step 1 is "resubmit ``auto_fixed_code``"
+    (zero edits), naming the exact ``def Main`` line removed. Models looped
+    on this rejection resubmitting unchanged code; a ready-to-run version is
+    the cheapest way out.
 
     Returns:
-        dict with message, next_steps, also_unprotected_writes (bool) and
-        mutations_found (list; empty when writes are guarded or absent).
+        dict with message, next_steps, also_unprotected_writes (bool),
+        mutations_found (list; empty when writes are guarded or absent), and
+        auto_fix (build_bare_snippet_fix's result, or None without ``code``).
     """
     mutations_found: List[str] = []
     also_unprotected = bool(cert) and not cert.get("is_certified_readonly", True)
@@ -7345,11 +7713,31 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
         mutations_found = get_unprotected_write_guidance(cert).get("mutations_found", [])
 
     message = partial_check.get("suggestion", "")
-    next_steps = [
-        "1. To just run it here: pass skip_module_check=True (runs the code as-is)",
-        "2. To keep it as a module file: paste suggested_scaffold into your code "
+    auto_fix = build_bare_snippet_fix(code, code_tree) if code is not None else None
+    lead: List[str] = []
+    if auto_fix and auto_fix["available"] and not also_unprotected:
+        removed = "; ".join(
+            f"{'lines' if '-' in r['lines'] else 'line'} {r['lines']} `{r['text']}`"
+            for r in auto_fix["removed_scaffold"]
+        )
+        lead.append(
+            "Cheapest: resubmit auto_fixed_code exactly as given -- it is your "
+            f"code as a bare snippet: line {auto_fix['main_line']} "
+            f"`{auto_fix['main_line_text']}` deleted and the body dedented"
+            + (f", plus {removed} deleted" if removed else "")
+            + " (project/report/modifyAllowed are predefined)"
+        )
+        message += (
+            " Cheapest fix: resubmit auto_fixed_code (the same code as a bare "
+            f"snippet, `{auto_fix['main_line_text']}` removed and the body "
+            "dedented)."
+        )
+    steps = lead + [
+        "To just run it here: pass skip_module_check=True (runs the code as-is)",
+        "To keep it as a module file: paste suggested_scaffold into your code "
         "(flextools_get_module_template(flavor='flexicon') has the full canonical form)",
     ]
+    next_steps = [f"{i}. {step}" for i, step in enumerate(steps, 1)]
     if also_unprotected:
         message += (
             f" ALSO: {len(mutations_found)} unprotected mutation(s) must be "
@@ -7357,12 +7745,12 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
             "with or without the scaffold or skip_module_check."
         )
         next_steps.append(
-            "3. Wrap every mutation in `if modifyAllowed:` (required in both "
+            f"{len(next_steps) + 1}. Wrap every mutation in `if modifyAllowed:` (required in both "
             "cases; mutations_found lists them)"
         )
-        next_steps.append("4. Re-run flextools_run_module() with both fixes")
+        next_steps.append(f"{len(next_steps) + 1}. Re-run flextools_run_module() with both fixes")
     else:
-        next_steps.append("3. Re-run flextools_run_module()")
+        next_steps.append(f"{len(next_steps) + 1}. Re-run flextools_run_module()")
     next_steps.append(
         "Alternative: remove the partial scaffold piece; `def Main` with no "
         "scaffold at all runs as a snippet"
@@ -7372,6 +7760,7 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
         "next_steps": next_steps,
         "also_unprotected_writes": also_unprotected,
         "mutations_found": mutations_found,
+        "auto_fix": auto_fix,
     }
 
 

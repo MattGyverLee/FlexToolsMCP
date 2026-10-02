@@ -44,6 +44,7 @@ from flextoolsmcp.server.response_models import (
     InvalidApiModeDetail,
     InvalidApiChainDetail,
     UnknownMethodDetail,
+    UnknownImportDetail,
     ProjectLockedDetail,
     ProjectDriveUnavailableDetail,
     ProjectPathMismatchDetail,
@@ -371,6 +372,7 @@ DETAIL_MODEL_MAP = {
     "invalid_api_mode": InvalidApiModeDetail,
     "invalid_api_chain": InvalidApiChainDetail,
     "unknown_method": UnknownMethodDetail,
+    "unknown_import": UnknownImportDetail,
     "project_locked": ProjectLockedDetail,
     "project_drive_unavailable": ProjectDriveUnavailableDetail,
     "project_path_mismatch": ProjectPathMismatchDetail,
@@ -526,7 +528,8 @@ class TestParserCheckCP2bCodes:
         # unified-recipes adds recipe_not_found -> 44.
         # #310 adds no_unit_of_work -> 45.
         # #313 adds atomic_property_iteration -> 46; #306 adds unknown_method -> 47.
-        assert union_size == 47, f"the detail union holds {union_size} models"
+        # #305 adds unknown_import -> 48.
+        assert union_size == 48, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

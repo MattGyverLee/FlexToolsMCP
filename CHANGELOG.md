@@ -239,6 +239,29 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   `project_not_found` now always carries `available_projects` and
   `total_count`, even when there are no fuzzy suggestions, and its hint says
   the name must be a plain project name.
+- **Safety:** an unguarded write through a loop over a list of LCM
+  collections no longer passes the `unprotected_writes` gate
+  ([#350](https://github.com/MattGyverLee/FlexToolsMCP/issues/350)).
+  `for coll in [e.SensesOS, f.SensesOS]: coll.Add(s)` was certified
+  read-only because the loop variable was taken for a local Python list. A
+  name now counts as a local container only when every binding of it in the
+  script builds one; a loop target, unpacking or any other rebinding keeps
+  its `.Add` gated. The skip is also tracked per call instead of per line, so
+  `tmp.Add(x); entry.SensesOS.Add(s)` on one line no longer hides the real
+  write. Plain local lists and sets (`results = []`, `seen = set()`) are
+  still not flagged.
+- `if modifyAllowed and <cond>:` now counts as a write guard
+  ([#352](https://github.com/MattGyverLee/FlexToolsMCP/issues/352)), as
+  does the early-return form `if not modifyAllowed or <cond>: return`. An
+  `or` with a non-guard operand still does not. A comparison now counts
+  only against a literal True/False in the enabling direction: before,
+  `if modifyAllowed == False:` was wrongly accepted as protecting the write
+  in its body.
+- The write-gate patterns no longer match inside longer names
+  ([#351](https://github.com/MattGyverLee/FlexToolsMCP/issues/351)).
+  `myproject.LexEntry.Delete(...)`, `nonsense.Form = ...` and
+  `compose.Comment = ...` are no longer reported as writes, while
+  `self.project...`, `new_entry...` and `newEntry...` still are.
 
 ### Other
 

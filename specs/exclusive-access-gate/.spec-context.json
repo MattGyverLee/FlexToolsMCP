@@ -54,6 +54,20 @@
       "kind": "progress",
       "by": "ai",
       "at": "2026-10-01T00:30:00.000Z"
+    },
+    {
+      "step": "implement",
+      "substep": "phase 10 (conditional Ensure) done; live V3/V6/V7/V8 recorded; findings filed (T035)",
+      "kind": "progress",
+      "by": "ai",
+      "at": "2026-10-02T12:00:00.000Z"
+    },
+    {
+      "step": "implement",
+      "substep": "merged origin/main (unknown_method #306, project_locked next_steps #315, archive #341); error-code count 48; T041 done; only T048 (needs-human flexicon release) open",
+      "kind": "progress",
+      "by": "ai",
+      "at": "2026-10-02T18:00:00.000Z"
     }
   ],
   "decisions": [
@@ -61,7 +75,10 @@
     "Interim 2026-09-08 policy stands: writing-system and custom-field changes need FLEx closed; the gate enforces it.",
     "Programmatic undo is out of scope (separate spec if wanted).",
     "Untyped-receiver rows match wrapper names by name alone except Create/Delete (mutating on ~50 other classes; would refuse ordinary raw-LCM factory writes).",
-    "validate_only exclusive_access.blocking is true on verdict unknown (the real run refuses it, FR-009); null only when the probe raised."
+    "validate_only exclusive_access.blocking is true on verdict unknown (the real run refuses it, FR-009); null only when the probe raised.",
+    "Error-code count is 48 after merging main: unknown_method (#306) took it to 47, requires_exclusive_access to 48.",
+    "T048 needs-human: flexicon#601 (peer-schema-guard) is merged on flexicon main but unreleased (latest release 4.11.0); pyflexicon floor and indexes left as is. Until a release ships, the MCP refuses conditional Ensure() (fail closed).",
+    "Open question, unresolved: whether ProjectSettingsOperations.SetDefaultVernacular/SetDefaultAnalysis belong in the gated list."
   ],
   "telemetryInstanceId": "465cb46c-7a33-4c95-8c2f-da6a090e6dde"
 }

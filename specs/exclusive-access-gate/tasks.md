@@ -278,7 +278,8 @@ observe Class B.
   - `pre-commit run --all-files`
 
   All must be clean.
-- [ ] T041 Update `specs/exclusive-access-gate/.spec-context.json` (currentStep implement, status per progress). Commit and push each phase on the branch with `git push origin HEAD:refs/heads/feat/exclusive-access-gate`, and only after that phase's tests are green.
+- [X] T041 Update `specs/exclusive-access-gate/.spec-context.json` (currentStep implement, status per progress). Commit and push each phase on the branch with `git push origin HEAD:refs/heads/feat/exclusive-access-gate`, and only after that phase's tests are green.
+  Done 2026-10-02: history records phase 10 and the origin/main merge; status stays `implementing` until T048.
 
 ---
 
@@ -312,6 +313,7 @@ calls before the run; flexicon's peer schema guard backs it up during the run.
   - then regenerate the MCP indexes against that release (release order: flexicon first);
   - optionally raise the pyflexicon floor.
   Until then the MCP refuses `Ensure()` exactly as before (fail closed).
+  Status 2026-10-02: flexicon#601 is merged on flexicon main but not released (latest release 4.11.0); the pyflexicon floor and the indexes are unchanged.
 
 **Constitution gate obligations**:
 

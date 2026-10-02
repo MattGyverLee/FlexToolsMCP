@@ -500,6 +500,13 @@ RECOMMEND_RATIO = 1.3
 # Fraction of a recipe's significant lines (outside PARAMS) that must appear
 # in submitted code for the code to count as "from" that recipe.
 _FROM_RECIPE_LINE_RATIO = 0.6
+# Query verbs that mean "change the data": recommend_recipe never answers
+# them with a read-only recipe (tokenize() forms, so singularized).
+WRITE_INTENT_VERBS = frozenset({
+    "add", "change", "clear", "create", "delete", "edit", "fix", "insert",
+    "merge", "modify", "move", "remove", "rename", "replace", "set",
+    "update", "write",
+})
 
 
 def _shipped_recipes() -> Dict[str, Dict[str, Any]]:
@@ -562,9 +569,14 @@ def closest_recipes(intent_or_code: str, k: int = 3) -> List[Dict[str, Any]]:
     return rows
 
 
-def closest_recipes_step(intent_or_code: str, k: int = 3) -> Optional[str]:
-    """``next_steps`` line naming the closest library recipes, or None."""
-    rows = closest_recipes(intent_or_code, k)
+def closest_recipes_step(intent_or_code: str, k: int = 3,
+                         rows: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:
+    """``next_steps`` line naming the closest library recipes, or None.
+
+    ``rows`` (from closest_recipes) skips the re-rank when already in hand.
+    """
+    if rows is None:
+        rows = closest_recipes(intent_or_code, k)
     if not rows:
         return None
     names = ", ".join(f"{r['id']} ({r['intent']})" for r in rows)
@@ -583,7 +595,8 @@ def recommend_recipe(query: str) -> Optional[Dict[str, Any]]:
     recipes: a match_terms phrase hit at RECOMMEND_PHRASE_MIN_SCORE, or a
     RECOMMEND_MIN_SCORE total, driven by task/code words (not object words
     alone) and RECOMMEND_RATIO ahead of the runner-up -- except that a phrase
-    hit over a runner-up without one only has to lead.
+    hit over a runner-up without one only has to lead. A query with a
+    WRITE_INTENT_VERBS word never gets a read-only recipe.
     """
     try:
         ranked = rank_recipes(query or "", recipes=_shipped_recipes())
@@ -608,6 +621,9 @@ def recommend_recipe(query: str) -> Optional[Dict[str, Any]]:
             return None
     recipe = top["recipe"]
     requires_write = bool(recipe.get("requires_write", False))
+    if not requires_write and tokenize_set(query) & WRITE_INTENT_VERBS:
+        # A read-only recipe is not the answer to "delete/merge/set ...".
+        return None
     return {
         "id": top["id"],
         "intent": recipe.get("intent") or "",

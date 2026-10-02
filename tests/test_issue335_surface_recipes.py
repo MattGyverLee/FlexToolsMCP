@@ -65,6 +65,15 @@ class TestRecommendRecipe:
     def test_no_clear_winner_is_not_recommended(self, query):
         assert recipe_search.recommend_recipe(query) is None
 
+    @pytest.mark.parametrize("query", [
+        "delete duplicate entries",
+        "merge duplicate entries",
+    ])
+    def test_write_intent_never_gets_a_read_only_recipe(self, query):
+        # Review of #335: a phrase hit on find-duplicate-headwords used to win.
+        assert recipe_search.recommend_recipe(query) is None
+        assert recipe_search.recipe_hint_for_run(query, HAND_WRITTEN) is None
+
     def test_shape_has_no_code(self):
         rec = recipe_search.recommend_recipe("list entries")
         assert list(rec) == ["id", "intent", "params", "requires_write", "how_to_run"]
@@ -219,6 +228,49 @@ class TestFailureNextSteps:
         data = _wrap(error_response("runtime_error", "boom"), "runtime_error",
                      intent="list entries")
         assert "closest_recipes" not in data
+
+    @pytest.mark.parametrize("non_code", [
+        "project_locked", "confirmation_required", "server_state_error",
+    ])
+    def test_non_code_failures_do_not_streak(self, fresh_session, non_code):
+        intent = "add a gloss to a sense"
+        for _ in range(3):
+            data = _wrap(error_response(non_code, "not the code"), non_code,
+                         intent=intent)
+            assert "closest_recipes" not in data
+        # ...and they do not count: one code failure after them is still #1.
+        data = _wrap(error_response("runtime_error", "boom"), "runtime_error",
+                     intent=intent)
+        assert "closest_recipes" not in data
+
+    def test_confirm_then_lock_on_a_recipe_run_has_no_pointer(self, fresh_session):
+        # Review of #335: the recipe-following write flow.
+        code = CURATED_RECIPES["add-gloss-to-sense"]["code"]
+        intent = "add a gloss to a sense"
+        first = _wrap(error_response("confirmation_required", "confirm"),
+                      "confirmation_required", intent=intent, code=code)
+        second = _wrap(error_response("project_locked", "locked"),
+                       "project_locked", intent=intent, code=code)
+        assert "closest_recipes" not in first
+        assert "closest_recipes" not in second
+
+    def test_pointer_leaves_out_the_recipe_the_code_is_from(self, fresh_session):
+        code = CURATED_RECIPES["add-gloss-to-sense"]["code"]
+        intent = "add a gloss to a sense"
+        for _ in range(2):
+            data = _wrap(error_response("runtime_error", "boom"), "runtime_error",
+                         intent=intent, code=code)
+        ids = [row["id"] for row in data.get("closest_recipes", [])]
+        assert "add-gloss-to-sense" not in ids
+        steps = data.get("next_steps") or []
+        assert not any("add-gloss-to-sense" in s for s in steps)
+
+    def test_legacy_error_object_mirrors_the_pointer(self, fresh_session):
+        data = _wrap(
+            error_response("casting_issues_detected", "m", next_steps="do x"),
+            "casting_issues_detected", intent="list entries")
+        assert data["error"]["next_steps"] == data["next_steps"]
+        assert data["error"]["closest_recipes"] == data["closest_recipes"]
 
     def test_no_intent_never_streaks(self, fresh_session):
         for _ in range(3):

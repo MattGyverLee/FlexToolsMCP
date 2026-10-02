@@ -1136,6 +1136,15 @@ _RECIPE_POINTER_ERROR_CODES = frozenset({
     "casting_issues_detected",
 })
 
+# Failures that say nothing about the code (a lock, a confirmation gate, a
+# server-state problem): they neither count toward nor break the same-intent
+# failure streak, and never draw a recipe pointer.
+_NON_CODE_FAILURE_CODES = frozenset({
+    "project_locked",
+    "confirmation_required",
+    "server_state_error",
+})
+
 
 def _recipes_module():
     try:
@@ -1151,19 +1160,27 @@ def _closest_recipes_for_failure(
     """Closest library recipes for a failed run, or ``([], None)``.
 
     Fires on the _RECIPE_POINTER_ERROR_CODES rejects and on the 2nd
-    consecutive failure with the same user_intent. Matches on the intent when
-    the run gave one, else on the code. Never raises.
+    consecutive code failure with the same user_intent (_NON_CODE_FAILURE_CODES
+    are skipped). Matches on the intent when the run gave one, else on the
+    code, and leaves out any recipe the submitted code is already from.
+    Never raises.
     """
     try:
+        if error_code in _NON_CODE_FAILURE_CODES:
+            return [], None
         ctx = _RUN_RECIPE_CONTEXT.get() or {}
         user_intent = ctx.get("user_intent")
         streak = session_state.record_intent_failure(user_intent)
         if error_code not in _RECIPE_POINTER_ERROR_CODES and streak < 2:
             return [], None
-        query = (user_intent or "").strip() or ctx.get("code") or ""
+        code = ctx.get("code") or ""
+        query = (user_intent or "").strip() or code
         r = _recipes_module()
-        rows = r.closest_recipes(query, 3)
-        step = r.closest_recipes_step(query, 3) if rows else None
+        rows = [
+            row for row in r.closest_recipes(query, 4)
+            if not r.code_is_from_recipe(code, r.CURATED_RECIPES.get(row["id"]) or {})
+        ][:3]
+        step = r.closest_recipes_step(query, 3, rows=rows) if rows else None
         return rows, step
     except Exception:
         return [], None
@@ -1238,6 +1255,12 @@ def _attach_assistance_if_loop(
     if recipe_step is not None:
         _append_next_step(data, recipe_step)
         data[KEY_CLOSEST_RECIPES] = recipe_rows
+        # TOOL-CONTRACT 1.x: the nested legacy `error` object mirrors the
+        # flat keys, so it gets the same pointer.
+        legacy = data.get("error")
+        if isinstance(legacy, dict):
+            _append_next_step(legacy, recipe_step)
+            legacy[KEY_CLOSEST_RECIPES] = recipe_rows
 
     if pattern is not None:
         data["_assistance"] = {

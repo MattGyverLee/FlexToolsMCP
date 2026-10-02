@@ -247,13 +247,17 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   - `flextools_search_by_capability` returns a top-level `recommended_recipe`
     (`id`, `intent`, `params`, `requires_write`, `how_to_run`; no `code`)
     right after `query`, ahead of the API hits, when one shipped recipe
-    clearly wins the query (for example "create a new lexical entry" ->
+    clearly wins the query and is not a read-only recipe answering a
+    delete/merge/set-style query (for example "create a new lexical entry" ->
     `create-entries-idempotent`, "parse a wordform and get morphological
     decomposition" -> `wordform-analyses`).
   - `flextools_run_module` adds a `"closest recipes: ..."` line to
     `next_steps`, plus a `closest_recipes` list, on `partial_module_structure`
     and `casting_issues_detected` rejects and on the 2nd consecutive failure
-    with the same `user_intent`.
+    with the same `user_intent`. `project_locked`, `confirmation_required`
+    and `server_state_error` do not count toward that streak, the recipe
+    the submitted code is already from is left out, and the nested legacy
+    `error` object carries the same pointer.
   - `flextools_run_module` adds a non-blocking `recipe_hint` when
     `user_intent` clearly matches a library recipe and the submitted code is
     not from it.

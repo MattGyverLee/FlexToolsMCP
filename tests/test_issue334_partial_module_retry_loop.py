@@ -15,8 +15,8 @@ Now:
 - The JSONL ``assistance_triggered`` field previews what the response gets.
 - The rejection leads with the cheapest fix: a mechanical bare-snippet
   ``auto_fixed_code`` naming the exact ``def Main`` line removed.
-- With a ``user_intent``, next_steps name the closest recipes (existing
-  ranker, no new ranking).
+- With a ``user_intent``, next_steps name the closest recipes exactly once
+  (via the shared #335 pointer, not a second #334 one).
 """
 
 import ast
@@ -295,19 +295,11 @@ class TestLiveGate:
         assert "auto_fixed_code" not in data
         assert "unguarded writes" in data["auto_fix_unavailable_reason"]
 
-    def test_user_intent_points_at_closest_recipes(self, monkeypatch, tmp_path, reset_session_state):
+    def test_user_intent_points_at_closest_recipes_once(self, monkeypatch, tmp_path, reset_session_state):
+        # The pointer comes from the shared #335 path (_closest_recipes_for_failure);
+        # the #334 reject must not add a second one of its own.
         _stub_agreement_env(monkeypatch, tmp_path)
-        monkeypatch.setattr(
-            execution_mod, "_closest_recipes_step",
-            lambda q, limit=2: f"Or reuse a recipe: flextools_list_recipes(recipe_id='x') [{q}]",
-        )
         data = _run(_args(DOCS_ONLY, user_intent="create missing entries"))
-        assert data["next_steps"][-1].endswith("[create missing entries]")
-
-
-def test_closest_recipes_step_uses_shared_ranker():
-    step = execution_mod._closest_recipes_step("list all lexical entries with glosses")
-    if step is not None:  # shipped library present
-        assert "flextools_list_recipes(recipe_id='" in step
-    assert execution_mod._closest_recipes_step("") is None
-    assert execution_mod._closest_recipes_step(None) is None
+        recipe_steps = [s for s in data["next_steps"] if "closest recipes:" in s]
+        assert len(recipe_steps) == 1
+        assert "flextools_list_recipes(" in recipe_steps[0]

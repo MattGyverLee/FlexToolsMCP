@@ -300,8 +300,8 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
     `return` in `Main`, or unguarded writes),
     `auto_fix_unavailable_reason` says why, and `skip_module_check=True`
     stays first.
-  - When the call has a `user_intent`, the last next step names the closest
-    recipes, using the same ranker as `flextools_list_recipes`.
+  - The closest-recipes next step comes from the shared #335 pointer, once;
+    the rejection no longer adds a second one of its own.
 - An identical resubmit after an `api_discovery_required` rejection now
   passes that gate
   ([#340](https://github.com/MattGyverLee/FlexToolsMCP/issues/340)). The
@@ -319,6 +319,64 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   runner's exception handler set only `error`, so a `report.Info(...)` line
   written just before the failing call was lost. A failed run now returns
   `messages` and `summary` alongside `error`, as `run_scan` already did.
+- Library recipes are now put in front of the model instead of nested where
+  it never looked
+  ([#335](https://github.com/MattGyverLee/FlexToolsMCP/issues/335)). In the
+  2026-09-30 sessions none of 26 `run_module` calls started from a recipe.
+  All changes are additive; the contract stays at `tool-responses/1.0`.
+  - `flextools_search_by_capability` returns a top-level `recommended_recipe`
+    (`id`, `intent`, `params`, `requires_write`, `how_to_run`; no `code`)
+    right after `query`, ahead of the API hits, when one shipped recipe
+    clearly wins the query and is not a read-only recipe answering a
+    delete/merge/set-style query (for example "create a new lexical entry" ->
+    `create-entries-idempotent`, "parse a wordform and get morphological
+    decomposition" -> `wordform-analyses`).
+  - `flextools_run_module` adds a `"closest recipes: ..."` line to
+    `next_steps`, plus a `closest_recipes` list, on `partial_module_structure`
+    and `casting_issues_detected` rejects and on the 2nd consecutive failure
+    with the same `user_intent`. `project_locked`, `confirmation_required`
+    and `server_state_error` do not count toward that streak, the recipe
+    the submitted code is already from is left out, and the nested legacy
+    `error` object carries the same pointer.
+  - `flextools_run_module` adds a non-blocking `recipe_hint` when
+    `user_intent` clearly matches a library recipe and the submitted code is
+    not from it.
+  - The `run_module` and `search_by_capability` tool descriptions now say to
+    start from a recipe.
+  - A run is no longer remembered as a `local-*` recipe when it called
+    `report.Error`. The runner's success flag only means no uncaught
+    exception; a run that reported errors did not do its job. Failed runs
+    were already never remembered.
+- **Safety:** an unguarded write through a loop over a list of LCM
+  collections no longer passes the `unprotected_writes` gate
+  ([#350](https://github.com/MattGyverLee/FlexToolsMCP/issues/350)).
+  `for coll in [e.SensesOS, f.SensesOS]: coll.Add(s)` was certified
+  read-only because the loop variable was taken for a local Python list. A
+  name now counts as a local container only when every binding of it in the
+  script builds one; a loop target, unpacking or any other rebinding keeps
+  its `.Add` gated. The skip is also tracked per call instead of per line, so
+  `tmp.Add(x); entry.SensesOS.Add(s)` on one line no longer hides the real
+  write. Function and lambda parameters, import aliases, `except ... as`
+  and `match` captures now count as bindings too, so
+  `def helper(senses, s): senses.Add(s)` stays gated even when `Main` has
+  its own `senses = []`. Plain local lists and sets (`results = []`,
+  `seen = set()`) are still not flagged.
+- `if modifyAllowed and <cond>:` now counts as a write guard
+  ([#352](https://github.com/MattGyverLee/FlexToolsMCP/issues/352)), as
+  does the early-return form `if not modifyAllowed or <cond>: return`. An
+  `or` with a non-guard operand still does not. A comparison now counts
+  only against a literal True/False in the enabling direction: before,
+  `if modifyAllowed == False:` was wrongly accepted as protecting the write
+  in its body. When the guard's test itself makes a call
+  (`if x.SensesOS.Add(s) and modifyAllowed:`), only the lines after the
+  test are protected, so that call is still reported.
+- The write-gate patterns no longer report `nonsense.Form = ...`,
+  `compose.Comment = ...` or `position.Note = ...` as writes, and a
+  resolved facade such as `fx` no longer matches inside `prefx`
+  ([#351](https://github.com/MattGyverLee/FlexToolsMCP/issues/351)).
+  The gate still fails closed elsewhere on purpose: compound receivers
+  (`subsense`, `subentry`, `lexentry`, `newEntry`) and any name ending in
+  `project` (`self._project`, `srcProject`, `myproject`) stay gated.
 
 ### Other
 

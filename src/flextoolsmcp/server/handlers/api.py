@@ -47,6 +47,7 @@ try:
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         KEY_RECIPES, KEY_RECIPES_COUNT, KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT,
+        KEY_RECOMMENDED_RECIPE,
         KEY_MCP_TOOLS, KEY_ZERO_RESULT_FALLBACK,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
@@ -84,6 +85,7 @@ except ImportError:
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         KEY_RECIPES, KEY_RECIPES_COUNT, KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT,
+        KEY_RECOMMENDED_RECIPE,
         KEY_MCP_TOOLS, KEY_ZERO_RESULT_FALLBACK,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
@@ -1631,8 +1633,21 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         for entity in _recipe_rows[0].get("entities", []):
             session_state.record_validated_api(entity)
 
+    # Issue #335: a clear library-recipe winner goes top-level, ahead of the
+    # API hits -- nested under results[0].recipe it was never opened. No
+    # `code` here (SC-005); how_to_run names the fetch-edit-run steps.
+    try:
+        from ..recipes import recommend_recipe as _recommend_recipe
+    except ImportError:
+        from server.recipes import recommend_recipe as _recommend_recipe
+    _recommended = _recommend_recipe(query)
+
     result = {
         KEY_QUERY: query,
+    }
+    if _recommended is not None:
+        result[KEY_RECOMMENDED_RECIPE] = _recommended
+    result.update({
         KEY_API_MODE: api_mode,
         KEY_API_MODE_DESCRIPTION: config["description"],
         KEY_SEARCH_METHOD: search_method,
@@ -1649,7 +1664,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         KEY_RECIPES: _recipe_rows,
         KEY_RECIPES_COUNT: _recipe_result.get("recipes_count", 0),
         KEY_RECIPES_AMBIGUOUS: _recipe_result.get("recipes_ambiguous", False),
-    }
+    })
     if _recipe_result.get("recipes_hint") is not None:
         result[KEY_RECIPES_HINT] = _recipe_result["recipes_hint"]
     if deprecation_redirects:

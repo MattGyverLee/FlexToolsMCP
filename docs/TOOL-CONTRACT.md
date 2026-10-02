@@ -668,12 +668,17 @@ did **not** bump the contract version.
 | `recipes_ambiguous` | bool | `flextools_search_by_capability` | `true` when `recipes` is non-empty and there is no clear winner (includes object-only queries such as "entry") |
 | `recipes_hint` | string | `flextools_search_by_capability` | Present only when `recipes_ambiguous` is `true`. Example: `"Several recipes match; refine the query or fetch one with flextools_list_recipes(recipe_id=...)"` |
 | `recipe` | object | `flextools_list_recipes(recipe_id=...)` | The single full recipe requested |
+| `recommended_recipe` | object | `flextools_search_by_capability` | Issue #335. Present only when one **library** (shipped) recipe clearly wins the query (never a read-only recipe for a query with a write verb such as delete, merge or set); emitted right after `query`, ahead of `results`. `{"id", "intent", "params", "requires_write", "how_to_run"}` -- `params` are compact `{name, default, description}` rows, `how_to_run` is one sentence (fetch with `flextools_list_recipes(recipe_id=...)`, edit only PARAMS, run with `source="existing"`; write recipes add the dry-run step). Never carries `code`. |
+| `closest_recipes` | list | `flextools_run_module` (error responses) | Issue #335. Up to 3 `{"id", "intent", "requires_write", "score"}` library rows, nearest the run's `user_intent` (or its code when no intent was given). Present on `partial_module_structure` and `casting_issues_detected` rejects and on the 2nd consecutive failure with the same `user_intent` (`project_locked`, `confirmation_required` and `server_state_error` neither count nor break that streak). A recipe the submitted code is already from is left out. The same response appends a `"closest recipes: ..."` line to `next_steps` (a list gains an item; a string `next_steps` gains a line); the nested legacy `error` object gets the same `next_steps` line and `closest_recipes`. |
+| `recipe_hint` | object | `flextools_run_module` (executed runs, success or runtime failure) | Issue #335. Non-blocking. Present when `user_intent` clearly matches a library recipe and the submitted code is not from it (fewer than 60% of the recipe's non-PARAMS lines present). `{"id", "intent", "requires_write", "how_to_run", "message"}`. |
 | `deprecation` | object | `flextools_find_examples`, `flextools_list_skeletons` | Deprecation advisory; shape below |
 | `skeletons_from_your_sessions` | list | `flextools_find_examples` | **Deprecated** legacy rows derived from local recipes (see data-model section 5). Still emitted when non-empty. Replacement: `recipes` rows with `source: "local"`. Removal: `tool-responses/2.0` |
 
 Key registry: `KEY_RECIPES = "recipes"`, `KEY_RECIPES_COUNT =
 "recipes_count"`, `KEY_RECIPE = "recipe"`, `KEY_RECIPES_AMBIGUOUS =
-"recipes_ambiguous"`, `KEY_RECIPES_HINT = "recipes_hint"`, `KEY_DEPRECATION
+"recipes_ambiguous"`, `KEY_RECIPES_HINT = "recipes_hint"`,
+`KEY_RECOMMENDED_RECIPE = "recommended_recipe"`, `KEY_CLOSEST_RECIPES =
+"closest_recipes"`, `KEY_RECIPE_HINT = "recipe_hint"`, `KEY_DEPRECATION
 = "deprecation"`, `KEY_SKELETONS_FROM_YOUR_SESSIONS =
 "skeletons_from_your_sessions"` (`server/response_keys.py`).
 
@@ -687,6 +692,7 @@ nothing scores. `results[0].recipe`, `worked_examples` /
 
 **SC-005 at-most-one-code-body invariant.** Across `results[0].recipe`
 and `recipes`, a response carries **at most one `code` body**.
+`recommended_recipe` never carries `code`, so it does not count.
 
 **`flextools_find_examples`.** `recipes` keeps its current shipped
 entries (same shape as today); matching **local** recipes are appended

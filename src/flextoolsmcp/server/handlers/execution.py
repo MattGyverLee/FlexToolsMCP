@@ -14,6 +14,7 @@ These handlers manage module and operation execution:
 """
 
 import contextlib
+import contextvars
 import json
 import sys
 import subprocess
@@ -163,6 +164,7 @@ from ..response_keys import (
     KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
     KEY_DIAGNOSTIC_REPORT,
     KEY_DISCOVERY_REDIRECT, KEY_CAPABILITY_SUGGESTIONS, KEY_EXECUTED,
+    KEY_CLOSEST_RECIPES, KEY_RECIPE_HINT,
 )
 
 
@@ -178,6 +180,11 @@ def _finalize_run_module_response(payload: Dict[str, Any]) -> Dict[str, Any]:
             payload[KEY_STATUS] = "error"
         else:
             payload[KEY_STATUS] = "ok"
+    # Issue #335: non-blocking pointer at a library recipe that matches this
+    # run's user_intent when the submitted code is not from it.
+    hint = (_RUN_RECIPE_CONTEXT.get() or {}).get("recipe_hint")
+    if hint and KEY_RECIPE_HINT not in payload:
+        payload[KEY_RECIPE_HINT] = hint
     return build_response_with_context(payload, include_session=True)
 
 
@@ -1143,6 +1150,82 @@ def _graceful_discovery_redirect(
     return [TextContent(type="text", text=json.dumps(data, indent=2, ensure_ascii=False))]
 
 
+# Issue #335: the current run_module call's user_intent and code, set at the
+# top of handle_run_module so the shared failure wrapper and the response
+# finalizer can reach them without threading two more arguments through ~25
+# return sites. A ContextVar keeps concurrent calls apart.
+_RUN_RECIPE_CONTEXT: contextvars.ContextVar = contextvars.ContextVar(
+    "flextoolsmcp_run_recipe_context", default=None
+)
+
+# Preflight rejects whose fix is usually "start over": a library recipe is
+# the better starting point than another hand-written attempt.
+_RECIPE_POINTER_ERROR_CODES = frozenset({
+    "partial_module_structure",
+    "casting_issues_detected",
+})
+
+# Failures that say nothing about the code (a lock, a confirmation gate, a
+# server-state problem): they neither count toward nor break the same-intent
+# failure streak, and never draw a recipe pointer.
+_NON_CODE_FAILURE_CODES = frozenset({
+    "project_locked",
+    "confirmation_required",
+    "server_state_error",
+})
+
+
+def _recipes_module():
+    try:
+        from .. import recipes as _r
+    except (ImportError, ValueError):
+        from server import recipes as _r
+    return _r
+
+
+def _closest_recipes_for_failure(
+    error_code: str,
+) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """Closest library recipes for a failed run, or ``([], None)``.
+
+    Fires on the _RECIPE_POINTER_ERROR_CODES rejects and on the 2nd
+    consecutive code failure with the same user_intent (_NON_CODE_FAILURE_CODES
+    are skipped). Matches on the intent when the run gave one, else on the
+    code, and leaves out any recipe the submitted code is already from.
+    Never raises.
+    """
+    try:
+        if error_code in _NON_CODE_FAILURE_CODES:
+            return [], None
+        ctx = _RUN_RECIPE_CONTEXT.get() or {}
+        user_intent = ctx.get("user_intent")
+        streak = session_state.record_intent_failure(user_intent)
+        if error_code not in _RECIPE_POINTER_ERROR_CODES and streak < 2:
+            return [], None
+        code = ctx.get("code") or ""
+        query = (user_intent or "").strip() or code
+        r = _recipes_module()
+        rows = [
+            row for row in r.closest_recipes(query, 4)
+            if not r.code_is_from_recipe(code, r.CURATED_RECIPES.get(row["id"]) or {})
+        ][:3]
+        step = r.closest_recipes_step(query, 3, rows=rows) if rows else None
+        return rows, step
+    except Exception:
+        return [], None
+
+
+def _append_next_step(data: Dict[str, Any], step: str) -> None:
+    """Append ``step`` to ``next_steps``, keeping its list-or-string type."""
+    existing = data.get(KEY_NEXT_STEPS)
+    if isinstance(existing, list):
+        existing.append(step)
+    elif isinstance(existing, str) and existing.strip():
+        data[KEY_NEXT_STEPS] = existing.rstrip() + "\n" + step
+    else:
+        data[KEY_NEXT_STEPS] = [step]
+
+
 def _attach_assistance_if_loop(
     response: list[TextContent],
     error_code: str,
@@ -1171,7 +1254,12 @@ def _attach_assistance_if_loop(
     # oscillation, plus issue #334's identical resubmit of just-rejected
     # code). None means no pattern fired.
     pattern = session_state.record_failure_and_detect(error_code, code_size_bytes)
-    if pattern is None:
+
+    # Issue #335: point at the closest library recipes on the preflight
+    # rejects that mean "rewrite this", and on the 2nd consecutive failure
+    # with the same user_intent.
+    recipe_rows, recipe_step = _closest_recipes_for_failure(error_code)
+    if pattern is None and recipe_step is None:
         return response
 
     # 3. Mutate the response payload to inject _assistance.
@@ -1190,23 +1278,34 @@ def _attach_assistance_if_loop(
     if not isinstance(data, dict):
         return response
 
-    data["_assistance"] = {
-        "pattern_detected": pattern["pattern_detected"],
-        "message": pattern["message"],
-        "error_code": pattern.get("error_code"),
-    }
-    # Include the diagnostic counters when available.
-    if "occurrences" in pattern:
-        data["_assistance"]["occurrences"] = pattern["occurrences"]
-    if "window_seconds" in pattern:
-        data["_assistance"]["window_seconds"] = pattern["window_seconds"]
-    if "code_sizes" in pattern:
-        data["_assistance"]["code_sizes"] = pattern["code_sizes"]
-    if pattern.get("identical_resubmit"):
-        # Issue #334: say so at the top level too, so a client keyed on it
-        # does not have to dig into _assistance.
-        data["_assistance"]["identical_resubmit"] = True
-        data["identical_resubmit"] = True
+    if recipe_step is not None:
+        _append_next_step(data, recipe_step)
+        data[KEY_CLOSEST_RECIPES] = recipe_rows
+        # TOOL-CONTRACT 1.x: the nested legacy `error` object mirrors the
+        # flat keys, so it gets the same pointer.
+        legacy = data.get("error")
+        if isinstance(legacy, dict):
+            _append_next_step(legacy, recipe_step)
+            legacy[KEY_CLOSEST_RECIPES] = recipe_rows
+
+    if pattern is not None:
+        data["_assistance"] = {
+            "pattern_detected": pattern["pattern_detected"],
+            "message": pattern["message"],
+            "error_code": pattern.get("error_code"),
+        }
+        # Include the diagnostic counters when available.
+        if "occurrences" in pattern:
+            data["_assistance"]["occurrences"] = pattern["occurrences"]
+        if "window_seconds" in pattern:
+            data["_assistance"]["window_seconds"] = pattern["window_seconds"]
+        if "code_sizes" in pattern:
+            data["_assistance"]["code_sizes"] = pattern["code_sizes"]
+        if pattern.get("identical_resubmit"):
+            # Issue #334: say so at the top level too, so a client keyed on it
+            # does not have to dig into _assistance.
+            data["_assistance"]["identical_resubmit"] = True
+            data["identical_resubmit"] = True
 
     new_text = json.dumps(data, indent=2, ensure_ascii=False)
     # Update the underlying object in place so callers don't need to swap refs.
@@ -1820,34 +1919,6 @@ def _partial_module_auto_fix_fields(rejection: Dict[str, Any]) -> Dict[str, Any]
         "the code also has unguarded writes" if rejection.get("also_unprotected_writes") else ""
     )
     return {"auto_fix_unavailable_reason": reason} if reason else {}
-
-
-def _closest_recipes_step(query: Optional[str], limit: int = 2) -> Optional[str]:
-    """A next_steps line naming the closest shipped/local recipes, or None.
-
-    Issue #334: a module-structure reject is a natural moment to point at a
-    recipe. Reuses ``recipes.rank_recipes`` (the ranker behind
-    flextools_list_recipes) -- no new ranking. Fail-open: no query, no match,
-    or any error yields None.
-    """
-    if not query or not str(query).strip():
-        return None
-    try:
-        try:
-            from ..recipes import rank_recipes
-        except ImportError:
-            from server.recipes import rank_recipes
-        ranked = rank_recipes(str(query))[:limit]
-    except Exception:
-        return None
-    ids = [r.get("id") for r in ranked if r.get("id")]
-    if not ids:
-        return None
-    calls = ", ".join(f"flextools_list_recipes(recipe_id='{rid}')" for rid in ids)
-    return (
-        "Or reuse a recipe close to this task instead of fixing the structure: "
-        + calls
-    )
 
 
 def _api_discovery_required_copy(
@@ -3546,6 +3617,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # user_intent (issue #18) is optional LLM-provided context paraphrasing
     # the human's actual request. Logged on the Start block; never required.
     user_intent = args.get("user_intent")
+    # Issue #335: remember intent + code for the recipe pointers on failure
+    # and the recipe_hint on the final response.
+    _RUN_RECIPE_CONTEXT.set({
+        "user_intent": user_intent,
+        "code": code or "",
+        "recipe_hint": _recipes_module().recipe_hint_for_run(user_intent, code or ""),
+    })
     # user_request (diagnostic-report feature, spec section 4): optional
     # per-op VERBATIM override. Falls back to the turn-level value captured
     # by flextools_start (session_state.get_user_request()) when this op
@@ -3756,12 +3834,6 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 partial_check, certify_script_readonly(code, get_api_index(), code_tree),
                 code, code_tree,
             )
-            # Issue #334: point at close recipes when the caller said what the
-            # code is for (reuses the shared recipe ranker; fail-open).
-            _partial_next_steps = list(rejection["next_steps"])
-            _recipe_step = _closest_recipes_step(user_intent or user_request)
-            if _recipe_step:
-                _partial_next_steps.append(_recipe_step)
             _log_preflight_reject(
                 op_id, seq, time.monotonic() - t_start,
                 "partial_module_structure",
@@ -3780,7 +3852,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     suggested_scaffold=partial_check["suggested_scaffold"],
                     also_unprotected_writes=rejection["also_unprotected_writes"],
                     mutations_found=rejection["mutations_found"],
-                    next_steps=_partial_next_steps,
+                    next_steps=rejection["next_steps"],
                     op_id=op_id,
                     **_partial_module_auto_fix_fields(rejection),
                 ),

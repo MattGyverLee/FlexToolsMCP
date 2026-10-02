@@ -97,18 +97,25 @@ class TestSweepStaleLocks:
         for w in warnings:
             assert isinstance(w, str) and w, f"Warning should be a non-empty string: {w!r}"
 
-    def test_sweep_logs_warning(self, tmp_path, monkeypatch, caplog):
-        """Stale locks are logged at WARNING level (detection surfaced in logs)."""
+    def test_sweep_logs_stale_lock_at_info_not_warning(self, tmp_path, monkeypatch, caplog):
+        """Issue #321: stale/acquirable locks are demoted to INFO (once per
+        project per process) instead of WARNING -- an empty lock file with
+        an unknown holder is the stale-by-default case."""
         import logging
         monkeypatch.setenv("FW_PROJECTS_DIR", str(tmp_path))
         _make_project(tmp_path, "LoggedLock", with_lock=True)
 
         from server.project_discovery import sweep_stale_locks
-        with caplog.at_level(logging.WARNING, logger="flextoolsmcp.server.project_discovery"):
+        with caplog.at_level(logging.INFO, logger="server.project_discovery"):
+            sweep_stale_locks()
             sweep_stale_locks()
 
         lock_logs = [r for r in caplog.records if "LoggedLock" in r.message]
-        assert lock_logs, "Expected at least one WARNING log mentioning LoggedLock"
+        assert lock_logs, "Expected at least one log record mentioning LoggedLock"
+        assert all(r.levelno == logging.INFO for r in lock_logs), (
+            f"Stale lock must not warn: {[r.levelname for r in lock_logs]}"
+        )
+        assert len(lock_logs) == 1, "INFO must be emitted only once per process"
 
     def test_sweep_survives_per_lock_failure(self, tmp_path, monkeypatch):
         """Issue #93 CP6: an exception inspecting one lock must not abort the

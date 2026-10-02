@@ -290,6 +290,14 @@ These fields are defined in `RunModuleSuccess` (`response_models.py`) with
 aliases matching the key strings above. The `_inline_discovery` alias uses the
 `KEY_INLINE_DISCOVERY = "_inline_discovery"` constant from `response_keys.py`.
 
+> **Note:** a server restart resets the session's API-discovery state
+> (`discovered_apis` is in-memory only), so a write that passed the
+> `api_discovery_required` gate before the restart is rejected after it until
+> the entities are discovered again. This is expected behaviour, not a
+> regression — re-call `flextools_get_object_api` for the entities you need
+> (the rejection's `_inline_discovery` payload already inlines their shapes),
+> or start a new session.
+
 ### UoW mode flags (issue #153)
 
 Every executed `run_module` response whose runner reached the OpenProject-time

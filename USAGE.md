@@ -211,6 +211,8 @@ User Query: "I want to delete senses with 'test' in the gloss"
 
 Every method name in the finished module traces back to a discovery step you can audit. If a needed call wasn't surfaced by Phases 1–2, return to discovery rather than guess — `run_module` refuses execution when no APIs were discovered (gate 6, `api_discovery_required`).
 
+> **Note:** restarting the MCP server resets the session's API-discovery state (`discovered_apis` is in-memory only). A write that passed the `api_discovery_required` gate before the restart is rejected after it until the entities are discovered again — this is expected, not a regression. Fix: call `flextools_get_object_api` again for the entities you need, or start a new session.
+
 #### Phase 4: Testing (Required before write)
 
 ```

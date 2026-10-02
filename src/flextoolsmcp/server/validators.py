@@ -679,6 +679,66 @@ def _main_body_blocker(main: ast.FunctionDef) -> Optional[str]:
     return None
 
 
+def _scope_bindings(stmts: List[ast.stmt]) -> Set[str]:
+    """Names the given statements bind in their own scope (not nested ones)."""
+    bound: Set[str] = set()
+    stack: List[ast.AST] = list(stmts)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            bound.add(node.name)
+            continue  # its body is a nested scope
+        if isinstance(node, ast.Lambda):
+            continue
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                bound.add((alias.asname or alias.name).split(".")[0])
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            bound.add(node.id)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            bound.add(node.name)
+        stack.extend(ast.iter_child_nodes(node))
+    return bound
+
+
+def _main_lift_blocker(
+    main: ast.FunctionDef, module: ast.Module, removed_names: Set[str]
+) -> Optional[str]:
+    """Why lifting Main's body changes what it does, or None if it does not.
+
+    Inlined, the body runs where ``def Main`` stood instead of after the whole
+    module loaded. So a name it reads that is bound only later at module level
+    (a helper/import/constant after Main) would raise NameError, maybe after
+    earlier statements wrote; a name the fix deletes (``docs``) would too. The
+    dedent also rewrites the contents of a multi-line string in the body.
+    """
+    for node in ast.walk(main):
+        if node is main:
+            continue
+        if isinstance(node, (ast.Constant, ast.JoinedStr)) and (
+            isinstance(node, ast.JoinedStr) or isinstance(node.value, (str, bytes))
+        ):
+            if getattr(node, "end_lineno", node.lineno) != node.lineno:
+                return "Main's body has a multi-line string the dedent would change"
+    loaded = {
+        n.id for n in ast.walk(main)
+        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)
+    }
+    free = loaded - _scope_bindings(main.body) - {a.arg for a in main.args.args}
+    gone = sorted(free & removed_names)
+    if gone:
+        return f"Main's body uses {', '.join(gone)}, which the fix removes"
+    idx = module.body.index(main)
+    later = _scope_bindings(module.body[idx + 1:]) - _scope_bindings(module.body[:idx])
+    late = sorted(free & later)
+    if late:
+        return (
+            f"Main's body uses {', '.join(late)}, defined after Main; inlined "
+            "it would run before that definition"
+        )
+    return None
+
+
 def build_bare_snippet_fix(code: str, code_tree: Optional[ast.AST] = None) -> dict:
     """Mechanically turn half-module code into a bare snippet (issue #334).
 
@@ -693,7 +753,8 @@ def build_bare_snippet_fix(code: str, code_tree: Optional[ast.AST] = None) -> di
     Only offered when it is safe by construction: Main is a single top-level
     function whose parameters are (a prefix of) ``(project, report,
     modifyAllowed)``, whose body has no ``return``/``yield``/``global`` at
-    its own scope, and the result parses. Otherwise ``available`` is False
+    its own scope, reads no name bound only after Main or removed by the fix,
+    holds no multi-line string, and the result parses. Otherwise ``available`` is False
     with a ``reason``.
 
     Returns dict with: available, code, main_line (1-based), main_line_text
@@ -737,6 +798,14 @@ def build_bare_snippet_fix(code: str, code_tree: Optional[ast.AST] = None) -> di
         return result
 
     drop: Set[int] = set()  # 0-based line indexes to delete
+    removed_names: Set[str] = set()
+    for node in code_tree.body:
+        if _is_scaffold_statement(node):
+            removed_names |= _scope_bindings([node])
+    blocker = _main_lift_blocker(main, code_tree, removed_names)
+    if blocker:
+        result["reason"] = blocker
+        return result
     for node in code_tree.body:
         if _is_scaffold_statement(node):
             end = getattr(node, "end_lineno", node.lineno)

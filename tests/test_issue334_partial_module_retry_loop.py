@@ -95,6 +95,38 @@ class TestBareSnippetFix:
         assert fix["available"] is False
         assert reason in fix["reason"]
 
+    @pytest.mark.parametrize("code,reason", [
+        # Helper defined after Main: inlined, the call runs before the def.
+        ("docs = {FTM_Name: 'x'}\ndef Main(project, report, modifyAllowed):\n"
+         "    helper(report)\n\ndef helper(report):\n    report.Info('x')\n",
+         "defined after Main"),
+        ("docs = {}\ndef Main(project, report, modifyAllowed):\n"
+         "    report.Info(LIMIT)\nLIMIT = 3\n", "defined after Main"),
+        # The body reads the docs dict the fix deletes.
+        ("docs = {FTM_Name: 'x'}\ndef Main(project, report, modifyAllowed):\n"
+         "    report.Info(docs[FTM_Name])\n", "which the fix removes"),
+        # The dedent would rewrite a triple-quoted string's contents.
+        ('docs = {}\ndef Main(project, report, modifyAllowed):\n'
+         '    s = """\n    a\n    """\n    report.Info(s)\n', "multi-line string"),
+    ])
+    def test_lift_that_changes_behaviour_is_declined(self, code, reason):
+        fix = build_bare_snippet_fix(code)
+        assert fix["available"] is False, fix
+        assert reason in fix["reason"]
+
+    def test_helper_defined_before_main_is_fine(self):
+        code = (
+            "docs = {}\n"
+            "def helper(report):\n"
+            "    report.Info('x')\n"
+            "def Main(project, report, modifyAllowed):\n"
+            "    entry = 1\n"
+            "    helper(report)\n"
+            "    report.Info(str(entry))\n"
+            "entry = 2\n"
+        )
+        assert build_bare_snippet_fix(code)["available"] is True
+
     def test_nested_function_return_is_fine(self):
         code = (
             "docs = {}\n"

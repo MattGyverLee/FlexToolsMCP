@@ -101,8 +101,10 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
     "partial_module_structure": (
         # Issue #303: only HALF-modules (one of docs / FlexToolsModule
         # present) reject now; def Main with no scaffold runs as a snippet.
-        "the code has only half of the module scaffold. Pass "
-        "skip_module_check=True to run it as-is, or paste the rejection's "
+        # Issue #334: lead with the zero-edit fix when the rejection has one.
+        "the code has only half of the module scaffold. Resubmit the "
+        "rejection's auto_fixed_code when it has one (your code as a bare "
+        "snippet), or pass skip_module_check=True to run it as-is, or paste the rejection's "
         "suggested_scaffold in. Any unguarded write still needs "
         "`if modifyAllowed:` either way (modifyAllowed is predefined in "
         "bare snippets too)."
@@ -301,6 +303,19 @@ class SessionState:
     recent_op_signals: Deque[Tuple[datetime, Optional[str], int]] = field(
         default_factory=lambda: deque(maxlen=5)
     )
+    # Issue #334: sha256 of the code submitted by the run_module call in
+    # flight (set by begin_submission), and of the last REJECTED submission
+    # (cleared by a success). Equal values mean the model resubmitted the
+    # exact code that was just rejected.
+    current_code_sha256: str = ""
+    current_code_size_bytes: int = 0
+    last_rejected_code_sha256: str = ""
+    last_rejected_error_code: str = ""
+    # Snapshot taken by begin_submission: was the code in flight the last
+    # rejected code, and what was it rejected with? Taken at submission time
+    # so a mid-preflight success signal (casting warn-only) cannot erase it.
+    current_is_identical_resubmit: bool = False
+    current_previous_error_code: str = ""
 
     def reset(self) -> None:
         """Reset all session fields to defaults without replacing the object.
@@ -632,10 +647,96 @@ class SessionState:
         self.recent_op_signals.append(
             (timestamp or datetime.now(), error_code, code_size_bytes)
         )
+        if error_code is None:
+            # A success breaks an identical-resubmit streak too (#334).
+            self.last_rejected_code_sha256 = ""
+            self.last_rejected_error_code = ""
 
     def reset_op_signals(self) -> None:
         """Drop all retry-loop signals (e.g., after a successful op)."""
         self.recent_op_signals.clear()
+        self.last_rejected_code_sha256 = ""
+        self.last_rejected_error_code = ""
+
+    # ===== Issue #334: identical-resubmit detection =====
+
+    def begin_submission(self, code_sha256: str, code_size_bytes: int = 0) -> None:
+        """Note the sha256 of the code a run_module call is about to check,
+        and whether it is byte-identical to the last rejected submission."""
+        self.current_code_sha256 = code_sha256 or ""
+        self.current_code_size_bytes = code_size_bytes
+        self.current_is_identical_resubmit = bool(self.current_code_sha256) and (
+            self.current_code_sha256 == self.last_rejected_code_sha256
+        )
+        self.current_previous_error_code = (
+            self.last_rejected_error_code if self.current_is_identical_resubmit else ""
+        )
+
+    def is_identical_resubmit(self) -> bool:
+        """True when the code in flight is byte-identical to the last rejected one."""
+        return self.current_is_identical_resubmit
+
+    def _identical_resubmit_pattern(self, error_code: Optional[str]) -> Dict[str, Any]:
+        previous = self.current_previous_error_code or error_code
+        return {
+            "pattern_detected": "identical_resubmit",
+            "message": (
+                f"This is the same code (sha256 {self.current_code_sha256[:12]}) "
+                f"that was just rejected with {previous!r}. Resubmitting it "
+                "unchanged gets the same answer: " + _ASSISTANCE_HINTS_BY_ERROR_CODE.get(
+                    error_code or "",
+                    "change the code as the rejection describes before "
+                    "resubmitting.",
+                )
+            ),
+            "error_code": error_code,
+            "identical_resubmit": True,
+            "previous_error_code": previous,
+        }
+
+    def record_failure_and_detect(
+        self, error_code: Optional[str], code_size_bytes: int
+    ) -> Optional[Dict[str, Any]]:
+        """Record a failed op's signal and return the assistance pattern, if any.
+
+        The single entry point _attach_assistance_if_loop uses (issue #28),
+        extended for issue #334: the loop detector needs 5 failures in a row,
+        so a model resubmitting the SAME code 2-4 times never got help. An
+        identical resubmit of a just-rejected submission now fires on the
+        first repeat. The 5-in-a-row patterns still win when they also match
+        (they carry the stronger "stop iterating" message).
+        """
+        identical = self.is_identical_resubmit()
+        self.record_op_signal(error_code=error_code, code_size_bytes=code_size_bytes)
+        pattern = self.detect_retry_loop_pattern()
+        if pattern is None and identical:
+            pattern = self._identical_resubmit_pattern(error_code)
+        elif pattern is not None and identical:
+            pattern["identical_resubmit"] = True
+        if self.current_code_sha256:
+            self.last_rejected_code_sha256 = self.current_code_sha256
+            self.last_rejected_error_code = error_code or ""
+        return pattern
+
+    def preview_failure_pattern(
+        self, error_code: Optional[str], code_size_bytes: Optional[int] = None
+    ) -> Optional[Dict[str, Any]]:
+        """What record_failure_and_detect WOULD return, without mutating state.
+
+        Lets the JSONL close (written before the response is wrapped) record a
+        truthful ``assistance_triggered`` (issue #334: it was hardcoded False).
+        """
+        saved_signals = deque(self.recent_op_signals, maxlen=self.recent_op_signals.maxlen)
+        saved_sha = self.last_rejected_code_sha256
+        saved_code = self.last_rejected_error_code
+        if code_size_bytes is None:
+            code_size_bytes = self.current_code_size_bytes
+        try:
+            return self.record_failure_and_detect(error_code, code_size_bytes)
+        finally:
+            self.recent_op_signals = saved_signals
+            self.last_rejected_code_sha256 = saved_sha
+            self.last_rejected_error_code = saved_code
 
     def detect_retry_loop_pattern(self) -> Optional[Dict[str, Any]]:
         """Inspect the last 5 op signals for stuck-in-a-loop patterns.

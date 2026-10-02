@@ -788,12 +788,19 @@ def _log_operation_failure(
     polymorphic_hint: Optional[Dict[str, Any]] = None,
     *,
     log_dir_fn: Optional[Any] = None,
+    assistance_error_code: Optional[str] = None,
+    assistance_code_size_bytes: Optional[int] = None,
 ) -> None:
     """Emit the [FAIL] / Messages / Operation End block with diagnostic detail.
 
     `log_dir_fn` (issue #74): overridable JSONL log-dir resolver, see
     `_log_operation_end_success` for rationale (None default, resolved at
     call time so monkeypatching `execution.get_log_dir` still works).
+
+    `assistance_error_code` (issue #334): passed only by the call site whose
+    response is then wrapped by `_attach_assistance_if_loop` with that code,
+    so the JSONL `assistance_triggered` field previews it truthfully. Left
+    None (False) for failures that never get assistance (timeouts etc.).
 
     On failure we dump *everything* useful for reconstruction:
     - [FAIL] marker, error type, first error line at ERROR (the operation
@@ -875,7 +882,10 @@ def _log_operation_failure(
             info_count=info_count,
             warning_count=warning_count,
             error_count=error_count,
-            assistance_triggered=False,
+            assistance_triggered=(
+                _assistance_preview(assistance_error_code, assistance_code_size_bytes)
+                if assistance_error_code else False
+            ),
             log_dir_fn=log_dir_fn,
         )
 
@@ -946,6 +956,22 @@ def _log_writeability_reject(
             op_logger.debug(f"  writeability: per-issue logging failed: {log_exc!r}")
 
 
+def _assistance_preview(
+    error_code: Optional[str], code_size_bytes: Optional[int] = None
+) -> bool:
+    """Will _attach_assistance_if_loop attach ``_assistance`` for this failure?
+
+    Issue #334: the JSONL close is written before the response is wrapped, so
+    ``assistance_triggered`` used to be hardcoded False on every row. This asks
+    the session the same question without recording anything. Fail-safe: any
+    error reads as False rather than breaking the close.
+    """
+    try:
+        return session_state.preview_failure_pattern(error_code, code_size_bytes) is not None
+    except Exception:
+        return False
+
+
 def _log_preflight_reject(
     op_id: str,
     seq: int,
@@ -1002,7 +1028,10 @@ def _log_preflight_reject(
         info_count=0,
         warning_count=0,
         error_count=0,
-        assistance_triggered=False,
+        # Issue #334: every preflight reject is wrapped by
+        # _attach_assistance_if_loop with this same code, AFTER this line is
+        # written -- so preview what it will attach instead of hardcoding False.
+        assistance_triggered=_assistance_preview(reason_code),
         log_dir_fn=log_dir_fn,
         casting_signature=casting_signature,
     )
@@ -1138,13 +1167,10 @@ def _attach_assistance_if_loop(
     response is returned unchanged -- the detector should never break a
     response that would otherwise have shipped fine.
     """
-    # 1. Record the signal so future calls in this session can see it.
-    session_state.record_op_signal(
-        error_code=error_code, code_size_bytes=code_size_bytes
-    )
-
-    # 2. Run the detector. None means no pattern fired.
-    pattern = session_state.detect_retry_loop_pattern()
+    # 1+2. Record the signal and run the detector (5-in-a-row loop / size
+    # oscillation, plus issue #334's identical resubmit of just-rejected
+    # code). None means no pattern fired.
+    pattern = session_state.record_failure_and_detect(error_code, code_size_bytes)
     if pattern is None:
         return response
 
@@ -1176,6 +1202,11 @@ def _attach_assistance_if_loop(
         data["_assistance"]["window_seconds"] = pattern["window_seconds"]
     if "code_sizes" in pattern:
         data["_assistance"]["code_sizes"] = pattern["code_sizes"]
+    if pattern.get("identical_resubmit"):
+        # Issue #334: say so at the top level too, so a client keyed on it
+        # does not have to dig into _assistance.
+        data["_assistance"]["identical_resubmit"] = True
+        data["identical_resubmit"] = True
 
     new_text = json.dumps(data, indent=2, ensure_ascii=False)
     # Update the underlying object in place so callers don't need to swap refs.
@@ -1767,6 +1798,58 @@ def _record_inline_discovery(session: Any, inline: Dict[str, Any]) -> List[str]:
     return recorded
 
 
+def _partial_module_auto_fix_fields(rejection: Dict[str, Any]) -> Dict[str, Any]:
+    """Extra partial_module_structure fields for the bare-snippet auto-fix (#334).
+
+    ``auto_fixed_code`` is present only when the rejection leads with it (the
+    transform was safe and the code has no unguarded writes); otherwise
+    ``auto_fix_unavailable_reason`` says why, so the model is not left
+    guessing whether one exists.
+    """
+    auto_fix = rejection.get("auto_fix") or None
+    if not auto_fix:
+        return {}
+    if auto_fix.get("available") and not rejection.get("also_unprotected_writes"):
+        return {
+            "auto_fixed_code": auto_fix["code"],
+            "auto_fix_kind": "bare_snippet",
+            "main_line": auto_fix.get("main_line"),
+            "main_line_text": auto_fix.get("main_line_text"),
+        }
+    reason = auto_fix.get("reason") or (
+        "the code also has unguarded writes" if rejection.get("also_unprotected_writes") else ""
+    )
+    return {"auto_fix_unavailable_reason": reason} if reason else {}
+
+
+def _closest_recipes_step(query: Optional[str], limit: int = 2) -> Optional[str]:
+    """A next_steps line naming the closest shipped/local recipes, or None.
+
+    Issue #334: a module-structure reject is a natural moment to point at a
+    recipe. Reuses ``recipes.rank_recipes`` (the ranker behind
+    flextools_list_recipes) -- no new ranking. Fail-open: no query, no match,
+    or any error yields None.
+    """
+    if not query or not str(query).strip():
+        return None
+    try:
+        try:
+            from ..recipes import rank_recipes
+        except ImportError:
+            from server.recipes import rank_recipes
+        ranked = rank_recipes(str(query))[:limit]
+    except Exception:
+        return None
+    ids = [r.get("id") for r in ranked if r.get("id")]
+    if not ids:
+        return None
+    calls = ", ".join(f"flextools_list_recipes(recipe_id='{rid}')" for rid in ids)
+    return (
+        "Or reuse a recipe close to this task instead of fixing the structure: "
+        + calls
+    )
+
+
 def _api_discovery_required_copy(
     session_state: Any,
     *,
@@ -2314,9 +2397,10 @@ def _build_validate_only_checks(
             # Same builder as the live gate (issue #303): combined with the
             # unprotected-writes requirement when both apply.
             rejection = build_partial_module_rejection(
-                partial_check, certify_script_readonly(code, api_idx, code_tree)
+                partial_check, certify_script_readonly(code, api_idx, code_tree),
+                code, code_tree,
             )
-            checks.append({
+            _partial_check_entry = {
                 "gate": "partial_module_structure",
                 "passed": False,
                 "issues": [rejection["message"]],
@@ -2325,7 +2409,9 @@ def _build_validate_only_checks(
                 "also_unprotected_writes": rejection["also_unprotected_writes"],
                 "mutations_found": rejection["mutations_found"],
                 "next_steps": rejection["next_steps"],
-            })
+            }
+            _partial_check_entry.update(_partial_module_auto_fix_fields(rejection))
+            checks.append(_partial_check_entry)
         elif partial_check["is_main_wrapped_snippet"]:
             # Issue #303: runs as a snippet; the live gate warns, not rejects.
             checks.append({
@@ -3461,6 +3547,12 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Issue #28: precompute code size for the retry-loop / size-oscillation
     # detector. Same byte count used at every rejection / runtime-failure site.
     _code_size_bytes = len(code.encode("utf-8", errors="replace")) if code else 0
+    # Issue #334: fingerprint the submission so a byte-identical resubmit of
+    # just-rejected code is called out on its first repeat.
+    session_state.begin_submission(
+        hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest() if code else "",
+        _code_size_bytes,
+    )
     # Issue #46: resolve effective auto_fix flag.
     # Write runs ALWAYS skip auto-fix regardless of any flag (hard constraint).
     _auto_fix_arg = args.get("auto_fix")  # None means use config default
@@ -3649,8 +3741,15 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         partial_check = detect_partial_module_structure(code, code_tree)
         if partial_check["is_partial_module"]:
             rejection = build_partial_module_rejection(
-                partial_check, certify_script_readonly(code, get_api_index(), code_tree)
+                partial_check, certify_script_readonly(code, get_api_index(), code_tree),
+                code, code_tree,
             )
+            # Issue #334: point at close recipes when the caller said what the
+            # code is for (reuses the shared recipe ranker; fail-open).
+            _partial_next_steps = list(rejection["next_steps"])
+            _recipe_step = _closest_recipes_step(user_intent or user_request)
+            if _recipe_step:
+                _partial_next_steps.append(_recipe_step)
             _log_preflight_reject(
                 op_id, seq, time.monotonic() - t_start,
                 "partial_module_structure",
@@ -3669,8 +3768,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     suggested_scaffold=partial_check["suggested_scaffold"],
                     also_unprotected_writes=rejection["also_unprotected_writes"],
                     mutations_found=rejection["mutations_found"],
-                    next_steps=rejection["next_steps"],
+                    next_steps=_partial_next_steps,
                     op_id=op_id,
+                    **_partial_module_auto_fix_fields(rejection),
                 ),
                 error_code="partial_module_structure",
                 code_size_bytes=_code_size_bytes,
@@ -6137,6 +6237,16 @@ MODULE_CODE = {code}
             if _effect_check is not None:
                 execution_result["effect_check"] = _effect_check
         else:
+            # Issue #28: record a runtime-failure signal. Use the structured
+            # error_type when available; fall back to a generic bucket.
+            # Issue #310: a diagnosed no_unit_of_work keys the loop detector
+            # on its own code so the tailored assistance hint fires.
+            # (Computed before the log close so its JSONL row can preview the
+            # assistance this response will carry -- issue #334.)
+            if execution_result.get("error_code") == "no_unit_of_work":
+                runtime_error_code = "no_unit_of_work"
+            else:
+                runtime_error_code = execution_result.get("error_type") or "runtime_error"
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,
                 error=execution_result.get("error"),
@@ -6149,6 +6259,8 @@ MODULE_CODE = {code}
                 traceback_text=traceback_text,
                 polymorphic_hint=polymorphic_hint,
             log_dir_fn=get_log_dir,
+                assistance_error_code=runtime_error_code,
+                assistance_code_size_bytes=code_size_bytes,
             )
             # Issue #302: a teardown failure needs explicit recovery advice --
             # without it, callers re-ran the same write 20 times in a row
@@ -6161,14 +6273,6 @@ MODULE_CODE = {code}
                 execution_result[KEY_NEXT_STEPS] = teardown_next_steps(
                     _td_info, write_enabled=write_enabled
                 )
-            # Issue #28: record a runtime-failure signal. Use the structured
-            # error_type when available; fall back to a generic bucket.
-            # Issue #310: a diagnosed no_unit_of_work keys the loop detector
-            # on its own code so the tailored assistance hint fires.
-            if execution_result.get("error_code") == "no_unit_of_work":
-                runtime_error_code = "no_unit_of_work"
-            else:
-                runtime_error_code = execution_result.get("error_type") or "runtime_error"
             return _attach_assistance_if_loop(
                 json_response(
                     _finalize_run_module_response(execution_result),

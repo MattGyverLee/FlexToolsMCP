@@ -636,6 +636,146 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
     return result
 
 
+_MAIN_PARAMS = ("project", "report", "modifyAllowed")
+_BARE_SNIPPET_MAX_LINES = 80
+
+
+def _is_scaffold_statement(node: ast.stmt) -> bool:
+    """A top-level ``docs = ...`` or ``X = FlexToolsModuleClass(...)`` binding."""
+    if not isinstance(node, ast.Assign):
+        return False
+    if any(isinstance(t, ast.Name) and t.id == "docs" for t in node.targets):
+        return True
+    value = node.value
+    if isinstance(value, ast.Call):
+        func = value.func
+        name = func.id if isinstance(func, ast.Name) else getattr(func, "attr", None)
+        return name == "FlexToolsModuleClass"
+    return False
+
+
+def _main_body_blocker(main: ast.FunctionDef) -> Optional[str]:
+    """Why Main's body cannot be lifted to module level, or None if it can."""
+    if main.decorator_list:
+        return "Main has decorators"
+    a = main.args
+    if a.vararg or a.kwarg or a.kwonlyargs or a.defaults or getattr(a, "posonlyargs", None):
+        return "Main's signature is not (project, report, modifyAllowed)"
+    names = [arg.arg for arg in a.args]
+    if len(names) > len(_MAIN_PARAMS) or tuple(names) != _MAIN_PARAMS[: len(names)]:
+        return "Main's parameters are not named (project, report, modifyAllowed)"
+    if main.body and main.body[0].lineno == main.lineno:
+        return "Main's body is on the def line"
+    stack: List[ast.AST] = list(main.body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue  # a nested scope may return/yield freely
+        if isinstance(node, (ast.Return, ast.Yield, ast.YieldFrom, ast.Await)):
+            return "Main's body uses return/yield, which is invalid at module level"
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
+            return "Main's body uses global/nonlocal"
+        stack.extend(ast.iter_child_nodes(node))
+    return None
+
+
+def build_bare_snippet_fix(code: str, code_tree: Optional[ast.AST] = None) -> dict:
+    """Mechanically turn half-module code into a bare snippet (issue #334).
+
+    A bare snippet is the cheapest form ``flextools_run_module`` accepts:
+    no ``def Main``, no scaffold. The transform deletes the ``def Main(...)``
+    line, dedents its body in place, and deletes any lone scaffold piece (the
+    ``docs`` dict / ``FlexToolsModule = FlexToolsModuleClass(...)`` binding),
+    keeping everything else (imports, helpers, comments) verbatim.
+    ``project``/``report``/``modifyAllowed`` are predefined in a bare
+    snippet, so the body runs unchanged.
+
+    Only offered when it is safe by construction: Main is a single top-level
+    function whose parameters are (a prefix of) ``(project, report,
+    modifyAllowed)``, whose body has no ``return``/``yield``/``global`` at
+    its own scope, and the result parses. Otherwise ``available`` is False
+    with a ``reason``.
+
+    Returns dict with: available, code, main_line (1-based), main_line_text
+    (the exact ``def Main`` line to delete), removed_scaffold (list of
+    {"lines": "a-b", "text": first line}), reason.
+    """
+    result: Dict[str, Any] = {
+        "available": False,
+        "code": "",
+        "main_line": None,
+        "main_line_text": "",
+        "removed_scaffold": [],
+        "reason": "",
+    }
+    if code_tree is None:
+        try:
+            code_tree = ast.parse(code)
+        except SyntaxError:
+            result["reason"] = "code does not parse"
+            return result
+    if not isinstance(code_tree, ast.Module):
+        result["reason"] = "not a module"
+        return result
+    mains = [
+        n for n in code_tree.body
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "Main"
+    ]
+    if len(mains) != 1 or not isinstance(mains[0], ast.FunctionDef):
+        result["reason"] = "Main is not a single top-level function"
+        return result
+    main = mains[0]
+    lines = code.splitlines()
+    result["main_line"] = main.lineno
+    result["main_line_text"] = lines[main.lineno - 1].strip() if main.lineno <= len(lines) else ""
+    if len(lines) > _BARE_SNIPPET_MAX_LINES:
+        result["reason"] = f"code is longer than {_BARE_SNIPPET_MAX_LINES} lines"
+        return result
+    blocker = _main_body_blocker(main)
+    if blocker:
+        result["reason"] = blocker
+        return result
+
+    drop: Set[int] = set()  # 0-based line indexes to delete
+    for node in code_tree.body:
+        if _is_scaffold_statement(node):
+            end = getattr(node, "end_lineno", node.lineno)
+            drop.update(range(node.lineno - 1, end))
+            result["removed_scaffold"].append({
+                "lines": f"{node.lineno}-{end}" if end != node.lineno else str(node.lineno),
+                "text": lines[node.lineno - 1].strip(),
+            })
+    body_start = main.body[0].lineno - 1
+    # The def header goes -- a signature may span lines, so drop through the
+    # last line of its arguments / return annotation. Comment lines between
+    # the header and the first body statement are kept (and dedented).
+    header_end = main.lineno
+    for sub in list(main.args.args) + ([main.returns] if main.returns else []):
+        header_end = max(header_end, getattr(sub, "end_lineno", sub.lineno))
+    header_end = min(header_end, body_start)  # 1-based last header line
+    drop.update(range(main.lineno - 1, header_end))
+    body_end = getattr(main, "end_lineno", len(lines))
+    indent = lines[body_start][: len(lines[body_start]) - len(lines[body_start].lstrip())]
+
+    out: List[str] = []
+    for i, line in enumerate(lines):
+        if i in drop:
+            continue
+        if header_end <= i < body_end and line.startswith(indent):
+            out.append(line[len(indent):])
+        else:
+            out.append(line)
+    fixed = "\n".join(out).strip("\n") + "\n"
+    try:
+        ast.parse(fixed)
+    except SyntaxError as exc:
+        result["reason"] = f"dedented body does not parse ({exc.msg})"
+        return result
+    result["available"] = True
+    result["code"] = fixed
+    return result
+
+
 _TOP_LEVEL_MAIN_MESSAGE = (
     "Code defines `Main(...)` and also calls `Main(...)` at module level. "
     "The runner invokes `Main` itself after loading the module, so the body "
@@ -7193,7 +7333,12 @@ def get_unprotected_write_guidance(
     return guidance
 
 
-def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = None) -> dict:
+def build_partial_module_rejection(
+    partial_check: dict,
+    cert: Optional[dict] = None,
+    code: Optional[str] = None,
+    code_tree: Optional[ast.AST] = None,
+) -> dict:
     """Build the partial_module_structure rejection (issue #303).
 
     Shared by handle_run_module's live gate and validate_only's Gate 3 so the
@@ -7205,11 +7350,17 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
     other.
 
     ``skip_module_check=True`` is the FIRST next step: it is the one-move way
-    out when the code only needs to run here.
+    out when the code only needs to run here -- unless (issue #334) ``code``
+    is given and ``build_bare_snippet_fix`` can rewrite it mechanically and
+    it has no unguarded writes. Then step 1 is "resubmit ``auto_fixed_code``"
+    (zero edits), naming the exact ``def Main`` line removed. Models looped
+    on this rejection resubmitting unchanged code; a ready-to-run version is
+    the cheapest way out.
 
     Returns:
-        dict with message, next_steps, also_unprotected_writes (bool) and
-        mutations_found (list; empty when writes are guarded or absent).
+        dict with message, next_steps, also_unprotected_writes (bool),
+        mutations_found (list; empty when writes are guarded or absent), and
+        auto_fix (build_bare_snippet_fix's result, or None without ``code``).
     """
     mutations_found: List[str] = []
     also_unprotected = bool(cert) and not cert.get("is_certified_readonly", True)
@@ -7217,11 +7368,31 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
         mutations_found = get_unprotected_write_guidance(cert).get("mutations_found", [])
 
     message = partial_check.get("suggestion", "")
-    next_steps = [
-        "1. To just run it here: pass skip_module_check=True (runs the code as-is)",
-        "2. To keep it as a module file: paste suggested_scaffold into your code "
+    auto_fix = build_bare_snippet_fix(code, code_tree) if code is not None else None
+    lead: List[str] = []
+    if auto_fix and auto_fix["available"] and not also_unprotected:
+        removed = "; ".join(
+            f"{'lines' if '-' in r['lines'] else 'line'} {r['lines']} `{r['text']}`"
+            for r in auto_fix["removed_scaffold"]
+        )
+        lead.append(
+            "Cheapest: resubmit auto_fixed_code exactly as given -- it is your "
+            f"code as a bare snippet: line {auto_fix['main_line']} "
+            f"`{auto_fix['main_line_text']}` deleted and the body dedented"
+            + (f", plus {removed} deleted" if removed else "")
+            + " (project/report/modifyAllowed are predefined)"
+        )
+        message += (
+            " Cheapest fix: resubmit auto_fixed_code (the same code as a bare "
+            f"snippet, `{auto_fix['main_line_text']}` removed and the body "
+            "dedented)."
+        )
+    steps = lead + [
+        "To just run it here: pass skip_module_check=True (runs the code as-is)",
+        "To keep it as a module file: paste suggested_scaffold into your code "
         "(flextools_get_module_template(flavor='flexicon') has the full canonical form)",
     ]
+    next_steps = [f"{i}. {step}" for i, step in enumerate(steps, 1)]
     if also_unprotected:
         message += (
             f" ALSO: {len(mutations_found)} unprotected mutation(s) must be "
@@ -7229,12 +7400,12 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
             "with or without the scaffold or skip_module_check."
         )
         next_steps.append(
-            "3. Wrap every mutation in `if modifyAllowed:` (required in both "
+            f"{len(next_steps) + 1}. Wrap every mutation in `if modifyAllowed:` (required in both "
             "cases; mutations_found lists them)"
         )
-        next_steps.append("4. Re-run flextools_run_module() with both fixes")
+        next_steps.append(f"{len(next_steps) + 1}. Re-run flextools_run_module() with both fixes")
     else:
-        next_steps.append("3. Re-run flextools_run_module()")
+        next_steps.append(f"{len(next_steps) + 1}. Re-run flextools_run_module()")
     next_steps.append(
         "Alternative: remove the partial scaffold piece; `def Main` with no "
         "scaffold at all runs as a snippet"
@@ -7244,6 +7415,7 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
         "next_steps": next_steps,
         "also_unprotected_writes": also_unprotected,
         "mutations_found": mutations_found,
+        "auto_fix": auto_fix,
     }
 
 

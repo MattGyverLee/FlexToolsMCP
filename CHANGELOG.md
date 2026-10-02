@@ -239,6 +239,29 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   `project_not_found` now always carries `available_projects` and
   `total_count`, even when there are no fuzzy suggestions, and its hint says
   the name must be a plain project name.
+- `partial_module_structure` rejections no longer feed retry loops
+  ([#334](https://github.com/MattGyverLee/FlexToolsMCP/issues/334)). Models
+  often resubmitted the exact code that was just rejected, and no retry-loop
+  help appeared. That help needed 5 failures in a row, and the
+  `assistance_triggered` field in `operations.jsonl` was always written as
+  `false`, because the row is written before the response is built. Now:
+  - A byte-identical resubmit of code that was just rejected gets
+    `_assistance` on the first repeat, from every gate. The pattern is
+    `identical_resubmit`, the response also carries top-level
+    `identical_resubmit: true`, and the message says this is the same code
+    that was just rejected.
+  - `assistance_triggered` in `operations.jsonl` now records whether the
+    response carried `_assistance`.
+  - The rejection now leads with the cheapest fix. When it can be done
+    mechanically, `auto_fixed_code` is the same code as a bare snippet: the
+    `def Main(...)` line (named in `main_line_text`) and the lone scaffold
+    piece are deleted, and the body is dedented. Step 1 is "resubmit
+    `auto_fixed_code`". When the rewrite is not safe (for example, a
+    `return` in `Main`, or unguarded writes),
+    `auto_fix_unavailable_reason` says why, and `skip_module_check=True`
+    stays first.
+  - When the call has a `user_intent`, the last next step names the closest
+    recipes, using the same ranker as `flextools_list_recipes`.
 - An identical resubmit after an `api_discovery_required` rejection now
   passes that gate
   ([#340](https://github.com/MattGyverLee/FlexToolsMCP/issues/340)). The

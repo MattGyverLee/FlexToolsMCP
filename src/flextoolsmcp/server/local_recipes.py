@@ -458,7 +458,20 @@ def _message_texts(messages: List[Any]) -> List[str]:
     return texts
 
 
+def _reported_error(messages: List[Any]) -> bool:
+    """True when any report message is ERROR-level (issue #335)."""
+    for m in messages:
+        if isinstance(m, dict) and str(m.get("type", "")).strip().lower() == "error":
+            return True
+    return False
+
+
 def _trivial_messages_reason(messages: List[Any]) -> Optional[str]:
+    # Issue #335: the runner's success flag only means "no uncaught
+    # exception"; a run that called report.Error did not succeed at its task
+    # and is not a recipe to hand back next session.
+    if _reported_error(messages):
+        return "the run reported errors"
     texts = _message_texts(messages)
     if not texts:
         return "no report output"

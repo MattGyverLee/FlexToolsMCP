@@ -14,6 +14,7 @@ These handlers manage module and operation execution:
 """
 
 import contextlib
+import contextvars
 import json
 import sys
 import subprocess
@@ -24,7 +25,7 @@ import hashlib
 import heapq
 import time
 import itertools
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, Set
 from mcp.types import TextContent
 
 from ._import_helper import (
@@ -88,7 +89,7 @@ try:
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_unknown_operations_methods,
+        detect_unknown_operations_methods, detect_unknown_flexicon_imports, detect_unknown_import_error,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
         detect_atomic_property_iteration, detect_not_iterable_error,
@@ -112,7 +113,7 @@ except ImportError:
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_unknown_operations_methods,
+        detect_unknown_operations_methods, detect_unknown_flexicon_imports, detect_unknown_import_error,
         detect_partial_module_structure, build_partial_module_rejection,
         detect_top_level_main_invocation,
         detect_atomic_property_iteration, detect_not_iterable_error,
@@ -170,6 +171,7 @@ from ..response_keys import (
     KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
     KEY_DIAGNOSTIC_REPORT,
     KEY_DISCOVERY_REDIRECT, KEY_CAPABILITY_SUGGESTIONS, KEY_EXECUTED,
+    KEY_CLOSEST_RECIPES, KEY_RECIPE_HINT,
 )
 
 
@@ -185,6 +187,11 @@ def _finalize_run_module_response(payload: Dict[str, Any]) -> Dict[str, Any]:
             payload[KEY_STATUS] = "error"
         else:
             payload[KEY_STATUS] = "ok"
+    # Issue #335: non-blocking pointer at a library recipe that matches this
+    # run's user_intent when the submitted code is not from it.
+    hint = (_RUN_RECIPE_CONTEXT.get() or {}).get("recipe_hint")
+    if hint and KEY_RECIPE_HINT not in payload:
+        payload[KEY_RECIPE_HINT] = hint
     return build_response_with_context(payload, include_session=True)
 
 
@@ -795,12 +802,19 @@ def _log_operation_failure(
     polymorphic_hint: Optional[Dict[str, Any]] = None,
     *,
     log_dir_fn: Optional[Any] = None,
+    assistance_error_code: Optional[str] = None,
+    assistance_code_size_bytes: Optional[int] = None,
 ) -> None:
     """Emit the [FAIL] / Messages / Operation End block with diagnostic detail.
 
     `log_dir_fn` (issue #74): overridable JSONL log-dir resolver, see
     `_log_operation_end_success` for rationale (None default, resolved at
     call time so monkeypatching `execution.get_log_dir` still works).
+
+    `assistance_error_code` (issue #334): passed only by the call site whose
+    response is then wrapped by `_attach_assistance_if_loop` with that code,
+    so the JSONL `assistance_triggered` field previews it truthfully. Left
+    None (False) for failures that never get assistance (timeouts etc.).
 
     On failure we dump *everything* useful for reconstruction:
     - [FAIL] marker, error type, first error line at ERROR (the operation
@@ -882,7 +896,10 @@ def _log_operation_failure(
             info_count=info_count,
             warning_count=warning_count,
             error_count=error_count,
-            assistance_triggered=False,
+            assistance_triggered=(
+                _assistance_preview(assistance_error_code, assistance_code_size_bytes)
+                if assistance_error_code else False
+            ),
             log_dir_fn=log_dir_fn,
         )
 
@@ -953,6 +970,22 @@ def _log_writeability_reject(
             op_logger.debug(f"  writeability: per-issue logging failed: {log_exc!r}")
 
 
+def _assistance_preview(
+    error_code: Optional[str], code_size_bytes: Optional[int] = None
+) -> bool:
+    """Will _attach_assistance_if_loop attach ``_assistance`` for this failure?
+
+    Issue #334: the JSONL close is written before the response is wrapped, so
+    ``assistance_triggered`` used to be hardcoded False on every row. This asks
+    the session the same question without recording anything. Fail-safe: any
+    error reads as False rather than breaking the close.
+    """
+    try:
+        return session_state.preview_failure_pattern(error_code, code_size_bytes) is not None
+    except Exception:
+        return False
+
+
 def _log_preflight_reject(
     op_id: str,
     seq: int,
@@ -1009,7 +1042,10 @@ def _log_preflight_reject(
         info_count=0,
         warning_count=0,
         error_count=0,
-        assistance_triggered=False,
+        # Issue #334: every preflight reject is wrapped by
+        # _attach_assistance_if_loop with this same code, AFTER this line is
+        # written -- so preview what it will attach instead of hardcoding False.
+        assistance_triggered=_assistance_preview(reason_code),
         log_dir_fn=log_dir_fn,
         casting_signature=casting_signature,
     )
@@ -1121,6 +1157,82 @@ def _graceful_discovery_redirect(
     return [TextContent(type="text", text=json.dumps(data, indent=2, ensure_ascii=False))]
 
 
+# Issue #335: the current run_module call's user_intent and code, set at the
+# top of handle_run_module so the shared failure wrapper and the response
+# finalizer can reach them without threading two more arguments through ~25
+# return sites. A ContextVar keeps concurrent calls apart.
+_RUN_RECIPE_CONTEXT: contextvars.ContextVar = contextvars.ContextVar(
+    "flextoolsmcp_run_recipe_context", default=None
+)
+
+# Preflight rejects whose fix is usually "start over": a library recipe is
+# the better starting point than another hand-written attempt.
+_RECIPE_POINTER_ERROR_CODES = frozenset({
+    "partial_module_structure",
+    "casting_issues_detected",
+})
+
+# Failures that say nothing about the code (a lock, a confirmation gate, a
+# server-state problem): they neither count toward nor break the same-intent
+# failure streak, and never draw a recipe pointer.
+_NON_CODE_FAILURE_CODES = frozenset({
+    "project_locked",
+    "confirmation_required",
+    "server_state_error",
+})
+
+
+def _recipes_module():
+    try:
+        from .. import recipes as _r
+    except (ImportError, ValueError):
+        from server import recipes as _r
+    return _r
+
+
+def _closest_recipes_for_failure(
+    error_code: str,
+) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """Closest library recipes for a failed run, or ``([], None)``.
+
+    Fires on the _RECIPE_POINTER_ERROR_CODES rejects and on the 2nd
+    consecutive code failure with the same user_intent (_NON_CODE_FAILURE_CODES
+    are skipped). Matches on the intent when the run gave one, else on the
+    code, and leaves out any recipe the submitted code is already from.
+    Never raises.
+    """
+    try:
+        if error_code in _NON_CODE_FAILURE_CODES:
+            return [], None
+        ctx = _RUN_RECIPE_CONTEXT.get() or {}
+        user_intent = ctx.get("user_intent")
+        streak = session_state.record_intent_failure(user_intent)
+        if error_code not in _RECIPE_POINTER_ERROR_CODES and streak < 2:
+            return [], None
+        code = ctx.get("code") or ""
+        query = (user_intent or "").strip() or code
+        r = _recipes_module()
+        rows = [
+            row for row in r.closest_recipes(query, 4)
+            if not r.code_is_from_recipe(code, r.CURATED_RECIPES.get(row["id"]) or {})
+        ][:3]
+        step = r.closest_recipes_step(query, 3, rows=rows) if rows else None
+        return rows, step
+    except Exception:
+        return [], None
+
+
+def _append_next_step(data: Dict[str, Any], step: str) -> None:
+    """Append ``step`` to ``next_steps``, keeping its list-or-string type."""
+    existing = data.get(KEY_NEXT_STEPS)
+    if isinstance(existing, list):
+        existing.append(step)
+    elif isinstance(existing, str) and existing.strip():
+        data[KEY_NEXT_STEPS] = existing.rstrip() + "\n" + step
+    else:
+        data[KEY_NEXT_STEPS] = [step]
+
+
 def _attach_assistance_if_loop(
     response: list[TextContent],
     error_code: str,
@@ -1145,14 +1257,16 @@ def _attach_assistance_if_loop(
     response is returned unchanged -- the detector should never break a
     response that would otherwise have shipped fine.
     """
-    # 1. Record the signal so future calls in this session can see it.
-    session_state.record_op_signal(
-        error_code=error_code, code_size_bytes=code_size_bytes
-    )
+    # 1+2. Record the signal and run the detector (5-in-a-row loop / size
+    # oscillation, plus issue #334's identical resubmit of just-rejected
+    # code). None means no pattern fired.
+    pattern = session_state.record_failure_and_detect(error_code, code_size_bytes)
 
-    # 2. Run the detector. None means no pattern fired.
-    pattern = session_state.detect_retry_loop_pattern()
-    if pattern is None:
+    # Issue #335: point at the closest library recipes on the preflight
+    # rejects that mean "rewrite this", and on the 2nd consecutive failure
+    # with the same user_intent.
+    recipe_rows, recipe_step = _closest_recipes_for_failure(error_code)
+    if pattern is None and recipe_step is None:
         return response
 
     # 3. Mutate the response payload to inject _assistance.
@@ -1171,18 +1285,34 @@ def _attach_assistance_if_loop(
     if not isinstance(data, dict):
         return response
 
-    data["_assistance"] = {
-        "pattern_detected": pattern["pattern_detected"],
-        "message": pattern["message"],
-        "error_code": pattern.get("error_code"),
-    }
-    # Include the diagnostic counters when available.
-    if "occurrences" in pattern:
-        data["_assistance"]["occurrences"] = pattern["occurrences"]
-    if "window_seconds" in pattern:
-        data["_assistance"]["window_seconds"] = pattern["window_seconds"]
-    if "code_sizes" in pattern:
-        data["_assistance"]["code_sizes"] = pattern["code_sizes"]
+    if recipe_step is not None:
+        _append_next_step(data, recipe_step)
+        data[KEY_CLOSEST_RECIPES] = recipe_rows
+        # TOOL-CONTRACT 1.x: the nested legacy `error` object mirrors the
+        # flat keys, so it gets the same pointer.
+        legacy = data.get("error")
+        if isinstance(legacy, dict):
+            _append_next_step(legacy, recipe_step)
+            legacy[KEY_CLOSEST_RECIPES] = recipe_rows
+
+    if pattern is not None:
+        data["_assistance"] = {
+            "pattern_detected": pattern["pattern_detected"],
+            "message": pattern["message"],
+            "error_code": pattern.get("error_code"),
+        }
+        # Include the diagnostic counters when available.
+        if "occurrences" in pattern:
+            data["_assistance"]["occurrences"] = pattern["occurrences"]
+        if "window_seconds" in pattern:
+            data["_assistance"]["window_seconds"] = pattern["window_seconds"]
+        if "code_sizes" in pattern:
+            data["_assistance"]["code_sizes"] = pattern["code_sizes"]
+        if pattern.get("identical_resubmit"):
+            # Issue #334: say so at the top level too, so a client keyed on it
+            # does not have to dig into _assistance.
+            data["_assistance"]["identical_resubmit"] = True
+            data["identical_resubmit"] = True
 
     new_text = json.dumps(data, indent=2, ensure_ascii=False)
     # Update the underlying object in place so callers don't need to swap refs.
@@ -1793,18 +1923,98 @@ def _inline_discovery_docs(
     return inlined
 
 
+def _inline_entity_forms(name: str) -> Set[str]:
+    """Accessor <-> ops-class spellings of one entity name (POS <-> POSOperations)."""
+    if name.endswith("Operations"):
+        return {name, name[: -len("Operations")]}
+    return {name, name + "Operations"}
+
+
+def _names_covered_by_inline(names: List[str], inline: Dict[str, Any]) -> List[str]:
+    """The subset of ``names`` whose docs ``_inline_discovery_docs`` returned.
+
+    ``_inline_discovery_docs`` keys its result by the name it found in the
+    index, which may be the swapped accessor/ops-class form of the requested
+    name, so match on both spellings.
+    """
+    keys: Set[str] = set()
+    for key in inline or {}:
+        keys |= _inline_entity_forms(key)
+    return [n for n in names if _inline_entity_forms(n) & keys]
+
+
+def _record_inline_discovery(session: Any, inline: Dict[str, Any]) -> List[str]:
+    """Record inlined get_object_api docs as discovery, on a WRITE rejection (#340).
+
+    The api_discovery_required gate exists so the model has seen the real
+    method shapes before it writes. ``_inline_discovery`` hands it exactly the
+    shapes get_object_api would, so the gate's intent is met: record each
+    inlined entity the way get_object_api does (its listed methods/properties
+    into ``discovered_apis``, the entity into ``validated_apis``). Without this
+    the copy's "resubmit" was false -- an identical resubmit hit the same
+    zero-discovery branch again (issue #29's one-round-trip goal).
+
+    WRITE path only: the read-only redirect must not populate
+    ``discovered_apis``/``validated_apis`` (write-gate isolation, issue #47).
+
+    Returns the recorded entity names (``inline``'s keys).
+    """
+    recorded: List[str] = []
+    for name, doc in (inline or {}).items():
+        for item in (doc.get("methods") or []) + (doc.get("properties") or []):
+            member = item.get("name") if isinstance(item, dict) else None
+            if member:
+                session.record_discovered_api(name, member)
+        session.record_validated_api(name)
+        recorded.append(name)
+    return recorded
+
+
+def _partial_module_auto_fix_fields(rejection: Dict[str, Any]) -> Dict[str, Any]:
+    """Extra partial_module_structure fields for the bare-snippet auto-fix (#334).
+
+    ``auto_fixed_code`` is present only when the rejection leads with it (the
+    transform was safe and the code has no unguarded writes); otherwise
+    ``auto_fix_unavailable_reason`` says why, so the model is not left
+    guessing whether one exists.
+    """
+    auto_fix = rejection.get("auto_fix") or None
+    if not auto_fix:
+        return {}
+    if auto_fix.get("available") and not rejection.get("also_unprotected_writes"):
+        return {
+            "auto_fixed_code": auto_fix["code"],
+            "auto_fix_kind": "bare_snippet",
+            "main_line": auto_fix.get("main_line"),
+            "main_line_text": auto_fix.get("main_line_text"),
+        }
+    reason = auto_fix.get("reason") or (
+        "the code also has unguarded writes" if rejection.get("also_unprotected_writes") else ""
+    )
+    return {"auto_fix_unavailable_reason": reason} if reason else {}
+
+
 def _api_discovery_required_copy(
     session_state: Any,
     *,
     has_inline_discovery: bool,
+    inlined_entities: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """User-facing copy for the write-only api_discovery_required gate (#244).
 
     Read-only runs may auto-discover entities (issue #47) without adding them to
     ``discovered_apis``. The first WRITE run then hits the zero-discovery gate
     with a misleading "No APIs discovered yet" unless we name the auto-grants.
+
+    ``inlined_entities`` (issue #340): the entities whose docs were inlined and
+    recorded as discovered by ``_record_inline_discovery``. When present the
+    copy names them and says a resubmit now passes this gate; an
+    auto-discovered entity they cover is no longer listed as pending.
     """
     auto = sorted(getattr(session_state, "auto_discovered_apis", None) or [])
+    if inlined_entities:
+        covered = set(_names_covered_by_inline(auto, {n: {} for n in inlined_entities}))
+        auto = [a for a in auto if a not in covered]
     auto_joined = ", ".join(auto)
 
     if auto:
@@ -1826,7 +2036,31 @@ def _api_discovery_required_copy(
         )
         auto_paragraph = ""
 
-    if has_inline_discovery:
+    if has_inline_discovery and inlined_entities:
+        inlined_joined = ", ".join(inlined_entities)
+        message = (
+            "Discovery required before a WRITE run, so I ran get_object_api "
+            f"for the entities I detected in your code ({inlined_joined}) -- see "
+            "_inline_discovery -- and recorded them as discovered for this "
+            "session. Check your calls against these method/property shapes "
+            "and resubmit: the same code now passes this gate.\n\n"
+        )
+        if auto_paragraph:
+            message += auto_paragraph
+        message += (
+            "(Entities not listed above still need get_object_api(object_type='...'); "
+            "start(task='...') and search_by_capability(query='...') also work.)"
+        )
+        hint = (
+            "Check your calls against _inline_discovery, then resubmit -- "
+            f"{inlined_joined} now count as discovered."
+        )
+        if auto:
+            hint += (
+                f" Also validate auto-discovered entities via get_object_api: "
+                f"{auto_joined}."
+            )
+    elif has_inline_discovery:
         message = (
             "Discovery required before a WRITE run, but I ran get_object_api "
             "for the entities I detected in your code -- see _inline_discovery. "
@@ -2307,9 +2541,10 @@ def _build_validate_only_checks(
             # Same builder as the live gate (issue #303): combined with the
             # unprotected-writes requirement when both apply.
             rejection = build_partial_module_rejection(
-                partial_check, certify_script_readonly(code, api_idx, code_tree)
+                partial_check, certify_script_readonly(code, api_idx, code_tree),
+                code, code_tree,
             )
-            checks.append({
+            _partial_check_entry = {
                 "gate": "partial_module_structure",
                 "passed": False,
                 "issues": [rejection["message"]],
@@ -2318,7 +2553,9 @@ def _build_validate_only_checks(
                 "also_unprotected_writes": rejection["also_unprotected_writes"],
                 "mutations_found": rejection["mutations_found"],
                 "next_steps": rejection["next_steps"],
-            })
+            }
+            _partial_check_entry.update(_partial_module_auto_fix_fields(rejection))
+            checks.append(_partial_check_entry)
         elif partial_check["is_main_wrapped_snippet"]:
             # Issue #303: runs as a snippet; the live gate warns, not rejects.
             checks.append({
@@ -2351,6 +2588,18 @@ def _build_validate_only_checks(
             })
     else:
         checks.append({"gate": "top_level_main_invocation", "passed": True})
+
+    # --- Gate 3a2: unknown_import (issue #305) ---
+    unknown_import_check = detect_unknown_flexicon_imports(code_tree, api_idx)
+    if unknown_import_check["has_unknown"]:
+        checks.append({
+            "gate": "unknown_import",
+            "passed": False,
+            "issues": unknown_import_check["issues"],
+            "did_you_mean": unknown_import_check["did_you_mean"],
+        })
+    else:
+        checks.append({"gate": "unknown_import", "passed": True})
 
     # --- Gate 3b: deprecated_member (curated_deprecations.py) ---
     # Same detector + message builder handle_run_module uses; hard-rejects
@@ -3604,6 +3853,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # user_intent (issue #18) is optional LLM-provided context paraphrasing
     # the human's actual request. Logged on the Start block; never required.
     user_intent = args.get("user_intent")
+    # Issue #335: remember intent + code for the recipe pointers on failure
+    # and the recipe_hint on the final response.
+    _RUN_RECIPE_CONTEXT.set({
+        "user_intent": user_intent,
+        "code": code or "",
+        "recipe_hint": _recipes_module().recipe_hint_for_run(user_intent, code or ""),
+    })
     # user_request (diagnostic-report feature, spec section 4): optional
     # per-op VERBATIM override. Falls back to the turn-level value captured
     # by flextools_start (session_state.get_user_request()) when this op
@@ -3617,6 +3873,12 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Issue #28: precompute code size for the retry-loop / size-oscillation
     # detector. Same byte count used at every rejection / runtime-failure site.
     _code_size_bytes = len(code.encode("utf-8", errors="replace")) if code else 0
+    # Issue #334: fingerprint the submission so a byte-identical resubmit of
+    # just-rejected code is called out on its first repeat.
+    session_state.begin_submission(
+        hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest() if code else "",
+        _code_size_bytes,
+    )
     # Issue #46: resolve effective auto_fix flag.
     # Write runs ALWAYS skip auto-fix regardless of any flag (hard constraint).
     _auto_fix_arg = args.get("auto_fix")  # None means use config default
@@ -3805,7 +4067,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         partial_check = detect_partial_module_structure(code, code_tree)
         if partial_check["is_partial_module"]:
             rejection = build_partial_module_rejection(
-                partial_check, certify_script_readonly(code, get_api_index(), code_tree)
+                partial_check, certify_script_readonly(code, get_api_index(), code_tree),
+                code, code_tree,
             )
             _log_preflight_reject(
                 op_id, seq, time.monotonic() - t_start,
@@ -3827,6 +4090,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     mutations_found=rejection["mutations_found"],
                     next_steps=rejection["next_steps"],
                     op_id=op_id,
+                    **_partial_module_auto_fix_fields(rejection),
                 ),
                 error_code="partial_module_structure",
                 code_size_bytes=_code_size_bytes,
@@ -3861,6 +4125,43 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 code_size_bytes=_code_size_bytes,
             )
         _top_level_main_readonly_warning = top_level_main_check["message"]
+
+    # Issue #305: `from flexicon import X` / `import flexicon.X` where flexicon
+    # has no X. It would raise ImportError before any other line ran, so it is
+    # checked before the content gates, and answered with did-you-mean
+    # candidates instead of a bare traceback. Static (never imports flexicon);
+    # fails open when the library surface is unknown.
+    unknown_import_check = detect_unknown_flexicon_imports(code_tree, get_api_index())
+    if unknown_import_check["has_unknown"]:
+        _ui_issues = unknown_import_check["issues"]
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "unknown_import",
+            f"imports={[i['statement'] for i in _ui_issues[:5]]}",
+        log_dir_fn=get_log_dir,
+        )
+        _ui_steps = [f"Line {i['lineno']}: {i['suggestion']}" for i in _ui_issues]
+        _ui_steps.append(
+            "Re-run flextools_run_module() with the corrected import(s); "
+            "flextools_search_by_capability(query='...') finds the right class."
+        )
+        _ui_message = (
+            f"{len(_ui_issues)} flexicon import(s) would fail with ImportError: "
+            + "; ".join(i["statement"] for i in _ui_issues[:5])
+            + ". " + unknown_import_check["suggestion"]
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "unknown_import",
+                _ui_message,
+                issues=_ui_issues,
+                did_you_mean=unknown_import_check["did_you_mean"],
+                next_steps=_ui_steps,
+                op_id=op_id,
+            ),
+            error_code="unknown_import",
+            code_size_bytes=_code_size_bytes,
+        )
 
     # Deprecated-member check (curated_deprecations.py): HARD BLOCK on both
     # read-only and write-enabled runs. A curated-deprecated member exists in
@@ -4419,8 +4720,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             # rejection itself and can recover in one round-trip instead of three.
             candidates = detect_candidate_entities(code_tree, api_idx, limit=3)
             inline = _inline_discovery_docs(candidates, api_idx) if candidates else {}
+            # Issue #340: the inlined docs ARE the discovery -- record them so
+            # the "resubmit" this rejection asks for actually passes.
+            inlined_entities = _record_inline_discovery(session_state, inline)
             discovery_copy = _api_discovery_required_copy(
-                session_state, has_inline_discovery=bool(inline)
+                session_state,
+                has_inline_discovery=bool(inline),
+                inlined_entities=inlined_entities,
             )
             _log_preflight_reject(
                 op_id, seq, time.monotonic() - t_start,
@@ -4547,6 +4853,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                         )),
                         api_idx,
                     )
+                    # Issue #340 sibling: an entity whose docs were inlined has
+                    # been shown to the model, so "apply those shapes and
+                    # resubmit" must let that resubmit through. Grant it on the
+                    # read-only auto-discovery set (NOT validated_apis -- write
+                    # isolation, #47); only the uncovered rest stay undiscovered.
+                    for entity in _names_covered_by_inline(still_undiscovered, inline):
+                        session_state.record_auto_discovered_api(entity)
                     cap_query = _build_capability_query(
                         code_tree, still_undiscovered, user_intent
                     )
@@ -5507,6 +5820,21 @@ def run_module():
             result["output"] = error_msg[8:].strip()
         else:
             result["error"] = "Execution error: {}\\n{}".format(error_msg, traceback.format_exc())
+        # Issue #347: keep everything the script reported before it raised --
+        # it is often exactly what the caller needs to diagnose the failure.
+        # Mirrors run_scan's error path (and the success path's shape).
+        try:
+            result["messages"] = report.messages
+            result["summary"] = {
+                "info_count": report.messageCounts[SimpleReporter.INFO],
+                "warning_count": report.messageCounts[SimpleReporter.WARNING],
+                "error_count": report.messageCounts[SimpleReporter.ERROR],
+                "total_messages": len(report.messages)
+            }
+            if report.dropped_message_count > 0:
+                result["summary"]["dropped_messages"] = report.dropped_message_count
+        except Exception:
+            pass
 
     finally:
         # Issue #96 (A-7): CloseProject() is where the write actually commits
@@ -6134,6 +6462,23 @@ MODULE_CODE = {code}
                         continue
                     execution_result[key] = value
 
+        # Issue #305: an ImportError on a flexicon name/module (one the static
+        # gate could not see -- e.g. a dynamic import) gets the same
+        # did-you-mean candidates instead of a bare traceback.
+        _import_diag = (
+            detect_unknown_import_error(execution_result["error"], api_idx)
+            if execution_result.get("error") and (
+                "cannot import name" in execution_result["error"]
+                or "No module named" in execution_result["error"]
+            ) else {"is_unknown_import": False}
+        )
+        if _import_diag.get("is_unknown_import"):
+            execution_result["error_type"] = "UnknownImportError"
+            execution_result["did_you_mean"] = _import_diag.get("did_you_mean") or []
+            execution_result["help"] = _import_diag.get("suggestion")
+            if _import_diag.get("access_path"):
+                execution_result["access_path"] = _import_diag["access_path"]
+
         # Detect polymorphic attribute errors and suggest resolve_property
         if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):
             _rt_casting_index = api_idx.casting_index if api_idx else None
@@ -6404,6 +6749,16 @@ MODULE_CODE = {code}
             if _effect_check is not None:
                 execution_result["effect_check"] = _effect_check
         else:
+            # Issue #28: record a runtime-failure signal. Use the structured
+            # error_type when available; fall back to a generic bucket.
+            # Issue #310: a diagnosed no_unit_of_work keys the loop detector
+            # on its own code so the tailored assistance hint fires.
+            # (Computed before the log close so its JSONL row can preview the
+            # assistance this response will carry -- issue #334.)
+            if execution_result.get("error_code") in ("no_unit_of_work", "requires_exclusive_access"):
+                runtime_error_code = execution_result["error_code"]
+            else:
+                runtime_error_code = execution_result.get("error_type") or "runtime_error"
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,
                 error=execution_result.get("error"),
@@ -6416,6 +6771,8 @@ MODULE_CODE = {code}
                 traceback_text=traceback_text,
                 polymorphic_hint=polymorphic_hint,
             log_dir_fn=get_log_dir,
+                assistance_error_code=runtime_error_code,
+                assistance_code_size_bytes=code_size_bytes,
             )
             # Issue #302: a teardown failure needs explicit recovery advice --
             # without it, callers re-ran the same write 20 times in a row
@@ -6428,14 +6785,6 @@ MODULE_CODE = {code}
                 execution_result[KEY_NEXT_STEPS] = teardown_next_steps(
                     _td_info, write_enabled=write_enabled
                 )
-            # Issue #28: record a runtime-failure signal. Use the structured
-            # error_type when available; fall back to a generic bucket.
-            # Issue #310: a diagnosed no_unit_of_work keys the loop detector
-            # on its own code so the tailored assistance hint fires.
-            if execution_result.get("error_code") in ("no_unit_of_work", "requires_exclusive_access"):
-                runtime_error_code = execution_result["error_code"]
-            else:
-                runtime_error_code = execution_result.get("error_type") or "runtime_error"
             return _attach_assistance_if_loop(
                 json_response(
                     _finalize_run_module_response(execution_result),

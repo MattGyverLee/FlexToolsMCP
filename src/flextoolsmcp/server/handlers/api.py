@@ -47,6 +47,7 @@ try:
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         KEY_RECIPES, KEY_RECIPES_COUNT, KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT,
+        KEY_RECOMMENDED_RECIPE,
         KEY_MCP_TOOLS, KEY_ZERO_RESULT_FALLBACK,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
@@ -84,6 +85,7 @@ except ImportError:
         KEY_COLLECTION_CONTRACT, KEY_ERROR, KEY_HINT,
         KEY_DEPRECATED, KEY_DEPRECATION, KEY_DEPRECATED_MEMBERS, KEY_DEPRECATION_REDIRECTS,
         KEY_RECIPES, KEY_RECIPES_COUNT, KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT,
+        KEY_RECOMMENDED_RECIPE,
         KEY_MCP_TOOLS, KEY_ZERO_RESULT_FALLBACK,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
@@ -436,6 +438,38 @@ def _entity_top_level_importable(
     return None
 
 
+def _entity_access_path(library: str, entity_name: str, entity: dict | None) -> str | None:
+    """``project.<Accessor>`` for a flexicon Operations class, or None.
+
+    The entity's recorded ``access_path`` (issue #100, generator facade scan)
+    wins. Issue #304: when it is missing -- the shipped 4.11.0 index records
+    it for 62 of 122 entities, and never for ``WordformOperations``, whose
+    accessor is documented under an import alias (``WfiWordformOperations``)
+    -- derive it from FLExProject's property return types through the same
+    alias-resolving map the preflight gates use, so search / get_object_api
+    teach ``project.Wordforms`` instead of an import that weak models then
+    misuse as ``project.WordformOperations``.
+    """
+    if entity:
+        recorded = entity.get(KEY_ACCESS_PATH)
+        if recorded:
+            return recorded
+    if library != "flexicon" or not entity_name.endswith("Operations"):
+        return None
+    try:
+        try:
+            from ..validators import _accessor_to_ops_map
+        except ImportError:
+            from server.validators import _accessor_to_ops_map
+        accessor_to_ops = _accessor_to_ops_map(get_api_index())
+    except Exception:
+        return None
+    for accessor, ops in sorted(accessor_to_ops.items()):
+        if ops == entity_name:
+            return f"project.{accessor}"
+    return None
+
+
 def _build_entity_import(library: str, entity_name: str, namespace: str = "",
                           entity: dict | None = None) -> str:
     """Ready-to-paste access line for a result row.
@@ -457,10 +491,9 @@ def _build_entity_import(library: str, entity_name: str, namespace: str = "",
     the key (including every entity in an index generated before this fix)
     fall through unchanged to the import-line behavior above.
     """
-    if entity:
-        access_path = entity.get(KEY_ACCESS_PATH)
-        if access_path:
-            return access_path
+    access_path = _entity_access_path(library, entity_name, entity)
+    if access_path:
+        return access_path
     if library == "liblcm":
         return f"from {namespace} import {entity_name}" if namespace else ""
 
@@ -519,12 +552,15 @@ def _match_canonical_intents(query: str, flexicon_index: dict | None) -> list:
             continue
         seen.add(key)
         namespace = entity.get("namespace", "") or ""
+        access_path = _entity_access_path("flexicon", entity_name, entity)  # #304
+        access_fields = {KEY_ACCESS_PATH: access_path} if access_path else {}
         rows.append({
             KEY_SCORE: _CANONICAL_INTENT_SCORE,
             KEY_SOURCE: "flexicon",
             KEY_ENTITY: entity_name,
             KEY_NAMESPACE: namespace,
             KEY_IMPORT_STATEMENT: _build_entity_import("flexicon", entity_name, namespace, entity),
+            **access_fields,
             KEY_NAME: method_name,
             KEY_TYPE: "method",
             KEY_SIGNATURE: method.get(KEY_SIGNATURE),
@@ -809,7 +845,7 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     # `entity` directly via _build_entity_import). Absent when the index
     # predates the facade scan -- entity.get() then returns None and the key
     # is simply omitted below.
-    access_path = entity.get(KEY_ACCESS_PATH)
+    access_path = _entity_access_path(library, object_type, entity)
     if access_path:
         result[KEY_ACCESS_PATH] = access_path
 
@@ -1415,6 +1451,9 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                 # name but no way to import it, which was the root cause of #12.
                 entity_namespace = entity.get("namespace", "") or ""
                 entity_import = _build_entity_import(source_name, entity_name, entity_namespace, entity)
+                # Issue #304: carry the facade accessor explicitly too.
+                entity_access = _entity_access_path(source_name, entity_name, entity)
+                access_fields = {KEY_ACCESS_PATH: entity_access} if entity_access else {}
 
                 for method in entity.get(KEY_METHODS, []):
                     method_name = method.get(KEY_NAME, '')
@@ -1440,6 +1479,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                                 KEY_ENTITY: entity_name,
                                 KEY_NAMESPACE: entity_namespace,
                                 KEY_IMPORT_STATEMENT: entity_import,
+                                **access_fields,
                                 KEY_NAME: method_name,
                                 KEY_TYPE: "method",
                                 KEY_SIGNATURE: method.get(KEY_SIGNATURE),
@@ -1593,8 +1633,21 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         for entity in _recipe_rows[0].get("entities", []):
             session_state.record_validated_api(entity)
 
+    # Issue #335: a clear library-recipe winner goes top-level, ahead of the
+    # API hits -- nested under results[0].recipe it was never opened. No
+    # `code` here (SC-005); how_to_run names the fetch-edit-run steps.
+    try:
+        from ..recipes import recommend_recipe as _recommend_recipe
+    except ImportError:
+        from server.recipes import recommend_recipe as _recommend_recipe
+    _recommended = _recommend_recipe(query)
+
     result = {
         KEY_QUERY: query,
+    }
+    if _recommended is not None:
+        result[KEY_RECOMMENDED_RECIPE] = _recommended
+    result.update({
         KEY_API_MODE: api_mode,
         KEY_API_MODE_DESCRIPTION: config["description"],
         KEY_SEARCH_METHOD: search_method,
@@ -1611,7 +1664,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         KEY_RECIPES: _recipe_rows,
         KEY_RECIPES_COUNT: _recipe_result.get("recipes_count", 0),
         KEY_RECIPES_AMBIGUOUS: _recipe_result.get("recipes_ambiguous", False),
-    }
+    })
     if _recipe_result.get("recipes_hint") is not None:
         result[KEY_RECIPES_HINT] = _recipe_result["recipes_hint"]
     if deprecation_redirects:

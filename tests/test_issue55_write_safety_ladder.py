@@ -259,6 +259,14 @@ def _stub_guarded_index_only_mutation_env(monkeypatch, tmp_path):
         execution_mod, "detect_cud_operations",
         lambda code: {"is_cud": False, "operations": []},
     )
+    # Exclusive-access gate (requires_exclusive_access) fires before the
+    # confirmation gate for WS/CF scripts by design; stub its detector so
+    # this ladder test still exercises Rung 3. The gate itself is covered
+    # in tests/test_exclusive_access_gate.py.
+    monkeypatch.setattr(
+        execution_mod.exclusive_access, "detect_exclusive_only_operations",
+        lambda *a, **k: [],
+    )
     # Issue #121: this stub's get_api_index (above) returns a real
     # _FakeIndex, not None, so _detect_casting_needs_compat's `api_index is
     # not None` check DOES pass the new keyword through here -- accept and

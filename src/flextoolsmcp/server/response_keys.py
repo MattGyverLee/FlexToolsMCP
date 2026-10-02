@@ -88,6 +88,7 @@ __all__ = [
     'KEY_RECIPES', 'KEY_RECIPES_COUNT', 'KEY_RECIPE',
     'KEY_RECIPES_AMBIGUOUS', 'KEY_RECIPES_HINT',
     'KEY_SKELETONS_FROM_YOUR_SESSIONS',
+    'KEY_RECOMMENDED_RECIPE', 'KEY_CLOSEST_RECIPES', 'KEY_RECIPE_HINT',
     # MCP-tool hits in search_by_capability (issue #312)
     'KEY_MCP_TOOLS', 'KEY_ZERO_RESULT_FALLBACK',
     # Operation type constants
@@ -356,6 +357,10 @@ KEY_RECIPE = "recipe"
 KEY_RECIPES_AMBIGUOUS = "recipes_ambiguous"
 KEY_RECIPES_HINT = "recipes_hint"
 KEY_SKELETONS_FROM_YOUR_SESSIONS = "skeletons_from_your_sessions"
+# Issue #335: library recipes surfaced ahead of API hits / on failures.
+KEY_RECOMMENDED_RECIPE = "recommended_recipe"
+KEY_CLOSEST_RECIPES = "closest_recipes"
+KEY_RECIPE_HINT = "recipe_hint"
 
 # search_by_capability MCP-tool hits (issue #312): MCP tools (e.g.
 # flextools_try_word) matching the query, and the zero-API-hit fallback block.

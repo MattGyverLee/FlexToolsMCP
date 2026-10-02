@@ -26,7 +26,7 @@ server itself. Response shapes and error codes are in
 
 | Tool | Description |
 |------|-------------|
-| `flextools_search_by_capability` | Natural-language search for methods by what they do; also surfaces matching recipes and MCP tools (e.g. `flextools_try_word` for "why doesn't this word parse"), and lists every tool when no API member matches |
+| `flextools_search_by_capability` | Natural-language search for methods by what they do; a clearly matching library recipe comes first as `recommended_recipe`; also surfaces matching recipes and MCP tools (e.g. `flextools_try_word` for "why doesn't this word parse"), and lists every tool when no API member matches |
 | `flextools_get_object_api` | Full methods/properties for an object such as ILexEntry or LexSenseOperations |
 | `flextools_get_navigation_path` | Traversal paths between object types (ILexEntry -> ILexSense -> ILexExampleSentence) |
 | `flextools_find_examples` | Code examples by method or operation type (create, read, update, delete, iterate) |
@@ -62,7 +62,7 @@ DEPRECATED: use `flextools_list_recipes(source="local")`. Same `limit` input and
 |------|-------------|
 | `flextools_get_module_template` | The official FlexTools module scaffold (Main / docs / FlexToolsModule) |
 | `flextools_start_module` | Interactive wizard to scaffold a new FlexTools module |
-| `flextools_run_module` | Execute code against a FieldWorks project (dry-run by default; `write_enabled=true` for mutations) |
+| `flextools_run_module` | Execute code against a FieldWorks project (dry-run by default; `write_enabled=true` for mutations). Start from a library recipe when one fits (edit PARAMS only, `source="existing"`); failures list `closest recipes` in `next_steps`, and an unused matching recipe is named in `recipe_hint` |
 | `flextools_get_operation_logs` | Operation logs plus pattern-based recommendations for common errors |
 
 ### Diagnostics
@@ -210,6 +210,8 @@ User Query: "I want to delete senses with 'test' in the gloss"
 - **From `resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide whether to stay in flexicon or drop to liblcm.
 
 Every method name in the finished module traces back to a discovery step you can audit. If a needed call wasn't surfaced by Phases 1–2, return to discovery rather than guess — `run_module` refuses execution when no APIs were discovered (gate 6, `api_discovery_required`).
+
+> **Note:** restarting the MCP server resets the session's API-discovery state (`discovered_apis` is in-memory only). A write that passed the `api_discovery_required` gate before the restart is rejected after it until the entities are discovered again — this is expected, not a regression. Fix: call `flextools_get_object_api` again for the entities you need, or start a new session.
 
 #### Phase 4: Testing (Required before write)
 

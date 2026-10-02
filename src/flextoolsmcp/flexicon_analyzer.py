@@ -2024,6 +2024,14 @@ def _extract_facade_access_paths(flexicon_code_base: Path) -> Dict[str, str]:
             continue
 
         prop_name = item.name
+        # Issue #304: a property may import its class under another name
+        # (`from .TextsWords.WordformOperations import WordformOperations as
+        # WfiWordformOperations`); record the real class, not the alias.
+        import_aliases = {
+            alias.asname: alias.name
+            for sub in ast.walk(item) if isinstance(sub, ast.ImportFrom)
+            for alias in sub.names if alias.asname
+        }
         for sub in ast.walk(item):
             if not isinstance(sub, ast.Assign) or not isinstance(sub.value, ast.Call):
                 continue
@@ -2048,6 +2056,7 @@ def _extract_facade_access_paths(flexicon_code_base: Path) -> Dict[str, str]:
             # First property found wins if a class is (unexpectedly) memoized
             # under two different property names -- deterministic, and no
             # known flexicon class does this today.
+            class_name = import_aliases.get(class_name, class_name)
             access_paths.setdefault(class_name, f"project.{prop_name}")
 
     return access_paths

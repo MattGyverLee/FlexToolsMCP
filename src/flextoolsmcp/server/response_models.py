@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 48 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 49 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + raw_addcustomfield_write_risk + invalid_api_mode
   + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
@@ -24,7 +24,9 @@ Provides:
   + no_unit_of_work (#310)
   + atomic_property_iteration (#313)
   + unknown_method (#306)
-  + requires_exclusive_access (exclusive-access-gate))
+   + unknown_method (#306)
+   + unknown_import (#305)
+   + requires_exclusive_access (exclusive-access-gate))
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -344,6 +346,24 @@ class UnknownMethodDetail(BaseModel):
     """
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["unknown_method"] = "unknown_method"
+    issues: List[Any] = Field(default_factory=list)
+    did_you_mean: List[str] = Field(default_factory=list)
+    next_steps: List[str] = Field(default_factory=list)
+
+
+class UnknownImportDetail(BaseModel):
+    """Detail payload for unknown_import rejections (issue #305).
+
+    ``from flexicon import X`` / ``import flexicon.X`` where the installed
+    flexicon has no X (read statically -- the server never imports flexicon).
+    Each ``issues`` item carries ``statement``, ``kind`` (``"name"`` or
+    ``"module"``), ``module``, ``name``, ``lineno``, ``did_you_mean``
+    (list[str], may be empty), ``suggestion`` and, when the name maps to a
+    FLExProject accessor, ``access_path`` (``project.<Accessor>``). Top-level
+    ``did_you_mean`` mirrors the first issue's list.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["unknown_import"] = "unknown_import"
     issues: List[Any] = Field(default_factory=list)
     did_you_mean: List[str] = Field(default_factory=list)
     next_steps: List[str] = Field(default_factory=list)
@@ -1033,7 +1053,7 @@ class RecipeNotFoundDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 48 per-code detail models
+# Discriminated union over all 49 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -1055,6 +1075,7 @@ AnyDetail = Union[
     InvalidApiModeDetail,
     InvalidApiChainDetail,
     UnknownMethodDetail,
+    UnknownImportDetail,
     ReflectionBypassDetectedDetail,
     NestedUnitOfWorkDetail,
     NoUnitOfWorkDetail,

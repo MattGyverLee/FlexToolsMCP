@@ -7,8 +7,25 @@ import json
 import unittest
 from pathlib import Path
 
+import pytest
+
 from flextoolsmcp.flexicon_analyzer import extract_flexicon_top_level_exports_from_init
 
+
+
+@pytest.fixture(autouse=True)
+def _no_loaded_api_index(monkeypatch):
+    """These tests pin the entity-dict-only behavior. Since #304,
+    _entity_access_path also derives project.<Accessor> from the LOADED index
+    when the entity lacks one, so an index another test loaded would leak
+    in; pin it to "not loaded" (both import spellings of the module)."""
+    import importlib
+    for name in ("flextoolsmcp.server.handlers.api", "server.handlers.api"):
+        try:
+            mod = importlib.import_module(name)
+        except ImportError:
+            continue
+        monkeypatch.setattr(mod, "get_api_index", lambda: None)
 
 def _shipped_flexicon_index_path() -> Path | None:
     python_dir = (

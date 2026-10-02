@@ -85,13 +85,55 @@ One new error code lands: `requires_exclusive_access` (a write-enabled script
 that changes writing systems or custom fields while FieldWorks holds the
 project, carrying `guidance`, `verdict`, `holder_pid`, `holder_process`,
 `operations` and `remedy`). The error code count in `docs/TOOL-CONTRACT.md`
-moves from 47 to 48 (`unknown_method`, #306, took it to 47). `validate_only`
+moves from 47 to 49 (`unknown_method`, #306, took it to 47; `unknown_import`,
+#305, lands alongside this change). `validate_only`
 gains `project_lock.exclusive_access` (`required`, `operations`, `blocking`). Existing keys are unchanged; only the
 text of the `open_shared` `shared_mode` advisory and of the `open_shared`
 project-open diagnosis changes.
 
 ### Fixed
 
+- Guessed `project.<Name>Operations` accessors now get the real accessor
+  ([#304](https://github.com/MattGyverLee/FlexToolsMCP/issues/304)).
+  `project.WordformOperations` used to get `missing_imports` advice to import
+  `WordformOperations`, which changed nothing, and then failed at runtime.
+  Names further from a real accessor, such as `project.ParseOperations`,
+  passed preflight. Now:
+  - `project.<Name>Operations` is always an `invalid_api_chain` accessor
+    issue. When the index maps the class to an accessor, the issue names it
+    (`use project.Wordforms`, no import needed), and read-only runs can
+    auto-fix it. Otherwise it lists the nearest accessors, and it still
+    blocks.
+  - `missing_imports` no longer suggests importing a name that is used only
+    as `project.<Name>`.
+  - FLExProject documents the `Wordforms` accessor as returning
+    `WfiWordformOperations`, an import alias with no index entry, so every
+    gate skipped `project.Wordforms` (the gap PR #342 called out). The
+    accessor map now resolves such aliases to the indexed class
+    (`WordformOperations`), so typos in `project.Wordforms` method calls
+    are caught too.
+  - `flextools_search_by_capability` and `flextools_get_object_api`
+    results now carry `access_path` (and `import_statement` shows it) even
+    where the index does not record one. The shipped 4.11.0 index records it
+    for 62 of 122 entities and never for `WordformOperations`. The index
+    generator now records the real class behind an aliased facade import,
+    so a regenerated index includes it.
+- `flextools_run_module` now checks flexicon import names before the run
+  ([#305](https://github.com/MattGyverLee/FlexToolsMCP/issues/305)). Before,
+  `from flexicon import WfiWordformOperations`, `from flexicon import
+  InflectionFeatures` or `import flexicon.Lexicon` passed preflight and
+  then failed with a bare `ImportError`. A new `unknown_import` rejection
+  (read-only and write runs, and a `validate_only` gate of the same name)
+  lists each bad import with `did_you_mean` candidates, for example
+  `WordformOperations` or `flexicon.code.Lexicon`. When the name is a
+  FLExProject accessor, it also gives `access_path` (`project.Wordforms`,
+  `project.InflectionFeatures`), which needs no import. The check reads the
+  installed flexicon package statically and never imports it. It falls back
+  to the API index, and when neither is available it is skipped. A runtime
+  `ImportError` on a flexicon name now carries the same candidates
+   (`error_type: "UnknownImportError"`, `did_you_mean`, `help`). The
+   error-code count in `docs/TOOL-CONTRACT.md` moves from 47 to 49
+   (with `requires_exclusive_access` landing alongside).
 - `flextools_run_module`'s `unknown_method` rejection
   ([#306](https://github.com/MattGyverLee/FlexToolsMCP/issues/306)) now has
   a retry-loop assistance hint (pick from `did_you_mean`; a guard or a
@@ -248,6 +290,104 @@ project-open diagnosis changes.
   `project_not_found` now always carries `available_projects` and
   `total_count`, even when there are no fuzzy suggestions, and its hint says
   the name must be a plain project name.
+- `partial_module_structure` rejections no longer feed retry loops
+  ([#334](https://github.com/MattGyverLee/FlexToolsMCP/issues/334)). Models
+  often resubmitted the exact code that was just rejected, and no retry-loop
+  help appeared. That help needed 5 failures in a row, and the
+  `assistance_triggered` field in `operations.jsonl` was always written as
+  `false`, because the row is written before the response is built. Now:
+  - A byte-identical resubmit of code that was just rejected gets
+    `_assistance` on the first repeat, from every gate. The pattern is
+    `identical_resubmit`, the response also carries top-level
+    `identical_resubmit: true`, and the message says this is the same code
+    that was just rejected.
+  - `assistance_triggered` in `operations.jsonl` now records whether the
+    response carried `_assistance`.
+  - The rejection now leads with the cheapest fix. When it can be done
+    mechanically, `auto_fixed_code` is the same code as a bare snippet: the
+    `def Main(...)` line (named in `main_line_text`) and the lone scaffold
+    piece are deleted, and the body is dedented. Step 1 is "resubmit
+    `auto_fixed_code`". When the rewrite is not safe (for example, a
+    `return` in `Main`, or unguarded writes),
+    `auto_fix_unavailable_reason` says why, and `skip_module_check=True`
+    stays first.
+  - The closest-recipes next step comes from the shared #335 pointer, once;
+    the rejection no longer adds a second one of its own.
+- An identical resubmit after an `api_discovery_required` rejection now
+  passes that gate
+  ([#340](https://github.com/MattGyverLee/FlexToolsMCP/issues/340)). The
+  write-run rejection inlined the `get_object_api` docs for the entities in
+  the code and said "resubmit", but never recorded them as discovered, so the
+  same code was refused again until the model called `get_object_api`
+  itself. The inlined entities are now recorded the way `get_object_api`
+  records them, and the message names them and says the same code now
+  passes. The read-only discovery redirect does the same for the entities it
+  inlines, on the read-only auto-discovery set only, so writes still need
+  real discovery (#47).
+- `flextools_run_module` no longer drops the script's report messages when
+  the script raises
+  ([#347](https://github.com/MattGyverLee/FlexToolsMCP/issues/347)). The
+  runner's exception handler set only `error`, so a `report.Info(...)` line
+  written just before the failing call was lost. A failed run now returns
+  `messages` and `summary` alongside `error`, as `run_scan` already did.
+- Library recipes are now put in front of the model instead of nested where
+  it never looked
+  ([#335](https://github.com/MattGyverLee/FlexToolsMCP/issues/335)). In the
+  2026-09-30 sessions none of 26 `run_module` calls started from a recipe.
+  All changes are additive; the contract stays at `tool-responses/1.0`.
+  - `flextools_search_by_capability` returns a top-level `recommended_recipe`
+    (`id`, `intent`, `params`, `requires_write`, `how_to_run`; no `code`)
+    right after `query`, ahead of the API hits, when one shipped recipe
+    clearly wins the query and is not a read-only recipe answering a
+    delete/merge/set-style query (for example "create a new lexical entry" ->
+    `create-entries-idempotent`, "parse a wordform and get morphological
+    decomposition" -> `wordform-analyses`).
+  - `flextools_run_module` adds a `"closest recipes: ..."` line to
+    `next_steps`, plus a `closest_recipes` list, on `partial_module_structure`
+    and `casting_issues_detected` rejects and on the 2nd consecutive failure
+    with the same `user_intent`. `project_locked`, `confirmation_required`
+    and `server_state_error` do not count toward that streak, the recipe
+    the submitted code is already from is left out, and the nested legacy
+    `error` object carries the same pointer.
+  - `flextools_run_module` adds a non-blocking `recipe_hint` when
+    `user_intent` clearly matches a library recipe and the submitted code is
+    not from it.
+  - The `run_module` and `search_by_capability` tool descriptions now say to
+    start from a recipe.
+  - A run is no longer remembered as a `local-*` recipe when it called
+    `report.Error`. The runner's success flag only means no uncaught
+    exception; a run that reported errors did not do its job. Failed runs
+    were already never remembered.
+- **Safety:** an unguarded write through a loop over a list of LCM
+  collections no longer passes the `unprotected_writes` gate
+  ([#350](https://github.com/MattGyverLee/FlexToolsMCP/issues/350)).
+  `for coll in [e.SensesOS, f.SensesOS]: coll.Add(s)` was certified
+  read-only because the loop variable was taken for a local Python list. A
+  name now counts as a local container only when every binding of it in the
+  script builds one; a loop target, unpacking or any other rebinding keeps
+  its `.Add` gated. The skip is also tracked per call instead of per line, so
+  `tmp.Add(x); entry.SensesOS.Add(s)` on one line no longer hides the real
+  write. Function and lambda parameters, import aliases, `except ... as`
+  and `match` captures now count as bindings too, so
+  `def helper(senses, s): senses.Add(s)` stays gated even when `Main` has
+  its own `senses = []`. Plain local lists and sets (`results = []`,
+  `seen = set()`) are still not flagged.
+- `if modifyAllowed and <cond>:` now counts as a write guard
+  ([#352](https://github.com/MattGyverLee/FlexToolsMCP/issues/352)), as
+  does the early-return form `if not modifyAllowed or <cond>: return`. An
+  `or` with a non-guard operand still does not. A comparison now counts
+  only against a literal True/False in the enabling direction: before,
+  `if modifyAllowed == False:` was wrongly accepted as protecting the write
+  in its body. When the guard's test itself makes a call
+  (`if x.SensesOS.Add(s) and modifyAllowed:`), only the lines after the
+  test are protected, so that call is still reported.
+- The write-gate patterns no longer report `nonsense.Form = ...`,
+  `compose.Comment = ...` or `position.Note = ...` as writes, and a
+  resolved facade such as `fx` no longer matches inside `prefx`
+  ([#351](https://github.com/MattGyverLee/FlexToolsMCP/issues/351)).
+  The gate still fails closed elsewhere on purpose: compound receivers
+  (`subsense`, `subentry`, `lexentry`, `newEntry`) and any name ending in
+  `project` (`self._project`, `srcProject`, `myproject`) stay gated.
 
 ### Other
 

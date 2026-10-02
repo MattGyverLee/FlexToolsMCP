@@ -153,6 +153,13 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "issues": [],
         "did_you_mean": [],
     },
+    "unknown_import": {
+        # Issue #305.
+        "message": "1 flexicon import(s) would fail with ImportError: from flexicon import WfiWordformOperations",
+        "issues": [],
+        "did_you_mean": ["WordformOperations"],
+        "next_steps": [],
+    },
     "reflection_bypass_detected": {
         "message": "Refused: this code reaches LCM through reflection",
         "findings": [],

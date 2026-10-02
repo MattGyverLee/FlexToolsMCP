@@ -1,0 +1,16 @@
+intent: "An invented flexicon import name is rejected before the run with a did-you-mean (issue #305)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import WfiWordformOperations
+  for wf in project.Wordforms.GetAll():
+      report.Info(str(wf))
+expect:
+  outcome: preflight_reject
+  error_code: unknown_import
+  auto_fixes: 0
+notes: >
+  Regression for issue #305: `WfiWordformOperations` is the LCM-flavoured
+  name; flexicon exports `WordformOperations` (reached as project.Wordforms).
+  Before #305 this failed at runtime with a bare ImportError.
+issue: 305

@@ -201,9 +201,17 @@ class Api:
         } - set(self.accessor_aliases)
         self.accessors = props | methods | shorthand
 
+        # Issue #304: resolve documented import aliases (Wordforms ->
+        # WfiWordformOperations -> WordformOperations) the same way the
+        # preflight gates do, so project.Wordforms snippets are checked too.
+        try:
+            from flextoolsmcp.server.validators import _resolve_ops_alias
+        except Exception:
+            def _resolve_ops_alias(ops_class, _entities):
+                return ops_class
         self.accessor_ops = {}
         for p in flex_project.get("properties", []):
-            rt = (p.get("return_type") or "").strip()
+            rt = _resolve_ops_alias((p.get("return_type") or "").strip(), self.entities)
             if rt.endswith("Operations") and rt in self.entities:
                 self.accessor_ops[p["name"]] = rt
         for name in shorthand:

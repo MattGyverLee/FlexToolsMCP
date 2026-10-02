@@ -53,6 +53,23 @@ LCM_COLLECTION_NAMES = (
     "PronunciationsOS", "LexEntryRefsOS", "ComponentLexemesRS"
 )
 
+# Issue #351: receiver-name prefix guard for patterns such as `entry` or
+# `sense`. No structural boundary separates a compound receiver from an
+# English word -- `subsense`, `subentry` and `lexentry` are real FLEx
+# receivers, `nonsense` and `compose` are not -- so the keyword may still sit
+# anywhere inside the identifier (the fail-closed direction). Only these
+# exact whole words, which cannot be an LCM object's name in practice, are
+# skipped. The identifier must start at `\b` so the excluded word is matched
+# whole, then `\w*?` re-admits any prefix (`new_`, `sub`, `lex`, `self._`).
+_RECEIVER_NOT_ENGLISH_WORDS = (
+    "nonsense", "compose", "composes", "position", "positions", "purpose",
+    "purposes", "suppose", "propose", "expose", "dispose", "impose",
+    "oppose", "transpose", "deposit",
+)
+_RECEIVER_PREFIX_BOUNDARY = (
+    r'\b(?!(?:' + '|'.join(_RECEIVER_NOT_ENGLISH_WORDS) + r')\b)\w*?'
+)
+
 # Compiled regex patterns for efficiency
 _PATTERN_COMMENT = re.compile(r'#.*$', re.MULTILINE)
 _PATTERN_CREATE = re.compile(r'\.Create\s*\(', re.IGNORECASE)
@@ -60,7 +77,8 @@ _PATTERN_CREATE_COLLECTION = re.compile(
     r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Add\s*\(', re.IGNORECASE
 )
 _PATTERN_CREATE_GENERIC = re.compile(
-    r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', re.IGNORECASE
+    _RECEIVER_PREFIX_BOUNDARY
+    + r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', re.IGNORECASE
 )
 _PATTERN_CREATE_PROJECT = re.compile(r'project\.\w+\.Create\w*\s*\(', re.IGNORECASE)
 _PATTERN_INSERT_COLLECTION = re.compile(
@@ -77,7 +95,8 @@ _PATTERN_SET_PROPERTY = re.compile(
 )
 _PATTERN_COPY_ALTERNATIVES = re.compile(r'\.CopyAlternatives\s*\(', re.IGNORECASE)
 _PATTERN_PROPERTY_ASSIGNMENT = re.compile(
-    r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
+    _RECEIVER_PREFIX_BOUNDARY
+    + r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
     r'(LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
     r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
     r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
@@ -135,7 +154,8 @@ _LIBLCM_MUTABLE_PATTERNS = [
     (re.compile(r'\.Set(?:Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\('), 'Set*', 'Update'),
     # Raw LCM property assignments (entry.LexemeFormOA = ..., sense.Gloss = ..., etc.)
     (re.compile(
-        r'(?:entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
+        _RECEIVER_PREFIX_BOUNDARY
+        + r'(?:entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
         r'(?:LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
         r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
         r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
@@ -157,10 +177,10 @@ _LIBLCM_MUTABLE_PATTERNS = [
 # index lookup cannot see `fx.LexEntry.SetLexemeForm(...)` at all. These
 # regexes are then the only thing still holding the write gate.
 _FACADE_ACCESSOR_MUTABLE_TEMPLATES = [
-    (r'{receiver}\s*\.\s*\w+\s*\.\s*Create\w*\s*\(', 'Create', 'Create'),
-    (r'{receiver}\s*\.\s*\w+\s*\.\s*Delete\w*\s*\(', 'Delete', 'Delete'),
+    (r'{boundary}{receiver}\s*\.\s*\w+\s*\.\s*Create\w*\s*\(', 'Create', 'Create'),
+    (r'{boundary}{receiver}\s*\.\s*\w+\s*\.\s*Delete\w*\s*\(', 'Delete', 'Delete'),
     (
-        r'{receiver}\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(',
+        r'{boundary}{receiver}\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(',
         'Set/Update',
         'Update',
     ),
@@ -176,9 +196,16 @@ def _facade_accessor_mutable_patterns(receiver_name: str) -> List[tuple]:
     per call costs nothing measurable.
     """
     escaped = re.escape(receiver_name)
+    # Issue #351: a resolved facade is one exact identifier, so `fx` must not
+    # match inside `prefx`. The injected `project` keeps no left boundary on
+    # purpose: `self._project`, `srcProject` and `old_project` are all
+    # plausible FLExProject handles, and the gate fails closed.
+    boundary = '' if receiver_name == 'project' else r'\b'
     return [
         (
-            re.compile(template.format(receiver=escaped), re.IGNORECASE),
+            re.compile(
+                template.format(boundary=boundary, receiver=escaped), re.IGNORECASE
+            ),
             f'{receiver_name}.*.{label}',
             category,
         )
@@ -478,7 +505,10 @@ def detect_module_structure(code: str) -> dict:
 
 
 _DOCS_DICT_RE = re.compile(r'^\s*docs\s*=\s*\{', re.MULTILINE)
-_MODIFY_GUARD_RE = re.compile(r'\bif\s+(?:not\s+)?modifyAllowed\b')
+# Any `if` test that mentions modifyAllowed, so compound guards
+# (`if existing is None and modifyAllowed:`, issue #352) also mark the
+# scaffold as FTM_ModifiesDB.
+_MODIFY_GUARD_RE = re.compile(r'\bif\b[^\n:]*\bmodifyAllowed\b')
 
 _SCAFFOLD_IMPORT = "from flextoolslib import *"
 _SCAFFOLD_BINDING = "FlexToolsModule = FlexToolsModuleClass(Main, docs)"
@@ -633,6 +663,215 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
         "skip_module_check=True to run it as-is. (Code with `def Main` and "
         "NEITHER scaffold piece is not rejected -- it runs as a snippet.)"
     )
+    return result
+
+
+_MAIN_PARAMS = ("project", "report", "modifyAllowed")
+_BARE_SNIPPET_MAX_LINES = 80
+
+
+def _is_scaffold_statement(node: ast.stmt) -> bool:
+    """A top-level ``docs = ...`` or ``X = FlexToolsModuleClass(...)`` binding."""
+    if not isinstance(node, ast.Assign):
+        return False
+    if any(isinstance(t, ast.Name) and t.id == "docs" for t in node.targets):
+        return True
+    value = node.value
+    if isinstance(value, ast.Call):
+        func = value.func
+        name = func.id if isinstance(func, ast.Name) else getattr(func, "attr", None)
+        return name == "FlexToolsModuleClass"
+    return False
+
+
+def _main_body_blocker(main: ast.FunctionDef) -> Optional[str]:
+    """Why Main's body cannot be lifted to module level, or None if it can."""
+    if main.decorator_list:
+        return "Main has decorators"
+    a = main.args
+    if a.vararg or a.kwarg or a.kwonlyargs or a.defaults or getattr(a, "posonlyargs", None):
+        return "Main's signature is not (project, report, modifyAllowed)"
+    names = [arg.arg for arg in a.args]
+    if len(names) > len(_MAIN_PARAMS) or tuple(names) != _MAIN_PARAMS[: len(names)]:
+        return "Main's parameters are not named (project, report, modifyAllowed)"
+    if main.body and main.body[0].lineno == main.lineno:
+        return "Main's body is on the def line"
+    stack: List[ast.AST] = list(main.body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue  # a nested scope may return/yield freely
+        if isinstance(node, (ast.Return, ast.Yield, ast.YieldFrom, ast.Await)):
+            return "Main's body uses return/yield, which is invalid at module level"
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
+            return "Main's body uses global/nonlocal"
+        stack.extend(ast.iter_child_nodes(node))
+    return None
+
+
+def _scope_bindings(stmts: List[ast.stmt]) -> Set[str]:
+    """Names the given statements bind in their own scope (not nested ones)."""
+    bound: Set[str] = set()
+    stack: List[ast.AST] = list(stmts)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            bound.add(node.name)
+            continue  # its body is a nested scope
+        if isinstance(node, ast.Lambda):
+            continue
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                bound.add((alias.asname or alias.name).split(".")[0])
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            bound.add(node.id)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            bound.add(node.name)
+        stack.extend(ast.iter_child_nodes(node))
+    return bound
+
+
+def _main_lift_blocker(
+    main: ast.FunctionDef, module: ast.Module, removed_names: Set[str]
+) -> Optional[str]:
+    """Why lifting Main's body changes what it does, or None if it does not.
+
+    Inlined, the body runs where ``def Main`` stood instead of after the whole
+    module loaded. So a name it reads that is bound only later at module level
+    (a helper/import/constant after Main) would raise NameError, maybe after
+    earlier statements wrote; a name the fix deletes (``docs``) would too. The
+    dedent also rewrites the contents of a multi-line string in the body.
+    """
+    for node in ast.walk(main):
+        if node is main:
+            continue
+        if isinstance(node, (ast.Constant, ast.JoinedStr)) and (
+            isinstance(node, ast.JoinedStr) or isinstance(node.value, (str, bytes))
+        ):
+            if getattr(node, "end_lineno", node.lineno) != node.lineno:
+                return "Main's body has a multi-line string the dedent would change"
+    loaded = {
+        n.id for n in ast.walk(main)
+        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)
+    }
+    free = loaded - _scope_bindings(main.body) - {a.arg for a in main.args.args}
+    gone = sorted(free & removed_names)
+    if gone:
+        return f"Main's body uses {', '.join(gone)}, which the fix removes"
+    idx = module.body.index(main)
+    later = _scope_bindings(module.body[idx + 1:]) - _scope_bindings(module.body[:idx])
+    late = sorted(free & later)
+    if late:
+        return (
+            f"Main's body uses {', '.join(late)}, defined after Main; inlined "
+            "it would run before that definition"
+        )
+    return None
+
+
+def build_bare_snippet_fix(code: str, code_tree: Optional[ast.AST] = None) -> dict:
+    """Mechanically turn half-module code into a bare snippet (issue #334).
+
+    A bare snippet is the cheapest form ``flextools_run_module`` accepts:
+    no ``def Main``, no scaffold. The transform deletes the ``def Main(...)``
+    line, dedents its body in place, and deletes any lone scaffold piece (the
+    ``docs`` dict / ``FlexToolsModule = FlexToolsModuleClass(...)`` binding),
+    keeping everything else (imports, helpers, comments) verbatim.
+    ``project``/``report``/``modifyAllowed`` are predefined in a bare
+    snippet, so the body runs unchanged.
+
+    Only offered when it is safe by construction: Main is a single top-level
+    function whose parameters are (a prefix of) ``(project, report,
+    modifyAllowed)``, whose body has no ``return``/``yield``/``global`` at
+    its own scope, reads no name bound only after Main or removed by the fix,
+    holds no multi-line string, and the result parses. Otherwise ``available`` is False
+    with a ``reason``.
+
+    Returns dict with: available, code, main_line (1-based), main_line_text
+    (the exact ``def Main`` line to delete), removed_scaffold (list of
+    {"lines": "a-b", "text": first line}), reason.
+    """
+    result: Dict[str, Any] = {
+        "available": False,
+        "code": "",
+        "main_line": None,
+        "main_line_text": "",
+        "removed_scaffold": [],
+        "reason": "",
+    }
+    if code_tree is None:
+        try:
+            code_tree = ast.parse(code)
+        except SyntaxError:
+            result["reason"] = "code does not parse"
+            return result
+    if not isinstance(code_tree, ast.Module):
+        result["reason"] = "not a module"
+        return result
+    mains = [
+        n for n in code_tree.body
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "Main"
+    ]
+    if len(mains) != 1 or not isinstance(mains[0], ast.FunctionDef):
+        result["reason"] = "Main is not a single top-level function"
+        return result
+    main = mains[0]
+    lines = code.splitlines()
+    result["main_line"] = main.lineno
+    result["main_line_text"] = lines[main.lineno - 1].strip() if main.lineno <= len(lines) else ""
+    if len(lines) > _BARE_SNIPPET_MAX_LINES:
+        result["reason"] = f"code is longer than {_BARE_SNIPPET_MAX_LINES} lines"
+        return result
+    blocker = _main_body_blocker(main)
+    if blocker:
+        result["reason"] = blocker
+        return result
+
+    drop: Set[int] = set()  # 0-based line indexes to delete
+    removed_names: Set[str] = set()
+    for node in code_tree.body:
+        if _is_scaffold_statement(node):
+            removed_names |= _scope_bindings([node])
+    blocker = _main_lift_blocker(main, code_tree, removed_names)
+    if blocker:
+        result["reason"] = blocker
+        return result
+    for node in code_tree.body:
+        if _is_scaffold_statement(node):
+            end = getattr(node, "end_lineno", node.lineno)
+            drop.update(range(node.lineno - 1, end))
+            result["removed_scaffold"].append({
+                "lines": f"{node.lineno}-{end}" if end != node.lineno else str(node.lineno),
+                "text": lines[node.lineno - 1].strip(),
+            })
+    body_start = main.body[0].lineno - 1
+    # The def header goes -- a signature may span lines, so drop through the
+    # last line of its arguments / return annotation. Comment lines between
+    # the header and the first body statement are kept (and dedented).
+    header_end = main.lineno
+    for sub in list(main.args.args) + ([main.returns] if main.returns else []):
+        header_end = max(header_end, getattr(sub, "end_lineno", sub.lineno))
+    header_end = min(header_end, body_start)  # 1-based last header line
+    drop.update(range(main.lineno - 1, header_end))
+    body_end = getattr(main, "end_lineno", len(lines))
+    indent = lines[body_start][: len(lines[body_start]) - len(lines[body_start].lstrip())]
+
+    out: List[str] = []
+    for i, line in enumerate(lines):
+        if i in drop:
+            continue
+        if header_end <= i < body_end and line.startswith(indent):
+            out.append(line[len(indent):])
+        else:
+            out.append(line)
+    fixed = "\n".join(out).strip("\n") + "\n"
+    try:
+        ast.parse(fixed)
+    except SyntaxError as exc:
+        result["reason"] = f"dedented body does not parse ({exc.msg})"
+        return result
+    result["available"] = True
+    result["code"] = fixed
     return result
 
 
@@ -2105,6 +2344,64 @@ _MIN_MEMBER_SUGGESTION_RATIO = 0.5
 # When adding a new suggestion surface, add a row here and apply the floor.
 
 
+def _guessed_operations_accessor_issue(
+    node: ast.Attribute,
+    attr: str,
+    accessor_to_ops: Dict[str, str],
+    accessors: Set[str],
+) -> Dict[str, Any]:
+    """invalid_api_chain issue for ``project.<Name>Operations`` (issue #304).
+
+    An exact class -> accessor mapping from the index gets ratio 1.0 (one right
+    answer, like PROJECT_ACCESSOR_ALIASES, so read-only auto-fix may apply it).
+    Without one, nearby accessors (compared on the stem) are offered below the
+    auto-fix threshold, and the issue still blocks: the attribute cannot exist.
+    """
+    ops_to_accessor: Dict[str, str] = {}
+    for acc, ops in sorted(accessor_to_ops.items()):
+        ops_to_accessor.setdefault(ops, acc)
+    stem = attr[: -len("Operations")]
+    mapped = ops_to_accessor.get(attr)
+    if mapped:
+        did_you_mean = [mapped]
+        ratio = 1.0
+        suggestion = (
+            f"'project.{attr}' does not exist: FLExProject has no attribute "
+            f"{attr!r}. {attr} is reached through its accessor -- use "
+            f"project.{mapped} (no import needed)."
+        )
+    else:
+        did_you_mean = _suggest_attribute_matches(stem, sorted(accessors), cutoff=0.6)
+        import difflib as _dl
+        ratio = (
+            _dl.SequenceMatcher(None, stem.lower(), did_you_mean[0].lower()).ratio()
+            if did_you_mean else 0.0
+        )
+        ratio = min(ratio, 0.89)  # never auto-fix a guess
+        if did_you_mean:
+            tail = "; did you mean " + ", ".join("project." + c for c in did_you_mean) + "?"
+        else:
+            tail = (
+                ". Call flextools_search_by_capability(query='...') to find "
+                "the right accessor."
+            )
+        suggestion = (
+            f"'project.{attr}' does not exist: FLExProject has no attribute "
+            f"{attr!r}. Accessors drop the Operations suffix and are usually "
+            "plural (project.Wordforms, project.Senses)" + tail
+        )
+    return {
+        "kind": "accessor",
+        "expr": f"project.{attr}",
+        "typo_attr": attr,
+        "lineno": node.lineno,
+        "col_offset": node.col_offset,
+        "did_you_mean": did_you_mean,
+        "match_ratio": ratio,
+        "suggestion": suggestion,
+    }
+
+
 def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optional[Any] = None) -> dict:
     """Pre-flight: scan AST for project.<X> / project.<X>.<Y> references and reject typos.
 
@@ -2208,6 +2505,17 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
                         f"Use project.{correct} instead."
                     ),
                 })
+                continue
+            # Issue #304: `project.WordformOperations` -- a class name guessed as
+            # an accessor. FLExProject has no attribute ending in "Operations",
+            # so this always fails at runtime; the fuzzy path below missed it
+            # (WordformOperations vs Wordforms is ~0.6). Map the class to its
+            # facade accessor through the index (WordformOperations ->
+            # project.Wordforms) and reject even when there is no mapping.
+            if x.endswith("Operations") and len(x) > len("Operations"):
+                issues.append(_guessed_operations_accessor_issue(
+                    node, x, accessor_to_ops, accessors
+                ))
                 continue
             if x.startswith(method_prefixes):
                 continue  # Looks like a direct project method, not an accessor typo
@@ -2631,14 +2939,35 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
     if api_index is None:
         return {}
     flexicon = getattr(api_index, "flexicon", None) or {}
-    fp = (flexicon.get("entities") or {}).get("FLExProject", {})
+    entities = flexicon.get("entities") or {}
+    fp = entities.get("FLExProject", {})
     mapping: Dict[str, str] = {}
     for prop in fp.get("properties", []) or []:
         name = prop.get("name") or ""
         ret = prop.get("return_type") or ""
         if name and ret.endswith("Operations"):
-            mapping[name] = ret
+            mapping[name] = _resolve_ops_alias(ret, entities)
     return mapping
+
+
+def _resolve_ops_alias(ops_class: str, entities: Dict[str, Any]) -> str:
+    """The indexed class an accessor's documented return type names (#304).
+
+    FLExProject documents some accessors with an import alias rather than
+    the class name: ``Wordforms`` returns ``WfiWordformOperations``, which is
+    ``WordformOperations`` imported under another name -- no index entry has
+    that name, so every gate keyed on the accessor's class (chain typos,
+    unknown_method, access_path) silently skipped project.Wordforms (called
+    out in PR #342). When the documented name is not an indexed entity, use
+    the longest indexed Operations class it ends with; otherwise keep it.
+    """
+    if not entities or ops_class in entities:
+        return ops_class
+    candidates = [
+        e for e in entities
+        if e.endswith("Operations") and len(e) > len("Operations") and ops_class.endswith(e)
+    ]
+    return max(candidates, key=len) if candidates else ops_class
 
 
 _IFACE_NAME_RE = re.compile(r"\bI[A-Z][A-Za-z]+\b")
@@ -4223,6 +4552,25 @@ def _collect_all_imported_names(code: str) -> Optional[Set[str]]:
     return names
 
 
+def _names_only_used_as_project_attribute(code: str, names: Set[str]) -> Set[str]:
+    """The subset of ``names`` that appear ONLY as ``project.<name>`` (issue #304)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return set()
+    as_project_attr: Set[str] = set()
+    as_other: Set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id in names:
+            as_other.add(node.id)
+        elif isinstance(node, ast.Attribute) and node.attr in names:
+            if isinstance(node.value, ast.Name) and node.value.id == "project":
+                as_project_attr.add(node.attr)
+            else:
+                as_other.add(node.attr)
+    return as_project_attr - as_other
+
+
 def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     """Detect Operations classes used without imports and suggest what to add.
 
@@ -4261,6 +4609,12 @@ def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     # Find missing imports
     used = set(matches)
     missing = used - imported
+    # Issue #304: `project.WordformOperations` is an attribute on project,
+    # not a use of the class -- importing it fixes nothing (the attribute
+    # still does not exist), so never suggest the import for a name that
+    # only appears that way. invalid_api_chain names the real accessor.
+    if missing:
+        missing -= _names_only_used_as_project_attribute(code, missing)
 
     if missing:
         result["has_missing"] = True
@@ -4331,6 +4685,39 @@ def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
             )
 
     return result
+
+
+def detect_unknown_flexicon_imports(
+    code_tree: Optional[ast.AST], api_index: Optional[Any] = None
+) -> dict:
+    """Issue #305: flag ``from flexicon import X`` / ``import flexicon.X`` names
+    that flexicon does not export, with did-you-mean candidates.
+
+    Thin wrapper over ``flexicon_imports.check_imports`` (static read of the
+    installed package, index fallback, fail open) that supplies the
+    FLExProject accessor map so an accessor imported as if it were a class
+    (``InflectionFeatures``) is answered with ``project.InflectionFeatures``.
+    """
+    try:
+        try:
+            from .flexicon_imports import check_imports
+        except ImportError:
+            from server.flexicon_imports import check_imports
+        return check_imports(code_tree, api_index, _accessor_to_ops_map(api_index))
+    except Exception:  # noqa: BLE001 -- a checker bug must never block a run
+        return {"has_unknown": False, "issues": [], "did_you_mean": [], "suggestion": ""}
+
+
+def detect_unknown_import_error(error_msg: str, api_index: Optional[Any] = None) -> dict:
+    """Issue #305 runtime twin: candidates for a raised flexicon ImportError."""
+    try:
+        try:
+            from .flexicon_imports import diagnose_import_error
+        except ImportError:
+            from server.flexicon_imports import diagnose_import_error
+        return diagnose_import_error(error_msg, api_index, _accessor_to_ops_map(api_index))
+    except Exception:  # noqa: BLE001 -- enrichment only
+        return {"is_unknown_import": False}
 
 
 # ============================================================
@@ -6310,46 +6697,120 @@ def _is_local_container_constructor(value: ast.AST) -> bool:
 
 
 def _collect_local_container_names(tree: ast.AST) -> Set[str]:
-    """Names bound to locally constructed containers (issue #126).
+    """Names bound ONLY to locally constructed containers (issues #126, #350).
 
-    Reassigning a name to a non-local value removes it, so a variable that
-    later holds an LCM collection is not treated as local.
+    A name qualifies when every place it is stored -- anywhere in the tree --
+    binds a local container constructor (or another qualifying name). Any
+    other store disqualifies it, in particular:
+
+      - a ``for`` / comprehension target: the loop variable is an ELEMENT of
+        the iterable, not the iterable, so ``for coll in [e.SensesOS]:``
+        binds ``coll`` to a real LCM collection even though the iterable is a
+        list literal (issue #350);
+      - a tuple-unpacking target, ``with ... as``, a non-container right-hand
+        side, or a reassignment anywhere else in the script;
+      - a binding that is not an ``ast.Name`` store at all: a function or
+        lambda parameter (``def helper(senses, s): senses.Add(s)`` called
+        with ``e.SensesOS``), an import alias, an ``except ... as`` name, a
+        ``match`` capture, or a ``def`` / ``class`` name.
+
+    This is flow-insensitive on purpose: one non-local binding anywhere keeps
+    ``.Add`` on that name gated (the fail-closed direction), where "last
+    binding wins" let ``x = e.SensesOS; x.Add(s); x = []`` certify read-only.
     """
-    assigns, _, bindings = _collect_assign_call_nodes(tree)
-    binding_nodes = list(assigns) + list(bindings)
-    binding_nodes.sort(key=lambda n: getattr(n, "lineno", 0))
+    safe_values: Dict[int, ast.AST] = {}
+    store_nodes: Dict[str, List[ast.Name]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
+            for target, rhs in _iter_assign_pairs(node):
+                if isinstance(target, ast.Name):
+                    safe_values[id(target)] = rhs
+        elif isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
+            safe_values[id(node.target)] = node.value
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            store_nodes.setdefault(node.id, []).append(node)
+    other_bindings = _non_name_store_bindings(tree)
+
     local: Set[str] = set()
-    for node in binding_nodes:
-        for target, rhs in _iter_assign_pairs(node):
-            if not isinstance(target, ast.Name):
+    changed = True
+    while changed:
+        changed = False
+        for name, stores in store_nodes.items():
+            if name in local or name in other_bindings:
                 continue
-            name = target.id
-            if _is_local_container_constructor(rhs):
+            if all(
+                id(store) in safe_values
+                and _is_local_container_value(safe_values[id(store)], local)
+                for store in stores
+            ):
                 local.add(name)
-            elif isinstance(rhs, ast.Name) and rhs.id in local:
-                local.add(name)
-            else:
-                local.discard(name)
+                changed = True
     return local
 
 
-def _lines_with_local_collection_mutations(tree: ast.AST) -> Set[int]:
-    """Line numbers where a collection-mutation call targets a local container."""
+def _non_name_store_bindings(tree: ast.AST) -> Set[str]:
+    """Names bound by anything other than an ``ast.Name`` store (issue #350).
+
+    Parameters, import aliases, ``except ... as``, ``match`` captures and
+    ``def`` / ``class`` names can each hold a real LCM collection, so any of
+    them disqualifies a name from `_collect_local_container_names`.
+    """
+    names: Set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.arg):
+            names.add(node.arg)
+        elif isinstance(node, ast.alias):
+            names.add(node.asname or node.name.split(".")[0])
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            names.add(node.name)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, (ast.MatchAs, ast.MatchStar)) and node.name:
+            names.add(node.name)
+        elif isinstance(node, ast.MatchMapping) and node.rest:
+            names.add(node.rest)
+    return names
+
+
+def _is_local_container_value(rhs: ast.AST, local: Set[str]) -> bool:
+    if _is_local_container_constructor(rhs):
+        return True
+    return isinstance(rhs, ast.Name) and rhs.id in local
+
+
+def _local_collection_mutation_sites(code: str, tree: ast.AST) -> Set[Tuple[int, int]]:
+    """``(line, column)`` of each collection-mutation call on a local container.
+
+    Keyed by the call node rather than by line (issue #350): the column is the
+    character offset just past the method name, which is where a matching
+    ``.Add(`` pattern hit's ``start() + 1 + len(method)`` lands, so
+    ``tmp.Add(x); entry.SensesOS.Add(s)`` suppresses only the first call.
+    """
     local = _collect_local_container_names(tree)
     if not local:
         return set()
-    skip: Set[int] = set()
+    lines = code.split("\n")
+    sites: Set[Tuple[int, int]] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        if not isinstance(node.func, ast.Attribute):
+        func = node.func
+        if not isinstance(func, ast.Attribute):
             continue
-        if node.func.attr not in _COLLECTION_MUTATION_METHODS:
+        if func.attr not in _COLLECTION_MUTATION_METHODS:
             continue
-        recv = node.func.value
-        if isinstance(recv, ast.Name) and recv.id in local:
-            skip.add(node.lineno)
-    return skip
+        recv = func.value
+        if not (isinstance(recv, ast.Name) and recv.id in local):
+            continue
+        line_no = func.end_lineno or node.lineno
+        end_col = func.end_col_offset
+        if end_col is None or line_no - 1 >= len(lines):
+            continue
+        # ast columns are UTF-8 byte offsets; regex matches are str offsets.
+        line_bytes = lines[line_no - 1].encode("utf-8")
+        char_col = len(line_bytes[:end_col].decode("utf-8", errors="ignore"))
+        sites.add((line_no, char_col))
+    return sites
 
 
 def find_liblcm_mutations(
@@ -6377,9 +6838,9 @@ def find_liblcm_mutations(
     """
     mutations = []
 
-    skip_collection_lines: Set[int] = set()
+    skip_collection_sites: Set[Tuple[int, int]] = set()
     try:
-        skip_collection_lines = _lines_with_local_collection_mutations(ast.parse(code))
+        skip_collection_sites = _local_collection_mutation_sites(code, ast.parse(code))
     except SyntaxError:
         pass
 
@@ -6394,12 +6855,16 @@ def find_liblcm_mutations(
         line_content = line
 
         for pattern, method_name, category in patterns:
-            if (
-                method_name in _COLLECTION_MUTATION_METHODS
-                and line_num in skip_collection_lines
-            ):
-                continue
-            if re.search(pattern, line_content):
+            if method_name in _COLLECTION_MUTATION_METHODS and skip_collection_sites:
+                # Node-keyed (issue #350): report the line when ANY hit on it
+                # is not a local-container call.
+                hit = any(
+                    (line_num, m.start() + 1 + len(method_name)) not in skip_collection_sites
+                    for m in re.finditer(pattern, line_content)
+                )
+            else:
+                hit = re.search(pattern, line_content) is not None
+            if hit:
                 raw_context = (
                     original_lines[line_num - 1]
                     if line_num - 1 < len(original_lines)
@@ -6436,6 +6901,43 @@ def _is_project_receiver(node: ast.AST) -> bool:
     ):
         return True
     return False
+
+
+def _is_write_flag(node: ast.AST) -> bool:
+    """Bare ``modifyAllowed`` or the project's own ``writeEnabled`` flag."""
+    if isinstance(node, ast.Name):
+        return node.id == 'modifyAllowed'
+    if isinstance(node, ast.Attribute):
+        return node.attr == 'writeEnabled' and _is_project_receiver(node.value)
+    return False
+
+
+def _write_flag_compare_polarity(node: ast.Compare) -> Optional[bool]:
+    """Polarity of a ``<flag> ==/is/!=/is not <True|False>`` comparison.
+
+    Returns True when the comparison holding means writes are enabled
+    (``modifyAllowed == True``, ``modifyAllowed != False``), False when it
+    means they are disabled (``modifyAllowed is False``), and None for
+    anything else -- chained comparisons, ordering operators, or a non-literal
+    other side (``modifyAllowed == other``), none of which is a guard.
+    """
+    if len(node.ops) != 1 or len(node.comparators) != 1:
+        return None
+    left, right = node.left, node.comparators[0]
+    if _is_write_flag(left) and isinstance(right, ast.Constant):
+        const = right.value
+    elif _is_write_flag(right) and isinstance(left, ast.Constant):
+        const = left.value
+    else:
+        return None
+    if not isinstance(const, (bool, int)) or const not in (0, 1):
+        return None
+    op = node.ops[0]
+    if isinstance(op, (ast.Eq, ast.Is)):
+        return bool(const)
+    if isinstance(op, (ast.NotEq, ast.IsNot)):
+        return not const
+    return None
 
 
 def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]:
@@ -6511,6 +7013,16 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             """Find 'if modifyAllowed:' or 'if project.writeEnabled:' blocks."""
             if self._is_write_enabled_check(node.test):
                 start_line = node.lineno
+                if any(isinstance(n, ast.Call) for n in ast.walk(node.test)):
+                    # Issue #352: a compound test can itself call a mutator
+                    # before (or regardless of) the guard operand
+                    # (`if x.Add(s) and modifyAllowed:`,
+                    # `if not (x.Add(s) or not modifyAllowed):`), so the
+                    # range starts after the test's last line. Ranges are
+                    # line-keyed, so a body on that same line
+                    # (`if x.Add(s) and modifyAllowed: y.Add(t)`) is left
+                    # unprotected -- the fail-closed direction.
+                    start_line = (node.test.end_lineno or node.lineno) + 1
                 # end_lineno includes the if line, body starts after
                 if node.body:
                     end_line = node.body[-1].end_lineno or start_line + 1000
@@ -6535,7 +7047,7 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             return False
 
         def _is_write_enabled_check(self, node):
-            """Check if condition checks 'modifyAllowed', 'project.writeEnabled', etc.
+            """True when ``node`` being truthy implies writes are enabled.
 
             Issue #121 sibling: `project.writeEnabled` / `self.project.writeEnabled`
             require the attribute's receiver to actually be the project (see
@@ -6543,68 +7055,41 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             attribute (e.g. `cfg.writeEnabled`) must not be accepted as a guard.
             The bare-name `modifyAllowed` form (FLExTools' standard parameter)
             is unaffected -- it has no receiver to check.
+
+            Issue #352: `modifyAllowed and <cond>` implies the flag, so an
+            `and` guards when ANY operand does; an `or` only when EVERY
+            operand does. Comparisons count only against a literal True/False
+            in the enabling direction -- `modifyAllowed == False` used to be
+            accepted here because ANY Compare mentioning the flag passed.
             """
-            # Pattern: modifyAllowed (name - FLExTools standard parameter)
-            if isinstance(node, ast.Name):
-                return node.id == 'modifyAllowed'
-
-            # Pattern: project.writeEnabled / self.project.writeEnabled (attribute)
-            if isinstance(node, ast.Attribute):
-                return node.attr == 'writeEnabled' and _is_project_receiver(node.value)
-
-            # Pattern: project.writeEnabled == True (compare)
+            if _is_write_flag(node):
+                return True
+            if isinstance(node, ast.BoolOp):
+                if isinstance(node.op, ast.And):
+                    return any(self._is_write_enabled_check(v) for v in node.values)
+                return all(self._is_write_enabled_check(v) for v in node.values)
+            if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+                return self._is_write_disabled_check(node.operand)
             if isinstance(node, ast.Compare):
-                # Check left side
-                if isinstance(node.left, ast.Attribute):
-                    if node.left.attr == 'writeEnabled' and _is_project_receiver(node.left.value):
-                        return True
-                if isinstance(node.left, ast.Name):
-                    if node.left.id == 'modifyAllowed':
-                        return True
-                # Check comparators
-                for comp in node.comparators:
-                    if isinstance(comp, ast.Attribute):
-                        if comp.attr == 'writeEnabled' and _is_project_receiver(comp.value):
-                            return True
-                    if isinstance(comp, ast.Name):
-                        if comp.id == 'modifyAllowed':
-                            return True
+                return _write_flag_compare_polarity(node) is True
             return False
 
         def _is_write_disabled_check(self, node):
-            """Negated write guard: ``if not modifyAllowed:`` / ``== False`` forms."""
+            """True when ``node`` being truthy implies writes are DISABLED.
+
+            The early-return idiom (#139): ``if not modifyAllowed: return``,
+            ``== False`` forms, and (#352) ``not modifyAllowed or <cond>`` --
+            an `or` is disabling when ANY operand is, an `and` only when
+            EVERY operand is.
+            """
             if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
                 return self._is_write_enabled_check(node.operand)
-            if isinstance(node, ast.Compare) and len(node.ops) == 1:
-                if not isinstance(node.ops[0], (ast.Eq, ast.Is)):
-                    return False
-                # Tuple (not set): False == 0 so {False, 0} is B033-duplicate.
-                false_val = (False, 0)
-                if (
-                    isinstance(node.left, ast.Name)
-                    and node.left.id == 'modifyAllowed'
-                    and node.comparators
-                    and isinstance(node.comparators[0], ast.Constant)
-                    and node.comparators[0].value in false_val
-                ):
-                    return True
-                if (
-                    isinstance(node.left, ast.Constant)
-                    and node.left.value in false_val
-                    and node.comparators
-                    and isinstance(node.comparators[0], ast.Name)
-                    and node.comparators[0].id == 'modifyAllowed'
-                ):
-                    return True
-                if isinstance(node.left, ast.Attribute):
-                    if (
-                        node.left.attr == 'writeEnabled'
-                        and _is_project_receiver(node.left.value)
-                        and node.comparators
-                        and isinstance(node.comparators[0], ast.Constant)
-                        and node.comparators[0].value in false_val
-                    ):
-                        return True
+            if isinstance(node, ast.BoolOp):
+                if isinstance(node.op, ast.Or):
+                    return any(self._is_write_disabled_check(v) for v in node.values)
+                return all(self._is_write_disabled_check(v) for v in node.values)
+            if isinstance(node, ast.Compare):
+                return _write_flag_compare_polarity(node) is False
             return False
 
     finder = ProtectionFinder()
@@ -7193,7 +7678,12 @@ def get_unprotected_write_guidance(
     return guidance
 
 
-def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = None) -> dict:
+def build_partial_module_rejection(
+    partial_check: dict,
+    cert: Optional[dict] = None,
+    code: Optional[str] = None,
+    code_tree: Optional[ast.AST] = None,
+) -> dict:
     """Build the partial_module_structure rejection (issue #303).
 
     Shared by handle_run_module's live gate and validate_only's Gate 3 so the
@@ -7205,11 +7695,17 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
     other.
 
     ``skip_module_check=True`` is the FIRST next step: it is the one-move way
-    out when the code only needs to run here.
+    out when the code only needs to run here -- unless (issue #334) ``code``
+    is given and ``build_bare_snippet_fix`` can rewrite it mechanically and
+    it has no unguarded writes. Then step 1 is "resubmit ``auto_fixed_code``"
+    (zero edits), naming the exact ``def Main`` line removed. Models looped
+    on this rejection resubmitting unchanged code; a ready-to-run version is
+    the cheapest way out.
 
     Returns:
-        dict with message, next_steps, also_unprotected_writes (bool) and
-        mutations_found (list; empty when writes are guarded or absent).
+        dict with message, next_steps, also_unprotected_writes (bool),
+        mutations_found (list; empty when writes are guarded or absent), and
+        auto_fix (build_bare_snippet_fix's result, or None without ``code``).
     """
     mutations_found: List[str] = []
     also_unprotected = bool(cert) and not cert.get("is_certified_readonly", True)
@@ -7217,11 +7713,31 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
         mutations_found = get_unprotected_write_guidance(cert).get("mutations_found", [])
 
     message = partial_check.get("suggestion", "")
-    next_steps = [
-        "1. To just run it here: pass skip_module_check=True (runs the code as-is)",
-        "2. To keep it as a module file: paste suggested_scaffold into your code "
+    auto_fix = build_bare_snippet_fix(code, code_tree) if code is not None else None
+    lead: List[str] = []
+    if auto_fix and auto_fix["available"] and not also_unprotected:
+        removed = "; ".join(
+            f"{'lines' if '-' in r['lines'] else 'line'} {r['lines']} `{r['text']}`"
+            for r in auto_fix["removed_scaffold"]
+        )
+        lead.append(
+            "Cheapest: resubmit auto_fixed_code exactly as given -- it is your "
+            f"code as a bare snippet: line {auto_fix['main_line']} "
+            f"`{auto_fix['main_line_text']}` deleted and the body dedented"
+            + (f", plus {removed} deleted" if removed else "")
+            + " (project/report/modifyAllowed are predefined)"
+        )
+        message += (
+            " Cheapest fix: resubmit auto_fixed_code (the same code as a bare "
+            f"snippet, `{auto_fix['main_line_text']}` removed and the body "
+            "dedented)."
+        )
+    steps = lead + [
+        "To just run it here: pass skip_module_check=True (runs the code as-is)",
+        "To keep it as a module file: paste suggested_scaffold into your code "
         "(flextools_get_module_template(flavor='flexicon') has the full canonical form)",
     ]
+    next_steps = [f"{i}. {step}" for i, step in enumerate(steps, 1)]
     if also_unprotected:
         message += (
             f" ALSO: {len(mutations_found)} unprotected mutation(s) must be "
@@ -7229,12 +7745,12 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
             "with or without the scaffold or skip_module_check."
         )
         next_steps.append(
-            "3. Wrap every mutation in `if modifyAllowed:` (required in both "
+            f"{len(next_steps) + 1}. Wrap every mutation in `if modifyAllowed:` (required in both "
             "cases; mutations_found lists them)"
         )
-        next_steps.append("4. Re-run flextools_run_module() with both fixes")
+        next_steps.append(f"{len(next_steps) + 1}. Re-run flextools_run_module() with both fixes")
     else:
-        next_steps.append("3. Re-run flextools_run_module()")
+        next_steps.append(f"{len(next_steps) + 1}. Re-run flextools_run_module()")
     next_steps.append(
         "Alternative: remove the partial scaffold piece; `def Main` with no "
         "scaffold at all runs as a snippet"
@@ -7244,6 +7760,7 @@ def build_partial_module_rejection(partial_check: dict, cert: Optional[dict] = N
         "next_steps": next_steps,
         "also_unprotected_writes": also_unprotected,
         "mutations_found": mutations_found,
+        "auto_fix": auto_fix,
     }
 
 

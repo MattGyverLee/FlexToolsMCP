@@ -79,7 +79,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 48 codes below |
+| `error_code` | string | one of the 49 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -115,18 +115,19 @@ authoritative. All detail fields are optional unless noted.
 | `session_not_initialized` | `tool`, `_diagnostic`, `available_task_examples` (list), `hint` -- dispatch gate before any handler runs (issue #243) |
 | `unknown_tool` | `tool` -- tool name not registered in the dispatch router (issue #243) |
 | `invalid_input` | `tool`, `received_arguments` -- Pydantic argument validation failed before the handler ran (issue #243) |
-| `partial_module_structure` | `missing_elements` (list), `has_main`, `has_docs_dict`, `has_flextools_binding`, `suggested_scaffold` (ready-to-paste missing piece), `also_unprotected_writes` (bool), `mutations_found` (list) -- issue #303: emitted only for a half-module (`def Main` plus exactly ONE of the `docs` dict / `FlexToolsModule` binding). `def Main` with NEITHER piece runs as a snippet with a `[module scaffold]` warning carrying the scaffold (validate_only: gate passes with `advisory` + `suggested_scaffold`). When the code also has unguarded writes the same rejection lists both fixes (`also_unprotected_writes: true`). `next_steps[0]` is always the `skip_module_check=True` escape hatch. |
+| `partial_module_structure` | `missing_elements` (list), `has_main`, `has_docs_dict`, `has_flextools_binding`, `suggested_scaffold` (ready-to-paste missing piece), `also_unprotected_writes` (bool), `mutations_found` (list) -- issue #303: emitted only for a half-module (`def Main` plus exactly ONE of the `docs` dict / `FlexToolsModule` binding). `def Main` with NEITHER piece runs as a snippet with a `[module scaffold]` warning carrying the scaffold (validate_only: gate passes with `advisory` + `suggested_scaffold`). When the code also has unguarded writes the same rejection lists both fixes (`also_unprotected_writes: true`). Issue #334: when the code can be turned into a bare snippet mechanically (single top-level `Main` with parameters `(project, report, modifyAllowed)`, no `return`/`yield`/`global` at its own scope, at most 80 lines, no unguarded writes), the rejection adds `auto_fixed_code` (the code with the `def Main` line and the lone scaffold piece deleted and the body dedented), `auto_fix_kind: "bare_snippet"`, `main_line` and `main_line_text`, and `next_steps[0]` is "resubmit auto_fixed_code"; otherwise `auto_fix_unavailable_reason` says why and `next_steps[0]` is the `skip_module_check=True` escape hatch. With a `user_intent` (or session `user_request`), the last next step names the closest recipes (`flextools_list_recipes(recipe_id=...)`). validate_only's gate entry carries the same auto-fix fields. |
 | `top_level_main_invocation` | `call_lines` (list of int) -- issue #279; write-enabled runs only: module-level `Main(...)` when `def Main` is also defined (runner would invoke Main twice). Read-only runs proceed with a non-blocking advisory instead. |
 | `unprotected_writes` | `mutating_calls` (list), `write_certification_required`, `bare_snippet_fix` (str; issue #303 -- `modifyAllowed` is predefined in bare snippets, no `def Main` needed), `main_wrapper_note` (str; only when the code defines `def Main` without scaffold -- it runs as a snippet) |
 | `casting_issues_detected` | `casting_issues` (list), `polymorphic_collections`, `general_guidance` -- issue #40 B-1: on a READ-ONLY run (`write_enabled=false`), this code is emitted (and the run rejected) only if at least one `casting_issues[*].severity` is `"error"` (a known-pattern hit, or a genuine attribute typo). If every issue is `"warning"` (an index-derived lookup with no corroborating known pattern), the run **proceeds instead of rejecting** -- see "Read-only casting severity downgrade" below. WRITE-enabled runs are unaffected: this code still rejects at every severity. |
 | `api_discovery_required` | `detected_candidates` (list), `auto_discovered_pending_validation` (list; entities auto-granted on read-only runs but not yet validated via `get_object_api`, issue #244), `session`, `missing_entity`, `suggested_tool_call` |
 | `undiscovered_entity` | `undiscovered`, `imported_undiscovered` (list), `session`, `closest_matches` (list) |
 | `undefined_variables` | `undefined_vars` (list), `guidance` |
-| `missing_imports` | `missing_imports` (list), `api_mode`, `guidance` |
+| `missing_imports` | `missing_imports` (list), `api_mode`, `guidance` -- issue #304: a name used only as `project.<Name>` (e.g. `project.WordformOperations`) is not listed; importing it would not make the attribute exist, and `invalid_api_chain` names the accessor instead. |
 | `wrong_library_imports` | `wrong_imports` (list), `api_mode`, `affected_symbols` (list), `guidance` |
 | `invalid_api_mode` | `allowed_modes` (required list), `received`, `hint` |
-| `invalid_api_chain` | `issues` (list), `guidance` |
+| `invalid_api_chain` | `issues` (list), `guidance` -- issue #304: `project.<Name>Operations` (a class name used as an accessor) is always an `accessor` issue. When the index maps the class to a FLExProject accessor, `did_you_mean` is that accessor and `match_ratio` is 1.0 (`project.WordformOperations` -> `project.Wordforms`); otherwise the nearest accessors are offered with `match_ratio` below the 0.9 auto-fix threshold, and the issue still blocks. Accessor classes documented under an import alias (`Wordforms` -> `WfiWordformOperations`) resolve to the indexed class, so their method typos are checked too. |
 | `unknown_method` | `issues` (list of `{class, method, expr, lineno, col_offset, did_you_mean, available_methods, suggestion}`), `did_you_mean` (list[str]; the first issue's candidates, `[]` when none cleared the difflib floor), `next_steps` (list) -- issue #306; read-only AND write-enabled runs (and the `validate_only` gate of the same name): the code calls a method that an indexed flexicon Operations class does not have, inherited methods included (e.g. `project.Parser.TryWord(...)`; ParserOperations has `ParseWord` / `ParseWordXml` / `TraceWordXml`). Every receiver shape is typed the same way -- `project.<Accessor>.M(...)`, an alias (`p = project.Parser; p.M(...)`), `XOperations(project).M(...)` and its alias, and static `XOperations.M(...)` -- so the direct and aliased forms agree. Checked after `invalid_api_chain`, so a high-confidence `project.X.Y` typo is still auto-fixed or reported there first; the read-only auto-fix is declined when the corrected name would be an unguarded write (it runs after `unprotected_writes`), and the call is reported here with the correction as `did_you_mean`. Not raised for a class whose base classes are not all indexed, nor for Get*/Find*/Is*/Has*/Count*/Contains* names (issue #32: a getter newer than the index still runs; a wrong one surfaces as `runtime_error` with `did_you_mean`). Before #306 such calls were classified mutating and rejected as `unprotected_writes`; no `if modifyAllowed:` guard can fix a missing method, so `next_steps` says not to add one. Also not raised when the receiver (or its facade root) is a name bound to more than one thing in the script (two Operations classes, a non-Operations rebinding, a parameter/loop/import of the same name) -- those calls keep the pre-#306 write classification. Because the gate trusts the API index, `message` and `next_steps` also name the stale-index recovery (`python -m flextoolsmcp.refresh` / `flextools-mcp-refresh`, then restart the server). Additive: the contract stays at `tool-responses/1.0`. |
+| `unknown_import` | `issues` (list of `{statement, kind, module, name, lineno, did_you_mean, suggestion[, access_path]}`; `kind` is `"name"` for `from flexicon import X` or `"module"` for a `flexicon.X` path that does not exist), `did_you_mean` (list[str]; the first issue's candidates), `next_steps` (list) -- issue #305; read-only AND write-enabled runs (and the `validate_only` gate of the same name, right after `top_level_main_invocation`): the code imports a name or module path the installed flexicon does not have (e.g. `WfiWordformOperations` -> `WordformOperations`; `import flexicon.Lexicon` -> `flexicon.code.Lexicon`). A FLExProject accessor imported as a class (`from flexicon import InflectionFeatures`) is answered with `access_path: "project.InflectionFeatures"` (no import needed). The surface is read statically from the installed package (the server never imports flexicon), with the API index as fallback; when neither is available the gate is skipped. The flexlibs2 alias is checked as flexicon. A runtime ImportError on a flexicon name (`cannot import name 'X' from 'flexicon'`, `No module named 'flexicon.X'`) is reported as `error_type: "UnknownImportError"` with the same `did_you_mean`, `help` and, when known, `access_path`. Additive: the contract stays at `tool-responses/1.0`. |
 | `reflection_bypass_detected` | `findings` (list), `reflection_bypass_count` (int), `next_steps` (list) -- issue #277; write-enabled runs only; READ-ONLY runs proceed with warnings |
 | `nested_unit_of_work` | `constructs` (list), `guidance` -- `next_steps` are mode-accurate (issue #310): on per-operation-uow builds they name `with project.UndoableOperation(label):` as the supported raw-LCM replacement, since the runner opens no session task there |
 | `no_unit_of_work` | `uow_mode` (`read_only` \| `per_operation` \| `session_envelope`), `write_enabled` (bool), `undoable` (bool or null), `lcm_message`, `guidance`, `next_steps` (list) -- issue #310; **runtime**, not preflight: liblcm raised `InvalidOperationException: Not in the right state to register a change` (a raw LCM mutation with no unit of work open), seen in the runner's `error` or in an ERROR report message. `read_only`: the run is `write_enabled=false`, so no write can register by any route -- guard under `if modifyAllowed:` and re-run write-enabled. `per_operation` (every supported install): the runner opens no session task and each Flexicon operation opens its own, so raw writes need `with project.UndoableOperation(label):` (opens a unit of work or joins the enclosing one; not refused by `nested_unit_of_work`). Raw `UndoableUnitOfWorkHelper`/`BeginUndoTask` is refused by `nested_unit_of_work`, and `project.Transaction()` opens no unit of work. `session_envelope` (legacy build): the script closed the runner's session task. The original liblcm text survives in `raw_error`; `help` mirrors `guidance` |
@@ -290,6 +291,14 @@ include the following optional fields when read-only auto-discovery occurred
 These fields are defined in `RunModuleSuccess` (`response_models.py`) with
 aliases matching the key strings above. The `_inline_discovery` alias uses the
 `KEY_INLINE_DISCOVERY = "_inline_discovery"` constant from `response_keys.py`.
+
+> **Note:** a server restart resets the session's API-discovery state
+> (`discovered_apis` is in-memory only), so a write that passed the
+> `api_discovery_required` gate before the restart is rejected after it until
+> the entities are discovered again. This is expected behaviour, not a
+> regression — re-call `flextools_get_object_api` for the entities you need
+> (the rejection's `_inline_discovery` payload already inlines their shapes),
+> or start a new session.
 
 ### UoW mode flags (issue #153)
 
@@ -668,12 +677,17 @@ did **not** bump the contract version.
 | `recipes_ambiguous` | bool | `flextools_search_by_capability` | `true` when `recipes` is non-empty and there is no clear winner (includes object-only queries such as "entry") |
 | `recipes_hint` | string | `flextools_search_by_capability` | Present only when `recipes_ambiguous` is `true`. Example: `"Several recipes match; refine the query or fetch one with flextools_list_recipes(recipe_id=...)"` |
 | `recipe` | object | `flextools_list_recipes(recipe_id=...)` | The single full recipe requested |
+| `recommended_recipe` | object | `flextools_search_by_capability` | Issue #335. Present only when one **library** (shipped) recipe clearly wins the query (never a read-only recipe for a query with a write verb such as delete, merge or set); emitted right after `query`, ahead of `results`. `{"id", "intent", "params", "requires_write", "how_to_run"}` -- `params` are compact `{name, default, description}` rows, `how_to_run` is one sentence (fetch with `flextools_list_recipes(recipe_id=...)`, edit only PARAMS, run with `source="existing"`; write recipes add the dry-run step). Never carries `code`. |
+| `closest_recipes` | list | `flextools_run_module` (error responses) | Issue #335. Up to 3 `{"id", "intent", "requires_write", "score"}` library rows, nearest the run's `user_intent` (or its code when no intent was given). Present on `partial_module_structure` and `casting_issues_detected` rejects and on the 2nd consecutive failure with the same `user_intent` (`project_locked`, `confirmation_required` and `server_state_error` neither count nor break that streak). A recipe the submitted code is already from is left out. The same response appends a `"closest recipes: ..."` line to `next_steps` (a list gains an item; a string `next_steps` gains a line); the nested legacy `error` object gets the same `next_steps` line and `closest_recipes`. |
+| `recipe_hint` | object | `flextools_run_module` (executed runs, success or runtime failure) | Issue #335. Non-blocking. Present when `user_intent` clearly matches a library recipe and the submitted code is not from it (fewer than 60% of the recipe's non-PARAMS lines present). `{"id", "intent", "requires_write", "how_to_run", "message"}`. |
 | `deprecation` | object | `flextools_find_examples`, `flextools_list_skeletons` | Deprecation advisory; shape below |
 | `skeletons_from_your_sessions` | list | `flextools_find_examples` | **Deprecated** legacy rows derived from local recipes (see data-model section 5). Still emitted when non-empty. Replacement: `recipes` rows with `source: "local"`. Removal: `tool-responses/2.0` |
 
 Key registry: `KEY_RECIPES = "recipes"`, `KEY_RECIPES_COUNT =
 "recipes_count"`, `KEY_RECIPE = "recipe"`, `KEY_RECIPES_AMBIGUOUS =
-"recipes_ambiguous"`, `KEY_RECIPES_HINT = "recipes_hint"`, `KEY_DEPRECATION
+"recipes_ambiguous"`, `KEY_RECIPES_HINT = "recipes_hint"`,
+`KEY_RECOMMENDED_RECIPE = "recommended_recipe"`, `KEY_CLOSEST_RECIPES =
+"closest_recipes"`, `KEY_RECIPE_HINT = "recipe_hint"`, `KEY_DEPRECATION
 = "deprecation"`, `KEY_SKELETONS_FROM_YOUR_SESSIONS =
 "skeletons_from_your_sessions"` (`server/response_keys.py`).
 
@@ -687,6 +701,7 @@ nothing scores. `results[0].recipe`, `worked_examples` /
 
 **SC-005 at-most-one-code-body invariant.** Across `results[0].recipe`
 and `recipes`, a response carries **at most one `code` body**.
+`recommended_recipe` never carries `code`, so it does not count.
 
 **`flextools_find_examples`.** `recipes` keeps its current shipped
 entries (same shape as today); matching **local** recipes are appended
@@ -720,7 +735,7 @@ the id that was asked for), `closest_matches` (list — up to 3 nearest
 ids by difflib), `hint` (required string — names
 `flextools_list_recipes(query=...)`)). Golden fixture:
 `tests/golden/responses/recipe_not_found.json`. The error-code count
-text ("one of the 48 codes") already includes it.
+text ("one of the 49 codes") already includes it.
 
 **`flextools_list_skeletons` (deprecated alias).** Input (`limit`) and
 top-level keys (`count`, `limit`, `storage_path`, `skeletons`) are

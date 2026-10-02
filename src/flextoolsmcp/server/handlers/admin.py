@@ -267,7 +267,10 @@ RUNTIME_PRIMER = {
             "Operations-class). project.Object(hvo_or_guid) is the INVERSE -- it "
             "accepts an int (hvo, same-run only), a str GUID, or a System.Guid, and "
             "resolves to the live CmObject. Prefer the str-GUID form when crossing "
-            "a call boundary: project.Object(guid_str)."
+            "a call boundary: project.Object(guid_str). project.Object(guid_str) "
+            "returns an uncast ICmObject -- cast it to the concrete interface "
+            "(e.g. ILexEntry(obj)) before raw property access, or pass it to an "
+            "operations method."
         ),
         "pattern": (
             "Call 1: guid = project.LexEntry.GetGuid(entry); report.Info(headword, "

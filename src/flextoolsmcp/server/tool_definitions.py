@@ -175,6 +175,10 @@ The search engine uses semantic understanding to find relevant APIs, including:
 - Direct LibLCM interfaces for advanced use
 - Navigation methods to move between related objects
 
+When a library recipe clearly matches the query, it is returned first as
+`recommended_recipe` ({id, intent, params, requires_write, how_to_run}) --
+start from it instead of composing code from the API hits.
+
 Check `recipes` before composing code; edit PARAMS values only; run with `source="existing"` when only PARAMS changed.""",
         input_model=SearchCapabilityInput,
         annotations=READ_ONLY_SAFE,
@@ -283,6 +287,14 @@ Accepts:
 - Anything in between
 
 If code defines Main(), it will be called. Otherwise, code runs as-is.
+
+RECIPES FIRST (issue #335): before writing code from scratch, look for a library
+recipe -- `recommended_recipe` / `recipes` in flextools_search_by_capability, or
+flextools_list_recipes(query=...). Reuse it by editing only the values inside
+`# --- PARAMS ---` ... `# --- END PARAMS ---` and run it with source="existing".
+Hand-written runs fail far more often. Rejected or repeatedly failing runs list
+the `closest recipes` in next_steps; a run whose user_intent matches a library
+recipe it does not use gets a non-blocking `recipe_hint`.
 
 SAFETY: write_enabled defaults to False (dry-run mode). Set to True only after testing!
 

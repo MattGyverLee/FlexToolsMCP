@@ -127,7 +127,8 @@ is a governance amendment.
    - Add the `validate_only` key.
    - Add the detail model, the union entry, the golden fixture and the
      `session.py` hint.
-   - Update the count from 46 to 47 at every site:
+   - Update the count from 46 to 47 at every site (as built: 47 -> 48,
+     because main's `unknown_method` (#306) took the base to 47 first):
      - `tests/test_response_contract.py:522` and its history comment
        `:515-521`;
      - `tests/test_parser_error_models.py:503`;
@@ -136,7 +137,7 @@ is a governance amendment.
      - the `response_models.py:25` header;
      - the stale "44" at `TOOL-CONTRACT.md:721`.
      Finish with `grep -rn "== 46"` and `grep -rn "46 codes"` both returning
-     nothing.
+     nothing (as built: `== 47` / `47 codes`).
    - `tests/evals/test_corpus.py:40` (`ALL_PREFLIGHT_CODES`) and
      `tests/evals/preflight_runner.py:238`: **not applicable**. The gate is
      probe-based, not a preflight validator, so the new code is deliberately

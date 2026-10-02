@@ -150,7 +150,8 @@ additive change under the current contract major. That means:
 - A golden fixture (`tests/make_golden.py:105`).
 - `ALL_ERROR_CODES` and the per-code maps in `tests/test_response_contract.py`
   (`:169-367`).
-- Updating the count from 46 to 47 in `test_response_contract.py:521-522`,
+- Updating the count from 46 to 47 (as built: 47 to 48, after main's
+  `unknown_method`, #306) in `test_response_contract.py:521-522`,
   `docs/TOOL-CONTRACT.md:82` and the `response_models.py` docstring, plus
   fixing the stale "44 codes" text at `TOOL-CONTRACT.md:721`.
 - A hint in `_ASSISTANCE_HINTS_BY_ERROR_CODE` (`session.py:33`).

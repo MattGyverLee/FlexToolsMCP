@@ -125,6 +125,7 @@ probe mocked, and live V1-V3 pass on Sena 3.
   - in `tests/test_parser_error_models.py` (~:503), change 46 to 47;
   - in `docs/TOOL-CONTRACT.md`, update ":82 one of the 47 codes below", add a code-table row next to `project_locked` (~:136), and fix the stale "44 codes" at ~:721;
   - finish with `grep -rn "== 46" tests/` and `grep -rn "46 codes" docs/ src/ tests/`, which must return nothing;
+  - as built after the origin/main merge: main's `unknown_method` (#306) took the base to 47, so the final count is 48 at every site above and the greps are for `== 47` / `47 codes`;
   - leave `tests/evals/test_corpus.py` and `tests/evals/preflight_runner.py` unchanged: not applicable (plan.md);
   - run `tests/test_response_contract.py` and `tests/test_parser_error_models.py`.
 
@@ -263,7 +264,7 @@ observe Class B.
   V3 and V6 need the maintainer to close and reopen FLEx (**needs-human**).
 - [X] T037 Once T035 is done, replace "upstream issue not yet filed" in `docs/SHARED-MODE.md` (~:141) with the filed issue links, or with "already fixed in flexicon <version>".
 - [X] T038 Add a CHANGELOG.md `[Unreleased]` entry. There is no issue for this feature, so it goes under Other, appended at the bottom, plus a Tool contract line appended at the section end:
-  - the new `requires_exclusive_access` code, moving the count from 46 to 47;
+  - the new `requires_exclusive_access` code, moving the count from 46 to 47 (47 to 48 as built, after main's `unknown_method`);
   - the `validate_only` `project_lock.exclusive_access` key;
   - the advisory and diagnose text changes;
   - the doc corrections;
@@ -280,6 +281,7 @@ observe Class B.
   All must be clean.
 - [X] T041 Update `specs/exclusive-access-gate/.spec-context.json` (currentStep implement, status per progress). Commit and push each phase on the branch with `git push origin HEAD:refs/heads/feat/exclusive-access-gate`, and only after that phase's tests are green.
   Done 2026-10-02: history records phase 10 and the origin/main merge; status stays `implementing` until T048.
+  Push pending: origin/feat/exclusive-access-gate is at 3944afe; the origin/main merge and the review fixes on top of it are local until the PR-update step pushes them (a fast-forward).
 
 ---
 

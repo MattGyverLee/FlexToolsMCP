@@ -1,7 +1,8 @@
 # Contract: `requires_exclusive_access`
 
 Additive under the current tool-response contract major. The error-code count
-goes from 46 to 47.
+goes from 47 to 48. (Planned as 46 -> 47; main's `unknown_method`, #306,
+landed first and took the base to 47.)
 
 ## When it fires
 

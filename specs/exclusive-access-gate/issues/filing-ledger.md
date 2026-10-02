@@ -15,7 +15,7 @@ All 14 still-new items were filed on 2026-10-02 with the maintainer's OK (T035).
 | `RollbackToMark` in `Transaction()` | flexicon | no `RollbackToMark` left; only `Rollback(0)` (`FLExProject.py:1551`) | already fixed in `b3a5bb9` (flexicon#236) | n/a |
 | `CreateField` comment: AddCustomField in a task throws at `CheckNotProcessingDataChanges` (research R3) | flexicon | still at `System/CustomFieldOperations.py:292-294` and in the raised message `:308-311`; LCM source does not support it (FLEx runs `UpdateCustomField` inside a non-undoable task) | filed flexicon#602 | maintainer, 2026-10-02 |
 
-## Archived drafts (T034, `specs/shared-mode-access/issues/DRAFT-issues.md`)
+## Archived drafts (T034, `specs/_archive/shared-mode-access/issues/DRAFT-issues.md`)
 
 | Item | Target repo | Check result | Outcome | Authorized by |
 |---|---|---|---|---|

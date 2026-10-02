@@ -5248,6 +5248,21 @@ def run_module():
             result["output"] = error_msg[8:].strip()
         else:
             result["error"] = "Execution error: {}\\n{}".format(error_msg, traceback.format_exc())
+        # Issue #347: keep everything the script reported before it raised --
+        # it is often exactly what the caller needs to diagnose the failure.
+        # Mirrors run_scan's error path (and the success path's shape).
+        try:
+            result["messages"] = report.messages
+            result["summary"] = {
+                "info_count": report.messageCounts[SimpleReporter.INFO],
+                "warning_count": report.messageCounts[SimpleReporter.WARNING],
+                "error_count": report.messageCounts[SimpleReporter.ERROR],
+                "total_messages": len(report.messages)
+            }
+            if report.dropped_message_count > 0:
+                result["summary"]["dropped_messages"] = report.dropped_message_count
+        except Exception:
+            pass
 
     finally:
         # Issue #96 (A-7): CloseProject() is where the write actually commits

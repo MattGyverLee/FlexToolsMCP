@@ -239,6 +239,12 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   `project_not_found` now always carries `available_projects` and
   `total_count`, even when there are no fuzzy suggestions, and its hint says
   the name must be a plain project name.
+- `flextools_run_module` no longer drops the script's report messages when
+  the script raises
+  ([#347](https://github.com/MattGyverLee/FlexToolsMCP/issues/347)). The
+  runner's exception handler set only `error`, so a `report.Info(...)` line
+  written just before the failing call was lost. A failed run now returns
+  `messages` and `summary` alongside `error`, as `run_scan` already did.
 
 ### Other
 

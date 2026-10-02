@@ -1,0 +1,18 @@
+intent: "A method the Operations class does not have is an unknown_method, not an unprotected write (issue #306)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  result = project.Parser.TryWord("kitabu")
+  report.Info(str(result))
+expect:
+  outcome: preflight_reject
+  error_code: unknown_method
+  auto_fixes: 0
+notes: >
+  Regression for issue #306: ParserOperations has no TryWord (real methods:
+  ParseWord, ParseWordXml, TraceWordXml). certify_script_readonly() used to
+  report a name absent from a KNOWN class as a suspected mutation, so the
+  call was refused as unprotected_writes and the model looped adding guards
+  to a call that could never run. It now rejects as unknown_method with
+  did-you-mean suggestions.
+issue: 306

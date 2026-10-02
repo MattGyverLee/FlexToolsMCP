@@ -6,8 +6,9 @@ one project setting: **project sharing**. This page explains what works with
 FLEx open, what does not and why, and how to turn sharing on.
 
 Tracked as issue #93. The design record, with source citations for every
-claim below, is `specs/shared-mode-access/spec.md`; the writing-system and
-custom-field refusal is `specs/exclusive-access-gate/spec.md`.
+claim below, is `specs/_archive/shared-mode-access/spec.md`; the
+writing-system and custom-field refusal is
+`specs/exclusive-access-gate/spec.md`.
 
 ## The short version
 
@@ -62,11 +63,13 @@ is one of these verdicts, reported by `flextools_health(verbose=True)` under
 | `open_shared` | FLEx has it open, sharing on | proceeds, with a `shared_mode` note on the result; writing-system and custom-field changes are refused as `requires_exclusive_access` |
 | `stale_lock` | Lock names a process that is no longer running | proceeds; LCM treats a stale lock as free |
 | `open_exclusive` | FLEx has it open, sharing off (or the lock file is unreadable) | refused as `project_locked`, with the enable-sharing steps |
-| `held_by_other` | A live process that is not FLEx holds it, usually a leftover FLExTools/MCP subprocess | refused as `project_locked`; enabling sharing does not help. Wait for that process to exit, or end it |
+| `held_by_other` | A live process that is not FLEx, and not one of this server's own parse workers, holds it: usually a leftover FLExTools/MCP subprocess, another MCP server or Claude session, or a FLExTools GUI run | refused as `project_locked`; enabling sharing does not help. This server's own idle workers are released before the refusal, so its `next_steps` say to retry after the holder exits, or ask the user to close the other session or end the PID in Task Manager |
 
-Read-only runs are never refused on these grounds. If LCM itself refuses to
-open the project (sharing off, FLEx open), the error carries the same
-diagnosis and remedy as a refused write.
+Read-only runs are never refused on these grounds, but with sharing off LCM
+may still refuse them: even a read-only open takes the `.fwdata.lock`. If LCM
+itself refuses to open the project, the error carries the same diagnosis,
+remedy and `next_steps` as a refused write, or, when the holder is this
+server's own parse worker, says so and tells you to release or wait for it.
 
 The server never deletes lock files. If a lock is unreadable and you are sure
 no FieldWorks or python process is running, delete it yourself.
@@ -93,7 +96,7 @@ needed only for the changes below.
 | Change | What goes wrong from a peer | Evidence |
 |---|---|---|
 | **Custom field** create, delete or rename (`CustomFieldOperations.CreateField` / `DeleteField` / `SetFieldName`; raw `AddCustomField`, `UpdateCustomField`, `DeleteCustomField`, `MarkForDeletion`) | *Silently lost.* Only the master writes custom-field definitions to disk, and the commit log has nowhere to carry them, so the field is gone after the next restart with no error. FLEx blocks its own Custom Fields dialog in the same situation. | `SharedXMLBackendProvider.cs:429,479`; `CommitLogRecord.cs:23-48`; `XWorksViewBase.cs:715` |
-| **Writing system** add, delete or modify (`WritingSystemOperations.Create` / `Ensure` / `Delete` / `SetFontName` / `SetFontSize` / `SetRightToLeft` / `SetDefaultVernacular` / `SetDefaultAnalysis`; the raw writing-system manager, lists and services) | *Crashes FLEx.* The change reaches disk, then the running FLEx throws `NullReferenceException` in `WritingSystemListHandler.AddWritingSystemList` (`TextListeners.cs:286`). Seen live on FieldWorks 9.3.10. | `specs/shared-mode-access/evidence/live-cp4.md`, Item 5 |
+| **Writing system** add, delete or modify (`WritingSystemOperations.Create` / `Ensure` / `Delete` / `SetFontName` / `SetFontSize` / `SetRightToLeft` / `SetDefaultVernacular` / `SetDefaultAnalysis`; the raw writing-system manager, lists and services) | *Crashes FLEx.* The change reaches disk, then the running FLEx throws `NullReferenceException` in `WritingSystemListHandler.AddWritingSystemList` (`TextListeners.cs:286`). Seen live on FieldWorks 9.3.10. | `specs/_archive/shared-mode-access/evidence/live-cp4.md`, Item 5 |
 
 The full list, with the raw LCM names, is
 `EXCLUSIVE_ONLY_OPERATIONS` in `src/flextoolsmcp/server/exclusive_access.py`.

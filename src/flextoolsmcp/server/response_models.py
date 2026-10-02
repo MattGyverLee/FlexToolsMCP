@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 47 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 48 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + raw_addcustomfield_write_risk + invalid_api_mode
   + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
@@ -23,6 +23,7 @@ Provides:
   + recipe_not_found (unified-recipes FR-024)
   + no_unit_of_work (#310)
   + atomic_property_iteration (#313)
+  + unknown_method (#306)
   + requires_exclusive_access (exclusive-access-gate))
 
 All field aliases reference KEY_* constants from response_keys so renames
@@ -331,6 +332,23 @@ class InvalidApiChainDetail(BaseModel):
     guidance: Optional[str] = None
 
 
+class UnknownMethodDetail(BaseModel):
+    """Detail payload for unknown_method rejections (issue #306).
+
+    A call names a method that an indexed Operations class (inherited methods
+    included) does not have -- e.g. TryWord on ``project.Parser``. Each
+    ``issues`` item carries ``class``, ``method``, ``expr``, ``lineno``,
+    ``col_offset``, ``did_you_mean`` (list[str], may be empty),
+    ``available_methods`` and ``suggestion``. Top-level ``did_you_mean``
+    mirrors the first issue's list.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["unknown_method"] = "unknown_method"
+    issues: List[Any] = Field(default_factory=list)
+    did_you_mean: List[str] = Field(default_factory=list)
+    next_steps: List[str] = Field(default_factory=list)
+
+
 class ReflectionBypassDetectedDetail(BaseModel):
     """Detail payload for reflection_bypass_detected rejections (issue #277).
 
@@ -418,6 +436,9 @@ class ProjectLockedDetail(BaseModel):
     holder_pid: Optional[int] = None
     holder_process: Optional[str] = None
     remedy: Optional[str] = None
+    # Issue #315: numbered steps the model can act on ("1. ..."), so a
+    # held_by_other refusal is not a dead end it cannot resolve.
+    next_steps: List[Any] = Field(default_factory=list)
 
 
 class ExclusiveOnlyMatchModel(BaseModel):
@@ -1012,7 +1033,7 @@ class RecipeNotFoundDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 47 per-code detail models
+# Discriminated union over all 48 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -1033,6 +1054,7 @@ AnyDetail = Union[
     WrongLibraryImportsDetail,
     InvalidApiModeDetail,
     InvalidApiChainDetail,
+    UnknownMethodDetail,
     ReflectionBypassDetectedDetail,
     NestedUnitOfWorkDetail,
     NoUnitOfWorkDetail,

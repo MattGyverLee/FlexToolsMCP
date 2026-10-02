@@ -15,6 +15,10 @@ The grandchild helper opens a temp file and blocks indefinitely.  The parent
 script spawns the grandchild and also blocks.  run_script_async() must kill
 both within its timeout so the file is released.
 
+Issue #315 adds the same guarantee for CANCELLATION: a cancelled
+run_script_async (MCP client cancelled the tool call) kills the tree and
+re-raises CancelledError.
+
 Skipped on non-Windows because the Windows-specific taskkill path is the
 subject of the regression; POSIX coverage is provided by the POSIX branch in
 _kill_process_tree() (os.killpg), which is exercised indirectly.
@@ -133,4 +137,132 @@ def test_timeout_kills_grandchild_releasing_file():
         except PermissionError as exc:
             pytest.fail(
                 f"lock_file still held after timeout (grandchild orphaned): {exc}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Issue #315: a CANCELLED run (MCP client cancelled the tool call) must also
+# kill the tree. CancelledError is a BaseException, so neither the timeout
+# handler nor `except Exception` saw it, and the child kept the project open.
+# ---------------------------------------------------------------------------
+
+
+class _NeverFinishingProcess:
+    """Stands in for asyncio.subprocess.Process: communicate() blocks forever."""
+
+    pid = 4242
+    returncode = None
+
+    async def communicate(self):
+        await asyncio.Event().wait()
+
+    async def wait(self):
+        await asyncio.Event().wait()
+
+
+def test_cancel_kills_the_process_tree_and_propagates(monkeypatch):
+    import server.subprocess_helpers as helpers
+
+    killed = []
+
+    async def fake_exec(*args, **kwargs):
+        return _NeverFinishingProcess()
+
+    monkeypatch.setattr(helpers.asyncio, "create_subprocess_exec", fake_exec)
+    monkeypatch.setattr(helpers, "_kill_process_tree", killed.append)
+
+    async def scenario():
+        task = asyncio.ensure_future(
+            helpers.run_script_async("unused.py", timeout_seconds=60)
+        )
+        for _ in range(5):
+            await asyncio.sleep(0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(scenario())
+    assert killed == [4242]
+
+
+def test_cancel_propagates_even_if_the_kill_fails(monkeypatch):
+    """_kill_process_tree is best-effort and never raises today; if a future
+    change made it raise, the CancelledError must still reach the caller
+    rather than be swallowed into a normal result dict by the outer
+    `except Exception`."""
+    import server.subprocess_helpers as helpers
+
+    attempts = []
+
+    async def fake_exec(*args, **kwargs):
+        return _NeverFinishingProcess()
+
+    def failing_kill(pid):
+        attempts.append(pid)
+        raise OSError("taskkill missing")
+
+    monkeypatch.setattr(helpers.asyncio, "create_subprocess_exec", fake_exec)
+    monkeypatch.setattr(helpers, "_kill_process_tree", failing_kill)
+
+    async def scenario():
+        task = asyncio.ensure_future(
+            helpers.run_script_async("unused.py", timeout_seconds=60)
+        )
+        for _ in range(5):
+            await asyncio.sleep(0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(scenario())
+    assert attempts == [4242]
+
+
+def test_cancel_kills_grandchild_releasing_file():
+    """End to end: cancelling the awaiting task releases a file held by a
+    grandchild, exactly as the timeout path does (issue #57 (B))."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir_path = Path(tmpdir)
+        grandchild_script = tmpdir_path / "grandchild.py"
+        parent_script = tmpdir_path / "parent.py"
+        lock_file = tmpdir_path / "project.fwdata.lock"
+        grandchild_script.write_text(_GRANDCHILD_BODY, encoding="utf-8")
+        parent_script.write_text(
+            textwrap.dedent(f"""\
+                import subprocess, sys, time
+                proc = subprocess.Popen(
+                    [sys.executable, r"{grandchild_script}", r"{lock_file}"],
+                )
+                while True:
+                    time.sleep(1)
+            """),
+            encoding="utf-8",
+        )
+
+        from server.subprocess_helpers import run_script_async
+
+        async def scenario():
+            task = asyncio.ensure_future(
+                run_script_async(str(parent_script), timeout_seconds=60)
+            )
+            # Wait until the grandchild has the file open.
+            for _ in range(100):
+                if lock_file.exists():
+                    break
+                await asyncio.sleep(0.1)
+            await asyncio.sleep(0.5)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+
+        asyncio.run(scenario())
+
+        import time
+        time.sleep(0.5)
+        try:
+            lock_file.write_text("released", encoding="utf-8")
+            lock_file.unlink()
+        except PermissionError as exc:
+            pytest.fail(
+                f"lock_file still held after cancel (grandchild orphaned): {exc}"
             )

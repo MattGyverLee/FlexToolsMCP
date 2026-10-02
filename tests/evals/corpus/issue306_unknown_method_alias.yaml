@@ -1,0 +1,17 @@
+intent: "An aliased call to a nonexistent Operations method gets the same unknown_method verdict as the direct call (issue #306)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  parser_ops = project.Parser
+  result = parser_ops.TryWord("kitabu")
+  report.Info(str(result))
+expect:
+  outcome: preflight_reject
+  error_code: unknown_method
+  auto_fixes: 0
+notes: >
+  Regression for issue #306: the field report had the aliased form pass
+  preflight and then fail silently. The alias resolves through the same
+  receiver resolver as the direct call, so both forms get the same
+  unknown_method rejection.
+issue: 306

@@ -114,6 +114,13 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "remove a def Main wrapper to fix this (Main with no scaffold also "
         "runs as a snippet)."
     ),
+    "unknown_method": (
+        # Issue #306: the method does not exist; guarding it changes nothing.
+        "the called method does not exist on that Operations class -- pick "
+        "one from the rejection's did_you_mean (or flextools_get_object_api). "
+        "Do not add an `if modifyAllowed:` guard or rename the receiver "
+        "variable: neither makes the method exist."
+    ),
     "top_level_main_invocation": (
         "remove the module-level Main(...) call -- flextools_run_module "
         "invokes Main itself after loading the module; a top-level call "

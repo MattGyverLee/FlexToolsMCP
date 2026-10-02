@@ -1,66 +1,67 @@
 {
-    "workflow":  "companion",
-    "specName":  "exclusive-access-gate",
-    "branch":  "feat/exclusive-access-gate",
-    "selectedAt":  "2026-09-30T20:00:00.000Z",
-    "currentStep":  "implement",
-    "status":  "needs-human",
-    "history":  [
-                    {
-                        "step":  "specify",
-                        "substep":  null,
-                        "kind":  "start",
-                        "by":  "user",
-                        "at":  "2026-09-30T20:00:00.000Z"
-                    },
-                    {
-                        "step":  "specify",
-                        "substep":  null,
-                        "kind":  "complete",
-                        "by":  "ai",
-                        "at":  "2026-09-30T20:30:00.000Z"
-                    },
-                    {
-                        "step":  "plan",
-                        "substep":  null,
-                        "kind":  "start",
-                        "by":  "user",
-                        "at":  "2026-09-30T21:00:00.000Z"
-                    },
-                    {
-                        "step":  "plan",
-                        "substep":  null,
-                        "kind":  "complete",
-                        "by":  "ai",
-                        "at":  "2026-09-30T22:00:00.000Z"
-                    },
-                    {
-                        "step":  "tasks",
-                        "substep":  null,
-                        "kind":  "complete",
-                        "by":  "ai",
-                        "at":  "2026-09-30T22:30:00.000Z"
-                    },
-                    {
-                        "step":  "implement",
-                        "substep":  "phases 1-4 (MVP)",
-                        "kind":  "progress",
-                        "by":  "ai",
-                        "at":  "2026-09-30T23:30:00.000Z"
-                    },
-                    {
-                        "step":  "implement",
-                        "substep":  "offline tasks done; QC 84/100, B1 live evidence pending",
-                        "kind":  "progress",
-                        "by":  "ai",
-                        "at":  "2026-10-01T00:30:00.000Z"
-                    }
-                ],
-    "decisions":  [
-                      "Predecessor specs/shared-mode-access (#93) retired; #93 closed 2026-09-30.",
-                      "Interim 2026-09-08 policy stands: writing-system and custom-field changes need FLEx closed; the gate enforces it.",
-                      "Programmatic undo is out of scope (separate spec if wanted).",
-                      "Untyped-receiver rows match wrapper names by name alone except Create/Delete (mutating on ~50 other classes; would refuse ordinary raw-LCM factory writes).",
-                      "validate_only exclusive_access.blocking is true on verdict unknown (the real run refuses it, FR-009); null only when the probe raised."
-                  ]
+  "workflow": "companion",
+  "specName": "exclusive-access-gate",
+  "branch": "feat/exclusive-access-gate",
+  "selectedAt": "2026-09-30T20:00:00.000Z",
+  "currentStep": "implement",
+  "status": "implementing",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "user",
+      "at": "2026-09-30T20:00:00.000Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-30T20:30:00.000Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "user",
+      "at": "2026-09-30T21:00:00.000Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-30T22:00:00.000Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-30T22:30:00.000Z"
+    },
+    {
+      "step": "implement",
+      "substep": "phases 1-4 (MVP)",
+      "kind": "progress",
+      "by": "ai",
+      "at": "2026-09-30T23:30:00.000Z"
+    },
+    {
+      "step": "implement",
+      "substep": "offline tasks done; QC 84/100, B1 live evidence pending",
+      "kind": "progress",
+      "by": "ai",
+      "at": "2026-10-01T00:30:00.000Z"
+    }
+  ],
+  "decisions": [
+    "Predecessor specs/shared-mode-access (#93) retired; #93 closed 2026-09-30.",
+    "Interim 2026-09-08 policy stands: writing-system and custom-field changes need FLEx closed; the gate enforces it.",
+    "Programmatic undo is out of scope (separate spec if wanted).",
+    "Untyped-receiver rows match wrapper names by name alone except Create/Delete (mutating on ~50 other classes; would refuse ordinary raw-LCM factory writes).",
+    "validate_only exclusive_access.blocking is true on verdict unknown (the real run refuses it, FR-009); null only when the probe raised."
+  ],
+  "telemetryInstanceId": "465cb46c-7a33-4c95-8c2f-da6a090e6dde"
 }

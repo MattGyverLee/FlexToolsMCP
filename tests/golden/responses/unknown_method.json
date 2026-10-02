@@ -1,0 +1,14 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "unknown_method",
+  "message": "'TryWord' is not a method on ParserOperations",
+  "issues": [],
+  "did_you_mean": [],
+  "error": {
+    "code": "unknown_method",
+    "message": "'TryWord' is not a method on ParserOperations",
+    "issues": [],
+    "did_you_mean": []
+  }
+}

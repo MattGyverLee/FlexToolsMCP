@@ -449,10 +449,9 @@ class RunModuleInput(BaseModel):
     )
     validate_only: bool = Field(
         default=False,
-        description="Issue #49: run the full 11-gate preflight (syntax, server "
-                    "state, partial-module structure, unprotected writes, casting, "
-                    "API discovery x2, undefined vars, imports x2, invalid API "
-                    "chains) plus a READ-ONLY project-lock probe, then STOP -- the "
+        description="Issue #49: run the full preflight (every gate a real run "
+                    "applies before launching; the `checks[]` array names each "
+                    "one) plus a READ-ONLY project-lock probe, then STOP -- the "
                     "project is never opened and no subprocess is spawned. ALL "
                     "gates are evaluated and reported in one response (no "
                     "short-circuit, except that a syntax error blocks the "

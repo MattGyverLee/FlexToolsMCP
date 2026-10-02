@@ -18,7 +18,8 @@ refusal and resume cycles MUST be checked live on the **Sena 3** test project
 with FieldWorks open in shared mode. Never use Claude-Swahili.
 
 **Predecessor**: `specs/shared-mode-access/` (#93), retired. Its AS-BUILT record
-lives in `specs/_archive/shared-mode-access/`. That feature shipped CP1-CP4 and
+is `specs/shared-mode-access/AS-BUILT.md`; the full record is in
+`specs/_archive/shared-mode-access/`. That feature shipped CP1-CP4 and
 most of CP6. This spec carries forward what it left unbuilt: CP5 and the rest
 of CP6.
 

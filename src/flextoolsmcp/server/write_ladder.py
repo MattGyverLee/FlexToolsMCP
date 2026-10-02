@@ -149,7 +149,11 @@ def probe_write_access(project_name: str) -> AccessDecision:
 
     if verdict in REFUSING_VERDICTS:
         lock_path = _project_discovery.find_lock_file(project_name)
-        remedy = _project_access.build_access_remedy(access)
+        # Issue #315: the refusal is only ever EMITTED after the caller has
+        # ruled out this server's own pool workers (run_module's
+        # `_release_own_worker_or_refuse`, filing's release-then-reprobe),
+        # so the text may say the holder is not one of ours.
+        remedy = _project_access.build_access_remedy(access, own_workers_ruled_out=True)
         holder = _holder_fields(access)
         decision.refusal = {
             "guidance": (
@@ -165,6 +169,11 @@ def probe_write_access(project_name: str) -> AccessDecision:
             "holder_pid": holder["holder_pid"],
             "holder_process": holder["holder_process"],
             "remedy": remedy,
+            # Issue #315: steps the model can take itself (or ask the user);
+            # no flextools_parse_release step, for the reason above.
+            "next_steps": _project_access.build_access_next_steps(
+                access, own_workers_ruled_out=True
+            ),
         }
     elif verdict == "open_shared":
         decision.advisory = {

@@ -1832,12 +1832,35 @@ def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
 
 
 def _operation_method_names(api_index: Optional[Any], operations_class: str) -> List[str]:
-    """Methods on an Operations class, looked up in the flexicon index."""
+    """Methods on an Operations class, looked up in the flexicon index,
+    inherited ones included (issue #306 follow-up: MoveUp / Sort / Swap live
+    on BaseOperations, so an own-methods-only list never suggested them).
+
+    Best effort: ancestors the index does not cover are skipped rather than
+    voiding the list, since callers only use it for did-you-mean candidates.
+    Own methods come first, in index order.
+    """
     if api_index is None:
         return []
     flexicon = getattr(api_index, "flexicon", None) or {}
-    entity = (flexicon.get("entities") or {}).get(operations_class, {})
-    return [m.get("name", "") for m in entity.get("methods", []) if m.get("name")]
+    entities = flexicon.get("entities") or {}
+    names: List[str] = []
+    seen_names: Set[str] = set()
+    pending = [operations_class]
+    seen_classes: Set[str] = set()
+    while pending:
+        cls = pending.pop(0)
+        if cls in seen_classes or cls == "object":
+            continue
+        seen_classes.add(cls)
+        entity = entities.get(cls) or {}
+        for m in entity.get("methods", []) or []:
+            name = m.get("name")
+            if name and name not in seen_names:
+                seen_names.add(name)
+                names.append(name)
+        pending.extend(entity.get("base_classes") or [])
+    return names
 
 
 def _suggest_attribute_matches(attr_name: str, candidates: List[str], cutoff: float = 0.5) -> List[str]:
@@ -2114,6 +2137,10 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
     # Build enumerated set of known Lexicon* direct-project methods from index.
     # Only names actually in the index pass as valid; others get fuzzy-checked.
     known_lexicon_methods: Set[str] = set()
+    # Issue #306 follow-up: project.<X> -> its real Operations class from the
+    # index (Senses -> LexSenseOperations), not f"{X}Operations".
+    accessor_to_ops = _accessor_to_ops_map(api_index)
+    member_cache: Dict[str, Optional[Tuple[Dict[str, Dict[str, Any]], Set[str]]]] = {}
     if api_index is not None:
         flexicon = getattr(api_index, "flexicon", None) or {}
         flex_project = (flexicon.get("entities") or {}).get("FLExProject", {})
@@ -2220,9 +2247,28 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
             y = node.attr
             if x not in accessors:
                 continue  # outer accessor will be flagged separately if invalid
-            ops_class = f"{x}Operations"
-            methods = _operation_method_names(api_index, ops_class)
-            if not methods or y in methods:
+            # Issue #306 follow-up: `f"{x}Operations"` named a class that does
+            # not exist for most accessors (Senses, Wordforms, PhonRules, ...),
+            # so typos on them were never caught; and an own-methods-only
+            # lookup would misread inherited calls (MoveUp, Sort on
+            # BaseOperations). Resolve the class through the index and use
+            # the same base-class-aware, decidability-checked member lookup
+            # as the unknown_method gate, so the two gates agree.
+            ops_class = accessor_to_ops.get(x) or f"{x}Operations"
+            if ops_class not in member_cache:
+                member_cache[ops_class] = _ops_class_member_records(api_index, ops_class)
+            members = member_cache[ops_class]
+            if not _ops_class_membership_decidable(ops_class, members):
+                continue
+            member_methods, member_props = members
+            if y in member_methods or y in member_props:
+                continue
+            methods = [m for m in member_methods if not m.startswith("_")]
+            # Issue #306 QC: same #32 rule as the unknown_method gate -- a
+            # Get*/Find*/... name may be a getter newer than the index
+            # (`GetGlossText` next to an indexed GetGloss), so it only blocks
+            # (or is auto-fixed) when it is a confident typo of a real one.
+            if y.startswith(_UNINDEXED_READONLY_PREFIXES) and not _has_confident_member_typo_match(y, methods):
                 continue
             close = _suggest_attribute_matches(y, methods, cutoff=0.7)
             if close:
@@ -5030,6 +5076,301 @@ def _indexed_operations_class_names(api_index: Optional[Any]) -> Set[str]:
     }
 
 
+def _ops_class_member_records(
+    api_index: Optional[Any], class_name: str
+) -> Optional[Tuple[Dict[str, Dict[str, Any]], Set[str]]]:
+    """(methods by name, property names) for an indexed class, inherited ones
+    included, or None when the class or ANY of its ancestors is not indexed.
+
+    Issue #306: `project.LexEntry.MoveUp(...)` is defined on BaseOperations,
+    not LexEntryOperations, so an own-methods-only lookup misreads every
+    inherited call as "method not in index". Own records win over inherited
+    ones. None means "membership cannot be decided" -- callers must not treat
+    a name as unknown on a class whose ancestry the index does not fully
+    cover.
+    """
+    if api_index is None:
+        return None
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entities = flexicon.get("entities") or {}
+    methods: Dict[str, Dict[str, Any]] = {}
+    properties: Set[str] = set()
+    pending = [class_name]
+    seen: Set[str] = set()
+    while pending:
+        name = pending.pop(0)
+        if name in seen or name == "object":
+            continue
+        seen.add(name)
+        entity = entities.get(name)
+        if not entity:
+            return None
+        for m in entity.get("methods", []) or []:
+            m_name = m.get("name")
+            if m_name and m_name not in methods:
+                methods[m_name] = m
+        for p in entity.get("properties", []) or []:
+            if p.get("name"):
+                properties.add(p["name"])
+        pending.extend(entity.get("base_classes") or [])
+    return methods, properties
+
+
+def _ops_class_membership_decidable(
+    class_name: str,
+    members: Optional[Tuple[Dict[str, Dict[str, Any]], Set[str]]],
+) -> bool:
+    """True when "method not found on `class_name`" really means "no such
+    method": an Operations class whose whole ancestry is indexed and has at
+    least one method. Used by detect_unknown_operations_methods (issue #306);
+    certify_script_readonly keys its unknown-method branch on that gate's
+    findings, so it inherits this test rather than restating it.
+    """
+    return class_name.endswith("Operations") and bool(members and members[0])
+
+
+def _ambiguously_bound_names(
+    tree: ast.AST,
+    bindings: List[_BindingNode],
+    accessor_to_ops: Dict[str, str],
+    operations_aliases: Dict[str, str],
+    facade_names: Set[str],
+) -> Set[str]:
+    """Names bound to more than one distinct thing anywhere in the script.
+
+    `_resolve_alias_maps` is whole-script and last-write-wins (deliberately,
+    for the over-reporting write gate -- #8). The unknown_method gate
+    (#306) REJECTS, so it must not trust an alias that may point elsewhere at
+    the call site: `ops` bound to ParserOperations in one function and
+    LexEntryOperations in another, or rebound to a non-Operations value, or
+    also a function parameter / loop / import / except name.
+
+    Each assignment-style binding gets a signature (its resolved Operations
+    class, else its right-hand side's AST dump); every other way of binding
+    the name (parameters, imports, except-as, unpaired Store targets) gets a
+    signature of its own. More than one distinct signature = ambiguous.
+    """
+    signatures: Dict[str, Set[str]] = {}
+    paired_counts: Dict[str, int] = {}
+
+    def _sig(rhs: ast.AST) -> str:
+        if isinstance(rhs, ast.Call) and isinstance(rhs.func, ast.Name):
+            if rhs.func.id.endswith("Operations") and len(rhs.args) == 1:
+                return "ops:" + rhs.func.id
+        if (
+            isinstance(rhs, ast.Attribute)
+            and isinstance(rhs.value, ast.Name)
+            and rhs.value.id in facade_names
+            and rhs.attr in accessor_to_ops
+        ):
+            return "ops:" + accessor_to_ops[rhs.attr]
+        if isinstance(rhs, ast.Name) and rhs.id in operations_aliases:
+            return "ops:" + operations_aliases[rhs.id]
+        return "expr:" + ast.dump(rhs)
+
+    for node in bindings:
+        for target, rhs in _iter_assign_pairs(node):
+            if isinstance(target, ast.Name):
+                signatures.setdefault(target.id, set()).add(_sig(rhs))
+                paired_counts[target.id] = paired_counts.get(target.id, 0) + 1
+
+    store_counts: Dict[str, int] = {}
+    other = 0
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            store_counts[node.id] = store_counts.get(node.id, 0) + 1
+        elif isinstance(node, ast.arg):
+            other += 1
+            signatures.setdefault(node.arg, set()).add(f"other:{other}")
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            other += 1
+            signatures.setdefault(node.name, set()).add(f"other:{other}")
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                other += 1
+                bound = alias.asname or alias.name.split(".")[0]
+                signatures.setdefault(bound, set()).add(f"other:{other}")
+    for name, count in store_counts.items():
+        if count > paired_counts.get(name, 0):
+            other += 1
+            signatures.setdefault(name, set()).add(f"other:{other}")
+
+    return {name for name, sigs in signatures.items() if len(sigs) > 1}
+
+
+#: Issue #32: name prefixes that are unambiguously read-only, so an unindexed
+#: method with one is never a suspected write, and is an unknown_method /
+#: invalid_api_chain finding only when _has_confident_member_typo_match says
+#: it is a typo of a real method.
+_UNINDEXED_READONLY_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains")
+
+#: Similarity a read-prefixed unindexed name needs to an indexed method before
+#: it is treated as a typo of it rather than a newer getter (same floor as the
+#: #46 typo auto-fix).
+_CONFIDENT_MEMBER_TYPO_RATIO = 0.9
+
+
+def _is_plausible_member_extension(base: str, tail: str) -> bool:
+    """True when `base + tail` reads as a different member, not a typo."""
+    if not tail:
+        return False
+    if tail[0].isupper():
+        return True
+    return tail in ("s", "es") and tail[0] != base[-1:]
+
+
+def _has_confident_member_typo_match(name: str, candidates: List[str]) -> bool:
+    """True when `name` is very probably a misspelling of one of `candidates`.
+
+    Issue #306 QC: shared by the unknown_method and invalid_api_chain gates
+    for Get*/Find*/Is*/Has*/Count*/Contains* names (#32), so a getter newer
+    than the index still runs while `GetLexemeFrom` (GetLexemeForm) is caught.
+    A candidate counts when the case-insensitive similarity is at least
+    _CONFIDENT_MEMBER_TYPO_RATIO and `name` is not a plausible extension of
+    it: a new camelCase word (`GetGlossText` after GetGloss) or a plural
+    ("s"/"es": `GetForms`, `GetGlosses`) is what a newer method looks like.
+    A doubled final letter (`GetGlosss`) or any other lowercase tail is
+    still a typo.
+    """
+    import difflib
+
+    lowered = name.lower()
+    for cand in candidates:
+        if name.startswith(cand) and _is_plausible_member_extension(cand, name[len(cand):]):
+            continue
+        if difflib.SequenceMatcher(None, lowered, cand.lower()).ratio() >= _CONFIDENT_MEMBER_TYPO_RATIO:
+            return True
+    return False
+
+
+def detect_unknown_operations_methods(
+    code_tree: Optional[ast.AST], api_index: Optional[Any] = None
+) -> dict:
+    """Pre-flight: calls to a method an indexed Operations class does not have.
+
+    Issue #306: a TryWord call on `project.Parser` -- ParserOperations has no
+    TryWord -- was classified as a mutating call (fail-closed for "method not
+    in index") and rejected as unprotected_writes, so the model kept adding
+    guards to a call that could never work. A method absent from a known,
+    fully-indexed class is a wrong NAME, not a write: report it as such, with
+    the class's real methods as did-you-mean candidates.
+
+    Receivers are typed by the same resolver certify_script_readonly uses, so
+    the direct form and the aliased forms agree:
+
+        project.Parser.TryWord(w)                   facade accessor  # doc-check: ignore
+        p = project.Parser; p.TryWord(w)            facade alias
+        ParserOperations(project).TryWord(w)        inline construction
+        ops = ParserOperations(project); ops.TryWord(w)
+        ParserOperations.TryWord(w)                 static form
+
+    Conservative: a class not in the index, or whose base classes are not all
+    indexed, is skipped; so are `_`-prefixed names and property names. So are
+    Get*/Find*/Is*/Has*/Count*/Contains* names (issue #32) unless
+    _has_confident_member_typo_match calls them a typo of a real method: a
+    getter added to flexicon after the index was built must still run, and a
+    less certain wrong getter name fails at runtime with an AttributeError the
+    runner already turns into a `did_you_mean` (runtime_error).
+
+    Returns dict with:
+      - has_unknown: bool
+      - issues: list of {class, method, expr, lineno, col_offset,
+        did_you_mean, available_methods, suggestion}
+      - suggestion: combined human-readable hint
+    """
+    if code_tree is None or api_index is None:
+        return {"has_unknown": False, "issues": []}
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    if not flexicon.get("entities"):
+        return {"has_unknown": False, "issues": []}
+
+    accessor_to_ops = _accessor_to_ops_map(api_index)
+    assigns, calls, bindings = _collect_assign_call_nodes(code_tree)
+    facade_names = _resolve_facade_names(assigns + bindings, api_index)
+    operations_aliases, _cast_aliases = _resolve_alias_maps(
+        assigns + bindings, facade_names, accessor_to_ops
+    )
+    known_ops_classes = _indexed_operations_class_names(api_index)
+    ambiguous = _ambiguously_bound_names(
+        code_tree, assigns + bindings, accessor_to_ops, operations_aliases, facade_names
+    )
+
+    issues: List[Dict[str, Any]] = []
+    seen: Set[Tuple[str, str, int]] = set()
+    member_cache: Dict[str, Optional[Tuple[Dict[str, Dict[str, Any]], Set[str]]]] = {}
+    for node in calls:
+        if not isinstance(node.func, ast.Attribute):
+            continue
+        method_name = node.func.attr
+        if method_name.startswith("_"):
+            continue
+        receiver = node.func.value
+        # A receiver (or facade root) whose name is bound to more than one
+        # thing cannot be typed at this call site: leave it to the write gate
+        # and to runtime rather than hard-reject a possibly valid call.
+        _root = receiver.value if isinstance(receiver, ast.Attribute) else receiver
+        if isinstance(_root, ast.Name) and _root.id in ambiguous:
+            continue
+        cls = _resolve_receiver_ops_class(
+            receiver, accessor_to_ops, operations_aliases, facade_names
+        )
+        if cls is None and isinstance(receiver, ast.Name) and receiver.id in known_ops_classes:
+            cls = receiver.id
+        if cls is None or cls not in known_ops_classes:
+            continue
+        if cls not in member_cache:
+            member_cache[cls] = _ops_class_member_records(api_index, cls)
+        members = member_cache[cls]
+        if not _ops_class_membership_decidable(cls, members):
+            continue
+        methods, properties = members
+        if method_name in methods or method_name in properties:
+            continue
+        public = sorted(m for m in methods if not m.startswith("_"))
+        # Issue #32 / #306 QC: a read-prefixed name absent from the index may
+        # be a getter newer than it, so it is only reported when it is a
+        # confident typo of a real method (the chain gate uses the same rule).
+        if method_name.startswith(_UNINDEXED_READONLY_PREFIXES) and not _has_confident_member_typo_match(
+            method_name, public
+        ):
+            continue
+        key = (cls, method_name, node.lineno)
+        if key in seen:
+            continue
+        seen.add(key)
+        close = _suggest_attribute_matches(method_name, public, cutoff=0.5)
+        if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name):
+            expr = f"{receiver.func.id}(...).{method_name}"
+        else:
+            expr = f"{_describe_receiver(receiver)}.{method_name}"
+        if close:
+            hint = "Did you mean: " + ", ".join(close) + "?"
+        else:
+            hint = (
+                "Call flextools_get_object_api(\"" + cls + "\") or "
+                "flextools_search_by_capability to find the right method."
+            )
+        issues.append({
+            "class": cls,
+            "method": method_name,
+            "expr": expr,
+            "lineno": node.lineno,
+            "col_offset": node.col_offset,
+            "did_you_mean": close,
+            "available_methods": public,
+            "suggestion": f"'{method_name}' is not a method on {cls} ({expr}, line {node.lineno}). {hint}",
+        })
+
+    if not issues:
+        return {"has_unknown": False, "issues": []}
+    issues.sort(key=lambda i: (i["lineno"], i["col_offset"]))
+    return {
+        "has_unknown": True,
+        "issues": issues,
+        "suggestion": " ".join(i["suggestion"] for i in issues),
+    }
+
+
 def _iter_property_write_targets(
     tree: ast.AST,
 ) -> Iterator[Tuple[Union[ast.Assign, ast.AugAssign, ast.AnnAssign], ast.AST]]:
@@ -6470,6 +6811,15 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         entities = {}
 
     # Step 2: Look up each call in the API index and check if protected
+    # Issue #306: calls the unknown_method gate reports (and so rejects
+    # before they can run) are the only "method not in index" calls Step 2
+    # stops counting as mutations.
+    _unknown_method_gate_calls: Set[Tuple[str, str, int]] = set()
+    if tree is not None and api_index and api_index.flexicon:
+        _unknown_method_gate_calls = {
+            (i["class"], i["method"], i["lineno"])
+            for i in detect_unknown_operations_methods(tree, api_index)["issues"]
+        }
     if api_index and api_index.flexicon:
         for class_name, method_name, line_num in operations_calls_with_lines:
             # Check if this call is protected by a guard
@@ -6477,7 +6827,14 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
 
             if class_name in entities:
                 class_entity = entities[class_name]
-                methods = class_entity.get("methods", [])
+                # Issue #306: include inherited methods (MoveUp, Sort, ... live
+                # on BaseOperations), so an inherited call is classified by
+                # its real is_mutating flag instead of "method not in index".
+                _members = _ops_class_member_records(api_index, class_name)
+                if _members is not None:
+                    methods = list(_members[0].values())
+                else:
+                    methods = class_entity.get("methods", [])
 
                 # Search for method in class
                 method_found = False
@@ -6535,8 +6892,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                     # Class found but method not in index.
                     # Issue #32: Get*/Find*/Is*/Has*/Count*/Contains* prefixes are
                     # unambiguously read-only -- don't false-positive them as mutating.
-                    _READONLY_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains")
-                    if method_name.startswith(_READONLY_PREFIXES):
+                    if method_name.startswith(_UNINDEXED_READONLY_PREFIXES):
                         mutating_calls.append({
                             "class": class_name,
                             "method": method_name,
@@ -6546,20 +6902,35 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                             "protected": True
                         })
                     elif not is_protected:
+                        # Issue #306: a method the indexed class does not have
+                        # is a wrong NAME, not a write. Classifying it mutating
+                        # (the pre-#306 fail-closed branch, which only #32's
+                        # read-prefix list escaped) answered
+                        # a TryWord call on `project.Parser` with unprotected_writes,
+                        # and the model kept guarding a call that cannot work.
+                        # run_module rejects it as `unknown_method`
+                        # (detect_unknown_operations_methods) before it can
+                        # run, so this stays fail-closed; here it is only
+                        # recorded as unknown. Any call that gate does NOT
+                        # report (undecidable ancestry, an alias bound to
+                        # more than one thing, ...) keeps the old fail-closed
+                        # mutating classification -- keyed on the gate's own
+                        # findings so the two can never disagree.
                         unknown_calls.append({
                             "class": class_name,
                             "method": method_name,
                             "reason": "method not in index",
                             "line": line_num
                         })
-                        mutating_calls.append({
-                            "class": class_name,
-                            "method": method_name,
-                            "is_mutating": True,
-                            "source": "unknown",
-                            "line": line_num,
-                            "protected": False
-                        })
+                        if (class_name, method_name, line_num) not in _unknown_method_gate_calls:
+                            mutating_calls.append({
+                                "class": class_name,
+                                "method": method_name,
+                                "is_mutating": True,
+                                "source": "unknown",
+                                "line": line_num,
+                                "protected": False
+                            })
                         confidence_sources["unknown"] += 1
             else:
                 # Class not in index - fall through to regex

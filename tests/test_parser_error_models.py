@@ -500,8 +500,8 @@ class TestCP3IsPurelyAdditive:
     def test_union_carries_all_forty_one_codes(self):
         import typing
         members = typing.get_args(AnyDetail)
-        assert len(members) == 47, (
-            "expected 47 detail models: CP3's five additions on top of main's "
+        assert len(members) == 48, (
+            "expected 48 detail models: CP3's five additions on top of main's "
             "26 (incl. invalid_api_mode), internal_error (#89), CP4's two "
             "(parser_filing_in_progress, grammar_load_unclean), CP5's two "
             "(parser_config_failed, parse_sandbox_refused), #243's three "
@@ -510,8 +510,8 @@ class TestCP3IsPurelyAdditive:
             "raw_addcustomfield_write_risk (#70), top_level_main_invocation (#279), "
             "reflection_bypass_detected (#277), recipe_not_found "
             "(unified-recipes FR-024), no_unit_of_work (#310), "
-            "atomic_property_iteration (#313), and requires_exclusive_access "
-            "(exclusive-access-gate); found "
+            "atomic_property_iteration (#313), unknown_method (#306), and "
+            "requires_exclusive_access (exclusive-access-gate); found "
             + str(len(members))
         )
         for model in CP3_MODELS.values():

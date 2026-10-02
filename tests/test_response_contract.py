@@ -43,6 +43,7 @@ from flextoolsmcp.server.response_models import (
     WrongLibraryImportsDetail,
     InvalidApiModeDetail,
     InvalidApiChainDetail,
+    UnknownMethodDetail,
     ProjectLockedDetail,
     RequiresExclusiveAccessDetail,
     ProjectDriveUnavailableDetail,
@@ -167,6 +168,10 @@ GOLDEN_REQUIRED_KEYS = {
     "missing_imports": {"_contract", "status", "error_code", "message", "error"},
     "wrong_library_imports": {"_contract", "status", "error_code", "message", "error"},
     "invalid_api_chain": {"_contract", "status", "error_code", "message", "error"},
+    "unknown_method": {
+        "_contract", "status", "error_code", "message", "error",
+        "issues", "did_you_mean",
+    },
     "project_locked": {"_contract", "status", "error_code", "message", "error"},
     "requires_exclusive_access": {"_contract", "status", "error_code", "message", "error"},
     "project_drive_unavailable": {"_contract", "status", "error_code", "message", "error"},
@@ -256,6 +261,7 @@ ALL_ERROR_CODES = [
     ("wrong_library_imports", dict(wrong_imports=["flexlibs"], api_mode="flexicon", affected_symbols=["LexOps"])),
     ("invalid_api_mode", dict(allowed_modes=["flexicon", "flexlibs_stable", "liblcm"], received="bogus")),
     ("invalid_api_chain", dict(issues=[], guidance="Fix chain")),
+    ("unknown_method", dict(issues=[], did_you_mean=["ParseWord"], next_steps=["Use ParseWord."])),
     ("reflection_bypass_detected", dict(
         findings=[{"kind": "operator.methodcaller", "line": 2, "expr": "operator.methodcaller(\"Add\", ...)(...)"}],
         reflection_bypass_count=1,
@@ -378,6 +384,7 @@ DETAIL_MODEL_MAP = {
     "wrong_library_imports": WrongLibraryImportsDetail,
     "invalid_api_mode": InvalidApiModeDetail,
     "invalid_api_chain": InvalidApiChainDetail,
+    "unknown_method": UnknownMethodDetail,
     "project_locked": ProjectLockedDetail,
     "requires_exclusive_access": RequiresExclusiveAccessDetail,
     "project_drive_unavailable": ProjectDriveUnavailableDetail,
@@ -533,9 +540,9 @@ class TestParserCheckCP2bCodes:
         # #277 adds reflection_bypass_detected -> 43.
         # unified-recipes adds recipe_not_found -> 44.
         # #310 adds no_unit_of_work -> 45.
-        # #313 adds atomic_property_iteration -> 46.
-        # exclusive-access-gate adds requires_exclusive_access -> 47.
-        assert union_size == 47, f"the detail union holds {union_size} models"
+        # #313 adds atomic_property_iteration -> 46; #306 adds unknown_method -> 47.
+        # exclusive-access-gate adds requires_exclusive_access -> 48.
+        assert union_size == 48, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

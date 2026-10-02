@@ -148,6 +148,11 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "message": "Invalid API method chain detected",
         "issues": [],
     },
+    "unknown_method": {
+        "message": "'TryWord' is not a method on ParserOperations",
+        "issues": [],
+        "did_you_mean": [],
+    },
     "reflection_bypass_detected": {
         "message": "Refused: this code reaches LCM through reflection",
         "findings": [],

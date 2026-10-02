@@ -35,7 +35,7 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
-_WS_LIVE_EVIDENCE = "specs/shared-mode-access/evidence/live-cp4.md Item 5"
+_WS_LIVE_EVIDENCE = "specs/_archive/shared-mode-access/evidence/live-cp4.md Item 5"
 _CF_SOURCE_EVIDENCE = (
     "seen live 2026-10-02: specs/exclusive-access-gate/evidence/live-gate.md V7; "
     "liblcm SharedXMLBackendProvider.cs:429,479; CommitLogRecord.cs:23-48"

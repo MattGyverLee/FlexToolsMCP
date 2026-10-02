@@ -24,7 +24,7 @@ import hashlib
 import heapq
 import time
 import itertools
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, Set
 from mcp.types import TextContent
 
 from ._import_helper import (
@@ -1720,18 +1720,74 @@ def _inline_discovery_docs(
     return inlined
 
 
+def _inline_entity_forms(name: str) -> Set[str]:
+    """Accessor <-> ops-class spellings of one entity name (POS <-> POSOperations)."""
+    if name.endswith("Operations"):
+        return {name, name[: -len("Operations")]}
+    return {name, name + "Operations"}
+
+
+def _names_covered_by_inline(names: List[str], inline: Dict[str, Any]) -> List[str]:
+    """The subset of ``names`` whose docs ``_inline_discovery_docs`` returned.
+
+    ``_inline_discovery_docs`` keys its result by the name it found in the
+    index, which may be the swapped accessor/ops-class form of the requested
+    name, so match on both spellings.
+    """
+    keys: Set[str] = set()
+    for key in inline or {}:
+        keys |= _inline_entity_forms(key)
+    return [n for n in names if _inline_entity_forms(n) & keys]
+
+
+def _record_inline_discovery(session: Any, inline: Dict[str, Any]) -> List[str]:
+    """Record inlined get_object_api docs as discovery, on a WRITE rejection (#340).
+
+    The api_discovery_required gate exists so the model has seen the real
+    method shapes before it writes. ``_inline_discovery`` hands it exactly the
+    shapes get_object_api would, so the gate's intent is met: record each
+    inlined entity the way get_object_api does (its listed methods/properties
+    into ``discovered_apis``, the entity into ``validated_apis``). Without this
+    the copy's "resubmit" was false -- an identical resubmit hit the same
+    zero-discovery branch again (issue #29's one-round-trip goal).
+
+    WRITE path only: the read-only redirect must not populate
+    ``discovered_apis``/``validated_apis`` (write-gate isolation, issue #47).
+
+    Returns the recorded entity names (``inline``'s keys).
+    """
+    recorded: List[str] = []
+    for name, doc in (inline or {}).items():
+        for item in (doc.get("methods") or []) + (doc.get("properties") or []):
+            member = item.get("name") if isinstance(item, dict) else None
+            if member:
+                session.record_discovered_api(name, member)
+        session.record_validated_api(name)
+        recorded.append(name)
+    return recorded
+
+
 def _api_discovery_required_copy(
     session_state: Any,
     *,
     has_inline_discovery: bool,
+    inlined_entities: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """User-facing copy for the write-only api_discovery_required gate (#244).
 
     Read-only runs may auto-discover entities (issue #47) without adding them to
     ``discovered_apis``. The first WRITE run then hits the zero-discovery gate
     with a misleading "No APIs discovered yet" unless we name the auto-grants.
+
+    ``inlined_entities`` (issue #340): the entities whose docs were inlined and
+    recorded as discovered by ``_record_inline_discovery``. When present the
+    copy names them and says a resubmit now passes this gate; an
+    auto-discovered entity they cover is no longer listed as pending.
     """
     auto = sorted(getattr(session_state, "auto_discovered_apis", None) or [])
+    if inlined_entities:
+        covered = set(_names_covered_by_inline(auto, {n: {} for n in inlined_entities}))
+        auto = [a for a in auto if a not in covered]
     auto_joined = ", ".join(auto)
 
     if auto:
@@ -1753,7 +1809,31 @@ def _api_discovery_required_copy(
         )
         auto_paragraph = ""
 
-    if has_inline_discovery:
+    if has_inline_discovery and inlined_entities:
+        inlined_joined = ", ".join(inlined_entities)
+        message = (
+            "Discovery required before a WRITE run, so I ran get_object_api "
+            f"for the entities I detected in your code ({inlined_joined}) -- see "
+            "_inline_discovery -- and recorded them as discovered for this "
+            "session. Check your calls against these method/property shapes "
+            "and resubmit: the same code now passes this gate.\n\n"
+        )
+        if auto_paragraph:
+            message += auto_paragraph
+        message += (
+            "(Entities not listed above still need get_object_api(object_type='...'); "
+            "start(task='...') and search_by_capability(query='...') also work.)"
+        )
+        hint = (
+            "Check your calls against _inline_discovery, then resubmit -- "
+            f"{inlined_joined} now count as discovered."
+        )
+        if auto:
+            hint += (
+                f" Also validate auto-discovered entities via get_object_api: "
+                f"{auto_joined}."
+            )
+    elif has_inline_discovery:
         message = (
             "Discovery required before a WRITE run, but I ran get_object_api "
             "for the entities I detected in your code -- see _inline_discovery. "
@@ -4183,8 +4263,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             # rejection itself and can recover in one round-trip instead of three.
             candidates = detect_candidate_entities(code_tree, api_idx, limit=3)
             inline = _inline_discovery_docs(candidates, api_idx) if candidates else {}
+            # Issue #340: the inlined docs ARE the discovery -- record them so
+            # the "resubmit" this rejection asks for actually passes.
+            inlined_entities = _record_inline_discovery(session_state, inline)
             discovery_copy = _api_discovery_required_copy(
-                session_state, has_inline_discovery=bool(inline)
+                session_state,
+                has_inline_discovery=bool(inline),
+                inlined_entities=inlined_entities,
             )
             _log_preflight_reject(
                 op_id, seq, time.monotonic() - t_start,
@@ -4311,6 +4396,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                         )),
                         api_idx,
                     )
+                    # Issue #340 sibling: an entity whose docs were inlined has
+                    # been shown to the model, so "apply those shapes and
+                    # resubmit" must let that resubmit through. Grant it on the
+                    # read-only auto-discovery set (NOT validated_apis -- write
+                    # isolation, #47); only the uncovered rest stay undiscovered.
+                    for entity in _names_covered_by_inline(still_undiscovered, inline):
+                        session_state.record_auto_discovered_api(entity)
                     cap_query = _build_capability_query(
                         code_tree, still_undiscovered, user_intent
                     )

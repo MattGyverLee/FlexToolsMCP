@@ -239,6 +239,17 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
   `project_not_found` now always carries `available_projects` and
   `total_count`, even when there are no fuzzy suggestions, and its hint says
   the name must be a plain project name.
+- An identical resubmit after an `api_discovery_required` rejection now
+  passes that gate
+  ([#340](https://github.com/MattGyverLee/FlexToolsMCP/issues/340)). The
+  write-run rejection inlined the `get_object_api` docs for the entities in
+  the code and said "resubmit", but never recorded them as discovered, so the
+  same code was refused again until the model called `get_object_api`
+  itself. The inlined entities are now recorded the way `get_object_api`
+  records them, and the message names them and says the same code now
+  passes. The read-only discovery redirect does the same for the entities it
+  inlines, on the read-only auto-discovery set only, so writes still need
+  real discovery (#47).
 - `flextools_run_module` no longer drops the script's report messages when
   the script raises
   ([#347](https://github.com/MattGyverLee/FlexToolsMCP/issues/347)). The

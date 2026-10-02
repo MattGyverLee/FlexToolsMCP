@@ -83,6 +83,31 @@ Shipped `recipe_library` batch note: 16 recipes, verified against flexicon
 
 ### Fixed
 
+- Guessed `project.<Name>Operations` accessors now get the real accessor
+  ([#304](https://github.com/MattGyverLee/FlexToolsMCP/issues/304)).
+  `project.WordformOperations` used to get `missing_imports` advice to import
+  `WordformOperations`, which changed nothing, and then failed at runtime.
+  Names further from a real accessor, such as `project.ParseOperations`,
+  passed preflight. Now:
+  - `project.<Name>Operations` is always an `invalid_api_chain` accessor
+    issue. When the index maps the class to an accessor, the issue names it
+    (`use project.Wordforms`, no import needed), and read-only runs can
+    auto-fix it. Otherwise it lists the nearest accessors, and it still
+    blocks.
+  - `missing_imports` no longer suggests importing a name that is used only
+    as `project.<Name>`.
+  - FLExProject documents the `Wordforms` accessor as returning
+    `WfiWordformOperations`, an import alias with no index entry, so every
+    gate skipped `project.Wordforms` (the gap PR #342 called out). The
+    accessor map now resolves such aliases to the indexed class
+    (`WordformOperations`), so typos in `project.Wordforms` method calls
+    are caught too.
+  - `flextools_search_by_capability` and `flextools_get_object_api`
+    results now carry `access_path` (and `import_statement` shows it) even
+    where the index does not record one. The shipped 4.11.0 index records it
+    for 62 of 122 entities and never for `WordformOperations`. The index
+    generator now records the real class behind an aliased facade import,
+    so a regenerated index includes it.
 - `flextools_run_module` now checks flexicon import names before the run
   ([#305](https://github.com/MattGyverLee/FlexToolsMCP/issues/305)). Before,
   `from flexicon import WfiWordformOperations`, `from flexicon import

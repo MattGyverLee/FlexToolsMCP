@@ -2245,6 +2245,64 @@ _MIN_MEMBER_SUGGESTION_RATIO = 0.5
 # When adding a new suggestion surface, add a row here and apply the floor.
 
 
+def _guessed_operations_accessor_issue(
+    node: ast.Attribute,
+    attr: str,
+    accessor_to_ops: Dict[str, str],
+    accessors: Set[str],
+) -> Dict[str, Any]:
+    """invalid_api_chain issue for ``project.<Name>Operations`` (issue #304).
+
+    An exact class -> accessor mapping from the index gets ratio 1.0 (one right
+    answer, like PROJECT_ACCESSOR_ALIASES, so read-only auto-fix may apply it).
+    Without one, nearby accessors (compared on the stem) are offered below the
+    auto-fix threshold, and the issue still blocks: the attribute cannot exist.
+    """
+    ops_to_accessor: Dict[str, str] = {}
+    for acc, ops in sorted(accessor_to_ops.items()):
+        ops_to_accessor.setdefault(ops, acc)
+    stem = attr[: -len("Operations")]
+    mapped = ops_to_accessor.get(attr)
+    if mapped:
+        did_you_mean = [mapped]
+        ratio = 1.0
+        suggestion = (
+            f"'project.{attr}' does not exist: FLExProject has no attribute "
+            f"{attr!r}. {attr} is reached through its accessor -- use "
+            f"project.{mapped} (no import needed)."
+        )
+    else:
+        did_you_mean = _suggest_attribute_matches(stem, sorted(accessors), cutoff=0.6)
+        import difflib as _dl
+        ratio = (
+            _dl.SequenceMatcher(None, stem.lower(), did_you_mean[0].lower()).ratio()
+            if did_you_mean else 0.0
+        )
+        ratio = min(ratio, 0.89)  # never auto-fix a guess
+        if did_you_mean:
+            tail = "; did you mean " + ", ".join("project." + c for c in did_you_mean) + "?"
+        else:
+            tail = (
+                ". Call flextools_search_by_capability(query='...') to find "
+                "the right accessor."
+            )
+        suggestion = (
+            f"'project.{attr}' does not exist: FLExProject has no attribute "
+            f"{attr!r}. Accessors drop the Operations suffix and are usually "
+            "plural (project.Wordforms, project.Senses)" + tail
+        )
+    return {
+        "kind": "accessor",
+        "expr": f"project.{attr}",
+        "typo_attr": attr,
+        "lineno": node.lineno,
+        "col_offset": node.col_offset,
+        "did_you_mean": did_you_mean,
+        "match_ratio": ratio,
+        "suggestion": suggestion,
+    }
+
+
 def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optional[Any] = None) -> dict:
     """Pre-flight: scan AST for project.<X> / project.<X>.<Y> references and reject typos.
 
@@ -2348,6 +2406,17 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
                         f"Use project.{correct} instead."
                     ),
                 })
+                continue
+            # Issue #304: `project.WordformOperations` -- a class name guessed as
+            # an accessor. FLExProject has no attribute ending in "Operations",
+            # so this always fails at runtime; the fuzzy path below missed it
+            # (WordformOperations vs Wordforms is ~0.6). Map the class to its
+            # facade accessor through the index (WordformOperations ->
+            # project.Wordforms) and reject even when there is no mapping.
+            if x.endswith("Operations") and len(x) > len("Operations"):
+                issues.append(_guessed_operations_accessor_issue(
+                    node, x, accessor_to_ops, accessors
+                ))
                 continue
             if x.startswith(method_prefixes):
                 continue  # Looks like a direct project method, not an accessor typo
@@ -2771,14 +2840,35 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
     if api_index is None:
         return {}
     flexicon = getattr(api_index, "flexicon", None) or {}
-    fp = (flexicon.get("entities") or {}).get("FLExProject", {})
+    entities = flexicon.get("entities") or {}
+    fp = entities.get("FLExProject", {})
     mapping: Dict[str, str] = {}
     for prop in fp.get("properties", []) or []:
         name = prop.get("name") or ""
         ret = prop.get("return_type") or ""
         if name and ret.endswith("Operations"):
-            mapping[name] = ret
+            mapping[name] = _resolve_ops_alias(ret, entities)
     return mapping
+
+
+def _resolve_ops_alias(ops_class: str, entities: Dict[str, Any]) -> str:
+    """The indexed class an accessor's documented return type names (#304).
+
+    FLExProject documents some accessors with an import alias rather than
+    the class name: ``Wordforms`` returns ``WfiWordformOperations``, which is
+    ``WordformOperations`` imported under another name -- no index entry has
+    that name, so every gate keyed on the accessor's class (chain typos,
+    unknown_method, access_path) silently skipped project.Wordforms (called
+    out in PR #342). When the documented name is not an indexed entity, use
+    the longest indexed Operations class it ends with; otherwise keep it.
+    """
+    if not entities or ops_class in entities:
+        return ops_class
+    candidates = [
+        e for e in entities
+        if e.endswith("Operations") and len(e) > len("Operations") and ops_class.endswith(e)
+    ]
+    return max(candidates, key=len) if candidates else ops_class
 
 
 _IFACE_NAME_RE = re.compile(r"\bI[A-Z][A-Za-z]+\b")
@@ -4363,6 +4453,25 @@ def _collect_all_imported_names(code: str) -> Optional[Set[str]]:
     return names
 
 
+def _names_only_used_as_project_attribute(code: str, names: Set[str]) -> Set[str]:
+    """The subset of ``names`` that appear ONLY as ``project.<name>`` (issue #304)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return set()
+    as_project_attr: Set[str] = set()
+    as_other: Set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id in names:
+            as_other.add(node.id)
+        elif isinstance(node, ast.Attribute) and node.attr in names:
+            if isinstance(node.value, ast.Name) and node.value.id == "project":
+                as_project_attr.add(node.attr)
+            else:
+                as_other.add(node.attr)
+    return as_project_attr - as_other
+
+
 def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     """Detect Operations classes used without imports and suggest what to add.
 
@@ -4401,6 +4510,12 @@ def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     # Find missing imports
     used = set(matches)
     missing = used - imported
+    # Issue #304: `project.WordformOperations` is an attribute on project,
+    # not a use of the class -- importing it fixes nothing (the attribute
+    # still does not exist), so never suggest the import for a name that
+    # only appears that way. invalid_api_chain names the real accessor.
+    if missing:
+        missing -= _names_only_used_as_project_attribute(code, missing)
 
     if missing:
         result["has_missing"] = True

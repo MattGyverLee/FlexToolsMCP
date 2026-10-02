@@ -210,7 +210,9 @@ def test_requires_write_only_when_mutating(monkeypatch, tmp_path):
 SWALLOW_CODE = (
     "for wf in project.Wordforms.GetAll():\n"
     "    try:\n"
-    "        status = project.Wordforms.TryWord(wf)\n"
+    # A real WordformOperations method: since #304 project.Wordforms resolves
+    # to WordformOperations, so an invented name is rejected as unknown_method.
+    "        status = project.Wordforms.GetSpellingStatus(wf)\n"
     "    except Exception:\n"
     "        status = 'No - Unknown issue'\n"
     "    report.Info('Analyzed %s: %s' % (wf, status))\n"

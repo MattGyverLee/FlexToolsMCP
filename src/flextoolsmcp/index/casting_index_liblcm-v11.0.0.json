@@ -696,6 +696,2227 @@
     "WritingSystemContainer": "IWritingSystemContainer",
     "WritingSystemManager": "IWritingSystemManager"
   },
+  "interface_ancestors": {
+    "ActionHandler": [
+      "IActionHandler"
+    ],
+    "IActionHandler": [],
+    "IActionHandlerExtensions": [],
+    "IAnalysis": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IAnalysisReference": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IAnalysisRepository": [
+      "IRepository"
+    ],
+    "IBackupInfo": [],
+    "IBackupSettings": [
+      "IBackupInfo"
+    ],
+    "IBag": [],
+    "IBidiCharacterFactory": [],
+    "IBulkPropChanged": [],
+    "ICharacterStyleInfo": [],
+    "ICheckWord": [],
+    "IChkRef": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IChkRefFactory": [
+      "ILcmFactory"
+    ],
+    "IChkRefRepository": [
+      "IRepository"
+    ],
+    "IChkRendering": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IChkRenderingFactory": [
+      "ILcmFactory"
+    ],
+    "IChkRenderingRepository": [
+      "IRepository"
+    ],
+    "IChkSense": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IChkSenseFactory": [
+      "ILcmFactory"
+    ],
+    "IChkSenseRepository": [
+      "IRepository"
+    ],
+    "IChkTerm": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "IChkTermFactory": [
+      "ILcmFactory"
+    ],
+    "IChkTermRepository": [
+      "IRepository"
+    ],
+    "ICloneableCmObject": [],
+    "ICmAgent": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmAgentEvaluation": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmAgentEvaluationFactory": [
+      "ILcmFactory"
+    ],
+    "ICmAgentEvaluationRepository": [
+      "IRepository"
+    ],
+    "ICmAgentFactory": [
+      "ILcmFactory"
+    ],
+    "ICmAgentFactoryInternal": [
+      "ICmAgentFactory",
+      "ILcmFactory"
+    ],
+    "ICmAgentRepository": [
+      "IRepository"
+    ],
+    "ICmAnnotation": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmAnnotationDefn": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "ICmAnnotationDefnFactory": [
+      "ILcmFactory"
+    ],
+    "ICmAnnotationDefnFactoryInternal": [
+      "ICmAnnotationDefnFactory",
+      "ILcmFactory"
+    ],
+    "ICmAnnotationDefnRepository": [
+      "IRepository"
+    ],
+    "ICmAnnotationRepository": [
+      "IRepository"
+    ],
+    "ICmAnthroItem": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "ICmAnthroItemFactory": [
+      "ILcmFactory"
+    ],
+    "ICmAnthroItemRepository": [
+      "IRepository"
+    ],
+    "ICmBaseAnnotation": [
+      "ICmAnnotation",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmBaseAnnotationFactory": [
+      "ILcmFactory"
+    ],
+    "ICmBaseAnnotationRepository": [
+      "IRepository"
+    ],
+    "ICmCell": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmCellFactory": [
+      "ILcmFactory"
+    ],
+    "ICmCellRepository": [
+      "IRepository"
+    ],
+    "ICmCustomItem": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "ICmCustomItemFactory": [
+      "ILcmFactory"
+    ],
+    "ICmCustomItemRepository": [
+      "IRepository"
+    ],
+    "ICmDomainQ": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmDomainQFactory": [
+      "ILcmFactory"
+    ],
+    "ICmDomainQRepository": [
+      "IRepository"
+    ],
+    "ICmFile": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmFileFactory": [
+      "ILcmFactory"
+    ],
+    "ICmFileRepository": [
+      "IRepository"
+    ],
+    "ICmFilter": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFilter"
+    ],
+    "ICmFilterFactory": [
+      "ILcmFactory"
+    ],
+    "ICmFilterRepository": [
+      "IRepository"
+    ],
+    "ICmFolder": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmFolderFactory": [
+      "ILcmFactory"
+    ],
+    "ICmFolderRepository": [
+      "IRepository"
+    ],
+    "ICmIndirectAnnotation": [
+      "ICmAnnotation",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmIndirectAnnotationFactory": [
+      "ILcmFactory"
+    ],
+    "ICmIndirectAnnotationRepository": [
+      "IRepository"
+    ],
+    "ICmLocation": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "ICmLocationFactory": [
+      "ILcmFactory"
+    ],
+    "ICmLocationRepository": [
+      "IRepository"
+    ],
+    "ICmMajorObject": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmMajorObjectRepository": [
+      "IRepository"
+    ],
+    "ICmMedia": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmMediaAnnotation": [
+      "ICmAnnotation",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmMediaAnnotationFactory": [
+      "ILcmFactory"
+    ],
+    "ICmMediaAnnotationRepository": [
+      "IRepository"
+    ],
+    "ICmMediaContainer": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmMediaContainerFactory": [
+      "ILcmFactory"
+    ],
+    "ICmMediaContainerRepository": [
+      "IRepository"
+    ],
+    "ICmMediaFactory": [
+      "ILcmFactory"
+    ],
+    "ICmMediaRepository": [
+      "IRepository"
+    ],
+    "ICmMediaURI": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmMediaURIFactory": [
+      "ILcmFactory"
+    ],
+    "ICmMediaURIRepository": [
+      "IRepository"
+    ],
+    "ICmObject": [
+      "ICmObjectOrId"
+    ],
+    "ICmObjectId": [
+      "ICmObjectOrId"
+    ],
+    "ICmObjectIdFactory": [],
+    "ICmObjectInternal": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmObjectOrId": [],
+    "ICmObjectOrIdInternal": [],
+    "ICmObjectOrSurrogate": [],
+    "ICmObjectRepository": [
+      "IRepository"
+    ],
+    "ICmObjectRepositoryInternal": [],
+    "ICmObjectSurrogate": [
+      "ICmObjectOrSurrogate"
+    ],
+    "ICmObjectSurrogateFactory": [],
+    "ICmObjectSurrogateRepository": [],
+    "ICmOverlay": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmOverlayFactory": [
+      "ILcmFactory"
+    ],
+    "ICmOverlayRepository": [
+      "IRepository"
+    ],
+    "ICmPerson": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "ICmPersonFactory": [
+      "ILcmFactory"
+    ],
+    "ICmPersonRepository": [
+      "IRepository"
+    ],
+    "ICmPicture": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IEmbeddedObject"
+    ],
+    "ICmPictureFactory": [
+      "ILcmFactory"
+    ],
+    "ICmPictureRepository": [
+      "IRepository"
+    ],
+    "ICmPossibility": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmPossibilityFactory": [
+      "ILcmFactory"
+    ],
+    "ICmPossibilityFactoryInternal": [
+      "ICmPossibilityFactory",
+      "ILcmFactory"
+    ],
+    "ICmPossibilityList": [
+      "ICmMajorObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmPossibilityListFactory": [
+      "ILcmFactory"
+    ],
+    "ICmPossibilityListFactoryInternal": [
+      "ICmPossibilityListFactory",
+      "ILcmFactory"
+    ],
+    "ICmPossibilityListRepository": [
+      "IRepository"
+    ],
+    "ICmPossibilityRepository": [
+      "IRepository"
+    ],
+    "ICmPossibilitySupplier": [],
+    "ICmProject": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmProjectRepository": [
+      "IRepository"
+    ],
+    "ICmResource": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmResourceFactory": [
+      "ILcmFactory"
+    ],
+    "ICmResourceRepository": [
+      "IRepository"
+    ],
+    "ICmRow": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmRowFactory": [
+      "ILcmFactory"
+    ],
+    "ICmRowRepository": [
+      "IRepository"
+    ],
+    "ICmSemanticDomain": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "ICmSemanticDomainFactory": [
+      "ILcmFactory"
+    ],
+    "ICmSemanticDomainRepository": [
+      "IRepository"
+    ],
+    "ICmTranslation": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICmTranslationFactory": [],
+    "ICmTranslationRepository": [
+      "IRepository"
+    ],
+    "IComDisposable": [],
+    "IConstChartClauseMarker": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IConstituentChartCellPart"
+    ],
+    "IConstChartClauseMarkerFactory": [
+      "ILcmFactory"
+    ],
+    "IConstChartClauseMarkerRepository": [
+      "IRepository"
+    ],
+    "IConstChartMovedTextMarker": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IConstituentChartCellPart"
+    ],
+    "IConstChartMovedTextMarkerFactory": [
+      "ILcmFactory"
+    ],
+    "IConstChartMovedTextMarkerRepository": [
+      "IRepository"
+    ],
+    "IConstChartRow": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IConstChartRowFactory": [
+      "ILcmFactory"
+    ],
+    "IConstChartRowRepository": [
+      "IRepository"
+    ],
+    "IConstChartTag": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IConstituentChartCellPart"
+    ],
+    "IConstChartTagFactory": [
+      "ILcmFactory"
+    ],
+    "IConstChartTagRepository": [
+      "IRepository"
+    ],
+    "IConstChartWordGroup": [
+      "IAnalysisReference",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IConstituentChartCellPart"
+    ],
+    "IConstChartWordGroupFactory": [
+      "ILcmFactory"
+    ],
+    "IConstChartWordGroupRepository": [
+      "IRepository"
+    ],
+    "IConstituentChartCellPart": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IConstituentChartCellPartRepository": [
+      "IRepository"
+    ],
+    "ICrossReference": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ICrossReferenceFactory": [
+      "ILcmFactory"
+    ],
+    "ICrossReferenceRepository": [
+      "IRepository"
+    ],
+    "IDataMigration": [],
+    "IDataMigrationManager": [],
+    "IDataReader": [],
+    "IDataSetup": [],
+    "IDataStorer": [],
+    "IDebugReport": [],
+    "IDebugReportSink": [],
+    "IDomainObjectDTORepository": [],
+    "IDsChart": [
+      "ICmMajorObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IDsChartRepository": [
+      "IRepository"
+    ],
+    "IDsConstChart": [
+      "ICmMajorObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IDsChart"
+    ],
+    "IDsConstChartFactory": [
+      "ILcmFactory"
+    ],
+    "IDsConstChartRepository": [
+      "IRepository"
+    ],
+    "IDsDiscourseData": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IDsDiscourseDataFactory": [
+      "ILcmFactory"
+    ],
+    "IDsDiscourseDataRepository": [
+      "IRepository"
+    ],
+    "IDummy": [],
+    "IEmbeddedObject": [],
+    "IFileOS": [],
+    "IFilter": [],
+    "IFirstPassRedo": [],
+    "IFirstPassUndo": [],
+    "IFlidProvider": [],
+    "IFsAbstractStructure": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IFsAbstractStructureRepository": [
+      "IRepository"
+    ],
+    "IFsClosedFeature": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsFeatDefn"
+    ],
+    "IFsClosedFeatureFactory": [
+      "ILcmFactory"
+    ],
+    "IFsClosedFeatureRepository": [
+      "IRepository"
+    ],
+    "IFsClosedValue": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsFeatureSpecification"
+    ],
+    "IFsClosedValueFactory": [
+      "ILcmFactory"
+    ],
+    "IFsClosedValueRepository": [
+      "IRepository"
+    ],
+    "IFsComplexFeature": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsFeatDefn"
+    ],
+    "IFsComplexFeatureFactory": [
+      "ILcmFactory"
+    ],
+    "IFsComplexFeatureRepository": [
+      "IRepository"
+    ],
+    "IFsComplexValue": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsFeatureSpecification"
+    ],
+    "IFsComplexValueFactory": [
+      "ILcmFactory"
+    ],
+    "IFsComplexValueRepository": [
+      "IRepository"
+    ],
+    "IFsDisjunctiveValue": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsFeatureSpecification"
+    ],
+    "IFsDisjunctiveValueFactory": [
+      "ILcmFactory"
+    ],
+    "IFsDisjunctiveValueRepository": [
+      "IRepository"
+    ],
+    "IFsFeatDefn": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IFsFeatDefnRepository": [
+      "IRepository"
+    ],
+    "IFsFeatStruc": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsAbstractStructure"
+    ],
+    "IFsFeatStrucDisj": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsAbstractStructure"
+    ],
+    "IFsFeatStrucDisjFactory": [
+      "ILcmFactory"
+    ],
+    "IFsFeatStrucDisjRepository": [
+      "IRepository"
+    ],
+    "IFsFeatStrucFactory": [
+      "ILcmFactory"
+    ],
+    "IFsFeatStrucRepository": [
+      "IRepository"
+    ],
+    "IFsFeatStrucType": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IFsFeatStrucTypeFactory": [
+      "ILcmFactory"
+    ],
+    "IFsFeatStrucTypeRepository": [
+      "IRepository"
+    ],
+    "IFsFeatureSpecification": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IFsFeatureSpecificationRepository": [
+      "IRepository"
+    ],
+    "IFsFeatureSystem": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IFsFeatureSystemFactory": [
+      "ILcmFactory"
+    ],
+    "IFsFeatureSystemRepository": [
+      "IRepository"
+    ],
+    "IFsNegatedValue": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsFeatureSpecification"
+    ],
+    "IFsNegatedValueFactory": [
+      "ILcmFactory"
+    ],
+    "IFsNegatedValueRepository": [
+      "IRepository"
+    ],
+    "IFsOpenFeature": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsFeatDefn"
+    ],
+    "IFsOpenFeatureFactory": [
+      "ILcmFactory"
+    ],
+    "IFsOpenFeatureRepository": [
+      "IRepository"
+    ],
+    "IFsOpenValue": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsFeatureSpecification"
+    ],
+    "IFsOpenValueFactory": [
+      "ILcmFactory"
+    ],
+    "IFsOpenValueRepository": [
+      "IRepository"
+    ],
+    "IFsSharedValue": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IFsFeatureSpecification"
+    ],
+    "IFsSharedValueFactory": [
+      "ILcmFactory"
+    ],
+    "IFsSharedValueRepository": [
+      "IRepository"
+    ],
+    "IFsSymFeatVal": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IFsSymFeatValFactory": [
+      "ILcmFactory"
+    ],
+    "IFsSymFeatValRepository": [
+      "IRepository"
+    ],
+    "IFwMetaDataCache": [],
+    "IFwMetaDataCacheManaged": [
+      "IFwMetaDataCache"
+    ],
+    "IFwMetaDataCacheManagedInternal": [],
+    "IGetSpellChecker": [],
+    "IKeyTerm": [],
+    "ILangProject": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmProject",
+      "IWritingSystemContainer"
+    ],
+    "ILangProjectFactory": [
+      "ILcmFactory"
+    ],
+    "ILangProjectRepository": [
+      "IRepository"
+    ],
+    "ILcmClearForDelete": [],
+    "ILcmDirectories": [],
+    "ILcmFactory": [],
+    "ILcmFactoryInternal": [],
+    "ILcmList": [
+      "ICollection",
+      "ILcmVector",
+      "IList"
+    ],
+    "ILcmOwningCollection": [
+      "ICollection",
+      "ILcmSet",
+      "ILcmVector",
+      "IReplaceInSet"
+    ],
+    "ILcmOwningCollectionInternal": [],
+    "ILcmOwningSequence": [
+      "ICollection",
+      "ILcmList",
+      "ILcmVector",
+      "IList"
+    ],
+    "ILcmOwningSequenceInternal": [],
+    "ILcmPropertyChanged": [
+      "IUndoAction"
+    ],
+    "ILcmReferenceCollection": [
+      "ICollection",
+      "ILcmSet",
+      "ILcmVector",
+      "IReplaceInSet"
+    ],
+    "ILcmReferenceSequence": [
+      "ICollection",
+      "ILcmList",
+      "ILcmVector",
+      "IList"
+    ],
+    "ILcmServiceLocator": [
+      "IServiceProvider"
+    ],
+    "ILcmSet": [
+      "ICollection",
+      "ILcmVector",
+      "IReplaceInSet"
+    ],
+    "ILcmUI": [],
+    "ILcmVector": [],
+    "ILcmVectorInternal": [],
+    "ILexAppendix": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ILexAppendixFactory": [
+      "ILcmFactory"
+    ],
+    "ILexAppendixRepository": [
+      "IRepository"
+    ],
+    "ILexDb": [
+      "ICmMajorObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ILexDbFactory": [
+      "ILcmFactory"
+    ],
+    "ILexDbRepository": [
+      "IRepository"
+    ],
+    "ILexEntry": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IVariantComponentLexeme"
+    ],
+    "ILexEntryFactory": [
+      "ILcmFactory"
+    ],
+    "ILexEntryInflType": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility",
+      "ILexEntryType"
+    ],
+    "ILexEntryInflTypeFactory": [
+      "ILcmFactory"
+    ],
+    "ILexEntryInflTypeRepository": [
+      "IRepository"
+    ],
+    "ILexEntryRef": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ILexEntryRefFactory": [
+      "ILcmFactory"
+    ],
+    "ILexEntryRefRepository": [
+      "IRepository"
+    ],
+    "ILexEntryRepository": [
+      "IRepository"
+    ],
+    "ILexEntryRepositoryInternal": [],
+    "ILexEntryType": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "ILexEntryTypeFactory": [
+      "ILcmFactory"
+    ],
+    "ILexEntryTypeFactoryInternal": [
+      "ILcmFactory",
+      "ILexEntryTypeFactory"
+    ],
+    "ILexEntryTypeRepository": [
+      "IRepository"
+    ],
+    "ILexEtymology": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ILexEtymologyFactory": [
+      "ILcmFactory"
+    ],
+    "ILexEtymologyRepository": [
+      "IRepository"
+    ],
+    "ILexExampleSentence": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ILexExampleSentenceFactory": [
+      "ILcmFactory"
+    ],
+    "ILexExampleSentenceRepository": [
+      "IRepository"
+    ],
+    "ILexExtendedNote": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ILexExtendedNoteFactory": [
+      "ILcmFactory"
+    ],
+    "ILexExtendedNoteRepository": [
+      "IRepository"
+    ],
+    "ILexPronunciation": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ILexPronunciationFactory": [
+      "ILcmFactory"
+    ],
+    "ILexPronunciationRepository": [
+      "IRepository"
+    ],
+    "ILexRefType": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "ILexRefTypeFactory": [
+      "ILcmFactory"
+    ],
+    "ILexRefTypeRepository": [
+      "IRepository"
+    ],
+    "ILexReference": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ILexReferenceFactory": [
+      "ILcmFactory"
+    ],
+    "ILexReferenceRepository": [
+      "IRepository"
+    ],
+    "ILexSense": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IVariantComponentLexeme"
+    ],
+    "ILexSenseFactory": [
+      "ILcmFactory"
+    ],
+    "ILexSenseRepository": [
+      "IRepository"
+    ],
+    "ILgWritingSystem": [],
+    "ILgWritingSystemFactory": [],
+    "IMoAdhocProhib": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoAdhocProhibGr": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoAdhocProhib"
+    ],
+    "IMoAdhocProhibGrFactory": [
+      "ILcmFactory"
+    ],
+    "IMoAdhocProhibGrRepository": [
+      "IRepository"
+    ],
+    "IMoAdhocProhibRepository": [
+      "IRepository"
+    ],
+    "IMoAffixAllomorph": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoAffixForm",
+      "IMoForm"
+    ],
+    "IMoAffixAllomorphFactory": [
+      "ILcmFactory"
+    ],
+    "IMoAffixAllomorphRepository": [
+      "IRepository"
+    ],
+    "IMoAffixForm": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoForm"
+    ],
+    "IMoAffixFormRepository": [
+      "IRepository"
+    ],
+    "IMoAffixProcess": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoAffixForm",
+      "IMoForm"
+    ],
+    "IMoAffixProcessFactory": [
+      "ILcmFactory"
+    ],
+    "IMoAffixProcessRepository": [
+      "IRepository"
+    ],
+    "IMoAlloAdhocProhib": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoAdhocProhib"
+    ],
+    "IMoAlloAdhocProhibFactory": [
+      "ILcmFactory"
+    ],
+    "IMoAlloAdhocProhibRepository": [
+      "IRepository"
+    ],
+    "IMoBinaryCompoundRule": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoCompoundRule"
+    ],
+    "IMoBinaryCompoundRuleFactory": [
+      "ILcmFactory"
+    ],
+    "IMoBinaryCompoundRuleRepository": [
+      "IRepository"
+    ],
+    "IMoCompoundRule": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoCompoundRuleApp": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoDerivTrace"
+    ],
+    "IMoCompoundRuleAppFactory": [
+      "ILcmFactory"
+    ],
+    "IMoCompoundRuleAppRepository": [
+      "IRepository"
+    ],
+    "IMoCompoundRuleRepository": [
+      "IRepository"
+    ],
+    "IMoCoordinateCompound": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoBinaryCompoundRule",
+      "IMoCompoundRule"
+    ],
+    "IMoCoordinateCompoundFactory": [
+      "ILcmFactory"
+    ],
+    "IMoCoordinateCompoundRepository": [
+      "IRepository"
+    ],
+    "IMoCopyFromInput": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoRuleMapping"
+    ],
+    "IMoCopyFromInputFactory": [
+      "ILcmFactory"
+    ],
+    "IMoCopyFromInputRepository": [
+      "IRepository"
+    ],
+    "IMoDeriv": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoDerivAffApp": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoDerivTrace"
+    ],
+    "IMoDerivAffAppFactory": [
+      "ILcmFactory"
+    ],
+    "IMoDerivAffAppRepository": [
+      "IRepository"
+    ],
+    "IMoDerivAffMsa": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoMorphSynAnalysis"
+    ],
+    "IMoDerivAffMsaFactory": [
+      "ILcmFactory"
+    ],
+    "IMoDerivAffMsaRepository": [
+      "IRepository"
+    ],
+    "IMoDerivFactory": [
+      "ILcmFactory"
+    ],
+    "IMoDerivRepository": [
+      "IRepository"
+    ],
+    "IMoDerivStepMsa": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoMorphSynAnalysis"
+    ],
+    "IMoDerivStepMsaFactory": [
+      "ILcmFactory"
+    ],
+    "IMoDerivStepMsaRepository": [
+      "IRepository"
+    ],
+    "IMoDerivTrace": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoDerivTraceRepository": [
+      "IRepository"
+    ],
+    "IMoEndoCompound": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoBinaryCompoundRule",
+      "IMoCompoundRule"
+    ],
+    "IMoEndoCompoundFactory": [
+      "ILcmFactory"
+    ],
+    "IMoEndoCompoundRepository": [
+      "IRepository"
+    ],
+    "IMoExoCompound": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoBinaryCompoundRule",
+      "IMoCompoundRule"
+    ],
+    "IMoExoCompoundFactory": [
+      "ILcmFactory"
+    ],
+    "IMoExoCompoundRepository": [
+      "IRepository"
+    ],
+    "IMoForm": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoFormRepository": [
+      "IRepository"
+    ],
+    "IMoGlossItem": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoGlossItemFactory": [
+      "ILcmFactory"
+    ],
+    "IMoGlossItemRepository": [
+      "IRepository"
+    ],
+    "IMoGlossSystem": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoGlossSystemFactory": [
+      "ILcmFactory"
+    ],
+    "IMoGlossSystemRepository": [
+      "IRepository"
+    ],
+    "IMoInflAffMsa": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoMorphSynAnalysis"
+    ],
+    "IMoInflAffMsaFactory": [
+      "ILcmFactory"
+    ],
+    "IMoInflAffMsaRepository": [
+      "IRepository"
+    ],
+    "IMoInflAffixSlot": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoInflAffixSlotApp": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoDerivTrace"
+    ],
+    "IMoInflAffixSlotAppFactory": [
+      "ILcmFactory"
+    ],
+    "IMoInflAffixSlotAppRepository": [
+      "IRepository"
+    ],
+    "IMoInflAffixSlotFactory": [
+      "ILcmFactory"
+    ],
+    "IMoInflAffixSlotRepository": [
+      "IRepository"
+    ],
+    "IMoInflAffixTemplate": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoInflAffixTemplateFactory": [
+      "ILcmFactory"
+    ],
+    "IMoInflAffixTemplateRepository": [
+      "IRepository"
+    ],
+    "IMoInflClass": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoInflClassFactory": [
+      "ILcmFactory"
+    ],
+    "IMoInflClassRepository": [
+      "IRepository"
+    ],
+    "IMoInflTemplateApp": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoDerivTrace"
+    ],
+    "IMoInflTemplateAppFactory": [
+      "ILcmFactory"
+    ],
+    "IMoInflTemplateAppRepository": [
+      "IRepository"
+    ],
+    "IMoInsertNC": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoRuleMapping"
+    ],
+    "IMoInsertNCFactory": [
+      "ILcmFactory"
+    ],
+    "IMoInsertNCRepository": [
+      "IRepository"
+    ],
+    "IMoInsertPhones": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoRuleMapping"
+    ],
+    "IMoInsertPhonesFactory": [
+      "ILcmFactory"
+    ],
+    "IMoInsertPhonesRepository": [
+      "IRepository"
+    ],
+    "IMoModifyFromInput": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoRuleMapping"
+    ],
+    "IMoModifyFromInputFactory": [
+      "ILcmFactory"
+    ],
+    "IMoModifyFromInputRepository": [
+      "IRepository"
+    ],
+    "IMoMorphAdhocProhib": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoAdhocProhib"
+    ],
+    "IMoMorphAdhocProhibFactory": [
+      "ILcmFactory"
+    ],
+    "IMoMorphAdhocProhibRepository": [
+      "IRepository"
+    ],
+    "IMoMorphData": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoMorphDataFactory": [
+      "ILcmFactory"
+    ],
+    "IMoMorphDataRepository": [
+      "IRepository"
+    ],
+    "IMoMorphSynAnalysis": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoMorphSynAnalysisRepository": [
+      "IRepository"
+    ],
+    "IMoMorphType": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "IMoMorphTypeFactory": [
+      "ILcmFactory"
+    ],
+    "IMoMorphTypeFactoryInternal": [
+      "ILcmFactory",
+      "IMoMorphTypeFactory"
+    ],
+    "IMoMorphTypeRepository": [
+      "IRepository"
+    ],
+    "IMoPhonolRuleApp": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoDerivTrace"
+    ],
+    "IMoPhonolRuleAppFactory": [
+      "ILcmFactory"
+    ],
+    "IMoPhonolRuleAppRepository": [
+      "IRepository"
+    ],
+    "IMoReferralRule": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoReferralRuleFactory": [
+      "ILcmFactory"
+    ],
+    "IMoReferralRuleRepository": [
+      "IRepository"
+    ],
+    "IMoRuleMapping": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoRuleMappingRepository": [
+      "IRepository"
+    ],
+    "IMoStemAllomorph": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoForm"
+    ],
+    "IMoStemAllomorphFactory": [
+      "ILcmFactory"
+    ],
+    "IMoStemAllomorphRepository": [
+      "IRepository"
+    ],
+    "IMoStemMsa": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoMorphSynAnalysis"
+    ],
+    "IMoStemMsaFactory": [
+      "ILcmFactory"
+    ],
+    "IMoStemMsaRepository": [
+      "IRepository"
+    ],
+    "IMoStemName": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoStemNameFactory": [
+      "ILcmFactory"
+    ],
+    "IMoStemNameRepository": [
+      "IRepository"
+    ],
+    "IMoStratum": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IMoStratumApp": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoDerivTrace"
+    ],
+    "IMoStratumAppFactory": [
+      "ILcmFactory"
+    ],
+    "IMoStratumAppRepository": [
+      "IRepository"
+    ],
+    "IMoStratumFactory": [
+      "ILcmFactory"
+    ],
+    "IMoStratumRepository": [
+      "IRepository"
+    ],
+    "IMoUnclassifiedAffixMsa": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IMoMorphSynAnalysis"
+    ],
+    "IMoUnclassifiedAffixMsaFactory": [
+      "ILcmFactory"
+    ],
+    "IMoUnclassifiedAffixMsaRepository": [
+      "IRepository"
+    ],
+    "IMultiAccessorBase": [
+      "ITsMultiString"
+    ],
+    "IMultiAccessorInternal": [],
+    "IMultiString": [
+      "IMultiAccessorBase",
+      "IMultiStringAccessor",
+      "ITsMultiString"
+    ],
+    "IMultiStringAccessor": [
+      "IMultiAccessorBase",
+      "ITsMultiString"
+    ],
+    "IMultiUnicode": [
+      "IMultiAccessorBase",
+      "IMultiStringAccessor",
+      "ITsMultiString"
+    ],
+    "IMultilingScrBooks": [],
+    "INormalizationCharacterFactory": [],
+    "INote": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "INoteFactory": [
+      "ILcmFactory"
+    ],
+    "INoteRepository": [
+      "IRepository"
+    ],
+    "IOverlappingFileResolver": [],
+    "IParaFragment": [],
+    "IParaStyleInfo": [],
+    "IParaStylePropsProxy": [],
+    "IParagraphCounter": [],
+    "IParagraphCounterRepository": [],
+    "IPartOfSpeech": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "IPartOfSpeechFactory": [
+      "ILcmFactory"
+    ],
+    "IPartOfSpeechRepository": [
+      "IRepository"
+    ],
+    "IPhBdryMarker": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhTerminalUnit"
+    ],
+    "IPhBdryMarkerFactory": [
+      "ILcmFactory"
+    ],
+    "IPhBdryMarkerRepository": [
+      "IRepository"
+    ],
+    "IPhCode": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhCodeFactory": [
+      "ILcmFactory"
+    ],
+    "IPhCodeRepository": [
+      "IRepository"
+    ],
+    "IPhContextOrVar": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhContextOrVarRepository": [
+      "IRepository"
+    ],
+    "IPhEnvironment": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhEnvironmentFactory": [
+      "ILcmFactory"
+    ],
+    "IPhEnvironmentRepository": [
+      "IRepository"
+    ],
+    "IPhFeatureConstraint": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhFeatureConstraintFactory": [
+      "ILcmFactory"
+    ],
+    "IPhFeatureConstraintRepository": [
+      "IRepository"
+    ],
+    "IPhIterationContext": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhContextOrVar",
+      "IPhPhonContext"
+    ],
+    "IPhIterationContextFactory": [
+      "ILcmFactory"
+    ],
+    "IPhIterationContextRepository": [
+      "IRepository"
+    ],
+    "IPhMetathesisRule": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhSegmentRule"
+    ],
+    "IPhMetathesisRuleFactory": [
+      "ILcmFactory"
+    ],
+    "IPhMetathesisRuleRepository": [
+      "IRepository"
+    ],
+    "IPhNCFeatures": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhNaturalClass"
+    ],
+    "IPhNCFeaturesFactory": [
+      "ILcmFactory"
+    ],
+    "IPhNCFeaturesRepository": [
+      "IRepository"
+    ],
+    "IPhNCSegments": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhNaturalClass"
+    ],
+    "IPhNCSegmentsFactory": [
+      "ILcmFactory"
+    ],
+    "IPhNCSegmentsRepository": [
+      "IRepository"
+    ],
+    "IPhNaturalClass": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhNaturalClassRepository": [
+      "IRepository"
+    ],
+    "IPhPhonContext": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhContextOrVar"
+    ],
+    "IPhPhonContextRepository": [
+      "IRepository"
+    ],
+    "IPhPhonData": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhPhonDataFactory": [
+      "ILcmFactory"
+    ],
+    "IPhPhonDataRepository": [
+      "IRepository"
+    ],
+    "IPhPhonRuleFeat": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "ICmPossibility"
+    ],
+    "IPhPhonRuleFeatFactory": [
+      "ILcmFactory"
+    ],
+    "IPhPhonRuleFeatRepository": [
+      "IRepository"
+    ],
+    "IPhPhoneme": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhTerminalUnit"
+    ],
+    "IPhPhonemeFactory": [
+      "ILcmFactory"
+    ],
+    "IPhPhonemeRepository": [
+      "IRepository"
+    ],
+    "IPhPhonemeSet": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhPhonemeSetFactory": [
+      "ILcmFactory"
+    ],
+    "IPhPhonemeSetRepository": [
+      "IRepository"
+    ],
+    "IPhRegularRule": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhSegmentRule"
+    ],
+    "IPhRegularRuleFactory": [
+      "ILcmFactory"
+    ],
+    "IPhRegularRuleRepository": [
+      "IRepository"
+    ],
+    "IPhSegRuleRHS": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhSegRuleRHSFactory": [
+      "ILcmFactory"
+    ],
+    "IPhSegRuleRHSRepository": [
+      "IRepository"
+    ],
+    "IPhSegmentRule": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhSegmentRuleFactory": [
+      "ILcmFactory"
+    ],
+    "IPhSegmentRuleRepository": [
+      "IRepository"
+    ],
+    "IPhSequenceContext": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhContextOrVar",
+      "IPhPhonContext"
+    ],
+    "IPhSequenceContextFactory": [
+      "ILcmFactory"
+    ],
+    "IPhSequenceContextRepository": [
+      "IRepository"
+    ],
+    "IPhSimpleContext": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhContextOrVar",
+      "IPhPhonContext"
+    ],
+    "IPhSimpleContextBdry": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhContextOrVar",
+      "IPhPhonContext",
+      "IPhSimpleContext"
+    ],
+    "IPhSimpleContextBdryFactory": [
+      "ILcmFactory"
+    ],
+    "IPhSimpleContextBdryRepository": [
+      "IRepository"
+    ],
+    "IPhSimpleContextNC": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhContextOrVar",
+      "IPhPhonContext",
+      "IPhSimpleContext"
+    ],
+    "IPhSimpleContextNCFactory": [
+      "ILcmFactory"
+    ],
+    "IPhSimpleContextNCRepository": [
+      "IRepository"
+    ],
+    "IPhSimpleContextRepository": [
+      "IRepository"
+    ],
+    "IPhSimpleContextSeg": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhContextOrVar",
+      "IPhPhonContext",
+      "IPhSimpleContext"
+    ],
+    "IPhSimpleContextSegFactory": [
+      "ILcmFactory"
+    ],
+    "IPhSimpleContextSegRepository": [
+      "IRepository"
+    ],
+    "IPhTerminalUnit": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPhTerminalUnitRepository": [
+      "IRepository"
+    ],
+    "IPhVariable": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IPhContextOrVar"
+    ],
+    "IPhVariableFactory": [
+      "ILcmFactory"
+    ],
+    "IPhVariableRepository": [
+      "IRepository"
+    ],
+    "IPictureLocationBridge": [],
+    "IProgress": [],
+    "IProjectIdentifier": [],
+    "IPropertyChangeNotifier": [],
+    "IPuaCharacter": [],
+    "IPuaCharacterFactory": [],
+    "IPubDivision": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPubDivisionFactory": [
+      "ILcmFactory"
+    ],
+    "IPubDivisionRepository": [
+      "IRepository"
+    ],
+    "IPubHFSet": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPubHFSetFactory": [
+      "ILcmFactory"
+    ],
+    "IPubHFSetRepository": [
+      "IRepository"
+    ],
+    "IPubHeader": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPubHeaderFactory": [
+      "ILcmFactory"
+    ],
+    "IPubHeaderRepository": [
+      "IRepository"
+    ],
+    "IPubPageLayout": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPubPageLayoutFactory": [
+      "ILcmFactory"
+    ],
+    "IPubPageLayoutRepository": [
+      "IRepository"
+    ],
+    "IPublication": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPublicationFactory": [
+      "ILcmFactory"
+    ],
+    "IPublicationRepository": [
+      "IRepository"
+    ],
+    "IPunctuationForm": [
+      "IAnalysis",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IPunctuationFormFactory": [
+      "ILcmFactory"
+    ],
+    "IPunctuationFormRepository": [
+      "IRepository"
+    ],
+    "IPunctuationFormRepositoryInternal": [],
+    "IQueueAccessor": [],
+    "IReconcileChanges": [],
+    "IReferenceAdjuster": [],
+    "IReferenceSource": [],
+    "IReminder": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IReminderFactory": [
+      "ILcmFactory"
+    ],
+    "IReminderRepository": [
+      "IRepository"
+    ],
+    "IReplaceInSet": [],
+    "IRepository": [],
+    "IReversalIndex": [
+      "ICmMajorObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IReversalIndexEntry": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IReversalIndexEntryFactory": [
+      "ILcmFactory"
+    ],
+    "IReversalIndexEntryRepository": [
+      "IRepository"
+    ],
+    "IReversalIndexFactory": [
+      "ILcmFactory"
+    ],
+    "IReversalIndexRepository": [
+      "IRepository"
+    ],
+    "IRnGenericRec": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IRnGenericRecFactory": [
+      "ILcmFactory"
+    ],
+    "IRnGenericRecRepository": [
+      "IRepository"
+    ],
+    "IRnResearchNbk": [
+      "ICmMajorObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IRnResearchNbkFactory": [
+      "ILcmFactory"
+    ],
+    "IRnResearchNbkRepository": [
+      "IRepository"
+    ],
+    "IRnRoledPartic": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IRnRoledParticFactory": [
+      "ILcmFactory"
+    ],
+    "IRnRoledParticRepository": [
+      "IRepository"
+    ],
+    "IScrBook": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrBookAnnotations": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrBookAnnotationsFactory": [
+      "ILcmFactory"
+    ],
+    "IScrBookAnnotationsRepository": [
+      "IRepository"
+    ],
+    "IScrBookFactory": [],
+    "IScrBookRef": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrBookRefFactory": [
+      "ILcmFactory"
+    ],
+    "IScrBookRefRepository": [
+      "IRepository"
+    ],
+    "IScrBookRepository": [
+      "IRepository"
+    ],
+    "IScrCheckRun": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrCheckRunFactory": [
+      "ILcmFactory"
+    ],
+    "IScrCheckRunRepository": [
+      "IRepository"
+    ],
+    "IScrDifference": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrDifferenceFactory": [
+      "ILcmFactory"
+    ],
+    "IScrDifferenceRepository": [
+      "IRepository"
+    ],
+    "IScrDraft": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrDraftFactory": [],
+    "IScrDraftRepository": [
+      "IRepository"
+    ],
+    "IScrFootnote": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IEmbeddedObject",
+      "IStFootnote",
+      "IStText"
+    ],
+    "IScrFootnoteFactory": [
+      "ILcmFactory"
+    ],
+    "IScrFootnoteRepository": [
+      "IRepository"
+    ],
+    "IScrImportFileInfo": [],
+    "IScrImportP6Project": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IScrImportSource"
+    ],
+    "IScrImportP6ProjectFactory": [
+      "ILcmFactory"
+    ],
+    "IScrImportP6ProjectRepository": [
+      "IRepository"
+    ],
+    "IScrImportSFFiles": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IScrImportSource"
+    ],
+    "IScrImportSFFilesFactory": [
+      "ILcmFactory"
+    ],
+    "IScrImportSFFilesRepository": [
+      "IRepository"
+    ],
+    "IScrImportSet": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrImportSetFactory": [
+      "ILcmFactory"
+    ],
+    "IScrImportSetRepository": [
+      "IRepository"
+    ],
+    "IScrImportSource": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrImportSourceRepository": [
+      "IRepository"
+    ],
+    "IScrMarkerMapping": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrMarkerMappingFactory": [
+      "ILcmFactory"
+    ],
+    "IScrMarkerMappingRepository": [
+      "IRepository"
+    ],
+    "IScrProjMetaDataProvider": [],
+    "IScrRefSystem": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrRefSystemFactory": [],
+    "IScrRefSystemRepository": [
+      "IRepository"
+    ],
+    "IScrScriptureNote": [
+      "ICmAnnotation",
+      "ICmBaseAnnotation",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrScriptureNoteFactory": [
+      "ILcmFactory"
+    ],
+    "IScrScriptureNoteRepository": [
+      "IRepository"
+    ],
+    "IScrSection": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScrSectionFactory": [
+      "ILcmFactory"
+    ],
+    "IScrSectionRepository": [
+      "IRepository"
+    ],
+    "IScrTxtPara": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IStPara",
+      "IStTxtPara"
+    ],
+    "IScrTxtParaFactory": [],
+    "IScrTxtParaRepository": [
+      "IRepository"
+    ],
+    "IScripture": [
+      "ICmMajorObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IScriptureFactory": [],
+    "IScriptureRepository": [
+      "IRepository"
+    ],
+    "ISegment": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ISegmentFactory": [
+      "ILcmFactory"
+    ],
+    "ISegmentRepository": [
+      "IRepository"
+    ],
+    "ISenseOrEntry": [],
+    "IServiceLocatorInternal": [],
+    "ISilDataAccess": [],
+    "ISilDataAccessHelperInternal": [],
+    "ISilDataAccessManaged": [
+      "ISilDataAccess",
+      "IStructuredTextDataAccess"
+    ],
+    "ISimpleInit": [],
+    "ISortSpec": [],
+    "ISpellEngine": [
+      "ICheckWord"
+    ],
+    "IStFootnote": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IEmbeddedObject",
+      "IStText"
+    ],
+    "IStFootnoteFactory": [
+      "ILcmFactory"
+    ],
+    "IStFootnoteRepository": [
+      "IRepository"
+    ],
+    "IStJournalText": [
+      "ICmObject",
+      "ICmObjectOrId",
+      "IStText"
+    ],
+    "IStJournalTextFactory": [
+      "ILcmFactory"
+    ],
+    "IStJournalTextRepository": [
+      "IRepository"
+    ],
+    "IStPara": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IStParaRepository": [
+      "IRepository"
+    ],
+    "IStStyle": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IStStyleFactory": [
+      "ILcmFactory"
+    ],
+    "IStStyleRepository": [
+      "IRepository"
+    ],
+    "IStText": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IStTextFactory": [
+      "ILcmFactory"
+    ],
+    "IStTextRepository": [
+      "IRepository"
+    ],
+    "IStTxtPara": [
+      "ICloneableCmObject",
+      "ICmObject",
+      "ICmObjectOrId",
+      "IStPara"
+    ],
+    "IStTxtParaFactory": [
+      "ILcmFactory"
+    ],
+    "IStTxtParaRepository": [
+      "IRepository"
+    ],
+    "IStoresDataAccess": [],
+    "IStoresLcmCache": [],
+    "IStructuredTextDataAccess": [],
+    "IStyle": [],
+    "IStyleProp": [],
+    "IStylesheet": [],
+    "IText": [
+      "ICmMajorObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ITextFactory": [
+      "ILcmFactory"
+    ],
+    "ITextRepository": [
+      "IRepository"
+    ],
+    "ITextTag": [
+      "IAnalysisReference",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "ITextTagFactory": [
+      "ILcmFactory"
+    ],
+    "ITextTagRepository": [
+      "IRepository"
+    ],
+    "IThreadedProgress": [
+      "IProgress"
+    ],
+    "ITransactionLogger": [],
+    "ITsIncStrBldr": [],
+    "ITsMultiString": [],
+    "ITsPropsBldr": [],
+    "ITsPropsFactory": [],
+    "ITsStrBldr": [],
+    "ITsStrFactory": [],
+    "ITsString": [],
+    "ITsTextProps": [],
+    "ITssValue": [],
+    "IUcdCharacter": [
+      "IPuaCharacter"
+    ],
+    "IUndoAction": [],
+    "IUndoStackManager": [],
+    "IUnitOfWorkService": [],
+    "IUserAppFeatAct": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IUserAppFeatActFactory": [
+      "ILcmFactory"
+    ],
+    "IUserAppFeatActRepository": [
+      "IRepository"
+    ],
+    "IUserConfigAcct": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IUserConfigAcctFactory": [
+      "ILcmFactory"
+    ],
+    "IUserConfigAcctRepository": [
+      "IRepository"
+    ],
+    "IVariantComponentLexeme": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IVector": [],
+    "IVerseReference": [],
+    "IVirtualOrdering": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IVirtualOrderingFactory": [
+      "ILcmFactory"
+    ],
+    "IVirtualOrderingRepository": [
+      "IRepository"
+    ],
+    "IVwNotifyChange": [],
+    "IVwStylesheet": [],
+    "IWfiAnalysis": [
+      "IAnalysis",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IWfiAnalysisFactory": [
+      "ILcmFactory"
+    ],
+    "IWfiAnalysisRepository": [
+      "IRepository"
+    ],
+    "IWfiGloss": [
+      "IAnalysis",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IWfiGlossFactory": [
+      "ILcmFactory"
+    ],
+    "IWfiGlossRepository": [
+      "IRepository"
+    ],
+    "IWfiMorphBundle": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IWfiMorphBundleFactory": [
+      "ILcmFactory"
+    ],
+    "IWfiMorphBundleRepository": [
+      "IRepository"
+    ],
+    "IWfiWordSet": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IWfiWordSetFactory": [
+      "ILcmFactory"
+    ],
+    "IWfiWordSetRepository": [
+      "IRepository"
+    ],
+    "IWfiWordform": [
+      "IAnalysis",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IWfiWordformFactory": [
+      "ILcmFactory"
+    ],
+    "IWfiWordformRepository": [
+      "IRepository"
+    ],
+    "IWfiWordformRepositoryInternal": [],
+    "IWordFormLookup": [
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IWordFormLookupFactory": [
+      "ILcmFactory"
+    ],
+    "IWordFormLookupRepository": [
+      "IRepository"
+    ],
+    "IWordformLookupList": [
+      "ICmMajorObject",
+      "ICmObject",
+      "ICmObjectOrId"
+    ],
+    "IWordformLookupListFactory": [
+      "ILcmFactory"
+    ],
+    "IWordformLookupListRepository": [
+      "IRepository"
+    ],
+    "IWorkerThreadReadHandler": [],
+    "IWritingSystemContainer": [],
+    "IWritingSystemManager": []
+  },
   "interface_hierarchy": {
     "ICmAnnotation": {
       "common_pattern": "Check obj.ClassName then cast: Interface(obj)",

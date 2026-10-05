@@ -1791,7 +1791,7 @@ parameter is `irun` (`ich` belongs to `get_PropertiesAt`/`get_RunAt`). The index
 and the DLL agree; only the prompt was wrong. Server serves `get_Properties` in
 the default summary view. Suite: **1394 passed / 8 skipped / 0 failed**.
 
-Crew reports are committed under `specs/liblcm-core-coverage/reviews/`
+Crew reports are committed under `specs/_archive/liblcm-core-coverage/reviews/`
 (5 files, cycles 1-2), per the tracked-reviews convention.
 
 ### Two spinoffs, both deliberately left OUT of this feature (need the user)

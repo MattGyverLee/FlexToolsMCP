@@ -4,7 +4,7 @@
 Tests for issue #136: recover parameterized get_/set_ accessors that
 extract_method's blanket prefix filter used to drop unconditionally.
 
-Background (see specs/liblcm-core-coverage/reviews/cycle1-domain.md and
+Background (see specs/_archive/liblcm-core-coverage/reviews/cycle1-domain.md and
 cycle1-qc.md): `ITsString` is COM-imported, so `GetProperties()` yields zero
 indexed `PropertyInfo` objects for it -- its 8 accessors (get_RunAt,
 get_MinOfRun, get_LimOfRun, get_RunText, get_PropertiesAt, get_Properties,

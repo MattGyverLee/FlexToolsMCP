@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 The docs must not promise an undo the system does not have
-(specs/exclusive-access-gate FR-020..FR-026).
+(specs/_archive/exclusive-access-gate FR-020..FR-026).
 
 There is no MCP undo: LCM's undo stack lives in memory and every run_module
 is a fresh process, and FLEx records peer writes as non-undoable (research

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Exclusive-access gate: the table and the detector (specs/exclusive-access-gate,
+Exclusive-access gate: the table and the detector (specs/_archive/exclusive-access-gate,
 FR-001..FR-003, research R2/R3/R8).
 
 Writing-system and custom-field schema changes are not safe while FieldWorks

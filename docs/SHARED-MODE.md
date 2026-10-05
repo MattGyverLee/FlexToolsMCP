@@ -8,7 +8,7 @@ FLEx open, what does not and why, and how to turn sharing on.
 Tracked as issue #93. The design record, with source citations for every
 claim below, is `specs/_archive/shared-mode-access/spec.md`; the
 writing-system and custom-field refusal is
-`specs/exclusive-access-gate/spec.md`.
+`specs/exclusive-access-gate/AS-BUILT.md`.
 
 ## The short version
 
@@ -139,7 +139,7 @@ The custom-field row was seen live on 2026-10-02. A second program added a
 custom-field definition the way FLEx's own dialog does, and committed. The
 definition never appeared in the open FLEx's Custom Fields dialog, nor to a
 fresh reader, nor on disk, and it was gone after FLEx closed
-(`specs/exclusive-access-gate/evidence/live-gate.md`, V7). Today flexicon's
+(`specs/_archive/exclusive-access-gate/evidence/live-gate.md`, V7). Today flexicon's
 `CustomFieldOperations.CreateField` fails with `FP_TransactionError` whether
 or not FLEx is open, so that wrapper cannot lose data yet; raw LCM calls can.
 

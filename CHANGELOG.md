@@ -481,7 +481,7 @@ project-open diagnosis changes.
   IStTxtPara) is no longer rejected, and neither are about 88 other flexicon
   methods that take an owner or related object.
 - `flextools_run_module` refuses writing-system and custom-field changes while
-  FieldWorks has the project open (specs/exclusive-access-gate). A
+  FieldWorks has the project open (specs/exclusive-access-gate/AS-BUILT.md). A
   write-enabled script that creates, deletes or modifies a writing system, or
   creates, deletes or renames a custom field, is refused with the new
   `requires_exclusive_access` error when the access probe says FieldWorks

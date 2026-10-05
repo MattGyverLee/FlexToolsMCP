@@ -2,7 +2,7 @@
 
 Shared mode lets the MCP write while FLEx has the project open
 (docs/SHARED-MODE.md). Two kinds of change are still unsafe from a peer
-(spec `specs/exclusive-access-gate/spec.md` FR-001/FR-002, research R3):
+(spec `specs/_archive/exclusive-access-gate/spec.md` FR-001/FR-002, research R3):
 
 * Writing-system changes crash the FLEx that holds the project
   (`crashes_holder`, seen live in the shared-mode CP4 session).
@@ -37,7 +37,7 @@ from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
 _WS_LIVE_EVIDENCE = "specs/_archive/shared-mode-access/evidence/live-cp4.md Item 5"
 _CF_SOURCE_EVIDENCE = (
-    "seen live 2026-10-02: specs/exclusive-access-gate/evidence/live-gate.md V7; "
+    "seen live 2026-10-02: specs/_archive/exclusive-access-gate/evidence/live-gate.md V7; "
     "liblcm SharedXMLBackendProvider.cs:429,479; CommitLogRecord.cs:23-48"
 )
 

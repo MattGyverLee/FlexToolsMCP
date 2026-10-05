@@ -22,7 +22,7 @@ current key with a single space. Required keys: `id`, `intent`,
 `raw_lcm_lines`. The loader strips the docstring; `code` is the rest of the
 file. The file stem must equal `id`, and `origin` never names a user
 project. When `verified_against` omits `flexicon`,
-`FLEXICON_VERIFIED_VERSION` is substituted (currently `4.11.0`).
+`FLEXICON_VERIFIED_VERSION` is substituted (currently `4.12.0`).
 
 Files are parsed statically (AST/tokenize) and never executed. At import,
 file recipes merge into `CURATED_RECIPES` so the validator, search, and

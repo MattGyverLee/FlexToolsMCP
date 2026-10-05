@@ -1,20 +1,19 @@
 """
 id: affix-template-setup
-intent: Set up an inflectional affix template on a part of speech from its existing slots, then repoint an exemplar entry's stem MSAs to that POS keeping inflection class
+intent: Set up an inflectional affix template on a part of speech from its existing slots, then repoint an exemplar entry's stem MSAs to that POS restoring inflection class
 match_terms: ["set up affix template", "create inflectional template", "add existing slots to template", "repoint stem MSA to POS", "restore inflection class", "POS subcategory template setup", "inflectional template for a part of speech"]
 entities: ["PartOfSpeech", "AffixTemplate", "AffixSlot", "MoStemMsa"]
 operations: ["create", "update"]
 requires_write: true
 origin: developer op op-142307019-033
-verified_against: {"flexicon": "4.11.0", "verified_by": "sena3-live"}
-raw_lcm_lines: 0
-notes: Validate the POS (subcategories included, NFC names) and every SLOT_NAMES entry before any write; refuse when the POS or exemplar headword resolves to 0 or more than 1 match, and when a wanted slot is not owned by the POS (this recipe only adds existing slots, never creates them). Create the template with project.MorphRules.CreateAffixTemplate and place slots with project.MorphRules.AddSlotToTemplate, inferring each slot's side from sibling templates and refusing when the side is unknown or ambiguous. Repointing a stem MSA with project.MSA.SetStemMsaPos(keep_inflection_class=True) keeps a still-valid inflection class itself (flexicon#573, closed in flexicon 4.12.0); no raw LCM remains in this recipe. Never cast the AffixTemplate or AffixSlot wrappers to IMoInflAffixTemplate or IMoInflAffixSlot: read prefix_slots, suffix_slots and slot.affixes through the wrappers, and key MSAs by the .concrete of the project.MSA.GetAll wrappers (wrapper objects never compare equal to the raw slots that project.MSA.GetInflAffMsaSlots returns). Report through report.Info/Warning/Error only.
+verified_against: {"flexicon": "4.12.0", "verified_by": "sena3-dryrun"}
+notes: Validate the POS (subcategories included, NFC names) and every SLOT_NAMES entry before any write; refuse when the POS or exemplar headword resolves to 0 or more than 1 match, and when a wanted slot is not owned by the POS (this recipe only adds existing slots, never creates them). Create the template with project.MorphRules.CreateAffixTemplate and place slots with project.MorphRules.AddSlotToTemplate, inferring each slot's side from sibling templates and refusing when the side is unknown or ambiguous. Repoint stem MSAs with project.MSA.SetStemMsaPos, which keeps the inflection class when it belongs to the new POS or a parent POS and otherwise clears it; read the class before and after with project.MSA.GetInflectionClass and warn when it was cleared (flexicon#573, fixed in 4.12.0). Never cast the AffixTemplate or AffixSlot wrappers to IMoInflAffixTemplate or IMoInflAffixSlot: read prefix_slots, suffix_slots and slot.affixes through the wrappers, and key MSAs by the .concrete of the project.MSA.GetAll wrappers (wrapper objects never compare equal to the raw slots that project.MSA.GetInflAffMsaSlots returns). Report through report.Info/Warning/Error only.
 """
 # --- PARAMS ---
 POS_NAME = "Nome"  # POS (or subcategory) name in the analysis writing system, compared NFC
 TEMPLATE_NAME = "zzRecipeTestTemplate"  # template name; a live run creates it on the POS when missing
 SLOT_NAMES = []  # existing slot names to ensure on the template; each must already be owned by the POS, empty means validate-only
-EXEMPLAR_HEADWORD = "cibubu"  # exemplar entry whose stem MSAs are repointed to the POS, restoring inflection class
+EXEMPLAR_HEADWORD = "cibubu"  # exemplar entry whose stem MSAs are repointed to the POS, keeping inflection class
 # --- END PARAMS ---
 import unicodedata
 
@@ -118,7 +117,7 @@ else:
         cur = project.Senses.GetPartOfSpeechObject(sense)
         cur_name = project.POS.GetName(cur) if cur is not None else None
         report.Info(f"  exemplar '{hw}' sense '{gloss}': stem MSA on POS {cur_name!r}")
-        stems.append((sense, gloss, cur, cur_name))
+        stems.append((sense, gloss, raw_msa, cur, cur_name))
 
     # 4. Ensure the template exists (create under modifyAllowed only).
     template = find_template(pos, TEMPLATE_NAME)
@@ -161,25 +160,27 @@ else:
                 on_template.add(nfc(wanted))
                 report.Info(f"added slot '{slot_label}' to template '{template.name}' as {side}")
 
-    # 6. Repoint the exemplar stem MSAs, keeping the inflection class
-    # (flexicon#573, closed in flexicon 4.12.0: SetStemMsaPos restores a
-    # still-valid class itself, and warns instead of attaching an
-    # incompatible one -- no save/restore dance needed).
+    # 6. Repoint the exemplar stem MSAs, keeping inflection class (flexicon#573).
     repointed = 0
     already = 0
     skipped = 0
     if ok:
-        for sense, gloss, cur, cur_name in stems:
+        for sense, gloss, raw_msa, cur, cur_name in stems:
             if cur is not None and str(cur.Guid) == str(pos.Guid):
                 report.Info(f"sense '{gloss}': already on POS '{pos_name}'; inflection class untouched")
                 already += 1
                 continue
+            saved_icl = project.MSA.GetInflectionClass(raw_msa)
+            icl_label = str(saved_icl) if saved_icl is not None else None
             if not modifyAllowed:
-                report.Info(f"(dry run) would repoint sense '{gloss}' from {cur_name!r} to '{pos_name}', keeping its inflection class when still valid for the new POS")
+                report.Info(f"(dry run) would repoint sense '{gloss}' from {cur_name!r} to '{pos_name}', keeping inflection class {icl_label} if '{pos_name}' allows it")
                 continue
             if modifyAllowed:
-                project.MSA.SetStemMsaPos(sense, pos, keep_inflection_class=True)
-                report.Info(f"repointed sense '{gloss}': POS {cur_name!r} -> '{pos_name}' (inflection class kept when still valid for the new POS)")
+                project.MSA.SetStemMsaPos(sense, pos)  # keeps the class when the new POS allows it
+                kept = project.MSA.GetInflectionClass(raw_msa)
+                if saved_icl is not None and kept is None:
+                    report.Warning(f"sense '{gloss}': inflection class {icl_label} does not belong to '{pos_name}' or its parents, so it was cleared")
+                report.Info(f"repointed sense '{gloss}': POS {cur_name!r} -> '{pos_name}', inflection class {str(kept) if kept is not None else None}")
                 repointed += 1
         skipped = len(senses) - len(stems)
 

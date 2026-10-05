@@ -6,9 +6,8 @@ entities: ["LexEntry", "LexSense", "MoStemMsa", "PartOfSpeech"]
 operations: ["create"]
 requires_write: true
 origin: MCPlayground flex-parse-fixup lib/w_create_stem_like.py
-verified_against: {"flexicon": "4.11.0", "verified_by": "sena3-live"}
-raw_lcm_lines: 0
-notes: FR-053 lesson carried from w_create_stem_like.py: new stems copy the comparator's POS plus inflection class with project.MSA.CreateStem and project.MSA.SetInflectionClass (flexicon#573, closed in flexicon 4.12.0); no raw LCM remains in this recipe. Validate the comparator and morph type before any write; refuse when the comparator headword resolves to 0 or more than 1 entry. POS comes from the comparator object via Senses.GetPartOfSpeechObject, never POS.Find by name. Compare headwords after NFC on both sides. Report through report.Info/Warning/Error only.
+verified_against: {"flexicon": "4.12.0", "verified_by": "sena3-dryrun"}
+notes: FR-053 lesson carried from w_create_stem_like.py: project.MSA.CreateStem makes a fresh stem MSA without an inflection class, so copy the comparator's class with project.MSA.GetInflectionClass / SetInflectionClass afterwards (flexicon#573, fixed in 4.12.0). Validate the comparator and morph type before any write; refuse when the comparator headword resolves to 0 or more than 1 entry. POS comes from the comparator object via Senses.GetPartOfSpeechObject, never POS.Find by name. Compare headwords after NFC on both sides. Report through report.Info/Warning/Error only.
 """
 # --- PARAMS ---
 COMPARATOR = "cibubu"  # exact headword of an entry whose first-sense stem MSA supplies POS and inflection class
@@ -47,7 +46,7 @@ else:
             if msa_raw is None:
                 report.Error(f"comparator {COMPARATOR}: first sense has no MSA")
             else:
-                icl = project.MSA.GetInflectionClass(msa_raw)  # flexicon#573, closed in 4.12.0
+                icl = project.MSA.GetInflectionClass(msa_raw)
                 valid_morphs = set(name for name, _mt, _is_stem in project.LexEntry.GetAvailableMorphTypes())
                 if MORPH_TYPE not in valid_morphs:
                     report.Error(f"new form {NEW_FORM}: unknown morph type {MORPH_TYPE!r}")

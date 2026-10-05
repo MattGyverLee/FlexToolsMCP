@@ -6,9 +6,8 @@ entities: ["LexEntry", "LexSense", "MoStemMsa", "PartOfSpeech", "LexEntryRef"]
 operations: ["create", "iterate", "search"]
 requires_write: true
 origin: MCPlayground flex-parse-fixup lib/w_create_entries.py
-verified_against: {"flexicon": "4.11.0", "verified_by": "sena3-live"}
-raw_lcm_lines: 0
-notes: Validate every comparator, POS, morph type and variant type before any write; refuse when a PARAMS headword resolves to 0 or more than 1 entry. Idempotent: skips a row whose lexeme form plus first gloss plus POS already exists (POS compared by GUID, text by NFC). New stems copy the comparator POS plus inflection class with project.MSA.CreateStem and project.MSA.SetInflectionClass (flexicon#573, closed in flexicon 4.12.0); no raw LCM remains in this recipe. Otherwise never cast flexicon wrappers to LCM interfaces, never branch on ClassName, never compare Hvo, and read names through GetName rather than multistring internals. A bare reading (interjection, adverb, particle) must be morph type stem; a bound stem never parses without an affix. Report through report.Info/Warning/Error only.
+verified_against: {"flexicon": "4.12.0", "verified_by": "sena3-dryrun"}
+notes: Validate every comparator, POS, morph type and variant type before any write; refuse when a PARAMS headword resolves to 0 or more than 1 entry. Idempotent: skips a row whose lexeme form plus first gloss plus POS already exists (POS compared by GUID, text by NFC). New stems copy the comparator POS with project.MSA.CreateStem and its inflection class with project.MSA.GetInflectionClass / SetInflectionClass (flexicon#573, fixed in 4.12.0). Otherwise never cast flexicon wrappers to LCM interfaces, never branch on ClassName, never compare Hvo, and read names through GetName rather than multistring internals. A bare reading (interjection, adverb, particle) must be morph type stem; a bound stem never parses without an affix. Report through report.Info/Warning/Error only.
 """
 # --- PARAMS ---
 COMPARATORS = {"NOME": "cibubu"}  # comparator key -> exact headword of an entry whose first-sense stem MSA supplies POS and inflection class
@@ -58,9 +57,13 @@ for key, hw in COMPARATORS.items():
         ok = False
         continue
     msa_raw = project.Senses.GetMSA(senses[0])
-    icl = project.MSA.GetInflectionClass(msa_raw)  # flexicon#573, closed in 4.12.0
+    if msa_raw is None:
+        report.Error(f"comparator {key}={hw}: first sense has no MSA")
+        ok = False
+        continue
+    icl = project.MSA.GetInflectionClass(msa_raw)
     comp[key] = (pos_obj, icl)
-    report.Info(f"comparator {key}={hw}: POS='{project.POS.GetName(pos_obj)}' infl={str(icl) if icl else None}")
+    report.Info(f"comparator {key}={hw}: POS='{project.POS.GetName(pos_obj)}' infl={project.InflectionFeatures.InflectionClassGetName(icl) if icl else None}")
 
 # Validate morph types and variant types before any write.
 valid_morphs = set(name for name, _mt, _is_stem in project.LexEntry.GetAvailableMorphTypes())

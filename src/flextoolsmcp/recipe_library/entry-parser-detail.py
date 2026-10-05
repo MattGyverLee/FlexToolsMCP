@@ -6,14 +6,14 @@ entities: ["LexEntry", "MoForm", "MoStemMsa", "MoInflAffMsa", "PhEnvironment"]
 operations: ["read", "iterate"]
 requires_write: false
 origin: MCPlayground flex-parse-fixup lib/entry_detail.py
-verified_against: {"flexicon": "4.11.0", "verified_by": "sena3-read"}
-raw_lcm_lines: 1
-notes: Allomorphs are listed in parser order; the first is the lexeme form, and HermitCrab tries the alternates in order as disjunctive choices. An abstract form is skipped by the parser. The MSA kind comes from the wrappers that project.MSA.GetAll(entry) yields (is_stem_msa / is_infl_aff_msa), not from ClassName. Inflection class has a flexicon reader since 4.12.0 (project.MSA.GetInflectionClass, flexicon#573); exception features still use the raw stem MSA (flexicon#574, no reader yet): as_stem_msa() hands back the LCM object. Otherwise don't cast flexicon wrappers to LCM interfaces.
+verified_against: {"flexicon": "4.12.0", "verified_by": "sena3-read"}
+notes: Allomorphs are listed in parser order; the first is the lexeme form, and HermitCrab tries the alternates in order as disjunctive choices. An abstract form is skipped by the parser. The MSA kind comes from the wrappers that project.MSA.GetAll(entry) yields (is_stem_msa / is_infl_aff_msa), not from ClassName. Inflection class and exception features come from project.MSA.GetInflectionClass and project.MSA.GetExceptionFeatures on the stem MSA that as_stem_msa() hands back (flexicon#573, #574, fixed in 4.12.0). Don't cast flexicon wrappers to LCM interfaces.
 """
 # --- PARAMS ---
 HEADWORDS = ["lekerera", "pi-1"]  # exact headwords, homograph number included (e.g. "pi-1")
 # --- END PARAMS ---
 import unicodedata
+
 
 wanted = set(unicodedata.normalize("NFC", h) for h in HEADWORDS)
 seen = set()
@@ -40,10 +40,10 @@ for entry in project.LexEntry.GetAll():
         pos = project.POS.GetName(msa.pos_main) if msa.pos_main else None
         feats = project.InflectionFeatures.DescribeFeatStruc(msa)
         if msa.is_stem_msa:
-            raw_stem = msa.as_stem_msa()
-            icl = project.MSA.GetInflectionClass(raw_stem)  # flexicon#573, closed in 4.12.0
-            restrict = [str(p) for p in raw_stem.ProdRestrictRC]  # flexicon gap: #574, no reader yet
-            report.Info(f"   stem MSA: POS={pos} infl class={str(icl) if icl else None} feats={feats or None} exception feats={restrict}")
+            stem = msa.as_stem_msa()
+            icl = project.MSA.GetInflectionClass(stem)
+            restrict = [project.PossibilityLists.GetItemName(p) for p in project.MSA.GetExceptionFeatures(stem)]
+            report.Info(f"   stem MSA: POS={pos} infl class={project.InflectionFeatures.InflectionClassGetName(icl) if icl else None} feats={feats or None} exception feats={restrict}")
         elif msa.is_infl_aff_msa:
             slots = [project.POS.GetSlotName(x) for x in project.MSA.GetInflAffMsaSlots(msa)]
             report.Info(f"   infl-affix MSA: POS={pos} slots={slots} feats={feats or None}")

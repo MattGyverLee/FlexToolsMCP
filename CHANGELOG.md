@@ -5,6 +5,65 @@
 Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
+### Fixed
+
+### Other
+
+*(Unreleased changes with no issue link go here; append at the bottom.)*
+
+## [2.15.0] - 2026-10-04
+
+### Headline: recipe library, exclusive-access gate, Flexicon 4.12.0 index
+
+- **Reindexed against Flexicon 4.12.0** (bundled index 4.11.0 -> 4.12.0:
+  122 -> 125 entities, 1601 -> 1657 methods). The `pyflexicon` floor in
+  `pyproject.toml` / `requirements.txt` rises to `>=4.12.0` to match, and
+  `FLEXICON_VERIFIED_VERSION` follows. LibLCM v11.0.0 regenerated, flexlibs
+  1.2.8 unchanged. With 4.12.0 as the floor, the peer schema guard that
+  `WritingSystems.Ensure()` relies on is always available.
+- **Recipes use the new MSA wrappers** (flexicon#573, #574 are fixed in
+  4.12.0). `affix-template-setup`, `create-entries-idempotent`,
+  `create-entry-like-comparator` and `entry-parser-detail` now read and set
+  the inflection class with `project.MSA.GetInflectionClass` /
+  `SetInflectionClass`, and read exception features with
+  `GetExceptionFeatures`, instead of raw `InflectionClassRA` /
+  `ProdRestrictRC` on a cast `IMoStemMsa`. None of the four uses raw LCM any
+  more. One change in behavior: `affix-template-setup` now leaves
+  `SetStemMsaPos` to keep the inflection class. If the class does not belong
+  to the new part of speech or a parent of it, the recipe clears it and
+  reports a warning. Before, it put the class back regardless.
+- **Recipe library**: the new `flextools_list_recipes` tool and the shipped
+  recipe library (see Tool contract and Other below).
+- **Exclusive-access gate**: writing-system and custom-field schema changes
+  are refused while FieldWorks holds the project (see Other below).
+- **Parser checks follow-through (CP6)**: the parser user guide, a next step
+  on every parser refusal, and parse-tool telemetry (see below).
+
+### Test report
+
+- Offline suite (`pytest -m "not requires_flex"`): **5302 passed**, 4 skipped,
+  119 deselected, 0 failed.
+- `python scripts/validate_integrity.py all` exits clean.
+- The four migrated recipes were checked on Sena 3 under flexicon 4.12.0.
+  Sena 3 had no inflection classes or exception features, so it was first
+  seeded with test data built from its own `genro` features: seven gender
+  inflection classes on Nome (1/2 ... 14/6) set on 589 noun stems, and three
+  exception features on 15 stems, modelled on the real ones in Mbugwe
+  LizzieHC practice. `create-entry-like-comparator` then copied class 7/8
+  from *cibubu* in a live write, read back and deleted.
+  `entry-parser-detail` read the seeded class and features.
+  `affix-template-setup` and `create-entries-idempotent` were dry-run.
+  Separately, `AddExceptionFeature` / `RemoveExceptionFeature` were checked
+  on a stem in Mbugwe LizzieHC practice: the feature was added, a second add
+  changed nothing, and the remove restored the original.
+- The recipes now print inflection-class and exception-feature names (`7/8`)
+  instead of the object's string form (`MoInflClass : 20233`).
+  `create-entries-idempotent` also now refuses a comparator whose first
+  sense has no MSA, as `create-entry-like-comparator` already did, instead
+  of failing on it.
+- Live FLEx suite (`requires_flex`) and Tier-2 live LLM evals: not run for
+  this release.
+
 ### Parser checks: release follow-through (CP6)
 
 The follow-through for the parser checks released in

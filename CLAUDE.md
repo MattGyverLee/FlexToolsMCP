@@ -215,4 +215,7 @@ Shipped work is summarized in one-pagers; start there, not in
 Other retired features: `specs/diagnostic-report/`,
 `specs/flexicon-project-bridge/`, `specs/unified-recipes/`,
 `specs/exclusive-access-gate/` (each `AS-BUILT.md`).
+
+Active feature: `specs/mcp2-only/plan.md` (mcp 2.x only, #369 PR-B1/B2);
+umbrella roadmap `specs/mcp-modernization/contracts.md`.
 <!-- SPECKIT END -->

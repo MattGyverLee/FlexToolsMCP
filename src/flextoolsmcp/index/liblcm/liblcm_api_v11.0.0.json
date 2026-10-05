@@ -67013,6 +67013,14 @@
             "methods": []
           },
           {
+            "class": "FLExProject",
+            "methods": []
+          },
+          {
+            "class": "MSAOperations",
+            "methods": []
+          },
+          {
             "class": "NoteOperations",
             "methods": []
           },
@@ -76290,6 +76298,10 @@
           },
           {
             "class": "OperationsMethod",
+            "methods": []
+          },
+          {
+            "class": "PhonFeatureOperations",
             "methods": []
           },
           {
@@ -107210,6 +107222,10 @@
             "methods": []
           },
           {
+            "class": "AllomorphOperations",
+            "methods": []
+          },
+          {
             "class": "ApprovalStatusTypes",
             "methods": []
           },
@@ -107469,6 +107485,13 @@
       "name": "IPhBdryMarker",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "PhonologicalContext",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [

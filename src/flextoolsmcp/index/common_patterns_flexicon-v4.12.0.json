@@ -112,7 +112,7 @@
       },
       {
         "class": "LexEntryOperations",
-        "code": "morph_types = project.LexEntry.GetAvailableMorphTypes()\nfor name, mt, is_stem in morph_types:\n    type_str = \"stem\" if is_stem else \"affix\"\n    print(f\"{name}: {type_str}\")\n            stem: stem\n            root: stem\n            prefix: affix\n\n\n# Top-level types only\ntop_level = project.LexEntry.GetAvailableMorphTypes(recursive=False)\n\n        See Also:\n            ValidateMorphType, SetMorphType, Create",
+        "code": "morph_types = project.LexEntry.GetAvailableMorphTypes()\nfor name, mt, is_stem in morph_types:\n    type_str = \"stem\" if is_stem else \"affix\"\n    print(f\"{name}: {type_str}\")\n            stem: stem\n            root: stem\n            prefix: affix\n\n\n# Top-level types only\ntop_level = project.LexEntry.GetAvailableMorphTypes(recursive=False)\n\n        See Also:\n            ValidateMorphType, SetMorphType, Create, GetMorphTypeName",
         "description": "Get a list of all available morph types in the project.",
         "method": "GetAvailableMorphTypes",
         "object_type": "ILexEntry",
@@ -491,6 +491,15 @@
       },
       {
         "class": "LexSenseOperations",
+        "code": "senses = list(project.Senses.GetAll(entry))\nprint(project.Senses.GetGrammaticalInfoText(senses[0]))\n            Verb  Pl.3\n\n        See Also:\n            GetMSA, GetPartOfSpeech",
+        "description": "Get the grammatical-info display text for a sense's MSA (issue #575).",
+        "method": "GetGrammaticalInfoText",
+        "object_type": "ILexSense",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "LexSenseOperations",
         "code": "entry = project.LexEntry.Find(\"big\")\nsense = entry.SensesOS[0]\nlex_refs = project.Senses.GetMinimalLexReferences(sense)\nfor lex_ref in lex_refs:\n    ref_type = lex_ref.Owner  # ILexRefType\n    print(f\"Reference type: {ref_type.Name.BestAnalysisAlternative.Text}\")\n    for target in lex_ref.TargetsRS:\n        if target.Hvo != sense.Hvo:\n            gloss = project.Senses.GetGloss(target)\n            print(f\"  -> {gloss}\")",
         "description": "Get essential lexical references for this sense.",
         "method": "GetMinimalLexReferences",
@@ -610,6 +619,15 @@
       },
       {
         "class": "AllomorphOperations",
+        "code": "entry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nverb = project.POS.Find(\"Verb\")\nstrong = project.POS.GetInflectionClasses(verb)[0]\nproject.Allomorphs.AddInflectionClass(allomorphs[0], strong)",
+        "description": "Add an inflection class to a stem allomorph.",
+        "method": "AddInflectionClass",
+        "object_type": "IMoForm",
+        "operation": "create",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
         "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nenvs = list(project.Environments.GetAll())\nif allomorphs and envs:\n    allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = list(project.Environments.GetAll())[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
         "description": "Add a phonological environment to an allomorph.",
         "method": "AddPhoneEnv",
@@ -637,9 +655,9 @@
       },
       {
         "class": "AllomorphOperations",
-        "code": "entry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nowner = project.Allomorphs.GetOwningEntry(allomorphs[0])\nprint(project.LexEntry.GetHeadword(owner))\n            run\n\n# Round trip: GetAll walks entry -> allomorphs; this walks\n# allomorph -> entry.\nfor allomorph in project.Allomorphs.GetAll():\n    owner = project.Allomorphs.GetOwningEntry(allomorph)\n    if owner is None:\n        continue\n    form = project.Allomorphs.GetForm(allomorph)\n    print(f\"{form} -> {project.LexEntry.GetHeadword(owner)}\")\n            run -> run\n            ran -> run",
-        "description": "Get the lexical entry that owns this allomorph.",
-        "method": "GetOwningEntry",
+        "code": "entry = project.LexEntry.Find(\"-s\")\naffix = project.Allomorphs.GetAll(entry)[0]\nspec = project.Allomorphs.GetRequiredFeatures(affix)\nif spec is None:\n    print(\"no required features\")\nelse:\n    print(project.InflectionFeatures.DescribeFeatStruc(spec))\n            [number: plural]",
+        "description": "Get the required inflection features of an affix allomorph.",
+        "method": "GetRequiredFeatures",
         "object_type": "IMoForm",
         "operation": "read",
         "source": "docstring"
@@ -651,6 +669,15 @@
         "method": "GetSyncableProperties",
         "object_type": "IMoForm",
         "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
+        "code": "verb = project.POS.Find(\"Verb\")\nstem_names = project.POS.GetStemNames(verb)\nentry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nproject.Allomorphs.SetStemName(allomorphs[0], stem_names[0])\n# Clear it again\nproject.Allomorphs.SetStemName(allomorphs[0], None)",
+        "description": "Set (or clear) the stem name referenced by a stem allomorph.",
+        "method": "SetStemName",
+        "object_type": "IMoForm",
+        "operation": "update",
         "source": "docstring"
       }
     ],
@@ -1115,6 +1142,15 @@
       },
       {
         "class": "AllomorphOperations",
+        "code": "entry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nverb = project.POS.Find(\"Verb\")\nstrong = project.POS.GetInflectionClasses(verb)[0]\nproject.Allomorphs.AddInflectionClass(allomorphs[0], strong)",
+        "description": "Add an inflection class to a stem allomorph.",
+        "method": "AddInflectionClass",
+        "object_type": "IMoForm",
+        "operation": "create",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
         "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nenvs = list(project.Environments.GetAll())\nif allomorphs and envs:\n    allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = list(project.Environments.GetAll())[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
         "description": "Add a phonological environment to an allomorph.",
         "method": "AddPhoneEnv",
@@ -1364,15 +1400,6 @@
         "object_type": "general",
         "operation": "create",
         "source": "docstring"
-      },
-      {
-        "class": "DataNotebookOperations",
-        "code": "# Create a basic record\nrecord = project.DataNotebook.Create(\n    \"Interview with Speaker A\",\n    \"Notes from interview about kinship terms\"\n)\nprint(project.DataNotebook.GetTitle(record))\n            Interview with Speaker A\n\n# Create with specific writing system\nrecord = project.DataNotebook.Create(\n    \"Entrevista con Hablante A\",\n    content=\"Notas sobre terminología de parentesco\",\n    wsHandle=project.WSHandle('es')\n)\n\n# A sub-record is just a Create with a parent\nsub = project.DataNotebook.Create(\n    \"Kinship Terminology\", parent=record)\n\n# Create and configure\nrecord = project.DataNotebook.Create(\"Field Observation\")\nproject.DataNotebook.SetDateOfEvent(record, \"2024-01-15\")\nproject.DataNotebook.SetStatus(record, \"Draft\")",
-        "description": "Create a new research notebook record.",
-        "method": "Create",
-        "object_type": "general",
-        "operation": "create",
-        "source": "docstring"
       }
     ],
     "delete": [
@@ -1381,6 +1408,15 @@
         "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif len(allomorphs) > 1:\n    allomorphOps.Delete(allomorphs[-1])\n\n        Warning:\n            - Deleting an allomorph that is in use in analyses may cause issues\n            - If deleting the lexeme form and alternates exist, the first\n              alternate becomes the new lexeme form\n            - Deletion is permanent and cannot be undone\n            - Consider checking usage in texts before deletion",
         "description": "Delete an allomorph.",
         "method": "Delete",
+        "object_type": "IMoForm",
+        "operation": "delete",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
+        "code": "entry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nclasses = project.Allomorphs.GetInflectionClasses(allomorphs[0])\nif classes:\n    project.Allomorphs.RemoveInflectionClass(allomorphs[0], classes[0])",
+        "description": "Remove an inflection class from a stem allomorph.",
+        "method": "RemoveInflectionClass",
         "object_type": "IMoForm",
         "operation": "delete",
         "source": "docstring"
@@ -1633,15 +1669,6 @@
         "code": "sense = entry.SensesOS[0]\nproject.LexiconDeleteObject(sense)\n# Or delete entire entry:\nproject.LexiconDeleteObject(entry)\n\n        Warning:\n            This is a destructive operation and cannot be undone.",
         "description": "Delete an object from the database.",
         "method": "LexiconDeleteObject",
-        "object_type": "general",
-        "operation": "delete",
-        "source": "docstring"
-      },
-      {
-        "class": "FilterOperations",
-        "code": "filter_obj = project.Filter.Find(\"Old Filter\")\nif filter_obj:\n    project.Filter.Delete(filter_obj)\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - Filter is permanently removed from the project",
-        "description": "Delete a saved filter from the project.",
-        "method": "Delete",
         "object_type": "general",
         "operation": "delete",
         "source": "docstring"
@@ -1958,7 +1985,7 @@
       },
       {
         "class": "ContextCollection",
-        "code": "boundaries = contexts.boundary_contexts()\n            for bctx in boundaries:\n                btype = bctx.boundary_type\n                print(f\"Boundary type: {btype}\")",
+        "code": "boundaries = contexts.boundary_contexts()\n            for bctx in boundaries:\n                print(f\"Boundary: {bctx.boundary_name}\")",
         "description": "Get only the boundary contexts.",
         "method": "boundary_contexts",
         "object_type": "general",
@@ -2322,6 +2349,15 @@
       },
       {
         "class": "AllomorphOperations",
+        "code": "entry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nclasses = project.Allomorphs.GetInflectionClasses(allomorphs[0])\nfor ic in classes:\n    print(project.InflectionFeatures.InflectionClassGetName(ic))\n            Strong Verbs",
+        "description": "Get the inflection classes of a stem allomorph.",
+        "method": "GetInflectionClasses",
+        "object_type": "IMoForm",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
         "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    print(allomorphOps.GetIsAbstract(allomorphs[0]))\n            False",
         "description": "Check whether an allomorph is an abstract underlying form.",
         "method": "GetIsAbstract",
@@ -2331,7 +2367,7 @@
       },
       {
         "class": "AllomorphOperations",
-        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    morphType = allomorphOps.GetMorphType(allomorphs[0])\n    # Get type name\n    wsHandle = project.GetDefaultAnalysisWSHandle()\n    type_name = ITsString(morphType.Name.get_String(wsHandle)).Text\n    print(type_name)\n            stem",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    morphType = allomorphOps.GetMorphType(allomorphs[0])\n    # Get type name via the shared wrapper (issue #583)\n    type_name = project.LexEntry.GetMorphTypeName(morphType)\n    print(type_name)\n            stem",
         "description": "Returns the morpheme type (stem, root, prefix, suffix, infix, affix).",
         "method": "GetMorphType",
         "object_type": "IMoForm",
@@ -2352,6 +2388,24 @@
         "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    envs = allomorphOps.GetPhoneEnv(allomorphs[0])\n    for env in envs:\n        wsHandle = project.GetDefaultAnalysisWSHandle()\n        name = ITsString(env.Name.get_String(wsHandle)).Text\n        print(f\"Environment: {name}\")\n            Environment: After voiceless consonant",
         "description": "Get the phonological environments for an allomorph.",
         "method": "GetPhoneEnv",
+        "object_type": "IMoForm",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
+        "code": "entry = project.LexEntry.Find(\"-s\")\naffix = project.Allomorphs.GetAll(entry)[0]\nspec = project.Allomorphs.GetRequiredFeatures(affix)\nif spec is None:\n    print(\"no required features\")\nelse:\n    print(project.InflectionFeatures.DescribeFeatStruc(spec))\n            [number: plural]",
+        "description": "Get the required inflection features of an affix allomorph.",
+        "method": "GetRequiredFeatures",
+        "object_type": "IMoForm",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
+        "code": "entry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nstem_name = project.Allomorphs.GetStemName(allomorphs[0])\nif stem_name is None:\n    print(\"no stem name set\")\nelse:\n    print(project.POS.GetStemNameText(stem_name))\n            root",
+        "description": "Get the stem name object referenced by a stem allomorph.",
+        "method": "GetStemName",
         "object_type": "IMoForm",
         "operation": "read",
         "source": "docstring"
@@ -2463,33 +2517,6 @@
         "object_type": "general",
         "operation": "read",
         "source": "docstring"
-      },
-      {
-        "class": "AnnotationDefOperations",
-        "code": "for anno_def in project.AnnotationDef.GetAll():\n    name = project.AnnotationDef.GetName(anno_def)\n    print(f\"Definition: {name}\")\n            Definition: To Do\n            Definition: Question\n            Definition: Resolved\n\n        See Also:\n            SetName, Find",
-        "description": "Get the name of an annotation definition.",
-        "method": "GetName",
-        "object_type": "general",
-        "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "AnnotationDefOperations",
-        "code": "todo_def = project.AnnotationDef.Find(\"To Do\")\nif todo_def:\n    prompt = project.AnnotationDef.GetPrompt(todo_def)\n    print(f\"Prompt: {prompt}\")\n            Prompt: Enter what needs to be done",
-        "description": "Get the prompt text for an annotation definition.",
-        "method": "GetPrompt",
-        "object_type": "general",
-        "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "AnnotationDefOperations",
-        "code": "# Get types available to users\nfor anno_def in project.AnnotationDef.GetUserCreatableTypes():\n    name = project.AnnotationDef.GetName(anno_def)\n    anno_type = project.AnnotationDef.GetAnnotationType(anno_def)\n    print(f\"Available: {name} (type={anno_type})\")\n            Available: To Do (type=0)\n            Available: Question (type=1)\n            Available: Custom Review (type=0)\n\n# Count user-creatable types\ncount = len(list(project.AnnotationDef.GetUserCreatableTypes()))\nprint(f\"Users can create {count} annotation types\")",
-        "description": "Get all annotation definitions that users can create.",
-        "method": "GetUserCreatableTypes",
-        "object_type": "general",
-        "operation": "read",
-        "source": "docstring"
       }
     ],
     "reorder": [
@@ -2571,6 +2598,24 @@
         "description": "Move a picture from one sense to another sense.",
         "method": "MovePicture",
         "object_type": "ILexSense",
+        "operation": "reorder",
+        "source": "docstring"
+      },
+      {
+        "class": "MorphRuleOperations",
+        "code": "templates = project.MorphRules.GetAllAffixTemplatesForPOS(verb)\nproject.MorphRules.MoveAffixTemplate(verb, templates[1], 0)\n\n        See Also:\n            ReorderAffixTemplates, CreateAffixTemplate, GetAllAffixTemplatesForPOS",
+        "description": "Move one affix template to a new position within its POS.",
+        "method": "MoveAffixTemplate",
+        "object_type": "general",
+        "operation": "reorder",
+        "source": "docstring"
+      },
+      {
+        "class": "MorphRuleOperations",
+        "code": "templates = list(project.MorphRules.GetAllAffixTemplatesForPOS(verb))\nproject.MorphRules.ReorderAffixTemplates(verb, list(reversed(templates)))\n\n        See Also:\n            MoveAffixTemplate, CreateAffixTemplate, GetAllAffixTemplatesForPOS",
+        "description": "Reorder a POS's ``AffixTemplatesOS`` to match a desired order.",
+        "method": "ReorderAffixTemplates",
+        "object_type": "general",
         "operation": "reorder",
         "source": "docstring"
       },
@@ -2671,6 +2716,24 @@
         "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    # Get a different morph type\n    morphTypes = project.LexEntry.GetAvailableMorphTypes()\n    prefix_type = next(mt for name, mt, is_stem in morphTypes\n                       if not is_stem and \"prefix\" in name.lower())\n    allomorphOps.SetMorphType(allomorphs[0], prefix_type)",
         "description": "Sets the morpheme type (stem, root, prefix, suffix, infix, affix).",
         "method": "SetMorphType",
+        "object_type": "IMoForm",
+        "operation": "update",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
+        "code": "entry = project.LexEntry.Find(\"-s\")\naffix = project.Allomorphs.GetAll(entry)[0]\nnumber = project.InflectionFeatures.Find(\"number\")\nplural = project.InflectionFeatures.FeatureGetValues(number)[0]\nspec = {str(number.Guid): str(plural.Guid)}\nproject.Allomorphs.SetRequiredFeatures(affix, spec)\n# Round-trip: read back exactly what was written\nassert project.Allomorphs.GetRequiredFeatures(affix) == spec",
+        "description": "Set (replace) the required inflection features of an affix allomorph.",
+        "method": "SetRequiredFeatures",
+        "object_type": "IMoForm",
+        "operation": "update",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
+        "code": "verb = project.POS.Find(\"Verb\")\nstem_names = project.POS.GetStemNames(verb)\nentry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nproject.Allomorphs.SetStemName(allomorphs[0], stem_names[0])\n# Clear it again\nproject.Allomorphs.SetStemName(allomorphs[0], None)",
+        "description": "Set (or clear) the stem name referenced by a stem allomorph.",
+        "method": "SetStemName",
         "object_type": "IMoForm",
         "operation": "update",
         "source": "docstring"
@@ -2869,24 +2932,6 @@
         "code": "sense = entry.SensesOS[0]\n# Set a single-select field\nproject.CustomFields.SetListFieldSingle(sense, \"Primary Region\", \"North\")\n\n# Change the value\nproject.CustomFields.SetListFieldSingle(sense, \"Primary Region\", \"South\")",
         "description": "Set the value of a ReferenceAtom (single-select list) custom field.",
         "method": "SetListFieldSingle",
-        "object_type": "general",
-        "operation": "update",
-        "source": "docstring"
-      },
-      {
-        "class": "CustomFieldOperations",
-        "code": "entry = project.LexEntry.Find(\"run\")\n# Set string field\nproject.CustomFields.SetValue(entry, \"Etymology Source\",\n                               \"Latin currere\")\n\n# Set multi-string field with specific WS\nproject.CustomFields.SetValue(entry, \"Dialect\", \"runnin'\", \"en\")\n\n# Set integer field\nproject.CustomFields.SetValue(entry, \"Frequency\", 42)\n\n# For list fields, use SetListFieldSingle/Multiple\n# or AddListValue/RemoveListValue",
-        "description": "Set the value of a custom field for an object.",
-        "method": "SetValue",
-        "object_type": "general",
-        "operation": "update",
-        "source": "docstring"
-      },
-      {
-        "class": "DataNotebookOperations",
-        "code": "# Set confidence by name\nrecord = project.DataNotebook.Find(\"Interview 1\")\nproject.DataNotebook.SetConfidence(record, \"High\")\n\n# Set confidence by object\nconf_levels = project.Confidence.GetAll()\nhigh = next((c for c in conf_levels if \"High\" in str(c.Name)), None)\nif high:\n    project.DataNotebook.SetConfidence(record, high)",
-        "description": "Set the confidence level of a notebook record.",
-        "method": "SetConfidence",
         "object_type": "general",
         "operation": "update",
         "source": "docstring"
@@ -3152,6 +3197,112 @@
       "verified_against": {
         "flexicon": "4.11.0",
         "verified_by": "eval-corpus"
+      }
+    },
+    "affix-catalog": {
+      "code": "# --- PARAMS ---\nMORPH_TYPE_FILTER = \"\"  # filter by morph type name (e.g. \"prefix\"; \"\" = all)\nPOS_FILTER = \"\"  # filter by POS abbreviation (e.g. \"V\"; \"\" = all)\nEXCLUDE_ROOT_TYPES = True  # exclude root/stem morpheme types from output\n# --- END PARAMS ---\nimport unicodedata\n\nmorphtype_to_entries = {}\n\nfor entry in project.LexEntry.GetAll():\n    # Get main form morpheme type\n    lf_mt = project.LexEntry.GetMorphType(entry)\n    if not lf_mt:\n        continue\n    mt_name = str(lf_mt)\n\n    # Root/stem morpheme types are excluded by name (Stem, Root, Bound stem,\n    # Bound root); everything else (prefix, suffix, infix, circumfix, clitic,\n    # etc.) is treated as an affix/non-root morpheme.\n    is_root_type = \"stem\" in mt_name.lower() or \"root\" in mt_name.lower()\n    if EXCLUDE_ROOT_TYPES and is_root_type:\n        continue\n\n    # Filter by morph type if specified\n    if MORPH_TYPE_FILTER and MORPH_TYPE_FILTER.lower() not in mt_name.lower():\n        continue\n\n    morphtype_to_entries.setdefault(mt_name, []).append(entry)\n\n# Report grouped by morpheme type\nfor morph_type in sorted(morphtype_to_entries.keys()):\n    report.Info(f\"\\n=== {morph_type} ===\")\n\n    for entry in morphtype_to_entries[morph_type]:\n        hw = project.LexEntry.GetHeadword(entry)\n        report.Info(f\"\\n  Entry: {hw}\", project.BuildGotoURL(entry))\n\n        # List senses with glosses and MSA info\n        for sense in project.LexEntry.GetSenses(entry):\n            gloss = unicodedata.normalize(\"NFC\", project.Senses.GetGloss(sense) or \"\")\n            pos = project.Senses.GetPartOfSpeech(sense)\n\n            # Filter by POS if specified\n            if POS_FILTER and (not pos or POS_FILTER not in str(pos)):\n                continue\n\n            report.Info(f\"    Sense gloss: {gloss}\")\n\n            # Find the sense's MSA among the entry's wrapped MSAs (equality\n            # is by Hvo, per LCMObjectWrapper) so no ClassName check/cast\n            # is needed to tell stem/infl-aff/deriv-aff apart.\n            raw_msa = project.Senses.GetMSA(sense)\n            msa = None\n            if raw_msa is not None:\n                msa = next((m for m in project.MSA.GetAll(entry) if m == raw_msa), None)\n            if msa is None:\n                report.Info(f\"      MSA: (none)\")\n            elif msa.is_stem_msa:\n                report.Info(f\"      MSA: Stem, POS={pos}\")\n            elif msa.is_infl_aff_msa:\n                slots = project.MSA.GetInflAffMsaSlots(sense)\n                slot_names = [project.POS.GetSlotName(s) for s in slots] if slots else []\n                report.Info(f\"      MSA: Inflectional Affix, POS={pos}, Slots={slot_names}\")\n            elif msa.is_deriv_aff_msa:\n                pos_from = project.POS.GetName(msa.pos_from) if msa.pos_from else None\n                pos_to = project.POS.GetName(msa.pos_to) if msa.pos_to else None\n                report.Info(f\"      MSA: Derivational Affix, {pos_from} -> {pos_to}\")\n            else:\n                report.Info(f\"      MSA: Unclassified affix, POS={pos}\")\n\n        # List allomorphs with environments\n        report.Info(f\"    Allomorphs:\")\n        for i, allo in enumerate(project.Allomorphs.GetAll(entry)):\n            form = project.Allomorphs.GetForm(allo)\n            is_abstract = project.Allomorphs.GetIsAbstract(allo)\n            envs = project.Allomorphs.GetPhoneEnv(allo)\n\n            abstract_note = \" (abstract)\" if is_abstract else \"\"\n            env_str = \"; \".join([project.Environments.GetStringRepresentation(e) for e in envs]) if envs else \"(no environments)\"\n            report.Info(f\"      [{i}] form={form}{abstract_note}\")\n            report.Info(f\"          environments: {env_str}\")\n",
+      "code_terms": [
+        "abstract",
+        "aff",
+        "all",
+        "allomorphs",
+        "append",
+        "build",
+        "deriv",
+        "entry",
+        "enumerate",
+        "env",
+        "environment",
+        "environments",
+        "form",
+        "from",
+        "gloss",
+        "goto",
+        "grammatical",
+        "headword",
+        "infl",
+        "inflection",
+        "inflectional",
+        "info",
+        "is",
+        "join",
+        "keys",
+        "lex",
+        "lower",
+        "morph",
+        "msa",
+        "name",
+        "next",
+        "normalize",
+        "of",
+        "part",
+        "phone",
+        "pos",
+        "representation",
+        "senses",
+        "setdefault",
+        "slot",
+        "slots",
+        "sorted",
+        "speech",
+        "stem",
+        "str",
+        "string",
+        "to",
+        "type",
+        "url"
+      ],
+      "entities": [
+        "LexEntry",
+        "MoAllomorph",
+        "MoDerivAffMsa",
+        "MoInflAffMsa",
+        "MoStemMsa",
+        "PartOfSpeech",
+        "PhEnvironment"
+      ],
+      "id": "affix-catalog",
+      "intent": "Catalog all affixes and clitics by morph type, with gloss, grammatical info, slots, and allomorph environments",
+      "match_terms": [
+        "affix inventory",
+        "affix catalog",
+        "list all affixes",
+        "affix by morpheme type",
+        "affix slots",
+        "affix allomorphs",
+        "circumfix",
+        "clitic catalog"
+      ],
+      "notes": "Groups affixes and non-root morphemes (clitics, etc.) by morph type. For each entry, lists gloss, MSA kind (stem/infl-aff/deriv-aff), POS or from-POS/to-POS, and inflectional slots; for each allomorph, shows form and phonological environments. Root/stem exclusion is name-based (morph type name contains \"stem\" or \"root\"), matching how FLEx's standard morph-type list names its root-like types (Stem, Root, Bound stem, Bound root) -- the same convention senses-by-gloss.py uses. MSA subtype is read via project.MSA.GetAll(entry) wrappers matched to the sense's MSA by Hvo equality, so no ClassName check or raw cast is needed.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "FLExTools modules CatalogTargetAffixes.py (Ron Lockwood), DoStampSynthesis.py (~755-924, ~296-370), SetUpTransferRuleGramCat.py (~380-424)",
+      "params": [
+        {
+          "default": "\"\"",
+          "description": "filter by morph type name (e.g. \"prefix\"; \"\" = all)",
+          "name": "MORPH_TYPE_FILTER"
+        },
+        {
+          "default": "\"\"",
+          "description": "filter by POS abbreviation (e.g. \"V\"; \"\" = all)",
+          "name": "POS_FILTER"
+        },
+        {
+          "default": "True",
+          "description": "exclude root/stem morpheme types from output",
+          "name": "EXCLUDE_ROOT_TYPES"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
       }
     },
     "affix-template-setup": {
@@ -3420,6 +3571,430 @@
       "verified_against": {
         "flexicon": "4.11.0",
         "verified_by": "eval-corpus"
+      }
+    },
+    "bulk-set-exception-features": {
+      "code": "# --- PARAMS ---\nSELECTION_MODE = \"custom_field\"  # \"custom_field\" or \"headwords\"\nCUSTOM_FIELD = \"FTFlags\"  # name of the custom field to check for \"x\" marker (ignored if SELECTION_MODE == \"headwords\")\nHEADWORDS = []  # exact headwords to match (ignored if SELECTION_MODE == \"custom_field\"); empty list = all marked senses\nACTION = \"add\"  # \"add\" or \"clear\"\nFEATURE_NAME = \"\"  # name of exception feature to add; use \"\" to just clear (ignored if ACTION == \"clear\")\nMORPHTYPE = \"all\"  # \"stem\", \"deriv_from\", \"deriv_to\", \"infl_from\", \"all\"\n# --- END PARAMS ---\nimport unicodedata\nfrom flexicon import FP_ParameterError\nfrom SIL.LCModel import IMoStemMsa, IMoDerivAffMsa, IMoInflAffMsa\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\n# Find the exception feature if adding, via the \"Exception Features\"\n# possibility list (generic wrapper; no per-MSA scanning needed).\nchosen_feature = None\nchosen_feature_label = None\nif ACTION == \"add\" and FEATURE_NAME:\n    ef_list = project.PossibilityLists.FindList(\"Exception Features\")\n    if ef_list is None:\n        report.Error(\"'Exception Features' possibility list not found in this project\")\n    else:\n        chosen_feature = project.PossibilityLists.FindItem(ef_list, FEATURE_NAME)\n        if chosen_feature:\n            chosen_feature_label = project.PossibilityLists.GetItemName(chosen_feature)\n\nif ACTION == \"add\" and FEATURE_NAME and not chosen_feature:\n    report.Error(f\"Exception feature '{FEATURE_NAME}' not found in any exception feature list\")\nelse:\n    # Determine which senses to process\n    target_senses = []\n    if SELECTION_MODE == \"custom_field\":\n        cf_field = project.CustomFields.FindField(\"LexSense\", CUSTOM_FIELD)\n        if not cf_field:\n            report.Error(f\"Custom field '{CUSTOM_FIELD}' not found on LexSense\")\n        else:\n            for entry in project.LexEntry.GetAll():\n                for sense in project.LexEntry.GetSenses(entry):\n                    try:\n                        marker = project.CustomFields.GetValue(sense, CUSTOM_FIELD)\n                    except FP_ParameterError:\n                        continue\n                    if marker and str(marker).strip().lower() == \"x\":\n                        target_senses.append(sense)\n    else:  # headwords\n        wanted = set(nfc(h) for h in HEADWORDS) if HEADWORDS else None\n        for entry in project.LexEntry.GetAll():\n            if wanted is None or nfc(project.LexEntry.GetHeadword(entry)) in wanted:\n                for sense in project.LexEntry.GetSenses(entry):\n                    target_senses.append(sense)\n\n    # Process marked senses\n    changed = 0\n    would_change = 0\n    for sense in target_senses:\n        entry = project.Senses.GetOwningEntry(sense)\n        gloss = project.Senses.GetGloss(sense)\n        headword = project.LexEntry.GetHeadword(entry)\n        meaning = gloss if gloss else project.Senses.GetDefinition(sense)\n\n        # Find MSA and target field based on morphtype\n        for msa in project.MSA.GetAll(entry):\n            ex_field = None\n            msa_type = None\n\n            if MORPHTYPE in [\"stem\", \"all\"]:\n                if msa.is_stem_msa:\n                    stem = IMoStemMsa(msa.as_stem_msa())  # raw-lcm: exception features not wrapped\n                    ex_field = stem.ProdRestrictRC  # raw-lcm: exception features not wrapped\n                    msa_type = \"stem\"\n\n            if MORPHTYPE in [\"deriv_from\", \"all\"] and not ex_field:\n                if msa.is_deriv_aff_msa:\n                    deriv = IMoDerivAffMsa(msa.as_deriv_aff_msa())  # raw-lcm: exception features not wrapped\n                    ex_field = deriv.FromProdRestrictRC  # raw-lcm: exception features not wrapped\n                    msa_type = \"deriv_from\"\n\n            if MORPHTYPE in [\"deriv_to\", \"all\"] and not ex_field:\n                if msa.is_deriv_aff_msa:\n                    deriv = IMoDerivAffMsa(msa.as_deriv_aff_msa())  # raw-lcm: exception features not wrapped\n                    ex_field = deriv.ToProdRestrictRC  # raw-lcm: exception features not wrapped\n                    msa_type = \"deriv_to\"\n\n            if MORPHTYPE in [\"infl_from\", \"all\"] and not ex_field:\n                if msa.is_infl_aff_msa:\n                    infl = IMoInflAffMsa(msa.as_infl_aff_msa())  # raw-lcm: exception features not wrapped\n                    ex_field = infl.FromProdRestrictRC  # raw-lcm: exception features not wrapped\n                    msa_type = \"infl_from\"\n\n            if ex_field and msa_type:\n                if ACTION == \"clear\":\n                    if modifyAllowed:\n                        try:\n                            ex_field.Clear()\n                            report.Info(f\"cleared exception features from sense '{meaning}' of entry '{headword}' ({msa_type})\", project.BuildGotoURL(sense))\n                            changed += 1\n                        except Exception as e:\n                            report.Error(f\"error clearing exception features from sense '{meaning}' of entry '{headword}': {e}\", project.BuildGotoURL(sense))\n                    else:\n                        report.Info(f\"(dry run) would clear exception features from sense '{meaning}' of entry '{headword}' ({msa_type})\", project.BuildGotoURL(sense))\n                        would_change += 1\n                else:  # add\n                    if chosen_feature and chosen_feature not in ex_field:\n                        if modifyAllowed:\n                            try:\n                                ex_field.Add(chosen_feature)\n                                report.Info(f\"added exception feature '{chosen_feature_label}' to sense '{meaning}' of entry '{headword}' ({msa_type})\", project.BuildGotoURL(sense))\n                                changed += 1\n                            except Exception as e:\n                                report.Error(f\"error adding exception feature to sense '{meaning}' of entry '{headword}': {e}\", project.BuildGotoURL(sense))\n                        else:\n                            report.Info(f\"(dry run) would add exception feature '{chosen_feature_label}' to sense '{meaning}' of entry '{headword}' ({msa_type})\", project.BuildGotoURL(sense))\n                            would_change += 1\n\n    if modifyAllowed:\n        report.Info(f\"total changed: {changed}\")\n    else:\n        report.Info(f\"total to change: {would_change}\")\n",
+      "code_terms": [
+        "aff",
+        "all",
+        "append",
+        "as",
+        "build",
+        "clear",
+        "custom",
+        "definition",
+        "deriv",
+        "entry",
+        "error",
+        "field",
+        "fields",
+        "find",
+        "from",
+        "gloss",
+        "goto",
+        "grammatical",
+        "headword",
+        "i",
+        "infl",
+        "inflection",
+        "inflectional",
+        "info",
+        "is",
+        "item",
+        "lex",
+        "list",
+        "lists",
+        "lower",
+        "mo",
+        "msa",
+        "name",
+        "nfc",
+        "normalize",
+        "owning",
+        "possibility",
+        "prod",
+        "restrict",
+        "senses",
+        "set",
+        "stem",
+        "str",
+        "strip",
+        "to",
+        "url",
+        "value"
+      ],
+      "entities": [
+        "LexEntry",
+        "LexSense",
+        "MoDerivAffMsa",
+        "MoInflAffMsa",
+        "MoStemMsa"
+      ],
+      "id": "bulk-set-exception-features",
+      "intent": "Add or clear exception features on marked senses in bulk by morphological type",
+      "match_terms": [
+        "set exception features",
+        "bulk exception feature",
+        "exception feature marking",
+        "mark senses for feature",
+        "exception constraint",
+        "production restriction"
+      ],
+      "notes": "Exception features are not bulk-editable in FLEx UI. This recipe marks senses either by custom field (\"x\" marker, requires marking senses in bulk edit first) or by exact headword list, then applies or clears the chosen exception feature on the matching MSA field (stem, deriv-from, deriv-to, infl-from). With MORPHTYPE \"all\", every applicable MSA field is updated, but deriv-from is skipped once deriv-to has already matched on the same MSA to avoid contradictory settings. The feature is looked up via the generic \"Exception Features\" possibility list rather than scanning MSAs for a match. Applying or clearing the feature on a specific MSA's ProdRestrictRC/FromProdRestrictRC/ToProdRestrictRC needs raw LCM access; no flexicon wrapper exists for those per-MSA reference collections (flexicon gap #574).",
+      "operations": [
+        "update"
+      ],
+      "origin": "FLExTools module Bulk_Set_Exception_Features.py (Matthew Lee)",
+      "params": [
+        {
+          "default": "\"custom_field\"",
+          "description": "\"custom_field\" or \"headwords\"",
+          "name": "SELECTION_MODE"
+        },
+        {
+          "default": "\"FTFlags\"",
+          "description": "name of the custom field to check for \"x\" marker (ignored if SELECTION_MODE == \"headwords\")",
+          "name": "CUSTOM_FIELD"
+        },
+        {
+          "default": "[]",
+          "description": "exact headwords to match (ignored if SELECTION_MODE == \"custom_field\"); empty list = all marked senses",
+          "name": "HEADWORDS"
+        },
+        {
+          "default": "\"add\"",
+          "description": "\"add\" or \"clear\"",
+          "name": "ACTION"
+        },
+        {
+          "default": "\"\"",
+          "description": "name of exception feature to add; use \"\" to just clear (ignored if ACTION == \"clear\")",
+          "name": "FEATURE_NAME"
+        },
+        {
+          "default": "\"all\"",
+          "description": "\"stem\", \"deriv_from\", \"deriv_to\", \"infl_from\", \"all\"",
+          "name": "MORPHTYPE"
+        }
+      ],
+      "raw_lcm_lines": 8,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
+    "bulk-set-stem-name": {
+      "code": "# --- PARAMS ---\nSELECTION_MODE = \"custom_field\"  # \"custom_field\" or \"headwords\"\nCUSTOM_FIELD = \"FTFlags\"  # name of the custom field to check for \"x\" marker (ignored if SELECTION_MODE == \"headwords\")\nHEADWORDS = []  # exact headwords to match (ignored if SELECTION_MODE == \"custom_field\"); empty list = all marked allomorphs\nACTION = \"add\"  # \"add\" or \"clear\"\nSTEM_NAME = \"\"  # name of stem name to add; use \"\" to just clear (ignored if ACTION == \"clear\")\nLIMIT = 2000  # max allomorphs to process\n# --- END PARAMS ---\nimport unicodedata\nfrom SIL.LCModel import IMoStemAllomorph, IMoStemName\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\ndef pos_matches_or_is_descendant(candidate_pos, target_pos):\n    \"\"\"Walk up the POS hierarchy from candidate_pos looking for target_pos.\"\"\"\n    p = candidate_pos\n    while p is not None:\n        if p == target_pos:\n            return True\n        p = project.POS.GetParent(p)\n    return False\n\n# Find the stem name if adding\nchosen_stem_name = None\nchosen_pos = None\nchosen_stem_label = None\nif ACTION == \"add\" and STEM_NAME:\n    for pos in project.POS.GetAll():\n        pos_name = project.POS.GetName(pos)\n        try:\n            for raw_stem_name in pos.StemNamesOC:  # raw-lcm: stem names not wrapped (flexicon gap #573)\n                stem_name = IMoStemName(raw_stem_name)  # raw-lcm: stem names not wrapped\n                sn_name = str(stem_name.Name.AnalysisDefaultWritingSystem.Text) if stem_name.Name else \"\"  # raw-lcm: stem names not wrapped\n                if nfc(sn_name) == nfc(STEM_NAME):\n                    chosen_stem_name = stem_name\n                    chosen_pos = pos\n                    chosen_stem_label = f\"{pos_name} - {sn_name}\"\n                    break\n        except Exception:\n            pass\n        if chosen_stem_name:\n            break\n\nif ACTION == \"add\" and STEM_NAME and not chosen_stem_name:\n    report.Error(f\"stem name '{STEM_NAME}' not found in any POS\")\nelse:\n    # Determine which allomorphs to process\n    target_allos = []\n    if SELECTION_MODE == \"custom_field\":\n        cf_field = project.CustomFields.FindField(\"MoForm\", CUSTOM_FIELD)\n        if not cf_field:\n            report.Error(f\"custom field '{CUSTOM_FIELD}' not found on allomorphs (MoForm)\")\n        else:\n            for entry in project.LexEntry.GetAll():\n                for allo in project.Allomorphs.GetAll(entry):\n                    try:\n                        marker = project.CustomFields.GetValue(allo, CUSTOM_FIELD)\n                        if marker and str(marker).strip().lower() == \"x\":\n                            target_allos.append((entry, allo))\n                    except Exception:\n                        pass\n    else:  # headwords\n        wanted = set(nfc(h) for h in HEADWORDS) if HEADWORDS else None\n        for entry in project.LexEntry.GetAll():\n            if wanted is None or nfc(project.LexEntry.GetHeadword(entry)) in wanted:\n                for allo in project.Allomorphs.GetAll(entry):\n                    target_allos.append((entry, allo))\n\n    # Process marked allomorphs\n    changed = 0\n    would_change = 0\n    for idx, (entry, allo) in enumerate(target_allos):\n        if changed + would_change >= LIMIT:\n            report.Warning(f\"limit of {LIMIT} reached; process again to continue\")\n            break\n\n        headword = project.LexEntry.GetHeadword(entry)\n        form = project.Allomorphs.GetForm(allo)\n\n        if not allo.is_stem_allomorph:\n            report.Warning(f\"allomorph '{form}' of entry '{headword}' is not a stem allomorph; skipping\", project.BuildGotoURL(allo))\n            continue\n\n        # Stem names are a raw LCM field (flexicon gap #573); write via the\n        # raw LCM object, not the wrapper (wrapper has no __setattr__, a\n        # write to the wrapper attribute would silently be a no-op).\n        concrete_allo = IMoStemAllomorph(allo.lcm_object)  # raw-lcm: stem names not wrapped\n\n        if ACTION == \"clear\":\n            try:\n                if concrete_allo.StemNameRA:  # raw-lcm: stem names not wrapped\n                    if modifyAllowed:\n                        concrete_allo.StemNameRA = None  # raw-lcm: stem names not wrapped\n                        report.Info(f\"cleared stem name from allomorph '{form}' of entry '{headword}'\", project.BuildGotoURL(allo))\n                        changed += 1\n                    else:\n                        report.Info(f\"(dry run) would clear stem name from allomorph '{form}' of entry '{headword}'\", project.BuildGotoURL(allo))\n                        would_change += 1\n            except Exception as e:\n                report.Error(f\"error clearing stem name from allomorph '{form}' of entry '{headword}': {e}\", project.BuildGotoURL(entry))\n        else:  # add\n            if chosen_stem_name:\n                try:\n                    if concrete_allo.StemNameRA is None:  # raw-lcm: stem names not wrapped\n                        # Validate POS match: entry's stem-MSA POS must be, or\n                        # descend from, the stem name's owning POS.\n                        pos_match = False\n                        for msa in project.MSA.GetAll(entry):\n                            if msa.is_stem_msa and msa.pos_main:\n                                if pos_matches_or_is_descendant(msa.pos_main, chosen_pos):\n                                    pos_match = True\n                                    break\n\n                        if not pos_match:\n                            report.Warning(f\"POS mismatch for allomorph '{form}' of entry '{headword}'; skipping\", project.BuildGotoURL(entry))\n                        else:\n                            if modifyAllowed:\n                                concrete_allo.StemNameRA = chosen_stem_name  # raw-lcm: stem names not wrapped\n                                report.Info(f\"added stem name '{chosen_stem_label}' to allomorph '{form}' of entry '{headword}'\", project.BuildGotoURL(allo))\n                                changed += 1\n                            else:\n                                report.Info(f\"(dry run) would add stem name '{chosen_stem_label}' to allomorph '{form}' of entry '{headword}'\", project.BuildGotoURL(allo))\n                                would_change += 1\n                    else:\n                        report.Warning(f\"stem name already set on allomorph '{form}' of entry '{headword}'; skipping\", project.BuildGotoURL(allo))\n                except Exception as e:\n                    report.Error(f\"error processing allomorph '{form}' of entry '{headword}': {e}\", project.BuildGotoURL(entry))\n\n    if modifyAllowed:\n        report.Info(f\"total changed: {changed}\")\n    else:\n        report.Info(f\"total to change: {would_change}\")\n",
+      "code_terms": [
+        "all",
+        "allomorph",
+        "allomorphs",
+        "analysis",
+        "append",
+        "build",
+        "custom",
+        "default",
+        "descendant",
+        "entry",
+        "enumerate",
+        "error",
+        "field",
+        "fields",
+        "find",
+        "form",
+        "goto",
+        "grammatical",
+        "headword",
+        "i",
+        "info",
+        "is",
+        "lcm",
+        "lex",
+        "lower",
+        "main",
+        "matches",
+        "mo",
+        "msa",
+        "name",
+        "names",
+        "nfc",
+        "normalize",
+        "object",
+        "of",
+        "or",
+        "parent",
+        "part",
+        "pos",
+        "set",
+        "speech",
+        "stem",
+        "str",
+        "strip",
+        "system",
+        "text",
+        "url",
+        "value",
+        "warning",
+        "writing"
+      ],
+      "entities": [
+        "LexEntry",
+        "MoAllomorph",
+        "MoStemName",
+        "PartOfSpeech"
+      ],
+      "id": "bulk-set-stem-name",
+      "intent": "Add or clear stem names on marked allomorphs in bulk with POS validation",
+      "match_terms": [
+        "set stem name",
+        "bulk stem name",
+        "mark allomorphs for stem name",
+        "stem name by POS",
+        "stem name assignment"
+      ],
+      "notes": "Stem names are not bulk-editable in FLEx UI. This recipe marks allomorphs either by custom field (\"x\" marker, requires marking allomorphs in bulk edit first) or by exact headword list, then applies or clears stem names on each. Writes validate that the allomorph's entry POS matches, or descends from, the stem name's owning POS by walking project.POS.GetParent() to the root; a mismatch is skipped with a warning rather than written. Writing StemNameRA must go through the raw LCM object (allo.lcm_object), not the Allomorph wrapper -- the wrapper has no attribute-write override, so assigning to it would silently set a Python attribute instead of the database field (flexicon gap #573: stem names have no wrapper).",
+      "operations": [
+        "update"
+      ],
+      "origin": "FLExTools module Bulk_Set_Stem_Name.py (Matthew Lee)",
+      "params": [
+        {
+          "default": "\"custom_field\"",
+          "description": "\"custom_field\" or \"headwords\"",
+          "name": "SELECTION_MODE"
+        },
+        {
+          "default": "\"FTFlags\"",
+          "description": "name of the custom field to check for \"x\" marker (ignored if SELECTION_MODE == \"headwords\")",
+          "name": "CUSTOM_FIELD"
+        },
+        {
+          "default": "[]",
+          "description": "exact headwords to match (ignored if SELECTION_MODE == \"custom_field\"); empty list = all marked allomorphs",
+          "name": "HEADWORDS"
+        },
+        {
+          "default": "\"add\"",
+          "description": "\"add\" or \"clear\"",
+          "name": "ACTION"
+        },
+        {
+          "default": "\"\"",
+          "description": "name of stem name to add; use \"\" to just clear (ignored if ACTION == \"clear\")",
+          "name": "STEM_NAME"
+        },
+        {
+          "default": "2000",
+          "description": "max allomorphs to process",
+          "name": "LIMIT"
+        }
+      ],
+      "raw_lcm_lines": 7,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
+    "case-duplicate-entries": {
+      "code": "# --- PARAMS ---\n# No tunable parameters; checks all entries and all senses\n# --- END PARAMS ---\nimport unicodedata\n\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\n\n# Map from (lowercase_headword + POS_abbrev) to (entry_id, original_headword, POS_abbrev)\nseen_map = {}\nduplicates_found = 0\n\nfor entry in project.LexEntry.GetAll():\n    headword = nfc(project.LexEntry.GetHeadword(entry))\n    if not headword:\n        continue\n\n    # Check each sense's POS (an entry can have senses with different POSs)\n    for sense in project.LexEntry.GetSenses(entry):\n        pos = project.Senses.GetPartOfSpeech(sense)\n        if not pos:\n            continue\n\n        # Get POS abbreviation or name\n        pos_str = str(pos)\n\n        # Create composite key: lowercase headword + POS\n        key = nfc(headword.lower()) + pos_str\n\n        entry_id = id(entry)\n\n        if key in seen_map:\n            prev_id, prev_headword, prev_pos = seen_map[key]\n            if prev_id != entry_id:\n                report.Warning(\n                    f'Case-only duplicate: \"{headword}\" (POS={pos_str}) duplicates \"{prev_headword}\" with same POS',\n                    project.BuildGotoURL(entry),\n                )\n                duplicates_found += 1\n        else:\n            seen_map[key] = (entry_id, headword, pos_str)\n\nreport.Info(f\"Checked {len(seen_map)} unique (headword, POS) combinations\")\nreport.Info(f\"Found {duplicates_found} case-only duplicate entries\")\n",
+      "code_terms": [
+        "all",
+        "build",
+        "entry",
+        "goto",
+        "headword",
+        "id",
+        "info",
+        "len",
+        "lex",
+        "lower",
+        "nfc",
+        "normalize",
+        "of",
+        "part",
+        "senses",
+        "speech",
+        "str",
+        "url",
+        "warning"
+      ],
+      "entities": [
+        "LexEntry",
+        "LexSense"
+      ],
+      "id": "case-duplicate-entries",
+      "intent": "Report entries whose headwords differ only by case and share the same part-of-speech",
+      "match_terms": [
+        "case-only duplicate entries",
+        "case-sensitive duplicate headwords",
+        "case variants with same pos",
+        "capitalized duplicates",
+        "homographic case variants"
+      ],
+      "notes": "Detects entries whose headwords and POS form case-only duplicates. Maps (lowercase_headword + POS_abbrev) to entry identity; reports when a new entry with the same map key but different entry ID is found.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "FLExTools module ExtractBilingualLexicon.py (Ron Lockwood)",
+      "params": [],
+      "raw_lcm_lines": 0,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": false,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "complex-form-components-missing": {
+      "code": "# --- PARAMS ---\nSEPARATOR = \" \"  # delimiter to split multi-word forms (usually space)\n# --- END PARAMS ---\nimport unicodedata\n\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\n\n# Collect all single-word headwords (normalized)\nsingle_words = set()\nmulti_word_entries = []\n\nfor entry in project.LexEntry.GetAll():\n    headword = nfc(project.LexEntry.GetHeadword(entry))\n    if not headword:\n        continue\n    words = headword.split(SEPARATOR)\n    if len(words) == 1:\n        single_words.add(words[0])\n    elif len(words) > 1:\n        multi_word_entries.append((headword, entry))\n\nreport.Info(f\"Found {len(single_words)} single-word lexemes and {len(multi_word_entries)} multi-word lexemes\")\n\n# Check each multi-word entry for missing component words\nmissing_found = 0\nfor headword, entry in multi_word_entries:\n    words = headword.split(SEPARATOR)\n    for word in words:\n        if word not in single_words:\n            report.Warning(\n                f'Component word \"{word}\" in multi-word entry \"{headword}\" not found in lexicon',\n                project.BuildGotoURL(entry),\n            )\n            missing_found += 1\n\nreport.Info(f\"Reported {missing_found} missing component words\")\n",
+      "code_terms": [
+        "add",
+        "all",
+        "append",
+        "build",
+        "entry",
+        "goto",
+        "headword",
+        "info",
+        "len",
+        "lex",
+        "nfc",
+        "normalize",
+        "set",
+        "split",
+        "url",
+        "warning"
+      ],
+      "entities": [
+        "LexEntry"
+      ],
+      "id": "complex-form-components-missing",
+      "intent": "Identify missing individual words in multi-word lexeme forms; report component words that have no single-word entry",
+      "match_terms": [
+        "missing words in phrases",
+        "multi-word lexemes missing components",
+        "find component words not in lexicon",
+        "phrase component check",
+        "complex form missing words"
+      ],
+      "notes": "Splits multi-word lexeme forms on whitespace and reports each component word that has no corresponding single-word entry. Uses simple whitespace split; may need adjustment for languages with non-space delimiters or punctuation-attached morphemes.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "FLExTools module Complex_Lexemes.py (Matthew Lee)",
+      "params": [
+        {
+          "default": "\" \"",
+          "description": "delimiter to split multi-word forms (usually space)",
+          "name": "SEPARATOR"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "complex-forms-and-variants": {
+      "code": "# --- PARAMS ---\nSHOW_COMPLEX_FORMS = True  # report complex form entries and components\nSHOW_VARIANTS = True  # report variant entries and their chains\n# --- END PARAMS ---\n\nimport unicodedata\nfrom SIL.LCModel.Core.KernelInterfaces import ITsString\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\ndef get_morph_type_name(morph_type):\n    \"\"\"Get morph type name from object (raw LCM access - flexicon gap #583)\"\"\"\n    if morph_type is None:\n        return \"unknown\"\n    try:\n        return nfc(ITsString(morph_type.Name.BestAnalysisAlternative).Text)  # flexicon gap: #583 (no morph-type name getter)\n    except AttributeError:\n        return \"unknown\"\n\ndef resolve_complex_form_component_entry(comp):\n    \"\"\"GetComplexFormComponents legally mixes ILexEntry and ILexSense; its own\n    docstring's documented pattern is a ClassName check (# raw-lcm: documented\n    discriminator), since neither type exposes an isinstance-friendly\n    discriminator on the bare ICmObject.\"\"\"\n    if comp.ClassName == \"LexEntry\":  # raw-lcm: documented discriminator (GetComplexFormComponents docstring)\n        return comp\n    if comp.ClassName == \"LexSense\":  # raw-lcm: documented discriminator (GetComplexFormComponents docstring)\n        return project.Senses.GetOwningEntry(comp)\n    return None\n\ndef get_sense_from_entry_or_chain(entry):\n    \"\"\"Walk variant chain to find entry with senses\"\"\"\n    visited = set()\n    while True:\n        # Prevent infinite loops\n        entry_id = id(entry)\n        if entry_id in visited:\n            return entry\n        visited.add(entry_id)\n\n        # Get senses\n        senses = list(project.LexEntry.GetSenses(entry))\n        if senses:\n            return entry\n\n        # Check if this is a variant with no senses - get all variants of entry\n        variants = project.Variants.GetAll(entry)\n        if not variants:\n            return entry\n\n        # Get the main entry from variant chain (GetComponentLexemes is\n        # documented to always return ILexEntry directly)\n        found_next = False\n        for var in variants:\n            components = project.Variants.GetComponentLexemes(var)\n            if components:\n                entry = components[0]\n                found_next = True\n                break\n\n        if not found_next:\n            return entry\n\ncomplex_forms_found = 0\nvariants_found = 0\n\nif SHOW_COMPLEX_FORMS:\n    report.Info(\"=== Complex Form Entries ===\")\n\n    for entry in project.LexEntry.GetAll():\n        headword = nfc(project.LexEntry.GetHeadword(entry))\n\n        # Get complex form components for this entry\n        components = project.LexEntry.GetComplexFormComponents(entry)\n\n        if components and len(components) >= 2:\n            complex_forms_found += 1\n\n            report.Info(\n                f\"{headword} [Complex Form]\",\n                project.BuildGotoURL(entry)\n            )\n            report.Info(f\"  Components: {len(components)}\")\n\n            for i, comp in enumerate(components):\n                comp_entry = resolve_complex_form_component_entry(comp)\n                if comp_entry is None:\n                    report.Info(f\"    [{i+1}] (unrecognized component type)\")\n                    continue\n                comp_headword = project.LexEntry.GetHeadword(comp_entry)\n                comp_mt = project.LexEntry.GetMorphType(comp_entry)\n                mt_name = get_morph_type_name(comp_mt)\n\n                report.Info(f\"    [{i+1}] {comp_headword} ({mt_name})\")\n\nif SHOW_VARIANTS:\n    report.Info(\"=== Variant Entries ===\")\n\n    for entry in project.LexEntry.GetAll():\n        headword = nfc(project.LexEntry.GetHeadword(entry))\n\n        # Check for variants of this entry\n        variants = project.Variants.GetAll(entry)\n\n        if variants:\n            for var in variants:\n                var_type = project.Variants.GetType(var)\n                type_name = project.Variants.GetTypeName(var_type) if var_type else \"none\"\n\n                # Get the main entry (first component in variant chain)\n                components = project.Variants.GetComponentLexemes(var)\n                main_entry = components[0] if components else None\n\n                # Walk variant chain if main entry has no senses\n                if main_entry:\n                    main_with_senses = get_sense_from_entry_or_chain(main_entry)\n                else:\n                    main_with_senses = None\n\n                variants_found += 1\n\n                main_headword = \"unknown\"\n                if main_with_senses:\n                    main_headword = project.LexEntry.GetHeadword(main_with_senses)\n\n                report.Info(\n                    f\"{headword} -> {main_headword} [Variant]\",\n                    project.BuildGotoURL(entry)\n                )\n                report.Info(f\"  Type: {type_name}\")\n\n# Summary\nif SHOW_COMPLEX_FORMS or SHOW_VARIANTS:\n    report.Info(\"\")\n    if SHOW_COMPLEX_FORMS:\n        report.Info(f\"Complex form entries found: {complex_forms_found}\")\n    if SHOW_VARIANTS:\n        report.Info(f\"Variant entries found: {variants_found}\")\n",
+      "code_terms": [
+        "add",
+        "all",
+        "alternative",
+        "analysis",
+        "best",
+        "build",
+        "chain",
+        "class",
+        "complex",
+        "component",
+        "components",
+        "entry",
+        "enumerate",
+        "form",
+        "from",
+        "get",
+        "goto",
+        "headword",
+        "i",
+        "id",
+        "info",
+        "len",
+        "lex",
+        "lexemes",
+        "list",
+        "morph",
+        "name",
+        "nfc",
+        "normalize",
+        "or",
+        "owning",
+        "resolve",
+        "sense",
+        "senses",
+        "set",
+        "string",
+        "text",
+        "ts",
+        "type",
+        "url",
+        "variants"
+      ],
+      "entities": [
+        "ComplexFormType",
+        "LexEntry",
+        "LexEntryRef",
+        "VariantType"
+      ],
+      "id": "complex-forms-and-variants",
+      "intent": "Report complex form entries and their component structure, variant entries and their main entry relationships",
+      "match_terms": [
+        "complex form entries",
+        "multiword entries",
+        "variant entries",
+        "complex form components",
+        "variant of entry",
+        "entry relationships",
+        "complex form structure"
+      ],
+      "notes": "Read-only report in two parts: (1) complex form entries with their component entries listed in order; (2) variant entries with their variant type, chained to the entry that actually holds the senses (walking through variants-of-variants when the immediate main entry has none). project.LexEntry.GetComplexFormComponents legally mixes ILexEntry and ILexSense elements, so each component is resolved with a ClassName check rather than an attribute guess. project.Variants.GetComponentLexemes always returns ILexEntry directly, so no such branching is needed on that path. Morph type names have no flexicon getter and are read via a raw ITsString cast (flexicon gap #583); import ITsString from SIL.LCModel.Core.KernelInterfaces, not SIL.LCModel.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "From Ron/FLExTrans Published Modules/ConvertTextToSTAMPformat.py (complex-forms and component gathering) and Utils.py (variant chain walking)",
+      "params": [
+        {
+          "default": "True",
+          "description": "report complex form entries and components",
+          "name": "SHOW_COMPLEX_FORMS"
+        },
+        {
+          "default": "True",
+          "description": "report variant entries and their chains",
+          "name": "SHOW_VARIANTS"
+        }
+      ],
+      "raw_lcm_lines": 3,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
       }
     },
     "count-entries-by-morphtype": {
@@ -3874,6 +4449,211 @@
         "verified_by": "sena3-live"
       }
     },
+    "delete-texts": {
+      "code": "# --- PARAMS ---\nTITLE_PATTERN = r\"^zzRecipeTest\"  # Regex pattern to match text titles; default is safe, matches texts starting with \"zzRecipeTest\"; use \".*\" with caution as it deletes ALL texts\nINCLUDE_SCRIPTURE = False  # If True, also delete Scripture book data if any exists\n# --- END PARAMS ---\nimport re\nimport unicodedata\n\nvern_ws = project.GetDefaultVernacularWSHandle()\n\ntexts_to_delete = []\n\n# Collect all texts matching the pattern\nfor text in project.Texts.GetAll():\n    # Get titles in both writing systems\n    vern_title = project.Texts.GetTitle(text, wsHandle=vern_ws) or \"\"\n    analysis_title = project.Texts.GetTitle(text) or \"\"  # defaults to analysis WS\n\n    # Normalize for consistent matching\n    vern_normalized = unicodedata.normalize(\"NFC\", vern_title)\n    analysis_normalized = unicodedata.normalize(\"NFC\", analysis_title)\n\n    # Check if title matches pattern\n    matches = (re.search(TITLE_PATTERN, vern_normalized) or\n               re.search(TITLE_PATTERN, analysis_normalized))\n\n    if matches:\n        texts_to_delete.append({\n            \"text\": text,\n            \"vern\": vern_normalized,\n            \"analysis\": analysis_normalized\n        })\n\n# Report what was found\nif not texts_to_delete:\n    report.Info(f\"No texts matched pattern '{TITLE_PATTERN}'\")\nelse:\n    report.Info(f\"Found {len(texts_to_delete)} text(s) matching pattern '{TITLE_PATTERN}':\")\n\n    # List the titles that will be deleted\n    for item in texts_to_delete:\n        title_display = f\"{item['vern']}\" if item['vern'] else f\"(unnamed)\"\n        if item['analysis'] and item['analysis'] != item['vern']:\n            title_display += f\"|{item['analysis']}\"\n        report.Info(f\"  {title_display}\")\n\n    # Perform deletion if allowed\n    if modifyAllowed:\n        deleted_count = 0\n        error_count = 0\n        for item in texts_to_delete:\n            try:\n                project.Texts.Delete(item[\"text\"])\n                deleted_count += 1\n                title = item['vern'] or \"(unnamed)\"\n                report.Info(f\"Deleted text '{title}'\")\n            except Exception as e:\n                error_count += 1\n                title = item['vern'] or \"(unnamed)\"\n                report.Error(\n                    f\"Failed to delete text '{title}': {e}\",\n                    project.BuildGotoURL(item[\"text\"])\n                )\n\n        report.Info(f\"SUMMARY: {deleted_count} deleted, {error_count} error(s)\")\n    else:\n        report.Info(f\"(dry run) would delete {len(texts_to_delete)} text(s)\")\n        report.Warning(\"This operation is destructive. Verify the pattern matches expected texts before running with write enabled.\")\n\n# Handle optional scripture cleanup\nif INCLUDE_SCRIPTURE:\n    try:\n        books = list(project.ScrBooks.GetAll())\n        if books:\n            if modifyAllowed:\n                deleted_books = 0\n                for book in books:\n                    try:\n                        project.ScrBooks.Delete(book)\n                        deleted_books += 1\n                    except Exception as e:\n                        report.Error(f\"Failed to delete Scripture book: {e}\")\n                report.Info(f\"Deleted {deleted_books} Scripture book(s)\")\n            else:\n                report.Info(f\"(dry run) would delete {len(books)} Scripture book(s)\")\n        else:\n            report.Info(\"No Scripture data found to delete\")\n    except Exception as e:\n        report.Warning(f\"Could not access Scripture data: {e}\")\n",
+      "code_terms": [
+        "all",
+        "append",
+        "books",
+        "build",
+        "default",
+        "delete",
+        "error",
+        "goto",
+        "handle",
+        "info",
+        "len",
+        "list",
+        "normalize",
+        "scr",
+        "search",
+        "texts",
+        "title",
+        "url",
+        "vernacular",
+        "warning",
+        "ws"
+      ],
+      "entities": [
+        "Text"
+      ],
+      "id": "delete-texts",
+      "intent": "Delete texts whose title matches a regex pattern, with optional scripture cleanup",
+      "match_terms": [
+        "delete texts",
+        "remove texts",
+        "remove scripture texts",
+        "clean up texts",
+        "bulk delete texts"
+      ],
+      "notes": "Selects texts for deletion by regex match against the title in both vernacular and analysis writing systems; dry run lists titles and counts without deleting. Default pattern is deliberately narrow (\"^zzRecipeTest\") -- widening TITLE_PATTERN to something like \".*\" would delete every text in the project, so change it with care. Scripture cleanup is optional (INCLUDE_SCRIPTURE=True) and only runs if Scripture books exist; it uses its own try/except so a failure there does not affect the text deletion above it. Uses a collect-then-delete two-pass approach so deletion never mutates the collection being iterated.",
+      "operations": [
+        "delete"
+      ],
+      "origin": "FLExTools module Remove_All_Texts.py (Matthew Lee) and RemoveScripture.py (Ron Lockwood)",
+      "params": [
+        {
+          "default": "r\"^zzRecipeTest\"",
+          "description": "Regex pattern to match text titles; default is safe, matches texts starting with \"zzRecipeTest\"; use \".*\" with caution as it deletes ALL texts",
+          "name": "TITLE_PATTERN"
+        },
+        {
+          "default": "False",
+          "description": "If True, also delete Scripture book data if any exists",
+          "name": "INCLUDE_SCRIPTURE"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
+    "delete-variant-entries-by-type": {
+      "code": "# --- PARAMS ---\nVARIANT_TYPE = \"Capitalized\"  # variant type name to match for deletion (e.g. \"Capitalized\")\n# --- END PARAMS ---\nimport unicodedata\n\n# Validate variant type before any write\nvt = project.Variants.FindType(VARIANT_TYPE)\nif vt is None:\n    names = [project.Variants.GetTypeName(t) for t in project.Variants.GetAllTypes()]\n    report.Error(f\"unknown variant type {VARIANT_TYPE!r}; available={names}\")\n    modifyAllowed = False\nelse:\n    report.Info(f\"Variant type '{VARIANT_TYPE}' validated.\")\n\n# First pass: collect entries to delete\nentries_to_delete = []\nfor entry in project.LexEntry.GetAll():\n    senses = project.LexEntry.GetSenses(entry)\n\n    # Only consider entries with no senses of their own (solely variants)\n    if senses:\n        continue\n\n    # Check if this is a variant entry with the matching type\n    variant_refs = project.Variants.GetAll(entry)\n    if not variant_refs:\n        continue\n\n    # Check the variant type by object identity against the already-resolved\n    # `vt` (from FindType), not by re-comparing display strings -- Unicode\n    # normalization can differ between GetTypeName's output and VARIANT_TYPE,\n    # so a raw string comparison could silently never match. GetType returns\n    # only the first type on a variant ref.\n    for var_ref in variant_refs:\n        var_type = project.Variants.GetType(var_ref)\n        if var_type and var_type == vt:\n            entries_to_delete.append(entry)\n            break\n\nreport.Info(f\"Found {len(entries_to_delete)} variant entry/entries with type '{VARIANT_TYPE}'\")\n\n# Second pass: delete collected entries\ndeleted_count = 0\nfor entry in entries_to_delete:\n    headword = project.LexEntry.GetHeadword(entry)\n    if not modifyAllowed:\n        report.Info(f\"(dry run) would delete variant entry '{headword}'\")\n    if modifyAllowed:\n        try:\n            project.LexEntry.Delete(entry)\n            deleted_count += 1\n            report.Info(f\"Deleted variant entry '{headword}'\")\n        except Exception as e:\n            report.Error(f\"Failed to delete variant entry '{headword}': {e}\")\n\nif modifyAllowed:\n    report.Info(f\"Deleted {deleted_count} variant entry/entries with type '{VARIANT_TYPE}'.\")\n",
+      "code_terms": [
+        "all",
+        "append",
+        "delete",
+        "entry",
+        "error",
+        "find",
+        "headword",
+        "info",
+        "len",
+        "lex",
+        "name",
+        "senses",
+        "type",
+        "types",
+        "variants"
+      ],
+      "entities": [
+        "LexEntry",
+        "LexEntryRef",
+        "VariantType"
+      ],
+      "id": "delete-variant-entries-by-type",
+      "intent": "Delete variant entries with a specified variant type (e.g. Capitalized variants)",
+      "match_terms": [
+        "delete variant entries",
+        "remove variant entries by type",
+        "delete capitalized variant entries",
+        "remove variants of a given type",
+        "clean up variant entries"
+      ],
+      "notes": "Deletes variant entries whose variant type matches the specified type. Only deletes entries that are solely a variant (no senses of their own); entries with senses are always left alone even if also linked as a variant. Uses a two-pass approach (collect, then delete) and validates the variant type with project.Variants.FindType before any write. The variant type is matched by object identity against the resolved type, not by comparing display strings, since Unicode normalization can differ between a stored type name and a literal typed in PARAMS. GetType returns only the first type on a variant ref; a ref with more than one type is not fully enumerated, matching the single-type behavior of the original FLExTools module this was based on.",
+      "operations": [
+        "delete"
+      ],
+      "origin": "FLExTools module RemoveCapitalVariantEntries.py (Ron Lockwood)",
+      "params": [
+        {
+          "default": "\"Capitalized\"",
+          "description": "variant type name to match for deletion (e.g. \"Capitalized\")",
+          "name": "VARIANT_TYPE"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
+    "ensure-morpheme-entries": {
+      "code": "# --- PARAMS ---\nMORPHEMES = [\n    # (form with affix markers, gloss, POS name or None)\n    (\"zzRecipeTestku-\", \"zzINF\", None),\n    (\"zzRecipeTestsoma\", \"zzread\", None),\n]\n# --- END PARAMS ---\nimport unicodedata\n\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\n\ndef split_markers(raw):\n    \"\"\"Return (bare form, morph type name) from a marked form.\"\"\"\n    form = nfc(raw).strip()\n    if form.startswith(\"-\") and form.endswith(\"-\") and len(form) > 2:\n        return form[1:-1], \"infix\"\n    if form.endswith(\"-\"):\n        return form[:-1], \"prefix\"\n    if form.startswith(\"-\"):\n        return form[1:], \"suffix\"\n    if form.startswith(\"=\"):\n        return form[1:], \"enclitic\"\n    if form.endswith(\"=\"):\n        return form[:-1], \"proclitic\"\n    return form, \"stem\"\n\n\n# Morph type name, object and stem-ness, keyed by lowercase name and by GUID.\nmt_by_name = {}\nmt_name_by_guid = {}\nfor name, mt, is_stem in project.LexEntry.GetAvailableMorphTypes():\n    mt_by_name[name.lower()] = (name, is_stem)\n    mt_name_by_guid[str(mt.Guid)] = name\n\nrows = []\nok = True\nfor raw, gloss, pos_name in MORPHEMES:\n    form, mt_name = split_markers(raw)\n    if not form:\n        report.Error(f\"{raw!r}: empty form after removing markers\")\n        ok = False\n        continue\n    if mt_name not in mt_by_name:\n        report.Error(f\"{raw!r}: morph type {mt_name!r} not in this project\")\n        ok = False\n        continue\n    pos = None\n    if pos_name:\n        pos = project.POS.Find(pos_name)\n        if pos is None:\n            report.Error(f\"{raw!r}: unknown POS {pos_name!r}\")\n            ok = False\n            continue\n    rows.append((raw, form, mt_by_name[mt_name], gloss, pos))\n\nif not ok:\n    report.Error(\"validation failed: fix PARAMS before any write\")\nelse:\n    # (lexeme form, morph type name) -> entries, for the existence check.\n    by_form = {}\n    for entry in project.LexEntry.GetAll():\n        mt = project.LexEntry.GetMorphType(entry)\n        mt_name = mt_name_by_guid.get(str(mt.Guid), \"?\") if mt is not None else \"?\"\n        lf = nfc(project.LexEntry.GetLexemeForm(entry))\n        by_form.setdefault(lf, []).append((mt_name, entry))\n\n    created = skipped = 0\n    for raw, form, (mt_name, is_stem), gloss, pos in rows:\n        same_form = by_form.get(form, [])\n        same_type = [e for n, e in same_form if n.lower() == mt_name.lower()]\n        if same_type:\n            glosses = [project.Senses.GetGloss(s) for e in same_type for s in project.LexEntry.GetSenses(e)]\n            report.Info(f\"exists {raw}: {len(same_type)} entr{'y' if len(same_type) == 1 else 'ies'}, glosses={glosses}\")\n            skipped += 1\n            continue\n        others = sorted(set(n for n, _e in same_form))\n        if others:\n            report.Warning(f\"{raw}: form exists only as {others}; creating a {mt_name}\")\n        if not modifyAllowed:\n            report.Info(f\"(dry run) would create {raw} as {mt_name} gloss={gloss!r} POS={project.POS.GetName(pos) if pos else None}\")\n            continue\n        if modifyAllowed:\n            entry = project.LexEntry.Create(form, mt_name, create_blank_sense=False)\n            sense = project.LexEntry.AddSense(entry, gloss)\n            if is_stem:\n                project.MSA.CreateStem(sense, pos)\n            else:\n                project.MSA.CreateUnclassifiedAffix(sense, pos)\n            by_form.setdefault(form, []).append((mt_name, entry))\n            created += 1\n            report.Info(f\"created {project.LexEntry.GetHeadword(entry)} as {mt_name} gloss={gloss!r} guid={project.LexEntry.GetGuid(entry)}\")\n    report.Info(f\"done: {created} created, {skipped} already present, {len(rows) - created - skipped} not created\")\n",
+      "code_terms": [
+        "affix",
+        "all",
+        "append",
+        "available",
+        "endswith",
+        "entry",
+        "error",
+        "find",
+        "form",
+        "get",
+        "gloss",
+        "grammatical",
+        "guid",
+        "headword",
+        "info",
+        "len",
+        "lex",
+        "lexeme",
+        "lower",
+        "markers",
+        "morph",
+        "msa",
+        "name",
+        "nfc",
+        "normalize",
+        "of",
+        "part",
+        "pos",
+        "sense",
+        "senses",
+        "set",
+        "setdefault",
+        "sorted",
+        "speech",
+        "split",
+        "startswith",
+        "stem",
+        "str",
+        "strip",
+        "type",
+        "types",
+        "unclassified",
+        "warning"
+      ],
+      "entities": [
+        "LexEntry",
+        "LexSense",
+        "MoMorphType",
+        "MoStemMsa",
+        "MoUnclassifiedAffixMsa",
+        "PartOfSpeech"
+      ],
+      "id": "ensure-morpheme-entries",
+      "intent": "Make sure each listed morpheme (stem or affix, written with affix markers) has a lexical entry, creating only the missing ones",
+      "match_terms": [
+        "create missing lexentries for morphemes",
+        "create missing entries for morphemes",
+        "ensure morphemes exist",
+        "add missing affixes and stems",
+        "find or create entry by morpheme",
+        "check which morphemes are missing from the lexicon",
+        "create entries for prefixes and suffixes"
+      ],
+      "notes": "Morph type comes from the affix markers in each form: \"ku-\" prefix, \"-a\" suffix, \"-ku-\" infix, \"=ni\" enclitic, \"ni=\" proclitic, bare form = stem. Markers are stripped before storing the lexeme form, as FLEx does. A morpheme already exists when some entry has the same NFC lexeme form and the same morph type; a same-form entry with another morph type is reported but does not count. Every morph type and POS name is validated before any write; an unknown name stops the whole run. New stems get a stem MSA and new affixes an unclassified affix MSA, with the POS when one is given. Inflectional affixes still need a template slot before HermitCrab can use them: follow up with the add-inflectional-affix recipe. Without modifyAllowed the run is a dry run that lists what it would create. Check parses afterwards with flextools_try_word, not in this script. Report through report.Info/Warning/Error only.",
+      "operations": [
+        "create",
+        "search",
+        "iterate"
+      ],
+      "origin": "FlexToolsMCP log triage 2026-09-30 (Claude-Swahili morpheme-creation workflow, #335)",
+      "params": [
+        {
+          "default": "[\n    # (form with affix markers, gloss, POS name or None)\n    (\"zzRecipeTestku-\", \"zzINF\", None),\n    (\"zzRecipeTestsoma\", \"zzread\", None),\n]",
+          "description": "(form with affix markers, gloss, POS name or None)",
+          "name": "MORPHEMES"
+        }
+      ],
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-live"
+      }
+    },
     "entry-parser-detail": {
       "code": "# --- PARAMS ---\nHEADWORDS = [\"lekerera\", \"pi-1\"]  # exact headwords, homograph number included (e.g. \"pi-1\")\n# --- END PARAMS ---\nimport unicodedata\n\nfrom SIL.LCModel import IMoStemMsa\n\nwanted = set(unicodedata.normalize(\"NFC\", h) for h in HEADWORDS)\nseen = set()\nfor entry in project.LexEntry.GetAll():\n    headword = unicodedata.normalize(\"NFC\", project.LexEntry.GetHeadword(entry))\n    if headword not in wanted:\n        continue\n    seen.add(headword)\n    mt = project.LexEntry.GetMorphType(entry)\n    report.Info(\n        f\"== {headword} mt={str(mt) if mt else None} cit={project.LexEntry.GetCitationForm(entry)}\",\n        project.BuildGotoURL(entry),\n    )\n    for i, allo in enumerate(project.Allomorphs.GetAll(entry)):\n        envs = [project.Environments.GetStringRepresentation(x) for x in project.Allomorphs.GetPhoneEnv(allo)]\n        amt = project.Allomorphs.GetMorphType(allo)\n        report.Info(\n            f\"   {'lf ' if i == 0 else 'alt'} form={project.Allomorphs.GetForm(allo)} \"\n            f\"abstract={project.Allomorphs.GetIsAbstract(allo)} env={envs} mt={str(amt) if amt else None}\"\n        )\n    for sense in project.LexEntry.GetSenses(entry):\n        report.Info(f\"   sense '{project.Senses.GetGloss(sense)}': POS={project.Senses.GetPartOfSpeech(sense) or None}\")\n    for msa in project.MSA.GetAll(entry):\n        pos = project.POS.GetName(msa.pos_main) if msa.pos_main else None\n        feats = project.InflectionFeatures.DescribeFeatStruc(msa)\n        if msa.is_stem_msa:\n            stem = IMoStemMsa(msa.as_stem_msa())  # flexicon gap: #573\n            icl = stem.InflectionClassRA  # flexicon gap: #573\n            restrict = [str(p) for p in stem.ProdRestrictRC]  # flexicon gap: #574\n            report.Info(f\"   stem MSA: POS={pos} infl class={str(icl) if icl else None} feats={feats or None} exception feats={restrict}\")\n        elif msa.is_infl_aff_msa:\n            slots = [project.POS.GetSlotName(x) for x in project.MSA.GetInflAffMsaSlots(msa)]\n            report.Info(f\"   infl-affix MSA: POS={pos} slots={slots} feats={feats or None}\")\n        elif msa.is_deriv_aff_msa:\n            frm = project.POS.GetName(msa.pos_from) if msa.pos_from else None\n            to = project.POS.GetName(msa.pos_to) if msa.pos_to else None\n            report.Info(f\"   deriv-affix MSA: {frm} -> {to}\")\n        else:\n            report.Info(f\"   unclassified-affix MSA: POS={pos}\")\nfor headword in sorted(wanted - seen):\n    report.Warning(f\"no entry with headword {headword}\")\n",
       "code_terms": [
@@ -3969,6 +4749,79 @@
         }
       ],
       "raw_lcm_lines": 3,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "feature-system-inventory": {
+      "code": "# --- PARAMS ---\nPOS_FILTER = \"\"  # POS name filter; \"\" = all. Use a specific POS name to limit output (e.g., \"Verb\")\n# --- END PARAMS ---\nimport unicodedata\nfrom SIL.LCModel.Core.KernelInterfaces import ITsString\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\nws_handle = project.GetDefaultAnalysisWSHandle()\n\ndef get_name(obj):\n    try:\n        return nfc(ITsString(obj.Name.get_String(ws_handle)).Text) or None  # raw-lcm: no generic Name getter (flexicon gap #577)\n    except Exception:\n        return None\n\ndef get_abbreviation(obj):\n    try:\n        return nfc(ITsString(obj.Abbreviation.get_String(ws_handle)).Text) or None  # raw-lcm: no generic Abbreviation getter (flexicon gap #577)\n    except Exception:\n        return None\n\n# First, collect all closed features with their values\nreport.Info(\"=== Closed Features ===\")\nfeature_list = []\nfor feature in project.InflectionFeatures.FeatureGetAll():\n    if feature.ClassName != \"FsClosedFeature\":  # raw-lcm: closed vs complex feature discrimination (flexicon gap #577)\n        continue\n    feat_name = get_name(feature) or str(feature)\n    feature_list.append(feat_name)\n\n    value_strs = []\n    for val in project.InflectionFeatures.FeatureGetValues(feature):\n        val_abbr = get_abbreviation(val)\n        if val_abbr:\n            value_strs.append(val_abbr)\n\n    if value_strs:\n        report.Info(f\"  {feat_name}: {', '.join(value_strs)}\")\n    else:\n        report.Warning(f\"  {feat_name}: (no values)\")\n\n# Second, list inflectable features per POS\nreport.Info(\"\\n=== Inflectable Features by POS ===\")\nfor pos in project.POS.GetAll():\n    pos_name = project.POS.GetName(pos)\n\n    if POS_FILTER and not nfc(pos_name).startswith(nfc(POS_FILTER)):\n        continue\n\n    # Get inflectable features for this POS (no flexicon wrapper: flexicon gap #577)\n    infl_feature_names = []\n    for infl_feat in pos.InflectableFeatsRC:  # raw-lcm: InflectableFeatsRC not wrapped (flexicon gap #577)\n        feat_name = get_name(infl_feat) or str(infl_feat)\n        infl_feature_names.append(feat_name)\n\n    if infl_feature_names:\n        report.Info(f\"  {pos_name}: {', '.join(infl_feature_names)}\")\n    else:\n        report.Info(f\"  {pos_name}: (no inflectable features)\")\n\nreport.Info(f\"\\nTotal closed features: {len(feature_list)}\")\n",
+      "code_terms": [
+        "abbreviation",
+        "all",
+        "analysis",
+        "append",
+        "class",
+        "default",
+        "feats",
+        "feature",
+        "features",
+        "get",
+        "handle",
+        "i",
+        "inflectable",
+        "inflection",
+        "info",
+        "join",
+        "len",
+        "name",
+        "nfc",
+        "normalize",
+        "of",
+        "part",
+        "pos",
+        "speech",
+        "startswith",
+        "str",
+        "string",
+        "text",
+        "ts",
+        "values",
+        "warning",
+        "ws"
+      ],
+      "entities": [
+        "IFsClosedFeature",
+        "IFsComplexFeature",
+        "IFsSymFeatVal",
+        "IPartOfSpeech"
+      ],
+      "id": "feature-system-inventory",
+      "intent": "List closed features with their values, and per POS list which inflectable features it takes",
+      "match_terms": [
+        "feature inventory",
+        "grammar features",
+        "inflectable features by POS",
+        "feature values",
+        "feature system",
+        "which features inflect this POS"
+      ],
+      "notes": "Lists all closed features with their possible values (name plus abbreviation), then, per POS (filtered by POS_FILTER prefix match), which features are inflectable for that category. project.InflectionFeatures.FeatureGetAll/FeatureGetValues are real wrappers, but there is no generic Name/Abbreviation getter for a feature or value, no closed-vs-complex feature discriminator, and no wrapper for a POS's inflectable-features collection -- all three go through raw LCM access (ClassName check, InflectableFeatsRC, and a direct ITsString read), covering flexicon gap #577.",
+      "operations": [
+        "read"
+      ],
+      "origin": "FLExTools modules RuleAssistant.py (getFeatureData) and Utils.py (getAllInflectableFeatures), ExtractBilingualLexicon.py",
+      "params": [
+        {
+          "default": "\"\"",
+          "description": "POS name filter; \"\" = all. Use a specific POS name to limit output (e.g., \"Verb\")",
+          "name": "POS_FILTER"
+        }
+      ],
+      "raw_lcm_lines": 4,
       "requires_write": false,
       "source": "curated",
       "takes_params": true,
@@ -4078,6 +4931,84 @@
       "verified_against": {
         "flexicon": "4.11.0",
         "verified_by": "eval-corpus"
+      }
+    },
+    "find-overpowered-affixes": {
+      "code": "# --- PARAMS ---\n# (No parameters - checks all grammar)\n# --- END PARAMS ---\n\ndef is_null_form(form):\n    \"\"\"Check if form is a null affix.\"\"\"\n    return form in (\"[^0]\", \"∅\")\n\n\n# Check for duplicate affixes in templates\nreport.Info(\"Checking for duplicate affixes in templates...\")\nfound_duplicates = False\n\nfor pos in project.POS.GetAll():\n    pos_name = project.POS.GetName(pos)\n    for template in project.MorphRules.GetAllAffixTemplatesForPOS(pos):\n        template_name = template.name\n        seen_affixes = {}\n\n        # Check all slots\n        for slot in template.prefix_slots:\n            for affix_msa in slot.affixes:\n                try:\n                    entry = affix_msa.OwnerOfClass(5002)  # flexicon gap: #581 (MSA -> owning entry has no wrapper)\n                except Exception:\n                    continue\n                if entry is None:\n                    continue\n                entry_hvo = entry.Hvo\n                if entry_hvo in seen_affixes:\n                    affix_name = seen_affixes[entry_hvo]\n                    report.Warning(f\"Duplicate affix '{affix_name}' in template '{template_name}' in {pos_name}\")\n                    found_duplicates = True\n                else:\n                    seen_affixes[entry_hvo] = project.LexEntry.GetHeadword(entry)\n\n\n# Check for null affixes in optional slots\nreport.Info(\"Checking for null affixes in optional slots...\")\nfound_nulls = False\n\nfor pos in project.POS.GetAll():\n    pos_name = project.POS.GetName(pos)\n    for template in project.MorphRules.GetAllAffixTemplatesForPOS(pos):\n        template_name = template.name\n\n        for slot in template.prefix_slots + template.suffix_slots:\n            if slot.optional:\n                for affix_msa in slot.affixes:\n                    try:\n                        entry = affix_msa.OwnerOfClass(5002)  # flexicon gap: #581 (MSA -> owning entry has no wrapper)\n                    except Exception:\n                        continue\n                    if entry is None:\n                        continue\n                    for allo in project.Allomorphs.GetAll(entry):\n                        form = project.Allomorphs.GetForm(allo)\n                        if is_null_form(form):\n                            report.Warning(\n                                f\"Null allomorph '{form}' in optional slot '{slot.name}' in template '{template_name}'\",\n                                project.BuildGotoURL(entry)\n                            )\n                            found_nulls = True\n\n\n# Check senses without grammatical category\nreport.Info(\"Checking for senses without grammatical category...\")\nfound_uncategorized = False\n\nfor entry in project.LexEntry.GetAll():\n    mt = project.LexEntry.GetMorphType(entry)\n    if mt and \"stem\" in str(mt).lower():\n        entry_form = project.LexEntry.GetLexemeForm(entry)\n        for sense in project.LexEntry.GetSenses(entry):\n            gloss = project.Senses.GetGloss(sense)\n            pos = project.Senses.GetPartOfSpeech(sense)\n            if pos is None:\n                report.Warning(\n                    f\"Stem sense '{gloss}' in '{entry_form}' has no grammatical category\",\n                    project.BuildGotoURL(sense)\n                )\n                found_uncategorized = True\n\n\nif not found_duplicates:\n    report.Info(\"No duplicate affixes found in templates.\")\nif not found_nulls:\n    report.Info(\"No null affixes in optional slots found.\")\nif not found_uncategorized:\n    report.Info(\"All stem senses have grammatical categories.\")\n\nreport.Info(\"Complete!\")\n",
+      "code_terms": [
+        "affix",
+        "affixes",
+        "all",
+        "allomorphs",
+        "build",
+        "class",
+        "entry",
+        "for",
+        "form",
+        "gloss",
+        "goto",
+        "headword",
+        "hvo",
+        "info",
+        "is",
+        "lex",
+        "lexeme",
+        "lower",
+        "morph",
+        "name",
+        "null",
+        "of",
+        "optional",
+        "owner",
+        "part",
+        "pos",
+        "prefix",
+        "rules",
+        "senses",
+        "slots",
+        "speech",
+        "str",
+        "suffix",
+        "templates",
+        "type",
+        "url",
+        "warning"
+      ],
+      "entities": [
+        "AffixSlot",
+        "AffixTemplate",
+        "LexEntry",
+        "LexSense",
+        "MoDerivAffMsa",
+        "MoForm",
+        "MoInflAffMsa",
+        "MoStemMsa",
+        "PartOfSpeech"
+      ],
+      "id": "find-overpowered-affixes",
+      "intent": "Identify problematic affixes and stems in grammar: duplicate affixes in templates, null affixes in optional slots, senses without grammatical category",
+      "match_terms": [
+        "grammar debugging",
+        "overpowered affixes",
+        "find problematic affixes",
+        "null affix",
+        "duplicate affix in template",
+        "parser ambiguity",
+        "stem with no category"
+      ],
+      "notes": "Read-only grammar audit for three issues: the same affix entry reused across two or more prefix slots of the same template, null-form allomorphs ('∅' or '[^0]') sitting in an optional slot, and stem senses with no grammatical category (POS). Duplicate-affix detection considers all of a template's prefix slots together, so legitimate multi-slot designs (e.g. parallel agreement-prefix tracks) are still reported -- treat a warning as \"worth reviewing,\" not automatically a data error. Finding an affix's owning LexEntry from its MSA needs raw LCM access (affix_msa.OwnerOfClass(5002)); slot.affixes hands back unwrapped LCM objects with no flexicon wrapper (flexicon gap #581). Advanced constraint checks (inflection classes, features) are out of scope and would need further raw LCM access.",
+      "operations": [
+        "read"
+      ],
+      "origin": "FLExTools module Overpowered_Affixes.py (Matthew Lee)",
+      "params": [],
+      "raw_lcm_lines": 0,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": false,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
       }
     },
     "find-senses-with-multiple-glosses-in-ws": {
@@ -4208,6 +5139,91 @@
       "verified_against": {
         "flexicon": "4.11.0",
         "verified_by": "preflight"
+      }
+    },
+    "lemmas-by-pos-and-feature": {
+      "code": "# --- PARAMS ---\nPOS_NAME = \"Noun\"  # exact part of speech name (analysis language)\nFEATURE_VALUE = \"Sg\"  # feature value abbreviation to match (e.g., \"Sg\", \"Fut\", \"3SG\")\n# --- END PARAMS ---\nimport unicodedata\n\n\ndef nfc(text):\n    \"\"\"Normalize text to NFC form for comparison.\"\"\"\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\n\n# Find the target POS\ntarget_pos = None\nfor pos in project.POS.GetAll():\n    if nfc(project.POS.GetName(pos)) == nfc(POS_NAME):\n        target_pos = pos\n        break\n\nif not target_pos:\n    report.Error(f\"Part of speech '{POS_NAME}' not found\")\nelse:\n    stems = []\n    affixes = []\n\n    # Collect matching stems and affixes from all entries\n    for entry in project.LexEntry.GetAll():\n        # Skip entries without a lexeme form (first item from GetAll is the\n        # lexeme form; AllomorphOperations has no dedicated GetLexemeForm)\n        allo = next(iter(project.Allomorphs.GetAll(entry)), None)\n        if not allo:\n            continue\n\n        # Skip abstract forms\n        if project.Allomorphs.GetIsAbstract(allo):\n            continue\n\n        # Iterate through senses\n        entry_msas = project.MSA.GetAll(entry)\n        for sense_idx, sense in enumerate(project.LexEntry.GetSenses(entry)):\n            # Get MSA for this sense (GetMSA returns the raw, unwrapped LCM\n            # object; find its wrapper counterpart by Hvo-based equality)\n            raw_msa = project.Senses.GetMSA(sense)\n            if not raw_msa:\n                continue\n            msa = next((m for m in entry_msas if m == raw_msa), None)\n            if not msa:\n                continue\n\n            # Check POS match\n            pos_name = None\n            if msa.is_stem_msa:\n                pos_name = project.POS.GetName(msa.pos_main) if msa.pos_main else None\n            elif msa.is_infl_aff_msa:\n                pos_name = project.POS.GetName(msa.pos_main) if msa.pos_main else None\n\n            if not pos_name or nfc(pos_name) != nfc(POS_NAME):\n                continue\n\n            # Get feature structure description (display string)\n            feat_desc = project.InflectionFeatures.DescribeFeatStruc(msa)\n            if not feat_desc:\n                continue\n\n            # Check if feature value abbreviation is in the description\n            if FEATURE_VALUE not in feat_desc:\n                continue\n\n            # Match found - collect stem or affix\n            if msa.is_stem_msa:\n                headword = project.LexEntry.GetHeadword(entry)\n                stems.append(f\"{headword}.{sense_idx + 1}\")\n            elif msa.is_infl_aff_msa:\n                gloss = project.Senses.GetGloss(sense)\n                if gloss:\n                    affixes.append(gloss)\n\n    # Report results\n    report.Info(f\"POS: {POS_NAME}, Feature value: {FEATURE_VALUE}\")\n    report.Info(\"\")\n\n    report.Info(f\"STEMS ({len(stems)} found):\")\n    if stems:\n        for headword in sorted(stems):\n            report.Info(f\"  {headword}\")\n    else:\n        report.Info(\"  (none)\")\n\n    report.Info(\"\")\n    report.Info(f\"AFFIXES ({len(affixes)} found):\")\n    if affixes:\n        for gloss in sorted(affixes):\n            report.Info(f\"  {gloss}\")\n    else:\n        report.Info(\"  (none)\")\n",
+      "code_terms": [
+        "abstract",
+        "aff",
+        "all",
+        "allomorphs",
+        "append",
+        "describe",
+        "entry",
+        "enumerate",
+        "error",
+        "feat",
+        "feature",
+        "features",
+        "gloss",
+        "grammatical",
+        "headword",
+        "infl",
+        "inflection",
+        "inflectional",
+        "info",
+        "is",
+        "iter",
+        "len",
+        "lex",
+        "main",
+        "msa",
+        "name",
+        "next",
+        "nfc",
+        "normalize",
+        "of",
+        "part",
+        "pos",
+        "senses",
+        "sorted",
+        "speech",
+        "stem",
+        "struc"
+      ],
+      "entities": [
+        "InflectionalFeature",
+        "LexEntry",
+        "MoInflAffMsa",
+        "MoStemMsa",
+        "PartOfSpeech"
+      ],
+      "id": "lemmas-by-pos-and-feature",
+      "intent": "Find stems and affixes of a part of speech that carry a given inflectional feature value",
+      "match_terms": [
+        "feature value inventory",
+        "stems with feature",
+        "affixes with feature",
+        "which entries have this feature",
+        "feature coverage",
+        "stems and affixes by feature"
+      ],
+      "notes": "Collects stems (headword plus sense number) and affix glosses that match both a grammar category (POS name, exact match) and a feature value abbreviation. The feature check uses project.InflectionFeatures.DescribeFeatStruc's display string and looks for the abbreviation as a substring, which is simpler than parsing the feature structure recursively but can over-match if the abbreviation also appears as a substring of an unrelated value. Abstract lexeme forms are skipped. project.Senses.GetMSA returns an unwrapped MSA object; its wrapper (needed for .is_stem_msa/.is_infl_aff_msa/.pos_main) is found by Hvo-equality against project.MSA.GetAll(entry), the same technique used in affix-catalog.py.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "FLExTools module Utils.py (~1108-1163, ~1165-1222) (Ron Lockwood)",
+      "params": [
+        {
+          "default": "\"Noun\"",
+          "description": "exact part of speech name (analysis language)",
+          "name": "POS_NAME"
+        },
+        {
+          "default": "\"Sg\"",
+          "description": "feature value abbreviation to match (e.g., \"Sg\", \"Fut\", \"3SG\")",
+          "name": "FEATURE_VALUE"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
       }
     },
     "lexicon-form-lookup": {
@@ -4460,6 +5476,284 @@
         "verified_by": "eval-corpus"
       }
     },
+    "lowercase-capitalized-wordforms": {
+      "code": "# --- PARAMS ---\n# --- END PARAMS ---\nimport unicodedata\nfrom flexicon import ApprovalStatusTypes\n\ndef norm(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\ncount = 0\nto_clear = []\n\nfor wf in project.Wordforms.GetAll():\n    form = project.Wordforms.GetForm(wf)\n    if not form or not form[0].isupper():\n        continue\n\n    analyses = project.Wordforms.GetAnalyses(wf)\n\n    if len(analyses) == 0:\n        # No analyses: safe to lowercase immediately\n        if modifyAllowed:\n            project.Wordforms.SetForm(wf, form.lower())\n            count += 1\n            report.Info(f\"no analyses, lowercased {form} to {form.lower()}\")\n        else:\n            report.Info(f\"(dry run) would lowercase {form} (no analyses)\")\n    else:\n        # Check if any analysis has parser failure (parser disapproved)\n        parser_failed = False\n        for analysis in analyses:\n            agent_eval = project.WfiAnalyses.GetAgentEvaluation(analysis)\n            if agent_eval is not None and not agent_eval.Approves:  # flexicon gap: #582 (Approves has no wrapper getter)\n                parser_failed = True\n                break\n\n        if parser_failed:\n            # Collect human evaluations to clear from this wordform's analyses\n            for analysis in analyses:\n                if project.WfiAnalyses.GetHumanEvaluation(analysis) is not None:\n                    to_clear.append((wf, form, analysis))\n\n            # Lowercase the wordform\n            if modifyAllowed:\n                project.Wordforms.SetForm(wf, form.lower())\n                count += 1\n                report.Info(f\"failed user analysis, lowercased {form} to {form.lower()}\")\n            else:\n                report.Info(f\"(dry run) would lowercase {form} (failed parser analysis)\")\n\n# Clear collected human evaluations (second pass to avoid iterator issues).\n# SetApprovalStatus(..., UNAPPROVED) removes the evaluation entirely.\ncleared_count = 0\nfor wf, form, analysis in to_clear:\n    if modifyAllowed:\n        try:\n            project.WfiAnalyses.SetApprovalStatus(analysis, ApprovalStatusTypes.UNAPPROVED)\n            cleared_count += 1\n            report.Info(f\"cleared human evaluation for {form}\")\n        except Exception as e:\n            report.Error(f\"failed to clear evaluation: {e}\")\n    else:\n        report.Info(f\"(dry run) would clear human evaluation for {form}\")\n\nif not modifyAllowed:\n    report.Warning(\"Run with write_enabled=True to actually make changes\")\n\nreport.Info(f\"{count} capitalized wordforms changed to lowercase\")\nif to_clear:\n    report.Info(f\"{cleared_count if modifyAllowed else len(to_clear)} human evaluations {'cleared' if modifyAllowed else 'would be cleared'}\")\n",
+      "code_terms": [
+        "agent",
+        "all",
+        "analyses",
+        "append",
+        "approval",
+        "approves",
+        "error",
+        "evaluation",
+        "form",
+        "human",
+        "info",
+        "isupper",
+        "len",
+        "lower",
+        "normalize",
+        "status",
+        "unapproved",
+        "warning",
+        "wfi",
+        "wordform",
+        "wordforms"
+      ],
+      "entities": [
+        "WfiAnalysis",
+        "WfiWordform"
+      ],
+      "id": "lowercase-capitalized-wordforms",
+      "intent": "Rename capitalized wordforms to lowercase, removing user parses when the parser failed",
+      "match_terms": [
+        "lowercase wordforms",
+        "rename capitalized forms",
+        "remove failed parses",
+        "capitalize variant entry",
+        "wordform naming"
+      ],
+      "notes": "Only touches wordforms whose first character is uppercase. A capitalized wordform with no analyses is lowercased immediately. One with analyses is only lowercased if the parser itself disapproved at least one analysis (\"failed by parser\"); in that case, any human evaluation on that wordform's analyses is also cleared via SetApprovalStatus(..., UNAPPROVED), which removes the human evaluation record without deleting the analysis. Wordforms whose analyses were not parser-rejected are left untouched. Reading an evaluation's .Approves flag needs raw access on the ICmAgentEvaluation object returned by GetAgentEvaluation/GetHumanEvaluation, since it is a plain property with no flexicon wrapper (flexicon gap #582).",
+      "operations": [
+        "update"
+      ],
+      "origin": "FLExTools module RenameWordformsToLower.py (Ron Lockwood)",
+      "params": [],
+      "raw_lcm_lines": 0,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": false,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
+    "morpheme-character-check": {
+      "code": "# --- PARAMS ---\nDISALLOWED_CHARS = \" .<>\"  # string of characters to forbid in headwords/glosses; empty = no check\nCHECK_HEADWORDS = True  # whether to validate headwords\nCHECK_GLOSS_AFFIXES = True  # whether to validate affix glosses in senses\n# --- END PARAMS ---\n\n\ndef has_disallowed(text, disallowed_set):\n    \"\"\"Check if text contains any disallowed characters.\"\"\"\n    if not disallowed_set:\n        return False\n    return any(c in disallowed_set for c in text)\n\n\nif not DISALLOWED_CHARS:\n    report.Info(\"DISALLOWED_CHARS is empty; skipping character validation\")\nelse:\n    disallowed_set = set(DISALLOWED_CHARS)\n    issues_found = 0\n\n    for entry in project.LexEntry.GetAll():\n        headword = project.LexEntry.GetHeadword(entry) or \"\"\n\n        # Check headword\n        if CHECK_HEADWORDS and has_disallowed(headword, disallowed_set):\n            bad_chars = \"\".join(sorted(set(c for c in headword if c in disallowed_set)))\n            report.Warning(\n                f'Headword \"{headword}\" contains disallowed characters: {bad_chars}',\n                project.BuildGotoURL(entry),\n            )\n            issues_found += 1\n\n        # Check affix glosses in senses\n        if CHECK_GLOSS_AFFIXES:\n            for sense in project.LexEntry.GetSenses(entry):\n                gloss = project.Senses.GetGloss(sense) or \"\"\n                if gloss and has_disallowed(gloss, disallowed_set):\n                    bad_chars = \"\".join(sorted(set(c for c in gloss if c in disallowed_set)))\n                    report.Warning(\n                        f'Affix gloss \"{gloss}\" in sense contains disallowed characters: {bad_chars}',\n                        project.BuildGotoURL(entry),\n                    )\n                    issues_found += 1\n\n    report.Info(f\"Found {issues_found} entries/senses with disallowed characters\")\n",
+      "code_terms": [
+        "all",
+        "any",
+        "build",
+        "disallowed",
+        "entry",
+        "gloss",
+        "goto",
+        "has",
+        "headword",
+        "info",
+        "join",
+        "lex",
+        "senses",
+        "set",
+        "sorted",
+        "url",
+        "warning"
+      ],
+      "entities": [
+        "LexEntry",
+        "LexSense",
+        "MoForm"
+      ],
+      "id": "morpheme-character-check",
+      "intent": "Check headwords and affix glosses for disallowed characters such as spaces, periods or angle brackets",
+      "match_terms": [
+        "invalid morpheme characters",
+        "character validation",
+        "disallowed lemma characters",
+        "check affix glosses for invalid chars",
+        "morpheme character check"
+      ],
+      "notes": "Validates headwords and affix glosses against a set of disallowed characters, useful for catching data-entry errors that would break parser morpheme segmentation or interlinear/export gloss alignment. Default DISALLOWED_CHARS is space, period, and angle brackets: space splits what should be one morpheme into two tokens, \".\" collides with the Leipzig gloss-part separator, and \"<\"/\">\" collide with feature-notation brackets used in some export/rule formats. Set DISALLOWED_CHARS to \"\" to skip validation entirely. Multi-word lexemes (e.g. idioms) will legitimately trip the space check on CHECK_HEADWORDS; narrow DISALLOWED_CHARS (e.g. \"<>\") or set CHECK_HEADWORDS=False if that noise is unwanted.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "FLExTools module InterlinData.py (Ron Lockwood)",
+      "params": [
+        {
+          "default": "\" .<>\"",
+          "description": "string of characters to forbid in headwords/glosses; empty = no check",
+          "name": "DISALLOWED_CHARS"
+        },
+        {
+          "default": "True",
+          "description": "whether to validate headwords",
+          "name": "CHECK_HEADWORDS"
+        },
+        {
+          "default": "True",
+          "description": "whether to validate affix glosses in senses",
+          "name": "CHECK_GLOSS_AFFIXES"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "natural-classes": {
+      "code": "# --- PARAMS ---\n# No tunable parameters; lists all natural classes in the project\n# --- END PARAMS ---\nfrom SIL.LCModel import IFsClosedValue, IPhCode\nfrom SIL.LCModel.Core.KernelInterfaces import ITsString\n\ndef describe_feature_based(nc):\n    \"\"\"Describe a feature-based natural class's feature specs (flexicon gap #578).\"\"\"\n    fs = project.NaturalClasses.GetFeatures(nc)\n    if not fs:\n        return []\n    labels = []\n    for spec in fs.FeatureSpecsOC:  # raw-lcm: no describe-helper for phonological feature structs (flexicon gap #578)\n        try:\n            spec_value = IFsClosedValue(spec)  # raw-lcm: flexicon gap #578\n            value_obj = spec_value.ValueRA  # raw-lcm: flexicon gap #578\n            if value_obj:\n                abbr = project.PhonFeatures.GetAbbreviation(value_obj)\n                if abbr:\n                    labels.append(abbr)\n        except Exception:\n            pass\n    return labels\n\nfor nat_class in project.NaturalClasses.GetAll():\n    class_name = project.NaturalClasses.GetName(nat_class)\n    if not class_name:\n        continue\n\n    class_type = project.NaturalClasses.GetType(nat_class)\n\n    if class_type == \"features\":\n        feature_labels = describe_feature_based(nat_class)\n        if feature_labels:\n            report.Info(f\"Natural class '{class_name}' (feature-based): [{', '.join(feature_labels)}]\")\n        else:\n            report.Warning(f\"Natural class '{class_name}' (feature-based) has no feature specs\")\n        continue\n\n    # Segment-based (or unrecognized fallback): list member phonemes\n    phonemes = project.NaturalClasses.GetPhonemes(nat_class)\n\n    if phonemes:\n        grapheme_list = []\n        ws_handle = project.GetDefaultVernacularWSHandle()\n        for phoneme in phonemes:\n            codes = project.Phonemes.GetCodes(phoneme)\n            for code in codes:\n                if ws_handle:\n                    repr_str = ITsString(IPhCode(code).Representation.get_String(ws_handle)).Text  # flexicon gap: #578 (PhCode.Representation)\n                    if repr_str:\n                        grapheme_list.append(repr_str)\n\n        if grapheme_list:\n            report.Info(f\"Natural class '{class_name}': {' '.join(grapheme_list)}\")\n        else:\n            report.Warning(f\"Natural class '{class_name}' has no grapheme codes\")\n    else:\n        report.Warning(f\"Natural class '{class_name}' has no phonemes\")\n",
+      "code_terms": [
+        "abbreviation",
+        "all",
+        "append",
+        "based",
+        "classes",
+        "closed",
+        "code",
+        "codes",
+        "default",
+        "describe",
+        "feature",
+        "features",
+        "fs",
+        "get",
+        "handle",
+        "i",
+        "info",
+        "join",
+        "name",
+        "natural",
+        "ph",
+        "phon",
+        "phonemes",
+        "phonological",
+        "representation",
+        "specs",
+        "string",
+        "text",
+        "ts",
+        "type",
+        "value",
+        "vernacular",
+        "warning",
+        "ws"
+      ],
+      "entities": [
+        "IPhCode",
+        "IPhNaturalClass",
+        "IPhPhoneme"
+      ],
+      "id": "natural-classes",
+      "intent": "List each natural class with its member phonemes and their grapheme representations",
+      "match_terms": [
+        "natural classes",
+        "list natural classes",
+        "phoneme classes",
+        "phonology",
+        "natural class members",
+        "segment inventory in class"
+      ],
+      "notes": "Lists every natural class in the project: segment-based classes (IPhNCSegments) with their member phonemes and grapheme codes, feature-based classes (IPhNCFeatures) with their feature abbreviations. project.NaturalClasses.GetType() returns \"segments\" or \"features\" (or a ClassName fallback), and that value -- not a string like \"PhNCFeatures\" -- is what selects which listing path a class takes. There is no describe-helper for phonological feature structs (unlike the morphosyntactic DescribeFeatStruc), so feature-based specs and grapheme representations are read via raw LCM access (flexicon gap #578).",
+      "operations": [
+        "read"
+      ],
+      "origin": "FLExTools module DoStampSynthesis.py (Ron Lockwood, output_nat_class_info function ~723-753)",
+      "params": [],
+      "raw_lcm_lines": 4,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": false,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "overpowered-allomorphs": {
+      "code": "# --- PARAMS ---\nREPORT_ABSTRACT_MISMATCH = True  # report abstract lexeme with non-abstract allomorphs\nREPORT_EMPTY = True  # report empty allomorphs and lexeme forms\nREPORT_FREE_VARIATION = True  # report unconstrained allomorphs in free variation\nREMOVE_HOMOPHONOUS_DUPLICATES = False  # remove homophonous duplicates with no environments (requires write_enabled)\n# --- END PARAMS ---\nimport unicodedata\nfrom SIL.LCModel import IMoStemAllomorph, IMoAffixAllomorph\n\nto_delete = []\n\nfor entry in project.LexEntry.GetAll():\n    entry_allos = list(project.Allomorphs.GetAll(entry))\n    lf_obj = entry_allos[0] if entry_allos else None\n    lf = project.Allomorphs.GetForm(lf_obj) if lf_obj else \"\"\n    lf_norm = unicodedata.normalize(\"NFC\", lf or \"\")\n\n    # Check for empty lexeme form\n    if REPORT_EMPTY and (not lf_obj or not lf):\n        report.Warning(f'Entry has an empty lexeme form', project.BuildGotoURL(entry))\n        continue\n\n    # Check for abstract lexeme form with non-abstract allomorphs\n    lf_abstract = project.Allomorphs.GetIsAbstract(lf_obj)\n    if REPORT_ABSTRACT_MISMATCH and lf_abstract:\n        for allo in entry_allos[1:]:\n            if not project.Allomorphs.GetIsAbstract(allo):\n                alt_form = project.Allomorphs.GetForm(allo)\n                report.Warning(\n                    f'\"{lf}\" has abstract lexeme form with non-abstract allomorph \"{alt_form}\". Lexeme form may never surface.',\n                    project.BuildGotoURL(entry),\n                )\n\n    # Check each alternate allomorph (NOT the lexeme form itself -- comparing\n    # the lexeme form against itself would trivially count as a \"homophonous\n    # duplicate with no environment\" on every single-allomorph entry; the\n    # original FLExTools source iterates entry.AlternateFormsOS, never the\n    # lexeme form, for exactly this reason)\n    for allo in entry_allos[1:]:\n        alt_form = unicodedata.normalize(\"NFC\", project.Allomorphs.GetForm(allo) or \"\")\n\n        # Check for empty allomorph\n        if REPORT_EMPTY and (not alt_form or alt_form == \"\"):\n            report.Warning(f'\"{lf}\" has an empty allomorph', project.BuildGotoURL(entry))\n            continue\n\n        has_environment = len(project.Allomorphs.GetPhoneEnv(allo)) > 0\n        has_inflection_class = False\n        has_features = False\n        has_stem_name = False\n\n        # Check for stem name on stem allomorphs (flexicon gap #580)\n        try:\n            stem_allo = IMoStemAllomorph(allo.lcm_object)  # raw-lcm: stem name not wrapped (flexicon gap #580)\n            if stem_allo.StemNameRA is not None:\n                has_stem_name = True\n        except Exception:\n            pass\n\n        # Check for inflection classes and required morphosyntactic features\n        # on affix allomorphs -- InflectionClassesRC/MsEnvFeaturesOA live on\n        # IMoAffixAllomorph, not on stem allomorphs (flexicon gap #580/#581)\n        try:\n            affix_allo = IMoAffixAllomorph(allo.lcm_object)  # raw-lcm: inflection classes not wrapped (flexicon gap #580)\n            if affix_allo.InflectionClassesRC:  # raw-lcm: flexicon gap #580\n                has_inflection_class = len(affix_allo.InflectionClassesRC) > 0\n            if affix_allo.MsEnvFeaturesOA:  # raw-lcm: required features not wrapped (flexicon gap #581)\n                has_features = True\n        except Exception:\n            pass\n\n        # For allomorphs that differ from lexeme form\n        if alt_form != lf_norm:\n            if REPORT_FREE_VARIATION and not has_environment and not has_inflection_class and not has_features and not has_stem_name:\n                report.Info(\n                    f'\"{lf}\" has unconstrained allomorph \"{alt_form}\" (no environments, features, stem names, or classes). Free variation.',\n                    project.BuildGotoURL(entry),\n                )\n\n        # For homophonous allomorphs (same form as lexeme)\n        elif alt_form == lf_norm:\n            if not has_environment:\n                report.Warning(\n                    f'\"{lf}\" has homophonous allomorph with no environments',\n                    project.BuildGotoURL(entry),\n                )\n                if REMOVE_HOMOPHONOUS_DUPLICATES and modifyAllowed:\n                    to_delete.append((allo, entry, alt_form))\n                elif not modifyAllowed and REMOVE_HOMOPHONOUS_DUPLICATES:\n                    report.Info(f'(dry run) would delete homophonous allomorph: \"{alt_form}\"')\n            else:\n                report.Info(\n                    f'\"{lf}\" has homophonous allomorph \"{alt_form}\" with environment constraints. Manual review suggested.',\n                    project.BuildGotoURL(entry),\n                )\n\n# Delete collected allomorphs\nfor allo, entry, form in to_delete:\n    if modifyAllowed:\n        try:\n            project.Allomorphs.Delete(allo)\n            report.Info(f'Deleted homophonous allomorph: \"{form}\"')\n        except Exception as e:\n            report.Error(f'Failed to delete homophonous allomorph \"{form}\": {e}', project.BuildGotoURL(entry))\n\nif to_delete:\n    report.Info(f'Removed {len(to_delete)} homophonous duplicate allomorphs')\n",
+      "code_terms": [
+        "abstract",
+        "affix",
+        "all",
+        "allomorph",
+        "allomorphs",
+        "append",
+        "build",
+        "classes",
+        "delete",
+        "entry",
+        "env",
+        "environment",
+        "error",
+        "features",
+        "form",
+        "goto",
+        "i",
+        "inflection",
+        "info",
+        "is",
+        "lcm",
+        "len",
+        "lex",
+        "list",
+        "mo",
+        "ms",
+        "name",
+        "normalize",
+        "object",
+        "phone",
+        "stem",
+        "url",
+        "warning"
+      ],
+      "entities": [
+        "LexEntry",
+        "MoAllomorph",
+        "MoStemAllomorph",
+        "PhEnvironment"
+      ],
+      "id": "overpowered-allomorphs",
+      "intent": "Identify allomorphs with no constraints (no environments, features, stem names, or classes) in free variation, and optionally remove homophonous duplicates",
+      "match_terms": [
+        "overpowered allomorph",
+        "free variation allomorph",
+        "allomorph with no constraint",
+        "allomorph with no environment",
+        "homophonous duplicate",
+        "abstract lexeme form"
+      ],
+      "notes": "Reports allomorphs causing free variation (no environments, features, stem names, or inflection classes), and abstract lexeme forms paired with non-abstract allomorphs (the lexeme may then never surface). Checks are scoped to alternate allomorphs only, never the lexeme form itself, since comparing the lexeme form to itself would trivially count as a homophonous duplicate. Optionally removes homophonous allomorphs (same form as the lexeme, no environment) via project.Allomorphs.Delete(); deletion only happens under REMOVE_HOMOPHONOUS_DUPLICATES and modifyAllowed together, and the dry-run message only appears when that toggle is actually on. Stem-name and inflection-class checks need raw LCM access via separate IMoStemAllomorph/IMoAffixAllomorph casts (flexicon gap #580); the required-features check is also raw (flexicon gap #581).",
+      "operations": [
+        "read",
+        "delete"
+      ],
+      "origin": "FLExTools module Overpowered_Allomorphs.py (Matthew Lee)",
+      "params": [
+        {
+          "default": "True",
+          "description": "report abstract lexeme with non-abstract allomorphs",
+          "name": "REPORT_ABSTRACT_MISMATCH"
+        },
+        {
+          "default": "True",
+          "description": "report empty allomorphs and lexeme forms",
+          "name": "REPORT_EMPTY"
+        },
+        {
+          "default": "True",
+          "description": "report unconstrained allomorphs in free variation",
+          "name": "REPORT_FREE_VARIATION"
+        },
+        {
+          "default": "False",
+          "description": "remove homophonous duplicates with no environments (requires write_enabled)",
+          "name": "REMOVE_HOMOPHONOUS_DUPLICATES"
+        }
+      ],
+      "raw_lcm_lines": 6,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
     "parser-coverage": {
       "code": "# --- PARAMS ---\nCOUNT = 10  # how many unparsed words to list, most frequent first\n# --- END PARAMS ---\nrows = []\noccurring = 0\nfor wf in project.Wordforms.GetAll():\n    c = project.Wordforms.GetOccurrenceCount(wf)\n    if c == 0:\n        continue\n    occurring += 1\n    if wf.ParserCount == 0:\n        rows.append((c, project.Wordforms.GetForm(wf), wf.UserCount))\nrows.sort(key=lambda r: (-r[0], r[1]))\nparsed = occurring - len(rows)\npct = 100.0 * parsed / occurring if occurring else 0.0\nreport.Info(f\"parser coverage: {parsed}/{occurring} occurring wordforms ({pct:.1f}%)\")\nreport.Info(f\"total unparsed with occurrences: {len(rows)}\")\nfor c, f, u in rows[:COUNT]:\n    report.Info(f\"{f}\\tcount={c}\\tuser={u}\")\n",
       "code_terms": [
@@ -4503,6 +5797,62 @@
       "requires_write": false,
       "source": "curated",
       "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "phoneme-feature-uniqueness": {
+      "code": "# --- PARAMS ---\n# No tunable parameters; checks all phonemes in the project\n# --- END PARAMS ---\nfrom SIL.LCModel import IFsClosedValue\n\nphoneme_to_feats = {}\nproblem = False\n\nfor phoneme in project.Phonemes.GetAll():\n    phoneme_name = project.Phonemes.GetName(phoneme)\n    feat_struct = project.Phonemes.GetFeatures(phoneme)\n\n    if not feat_struct:\n        report.Warning(f\"Phoneme '{phoneme_name}' has no features defined\", project.BuildGotoURL(phoneme))\n        continue\n\n    # Get feature specs from the feature structure\n    feature_abbrs = []\n    for spec in feat_struct.FeatureSpecsOC:  # raw-lcm: flexicon gap #578\n        spec_value = IFsClosedValue(spec)  # raw-lcm: flexicon gap #578\n        value_obj = spec_value.ValueRA  # raw-lcm: flexicon gap #578\n        if value_obj and value_obj.Abbreviation:\n            abbr_str = project.PhonFeatures.GetAbbreviation(value_obj)\n            if abbr_str:\n                feature_abbrs.append(abbr_str)\n\n    feature_abbrs.sort()\n    feat_concat = \"\".join(feature_abbrs)\n\n    if feat_concat in phoneme_to_feats:\n        report.Error(\n            f\"Phoneme '{phoneme_name}' has identical features as '{phoneme_to_feats[feat_concat]}' (features: {feat_concat})\",\n            project.BuildGotoURL(phoneme)\n        )\n        problem = True\n    elif feat_concat:\n        phoneme_to_feats[feat_concat] = phoneme_name\n\nif not problem:\n    report.Info(f\"All {len(phoneme_to_feats)} phonemes are unique by feature combination\")\n",
+      "code_terms": [
+        "abbreviation",
+        "all",
+        "append",
+        "build",
+        "closed",
+        "error",
+        "feature",
+        "features",
+        "fs",
+        "goto",
+        "i",
+        "info",
+        "join",
+        "len",
+        "name",
+        "phon",
+        "phonemes",
+        "phonological",
+        "sort",
+        "specs",
+        "url",
+        "value",
+        "warning"
+      ],
+      "entities": [
+        "IFsClosedValue",
+        "IFsFeatStruc",
+        "IPhPhoneme"
+      ],
+      "id": "phoneme-feature-uniqueness",
+      "intent": "Validate phoneme inventory has no duplicates; report phonemes with no features",
+      "match_terms": [
+        "check phoneme uniqueness",
+        "find duplicate phoneme features",
+        "phoneme inventory validation",
+        "phoneme features unique",
+        "phoneme quality check"
+      ],
+      "notes": "Reports duplicate feature bundles (phonemes with identical feature specs) and phonemes with no feature structure. Essential before running parser tests. Raw LCM used to access IFsClosedValue specs from phoneme feature structure (flexicon gap #578: no describe-helper for phonological feature structs).",
+      "operations": [
+        "read"
+      ],
+      "origin": "FLExTools modules CheckPhonemeUniqueness.py (Matthew Lee, Ron Lockwood)",
+      "params": [],
+      "raw_lcm_lines": 3,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": false,
       "verified_against": {
         "flexicon": "4.11.0",
         "verified_by": "sena3-read"
@@ -4564,6 +5914,493 @@
         "verified_by": "sena3-read"
       }
     },
+    "pos-inventory": {
+      "code": "# --- PARAMS ---\nPOS_FILTER = \"\"  # empty string means show all POS; non-empty filters by exact POS name\nSHOW_STEM_NAMES = True  # include stem names and their feature regions\nSHOW_INFLECTION_CLASSES = True  # include inflection class hierarchy\nSHOW_AFFIX_TEMPLATES = True  # count affix templates and slots\n# --- END PARAMS ---\nimport unicodedata\nimport re\nfrom SIL.LCModel import IMoInflClass, IPartOfSpeech, IMoStemName\n\n\ndef nfc(text):\n    \"\"\"Normalize text to NFC form for comparison.\"\"\"\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\n\ndef has_problem_abbr(abbr):\n    \"\"\"Check if abbreviation contains spaces or periods.\"\"\"\n    return bool(re.search(r'[\\s.]', abbr or \"\"))\n\n\ndef show_pos_tree(pos, depth=0):\n    \"\"\"Recursively print POS hierarchy with indentation.\"\"\"\n    abbr = project.POS.GetAbbreviation(pos)\n    name = project.POS.GetName(pos)\n    indent = \"  \" * depth\n\n    # Flag problematic abbreviations\n    flag = \"\"\n    if has_problem_abbr(abbr):\n        flag = \" [ERROR: abbr has spaces/periods]\"\n\n    report.Info(f\"{indent}{nfc(abbr)}: {nfc(name)}{flag}\")\n\n    # Show inflection classes if requested\n    if SHOW_INFLECTION_CLASSES:\n        infl_classes = project.POS.GetInflectionClasses(pos)\n        for ic in infl_classes:\n            ic_abbr = ic.Abbreviation.BestAnalysisAlternative.Text if ic.Abbreviation else \"\"\n            ic_name = ic.Name.BestAnalysisAlternative.Text if ic.Name else \"\"\n            report.Info(f\"{indent}  [class] {nfc(ic_abbr)}: {nfc(ic_name)}\")\n            # Show subclasses (flexicon gap #580: SubclassesOC not wrapped)\n            ic_concrete = IMoInflClass(ic)  # raw-lcm: flexicon gap #580\n            if ic_concrete.SubclassesOC and ic_concrete.SubclassesOC.Count > 0:  # raw-lcm: flexicon gap #580\n                for subclass in ic_concrete.SubclassesOC:  # raw-lcm: flexicon gap #580\n                    sub_abbr = subclass.Abbreviation.BestAnalysisAlternative.Text if subclass.Abbreviation else \"\"\n                    sub_name = subclass.Name.BestAnalysisAlternative.Text if subclass.Name else \"\"\n                    report.Info(f\"{indent}    [subclass] {nfc(sub_abbr)}: {nfc(sub_name)}\")\n\n    # Show stem names if requested (flexicon gap #580: StemNamesOC not wrapped)\n    if SHOW_STEM_NAMES:\n        pos_concrete = IPartOfSpeech(pos)  # raw-lcm: flexicon gap #580\n        if pos_concrete.StemNamesOC and pos_concrete.StemNamesOC.Count > 0:  # raw-lcm: flexicon gap #580\n            for raw_stem_name in pos_concrete.StemNamesOC:  # raw-lcm: flexicon gap #580\n                stem_name = IMoStemName(raw_stem_name)  # raw-lcm: flexicon gap #580\n                sn_abbr = stem_name.Abbreviation.BestAnalysisAlternative.Text if stem_name.Abbreviation else \"\"\n                if sn_abbr:\n                    region_count = stem_name.RegionsOC.Count if stem_name.RegionsOC else 0  # raw-lcm: flexicon gap #580\n                    if region_count > 0:\n                        report.Info(f\"{indent}  [stem] {nfc(sn_abbr)} ({region_count} feature regions)\")\n\n    # Count affix templates and slots if requested\n    if SHOW_AFFIX_TEMPLATES:\n        templates = project.MorphRules.GetAllAffixTemplatesForPOS(pos)\n        if templates:\n            template_count = 0\n            slot_count = 0\n            for template in templates:\n                if not template.disabled:\n                    template_count += 1\n                    slot_count += len(template.prefix_slots) + len(template.suffix_slots)\n            if template_count > 0:\n                report.Info(f\"{indent}  [templates] {template_count} active, {slot_count} total slots\")\n\n    # Recursively show subcategories\n    subcats = project.POS.GetSubcategories(pos, recursive=False)\n    for subcat in subcats:\n        show_pos_tree(subcat, depth + 1)\n\n\n# Main loop through all POS\nwanted = set()\nif POS_FILTER:\n    wanted.add(nfc(POS_FILTER))\n\nfor pos in project.POS.GetAll(recursive=False):\n    name = nfc(project.POS.GetName(pos))\n\n    # Filter if needed\n    if wanted and name not in wanted:\n        continue\n\n    # Show POS tree starting from this root\n    show_pos_tree(pos)\n    report.Info(\"\")  # blank line between root POS trees\n\nif wanted and not any(nfc(project.POS.GetName(p)) in wanted for p in project.POS.GetAll()):\n    report.Warning(f\"no part of speech named '{POS_FILTER}'\")\n",
+      "code_terms": [
+        "abbr",
+        "abbreviation",
+        "add",
+        "affix",
+        "all",
+        "alternative",
+        "analysis",
+        "any",
+        "best",
+        "bool",
+        "class",
+        "classes",
+        "count",
+        "disabled",
+        "for",
+        "has",
+        "i",
+        "infl",
+        "inflection",
+        "inflectional",
+        "info",
+        "len",
+        "mo",
+        "morph",
+        "name",
+        "names",
+        "nfc",
+        "normalize",
+        "of",
+        "part",
+        "pos",
+        "prefix",
+        "problem",
+        "regions",
+        "rules",
+        "search",
+        "set",
+        "show",
+        "slots",
+        "speech",
+        "stem",
+        "subcategories",
+        "subclasses",
+        "suffix",
+        "templates",
+        "text",
+        "tree",
+        "warning"
+      ],
+      "entities": [
+        "InflectionClass",
+        "MoInflAffixSlot",
+        "MoInflAffixTemplate",
+        "PartOfSpeech"
+      ],
+      "id": "pos-inventory",
+      "intent": "Show the part-of-speech hierarchy with abbreviations, inflection classes (including subclasses), stem names, and count of affix templates and slots",
+      "match_terms": [
+        "pos hierarchy",
+        "pos tree",
+        "part of speech inventory",
+        "grammar categories",
+        "inflection classes",
+        "stem names",
+        "affix templates count"
+      ],
+      "notes": "Prints the POS tree indented by depth, flagging abbreviations containing spaces or periods (common grammar-setup errors). Inflection classes are shown with their subclasses, stem names with their feature region counts, and affix templates/slots are counted per POS (disabled templates are skipped). SubclassesOC, StemNamesOC and RegionsOC have no flexicon wrapper and are read via raw LCM casts (flexicon gap #580).",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "FLExTools module DoStampSynthesis.py (~661-714) and GenerateParses.py (~185-206, ~209-242) (Ron Lockwood)",
+      "params": [
+        {
+          "default": "\"\"",
+          "description": "empty string means show all POS; non-empty filters by exact POS name",
+          "name": "POS_FILTER"
+        },
+        {
+          "default": "True",
+          "description": "include stem names and their feature regions",
+          "name": "SHOW_STEM_NAMES"
+        },
+        {
+          "default": "True",
+          "description": "include inflection class hierarchy",
+          "name": "SHOW_INFLECTION_CLASSES"
+        },
+        {
+          "default": "True",
+          "description": "count affix templates and slots",
+          "name": "SHOW_AFFIX_TEMPLATES"
+        }
+      ],
+      "raw_lcm_lines": 8,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "prune-citation-forms-matching-lexeme": {
+      "code": "# --- PARAMS ---\n# --- END PARAMS ---\nimport unicodedata\n\ncount = 0\nfor entry in project.LexEntry.GetAll():\n    lexeme_form = unicodedata.normalize(\"NFC\", project.LexEntry.GetLexemeForm(entry) or \"\")\n    citation_form = unicodedata.normalize(\"NFC\", project.LexEntry.GetCitationForm(entry) or \"\")\n\n    if lexeme_form and citation_form == lexeme_form:\n        report.Warning(\n            f\"Citation form matches lexeme '{lexeme_form}' (removing duplicate)\",\n            project.BuildGotoURL(entry)\n        )\n        if modifyAllowed:\n            project.LexEntry.SetCitationForm(entry, \"\")\n            count += 1\n        elif not modifyAllowed:\n            report.Info(f\"(dry run) would remove citation form from '{lexeme_form}'\")\n\nif modifyAllowed:\n    report.Info(f\"Removed {count} duplicate citation forms.\")\n",
+      "code_terms": [
+        "all",
+        "build",
+        "citation",
+        "entry",
+        "form",
+        "goto",
+        "info",
+        "lex",
+        "lexeme",
+        "normalize",
+        "url",
+        "warning"
+      ],
+      "entities": [
+        "LexEntry"
+      ],
+      "id": "prune-citation-forms-matching-lexeme",
+      "intent": "Remove citation forms that are identical to the lexeme form (redundant duplicates)",
+      "match_terms": [
+        "remove duplicate citation forms",
+        "prune citation form matching lexeme",
+        "clear citation form if it matches lexeme",
+        "clean up citation forms",
+        "remove redundant citation form"
+      ],
+      "notes": "Removes citation forms that are identical (NFC-normalized) to the lexeme form, which is useful when a citation form was accidentally populated with the same value as the lexeme. GetLexemeForm/GetCitationForm can return None for entries with no such form set, so both are coerced to \"\" before normalizing. All writing is guarded under modifyAllowed; dry run reports what would be cleared.",
+      "operations": [
+        "update"
+      ],
+      "origin": "FLExTools module Prune_Citation_Forms That_Match_Lexeme.py (Matthew Lee)",
+      "params": [],
+      "raw_lcm_lines": 0,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": false,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
+    "publication-readiness-check": {
+      "code": "# --- PARAMS ---\nPOS_PLACEHOLDER = \"<Not Sure>\"  # POS value indicating uncertain part of speech\n# --- END PARAMS ---\n\nmissing_def_gloss = 0\nuncertain_pos = 0\n\nfor entry in project.LexEntry.GetAll():\n    for sense in project.LexEntry.GetSenses(entry):\n        definition = project.Senses.GetDefinition(sense)\n        gloss = project.Senses.GetGloss(sense)\n\n        # Report senses with neither definition nor gloss\n        if not definition and not gloss:\n            report.Warning(\n                f\"Sense has neither definition nor gloss\",\n                project.BuildGotoURL(entry),\n            )\n            missing_def_gloss += 1\n\n        # Report senses with uncertain POS\n        pos = project.Senses.GetPartOfSpeech(sense)\n        if pos and str(pos) == POS_PLACEHOLDER:\n            report.Warning(\n                f\"Sense has POS marked as {POS_PLACEHOLDER}\",\n                project.BuildGotoURL(entry),\n            )\n            uncertain_pos += 1\n\nreport.Info(f\"Found {missing_def_gloss} senses with no definition or gloss\")\nreport.Info(f\"Found {uncertain_pos} senses with POS marked as {POS_PLACEHOLDER}\")\n",
+      "code_terms": [
+        "all",
+        "build",
+        "definition",
+        "entry",
+        "gloss",
+        "goto",
+        "info",
+        "lex",
+        "of",
+        "part",
+        "senses",
+        "speech",
+        "str",
+        "url",
+        "warning"
+      ],
+      "entities": [
+        "LexEntry",
+        "LexSense"
+      ],
+      "id": "publication-readiness-check",
+      "intent": "Audit lexicon for publication readiness: report senses lacking both definition and gloss, and senses with POS marked as uncertain",
+      "match_terms": [
+        "publication readiness",
+        "pre-publish audit",
+        "missing definitions or glosses",
+        "uncertain part of speech",
+        "missing gloss and definition",
+        "pos not sure"
+      ],
+      "notes": "Non-blocking validation. Reports senses that have neither definition nor gloss, and senses whose POS is marked as the placeholder value (e.g., \"<Not Sure>\"). Includes entry link for easy navigation.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "FLExTools module ReadyForPublish.py (Ron Lockwood)",
+      "params": [
+        {
+          "default": "\"<Not Sure>\"",
+          "description": "POS value indicating uncertain part of speech",
+          "name": "POS_PLACEHOLDER"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "remove-semantic-domains": {
+      "code": "# --- PARAMS ---\nDOMAIN = \"\"  # semantic domain to remove (number as string or name); \"\" = remove ALL domains (WARNING: very destructive!)\nHEADWORDS = []  # if non-empty, process only these entries by exact headword (NFC); empty = all entries\n# --- END PARAMS ---\nimport unicodedata\n\ndef resolve_domain_label(dom):\n    \"\"\"Return (abbreviation, name) for a domain, falling back to parsing its\n    own string repr (e.g. \"2.5.4 - Disabled\") when both are unset in the\n    default analysis WS (the shared Semantic Domains list may only be\n    localized into a WS other than the project's analysis WS).\"\"\"\n    abbr = project.SemanticDomains.GetAbbreviation(dom) or \"\"\n    name = project.SemanticDomains.GetName(dom) or \"\"\n    if not abbr and not name:\n        text = str(dom)\n        if \" - \" in text:\n            abbr, name = text.split(\" - \", 1)\n        else:\n            abbr = text\n    return abbr, name\n\nif not DOMAIN:\n    report.Error(\"WARNING: DOMAIN is empty, which means ALL semantic domains will be removed from ALL senses. This is very destructive. Please set DOMAIN to a specific domain number/name or acknowledge the risk.\")\n    if modifyAllowed:\n        report.Error(\"Aborting write due to destructive operation on all domains.\")\n    modifyAllowed = False\n\ntotal_removed = 0\nwould_remove = 0\n\n# Resolve HEADWORDS to entries\ntarget_entries = []\nif HEADWORDS:\n    hw_set = set(unicodedata.normalize(\"NFC\", hw) for hw in HEADWORDS)\n    target_entries = [\n        e for e in project.LexEntry.GetAll()\n        if unicodedata.normalize(\"NFC\", project.LexEntry.GetHeadword(e)) in hw_set\n    ]\nelse:\n    target_entries = list(project.LexEntry.GetAll())\n\nfor entry in target_entries:\n    entry_removed = 0\n    senses = project.LexEntry.GetSenses(entry)\n\n    for sense in senses:\n        domains = project.Senses.GetSemanticDomains(sense)\n\n        # Collect domains to remove (iterate a safe copy to avoid\n        # modification-during-iteration)\n        to_remove = []\n        for dom in domains:\n            dom_abbr, dom_name = resolve_domain_label(dom)\n            if DOMAIN == dom_abbr or DOMAIN == dom_name or DOMAIN == str(dom):\n                to_remove.append(dom)\n\n        for dom in to_remove:\n            if modifyAllowed:\n                project.Senses.RemoveSemanticDomain(sense, dom)\n                entry_removed += 1\n            else:\n                report.Info(f\"(dry run) would remove semantic domain {dom}\")\n                would_remove += 1\n\n    if entry_removed > 0:\n        total_removed += entry_removed\n        report.Info(\n            f\"Removed {entry_removed} semantic domain(s) from '{project.LexEntry.GetHeadword(entry)}'\",\n            project.BuildGotoURL(entry)\n        )\n\nif modifyAllowed:\n    report.Info(f\"Total: removed {total_removed} semantic domain reference(s).\")\nelif would_remove:\n    report.Info(f\"Total: would remove {would_remove} semantic domain reference(s).\")\n",
+      "code_terms": [
+        "abbreviation",
+        "all",
+        "append",
+        "build",
+        "domain",
+        "domains",
+        "entry",
+        "error",
+        "goto",
+        "headword",
+        "info",
+        "label",
+        "lex",
+        "list",
+        "name",
+        "normalize",
+        "resolve",
+        "semantic",
+        "senses",
+        "set",
+        "split",
+        "str",
+        "url"
+      ],
+      "entities": [
+        "LexEntry",
+        "LexSense",
+        "SemanticDomain"
+      ],
+      "id": "remove-semantic-domains",
+      "intent": "Remove semantic domain references from senses in bulk",
+      "match_terms": [
+        "remove semantic domains",
+        "clear semantic domains",
+        "bulk remove semantic domain links",
+        "delete semantic domain assignments",
+        "remove semantic domain from senses"
+      ],
+      "notes": "Removes semantic domain links from senses, matched by abbreviation, name, or raw string repr against DOMAIN. When DOMAIN is \"\" (all domains), the recipe issues a loud warning and forces modifyAllowed off, since that setting would strip every semantic domain from every matched sense. Optional HEADWORDS filter restricts to specific entries by exact headword match (NFC-normalized). GetAbbreviation/GetName can legitimately return \"\" when the project's Semantic Domains list is only localized into a writing system other than the analysis WS; resolve_domain_label() falls back to parsing the domain's own \"abbr - name\" display string in that case, so DOMAIN still matches across writing systems.",
+      "operations": [
+        "delete"
+      ],
+      "origin": "FLExTools module RemoveSemanticDomains.py (Ron Lockwood)",
+      "params": [
+        {
+          "default": "\"\"",
+          "description": "semantic domain to remove (number as string or name); \"\" = remove ALL domains (WARNING: very destructive!)",
+          "name": "DOMAIN"
+        },
+        {
+          "default": "[]",
+          "description": "if non-empty, process only these entries by exact headword (NFC); empty = all entries",
+          "name": "HEADWORDS"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
+    "remove-user-analyses": {
+      "code": "# --- PARAMS ---\nMODE = \"approved\"  # \"approved\" | \"disapproved\" | \"all\" | \"parser-failed\"\nWORDFORMS = []  # empty list = all wordforms; provide specific wordforms to limit\n# --- END PARAMS ---\nimport unicodedata\nfrom flexicon import ApprovalStatusTypes\n\n# Validate MODE\nvalid_modes = {\"approved\", \"disapproved\", \"all\", \"parser-failed\"}\nif MODE not in valid_modes:\n    report.Error(f\"MODE must be one of {valid_modes}, got {MODE!r}\")\nelse:\n    def norm(text):\n        return unicodedata.normalize(\"NFC\", text or \"\").casefold()\n\n    # Build set of wordforms to process (empty = all)\n    target_wordforms = set(norm(w) for w in WORDFORMS) if WORDFORMS else None\n\n    # First pass: collect analyses whose human evaluation should be cleared\n    to_remove = []\n    for wf in project.Wordforms.GetAll():\n        form = project.Wordforms.GetForm(wf)\n        if target_wordforms is not None and norm(form) not in target_wordforms:\n            continue\n\n        for analysis in project.Wordforms.GetAnalyses(wf):\n            human_eval = project.WfiAnalyses.GetHumanEvaluation(analysis)\n            if human_eval is None:\n                continue  # No human evaluation on this analysis\n\n            approves = bool(human_eval.Approves)\n            is_computer_approved = project.WfiAnalyses.IsComputerApproved(analysis)\n\n            should_remove = False\n            remove_reason = \"\"\n\n            if MODE == \"approved\":\n                if approves:\n                    should_remove = True\n                    remove_reason = \"human-approved\"\n            elif MODE == \"disapproved\":\n                if not approves:\n                    should_remove = True\n                    remove_reason = \"human-disapproved\"\n            elif MODE == \"all\":\n                should_remove = True\n                remove_reason = \"human-evaluated\"\n            elif MODE == \"parser-failed\":\n                if not is_computer_approved:\n                    should_remove = True\n                    remove_reason = \"human evaluation on parser-failed analysis\"\n\n            if should_remove:\n                to_remove.append((wf, form, analysis, remove_reason))\n\n    # Second pass: clear collected human evaluations\n    removed_count = 0\n    for wf, form, analysis, reason in to_remove:\n        if modifyAllowed:\n            try:\n                project.WfiAnalyses.SetApprovalStatus(analysis, ApprovalStatusTypes.UNAPPROVED)\n                removed_count += 1\n                report.Info(\n                    f\"removed {reason} for {form}\",\n                    project.BuildGotoURL(wf)\n                )\n            except Exception as e:\n                report.Error(f\"failed to remove evaluation for {form}: {e}\")\n        else:\n            report.Info(f\"(dry run) would remove {reason} for {form}\")\n\n    if not modifyAllowed:\n        report.Warning(\"Run with write_enabled=True to actually remove evaluations\")\n\n    report.Info(f\"Total evaluations processed: {len(to_remove)}\")\n    if modifyAllowed and removed_count > 0:\n        report.Warning(f\"Removed {removed_count} evaluations. Make sure to leave the Word Analyses area!\")\n",
+      "code_terms": [
+        "all",
+        "analyses",
+        "append",
+        "approval",
+        "approved",
+        "approves",
+        "bool",
+        "build",
+        "casefold",
+        "computer",
+        "error",
+        "evaluation",
+        "form",
+        "goto",
+        "human",
+        "info",
+        "is",
+        "len",
+        "norm",
+        "normalize",
+        "set",
+        "status",
+        "unapproved",
+        "url",
+        "warning",
+        "wfi",
+        "wordform",
+        "wordforms"
+      ],
+      "entities": [
+        "WfiAnalysis",
+        "WfiWordform"
+      ],
+      "id": "remove-user-analyses",
+      "intent": "Remove human-evaluated wordform analyses in bulk by approval status or parser failure",
+      "match_terms": [
+        "remove user analyses",
+        "delete human wordform evaluations",
+        "clear approved analyses",
+        "parser testing",
+        "remove manual parses",
+        "bulk remove analyses"
+      ],
+      "notes": "MODE controls which human evaluations are removed from analyses: \"approved\" (default) removes human-approved evaluations, \"disapproved\" removes human-disapproved ones, \"all\" removes every human evaluation, and \"parser-failed\" removes human evaluations on analyses the parser also rejected. This recipe preserves the analyses themselves -- it only clears human evaluation records via SetApprovalStatus(analysis, ApprovalStatusTypes.UNAPPROVED), which removes the human evaluation entirely per its own docs; parser-only evaluations are never touched. Always dry-run first (modifyAllowed=False) to see the count before removing evaluations for real.",
+      "operations": [
+        "update"
+      ],
+      "origin": "FLExTools modules Remove_All_User_Analyses.py, Remove_Approved_User_Analyses.py, Remove_Failed_User_Analyses.py (Matthew Lee, Ron Lockwood)",
+      "params": [
+        {
+          "default": "\"approved\"",
+          "description": "\"approved\" | \"disapproved\" | \"all\" | \"parser-failed\"",
+          "name": "MODE"
+        },
+        {
+          "default": "[]",
+          "description": "empty list = all wordforms; provide specific wordforms to limit",
+          "name": "WORDFORMS"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
+    "rename-audio-files": {
+      "code": "# --- PARAMS ---\nCUSTOM_FIELD = \"MediaFilename\"  # Name of the custom field containing target filenames (case-sensitive)\n# --- END PARAMS ---\nimport os\nimport re\nimport unicodedata\n\nlinked_files_dir = project.GetLinkedFilesDir()\nreport.Info(f\"LinkedFiles directory: {linked_files_dir}\")\n\n\ndef sanitize_filename(filename):\n    \"\"\"Remove OS-banned characters from filename\"\"\"\n    banned_chars = r'[<>:\"/\\\\|?*!&\\']'\n    sanitized = re.sub(banned_chars, \"_\", filename)\n    sanitized = re.sub(r\"_{2,}\", \"_\", sanitized)\n    return sanitized.strip(\"_ \")\n\n\ndef find_audio_file(directory, filename):\n    \"\"\"Find file in directory, handling Unicode normalization variations\"\"\"\n    if not os.path.exists(directory):\n        return None\n\n    full_path = os.path.join(directory, filename)\n    if os.path.exists(full_path):\n        return full_path\n\n    for norm_form in [\"NFC\", \"NFD\", \"NFKC\", \"NFKD\"]:\n        normalized_filename = unicodedata.normalize(norm_form, filename)\n        test_path = os.path.join(directory, normalized_filename)\n        if os.path.exists(test_path):\n            return test_path\n\n    try:\n        for f in os.listdir(directory):\n            if f.lower() == filename.lower():\n                return os.path.join(directory, f)\n    except Exception:\n        pass\n\n    return None\n\n\n# Process entries\nentry_count = 0\naudio_entries = 0\nrenamed_count = 0\n\nfor entry in project.LexEntry.GetAll():\n    entry_count += 1\n\n    # Lexeme form is the first item from Allomorphs.GetAll\n    allo = next(iter(project.Allomorphs.GetAll(entry)), None)\n    if not allo:\n        continue\n\n    audio_rel_path = project.Allomorphs.GetFormAudio(allo)\n    if not audio_rel_path:\n        continue\n\n    audio_entries += 1\n    current_audio_name = os.path.basename(audio_rel_path)\n    audio_subdir = os.path.dirname(audio_rel_path.replace(\"LinkedFiles/\", \"\").replace(\"LinkedFiles\\\\\", \"\"))\n    audio_dir = os.path.join(linked_files_dir, audio_subdir) if audio_subdir else linked_files_dir\n\n    # Get custom field value for new filename\n    new_filename = project.CustomFields.GetValue(entry, CUSTOM_FIELD)\n    new_filename = str(new_filename).strip() if new_filename else \"\"\n    if not new_filename:\n        continue\n\n    # Sanitize and add extension\n    new_filename_sanitized = sanitize_filename(new_filename)\n    if not new_filename_sanitized.lower().endswith(\".wav\"):\n        new_filename_sanitized += \".wav\"\n\n    current_file_path = find_audio_file(audio_dir, current_audio_name)\n    if not current_file_path:\n        report.Warning(f\"Entry {entry_count}: audio file not found: {current_audio_name}\")\n        continue\n\n    current_dir = os.path.dirname(current_file_path)\n    new_file_path = os.path.join(current_dir, new_filename_sanitized)\n\n    if current_file_path == new_file_path:\n        report.Info(f\"Entry {entry_count}: audio already has correct name: {new_filename_sanitized}\")\n        continue\n\n    if os.path.exists(new_file_path):\n        report.Warning(f\"Entry {entry_count}: target filename already exists: {new_filename_sanitized}\")\n        continue\n\n    # Perform rename\n    if modifyAllowed:\n        try:\n            os.rename(current_file_path, new_file_path)\n            report.Info(f\"Entry {entry_count}: renamed {os.path.basename(current_file_path)} -> {new_filename_sanitized}\")\n\n            new_rel_path = os.path.join(os.path.dirname(audio_rel_path), new_filename_sanitized).replace(os.sep, \"/\")\n            project.Allomorphs.SetFormAudio(allo, new_rel_path)\n            report.Info(f\"Entry {entry_count}: updated audio link to {new_filename_sanitized}\")\n            renamed_count += 1\n        except Exception as e:\n            report.Error(f\"Entry {entry_count}: failed to rename - {e}\")\n    else:\n        report.Info(f\"Entry {entry_count} (dry run): would rename {os.path.basename(current_file_path)} -> {new_filename_sanitized}\")\n        renamed_count += 1\n\n# Summary\nreport.Info(\"=\" * 50)\nreport.Info(f\"SUMMARY:\")\nreport.Info(f\"  Entries scanned: {entry_count}\")\nreport.Info(f\"  Entries with audio: {audio_entries}\")\nreport.Info(f\"  Files processed: {renamed_count}\")\nif not modifyAllowed:\n    report.Info(f\"  Mode: READ-ONLY (dry run)\")\nreport.Info(\"=\" * 50)\n",
+      "code_terms": [
+        "all",
+        "allomorphs",
+        "audio",
+        "basename",
+        "custom",
+        "dir",
+        "dirname",
+        "endswith",
+        "entry",
+        "error",
+        "exists",
+        "fields",
+        "file",
+        "filename",
+        "files",
+        "find",
+        "form",
+        "info",
+        "iter",
+        "join",
+        "lex",
+        "linked",
+        "listdir",
+        "lower",
+        "next",
+        "normalize",
+        "path",
+        "rename",
+        "replace",
+        "sanitize",
+        "sep",
+        "str",
+        "strip",
+        "sub",
+        "value",
+        "warning"
+      ],
+      "entities": [
+        "LexEntry",
+        "MoForm"
+      ],
+      "id": "rename-audio-files",
+      "intent": "Rename audio files attached to entries based on a custom field value, updating both file on disk and FLEx reference",
+      "match_terms": [
+        "rename audio files",
+        "audio filename",
+        "update audio links",
+        "fix audio paths",
+        "rename audio for entries"
+      ],
+      "notes": "Renames audio files referenced by an entry's lexeme-form audio field and updates both the file on disk and the FLEx reference; the new filename comes from a custom field. Uses project.Allomorphs.GetFormAudio/SetFormAudio, which auto-detect the project's audio writing system and already return/accept a LinkedFiles-relative path. Handles Unicode normalization variants, filename sanitization, and on-disk collision detection, since flexicon has no file-rename wrapper. Actual disk renames only happen inside `if modifyAllowed:`; run with write_enabled=False first to review the dry-run report before enabling writes, since a rename that collides with an existing file is skipped but not otherwise validated.",
+      "operations": [
+        "update"
+      ],
+      "origin": "FLExTools modules RenameAudioFiles.py and FLExToolRenameAudio.py (Matthew Lee)",
+      "params": [
+        {
+          "default": "\"MediaFilename\"",
+          "description": "Name of the custom field containing target filenames (case-sensitive)",
+          "name": "CUSTOM_FIELD"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
+    "reorder-affix-templates": {
+      "code": "# --- PARAMS ---\nPOS_NAME = \"Verb\"\n# --- END PARAMS ---\n\nimport re\nimport unicodedata\nfrom SIL.LCModel import IPartOfSpeech\n\n\ndef nfc(s):\n    return unicodedata.normalize(\"NFC\", s or \"\")\n\n\ndef starts_with_number(s):\n    return bool(re.match(r'^\\d+', s))\n\n\n# Validate and find POS\nmatches = [p for p in project.POS.GetAll() if nfc(project.POS.GetName(p)) == nfc(POS_NAME)]\n\nif len(matches) != 1:\n    if matches:\n        report.Error(f\"POS '{POS_NAME}' matches {len(matches)} entries; must match exactly 1\")\n    else:\n        avail = sorted(project.POS.GetName(p) for p in project.POS.GetAll())\n        report.Error(f\"POS '{POS_NAME}' not found. Available: {avail[:5]}\")\nelse:\n    pos = matches[0]\n    pos_name = project.POS.GetName(pos)\n    templates = list(project.MorphRules.GetAllAffixTemplatesForPOS(pos))\n\n    if len(templates) <= 1:\n        report.Info(f\"{pos_name} has {len(templates)} template(s); nothing to sort.\")\n    else:\n        names = [t.name for t in templates]\n        all_numeric = all(starts_with_number(n) for n in names)\n\n        if all_numeric:\n            report.Info(f\"Sorting {pos_name} templates numerically.\")\n            sorted_templates = sorted(templates, key=lambda t: int(re.match(r'^\\d+', t.name).group()))\n        else:\n            report.Info(f\"Sorting {pos_name} templates alphabetically.\")\n            sorted_templates = sorted(templates, key=lambda t: t.name)\n\n        report.Info(f\"Current order:\")\n        for t in templates:\n            report.Info(f\"  {t.name}\")\n\n        report.Info(f\"New order:\")\n        for t in sorted_templates:\n            report.Info(f\"  {t.name}\")\n\n        if modifyAllowed:\n            try:\n                coll = IPartOfSpeech(pos).AffixTemplatesOS  # raw-lcm: flexicon gap #580 (direct access to collection)\n                for new_idx, target in enumerate(sorted_templates):\n                    for cur_idx, t in enumerate(coll):\n                        if t.Guid == target.concrete.Guid:\n                            if cur_idx != new_idx:\n                                coll.MoveTo(cur_idx, cur_idx, coll, new_idx)  # raw-lcm: flexicon gap #580 (MoveTo not wrapped)\n                            break\n                report.Info(f\"Sorted {pos_name} templates.\")\n            except Exception as e:\n                report.Error(f\"Error sorting {pos_name} templates: {e}\")\n        else:\n            report.Info(\"(dry run) Run with modifyAllowed=True to apply sort.\")\n",
+      "code_terms": [
+        "affix",
+        "all",
+        "bool",
+        "concrete",
+        "enumerate",
+        "error",
+        "for",
+        "group",
+        "guid",
+        "i",
+        "info",
+        "int",
+        "len",
+        "list",
+        "match",
+        "morph",
+        "move",
+        "name",
+        "nfc",
+        "normalize",
+        "number",
+        "of",
+        "part",
+        "pos",
+        "rules",
+        "sorted",
+        "speech",
+        "starts",
+        "templates",
+        "to",
+        "with"
+      ],
+      "entities": [
+        "AffixTemplate",
+        "PartOfSpeech"
+      ],
+      "id": "reorder-affix-templates",
+      "intent": "Sort affix templates by name for a selected part of speech (numerically if all names start with numbers, else alphabetically)",
+      "match_terms": [
+        "sort affix templates",
+        "reorder templates",
+        "template ordering",
+        "reorganize templates by name",
+        "numerical template sort",
+        "alphabetical template sort"
+      ],
+      "notes": "Reorders affix templates for a single POS by sorting on name: numerically if every template name starts with a number, alphabetically otherwise. POS_NAME must match exactly one POS after NFC normalization, or the recipe reports the mismatch and does nothing. Dry run always shows the intended sort order; write mode applies it by matching each template's Guid and moving it to its sorted position via raw LCM access to AffixTemplatesOS and MoveTo, since neither is wrapped by flexicon (flexicon gap #580).",
+      "operations": [
+        "update"
+      ],
+      "origin": "FLExTools module Reorder_Affix_Templates.py (Matthew Lee)",
+      "params": [
+        {
+          "default": "\"Verb\"",
+          "description": "",
+          "name": "POS_NAME"
+        }
+      ],
+      "raw_lcm_lines": 1,
+      "requires_write": true,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-dryrun"
+      }
+    },
     "reversal-lookup": {
       "code": "for index in project.ReversalIndexes.GetAll():\n    ws = project.ReversalIndexes.GetWritingSystem(index)\n    report.Info(f\"Reversal index: {ws}\")\n    for rev_entry in project.ReversalIndexes.GetEntries(index):\n        form = project.ReversalEntries.GetForm(rev_entry)\n        senses = project.ReversalEntries.GetSenses(rev_entry)\n        report.Info(f\"  {form}: {len(senses)} sense(s)\")\n",
       "entities": [
@@ -4588,6 +6425,112 @@
       "verified_against": {
         "flexicon": "4.11.0",
         "verified_by": "eval-corpus"
+      }
+    },
+    "senses-by-gloss": {
+      "code": "# --- PARAMS ---\nGLOSSES = [\"run\", \"go\"]  # exact glosses to look up (case-insensitive); fuzzy match if no exact match\nFUZZY_MATCH = True  # enable fuzzy matching for similar glosses\nFUZZY_THRESHOLD = 0.74  # fuzzy match similarity threshold (0.0-1.0)\nMIN_GLOSS_LEN_FOR_FUZZ = 5  # minimum gloss length for fuzzy matching\nMAX_LENGTH_DIFF = 3  # max length difference between source and target for fuzzy match\n# --- END PARAMS ---\n\nimport unicodedata\nfrom difflib import SequenceMatcher\nfrom SIL.LCModel.Core.KernelInterfaces import ITsString\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\ndef get_morph_type_name(morph_type):\n    \"\"\"Get morph type name from object (raw LCM access - flexicon gap #583)\"\"\"\n    if morph_type is None:\n        return None\n    try:\n        return nfc(ITsString(morph_type.Name.BestAnalysisAlternative).Text)  # flexicon gap: #583\n    except AttributeError:\n        return None\n\ndef similarity_ratio(a, b):\n    \"\"\"Calculate similarity ratio between two strings\"\"\"\n    return SequenceMatcher(None, a.lower(), b.lower()).ratio()\n\n# Build gloss-to-senses map for stem entries\ngloss_map = {}  # gloss -> list of (headword, POS, sense_num, entry_guid)\nseen_senses = set()  # track GUIDs to avoid duplicates\n\nreport.Info(\"Building gloss-to-sense map...\")\n\nfor entry in project.LexEntry.GetAll():\n    # Only process stem entries (not affixes)\n    mt = project.LexEntry.GetMorphType(entry)\n    mt_name = get_morph_type_name(mt)\n    if mt_name:\n        lname = mt_name.lower()\n        if \"stem\" not in lname and \"root\" not in lname:\n            continue\n\n    headword = nfc(project.LexEntry.GetHeadword(entry))\n\n    # Iterate through senses\n    entry_msas = project.MSA.GetAll(entry)\n    for sense_num, sense in enumerate(project.LexEntry.GetSenses(entry), 1):\n        # Check if sense has an MSA (stem sense); GetMSA returns the raw\n        # unwrapped object, so match it against the entry's wrapped MSAs\n        # by Hvo-equality to read is_stem_msa (same technique as affix-catalog.py)\n        raw_msa = project.Senses.GetMSA(sense)\n        if not raw_msa:\n            continue\n        msa = next((m for m in entry_msas if m == raw_msa), None)\n        if not msa or not msa.is_stem_msa:\n            continue\n\n        # GetPartOfSpeech already returns the abbreviation string, not a\n        # POS object -- do not pass it into project.POS.GetName().\n        pos_abbr = project.Senses.GetPartOfSpeech(sense)\n        pos = nfc(pos_abbr) if pos_abbr else \"unknown\"\n\n        # Get gloss\n        gloss = nfc(project.Senses.GetGloss(sense))\n\n        # Skip empty glosses\n        if not gloss or gloss == \"***\":\n            continue\n\n        # Track by GUID to avoid duplicates\n        sense_guid = str(sense)\n        if sense_guid in seen_senses:\n            continue\n        seen_senses.add(sense_guid)\n\n        # Add to map\n        sense_info = (headword, pos, sense_num, sense_guid)\n        if gloss not in gloss_map:\n            gloss_map[gloss] = []\n        gloss_map[gloss].append(sense_info)\n\nreport.Info(f\"Built map with {len(gloss_map)} unique glosses\")\n\n# Look up requested glosses\nreport.Info(\"\")\nreport.Info(\"=== Gloss Lookup Results ===\")\n\nfor query_gloss in GLOSSES:\n    query_nfc = nfc(query_gloss.lower())\n\n    # Exact match (case-insensitive)\n    exact_matches = []\n    for gloss in gloss_map.keys():\n        if gloss.lower() == query_nfc:\n            exact_matches.extend(gloss_map[gloss])\n\n    # Fuzzy match if no exact matches and fuzzy enabled\n    fuzzy_matches = []\n    if not exact_matches and FUZZY_MATCH:\n        for gloss in gloss_map.keys():\n            query_len = len(query_nfc)\n            gloss_len = len(gloss)\n\n            # Only try fuzzy match if glosses are long enough and length difference is small\n            if (query_len >= MIN_GLOSS_LEN_FOR_FUZZ and\n                gloss_len >= MIN_GLOSS_LEN_FOR_FUZZ and\n                abs(query_len - gloss_len) <= MAX_LENGTH_DIFF):\n\n                ratio = similarity_ratio(query_nfc, gloss)\n                if ratio >= FUZZY_THRESHOLD:\n                    fuzzy_matches.extend(gloss_map[gloss])\n\n    # Report results\n    report.Info(f\"Gloss: '{query_gloss}'\")\n\n    if exact_matches:\n        report.Info(f\"  Exact matches: {len(exact_matches)} sense(s)\")\n        for headword, pos, sense_num, sense_guid in exact_matches:\n            report.Info(f\"    {headword}.{sense_num} ({pos})\")\n    elif fuzzy_matches:\n        report.Info(f\"  Fuzzy matches: {len(fuzzy_matches)} sense(s)\")\n        for headword, pos, sense_num, sense_guid in fuzzy_matches:\n            report.Info(f\"    {headword}.{sense_num} ({pos})\")\n    else:\n        report.Warning(f\"  No matches found\")\n\nreport.Info(\"\")\nreport.Info(f\"Total senses in map: {sum(len(v) for v in gloss_map.values())}\")\n",
+      "code_terms": [
+        "abs",
+        "add",
+        "all",
+        "alternative",
+        "analysis",
+        "append",
+        "best",
+        "entry",
+        "enumerate",
+        "extend",
+        "get",
+        "gloss",
+        "grammatical",
+        "headword",
+        "i",
+        "info",
+        "is",
+        "keys",
+        "len",
+        "lex",
+        "lower",
+        "matcher",
+        "morph",
+        "msa",
+        "name",
+        "next",
+        "nfc",
+        "normalize",
+        "of",
+        "part",
+        "ratio",
+        "senses",
+        "sequence",
+        "set",
+        "similarity",
+        "speech",
+        "stem",
+        "str",
+        "string",
+        "sum",
+        "text",
+        "ts",
+        "type",
+        "values",
+        "warning"
+      ],
+      "entities": [
+        "LexEntry",
+        "LexSense",
+        "MoStemMsa"
+      ],
+      "id": "senses-by-gloss",
+      "intent": "Look up senses by gloss, exact or fuzzy (similar spelling), with headword, sense number and POS",
+      "match_terms": [
+        "find sense by gloss",
+        "gloss lookup",
+        "fuzzy gloss match",
+        "search glosses",
+        "which entry means",
+        "similar glosses"
+      ],
+      "notes": "Builds a gloss-to-senses map for stem/root entries (affixes excluded by morph type name) with POS, then looks up each requested gloss exactly and, if no exact match, fuzzily (difflib) when the gloss is at least 5 characters and lengths are close. Skips empty glosses (the '***' placeholder normalizes to \"\"). project.Senses.GetPartOfSpeech already returns the abbreviation string, not a POS object -- do not pass it into project.POS.GetName. Morph type name has no flexicon getter and is read via a raw ITsString cast (flexicon gap #583); import it from SIL.LCModel.Core.KernelInterfaces, not SIL.LCModel.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "From Ron/FLExTrans Published Modules/LinkSenseTool.py (gather-gloss-to-sense-map and fuzzy-match-glosses)",
+      "params": [
+        {
+          "default": "[\"run\", \"go\"]",
+          "description": "exact glosses to look up (case-insensitive); fuzzy match if no exact match",
+          "name": "GLOSSES"
+        },
+        {
+          "default": "True",
+          "description": "enable fuzzy matching for similar glosses",
+          "name": "FUZZY_MATCH"
+        },
+        {
+          "default": "0.74",
+          "description": "fuzzy match similarity threshold (0.0-1.0)",
+          "name": "FUZZY_THRESHOLD"
+        },
+        {
+          "default": "5",
+          "description": "minimum gloss length for fuzzy matching",
+          "name": "MIN_GLOSS_LEN_FOR_FUZZ"
+        },
+        {
+          "default": "3",
+          "description": "max length difference between source and target for fuzzy match",
+          "name": "MAX_LENGTH_DIFF"
+        }
+      ],
+      "raw_lcm_lines": 1,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
       }
     },
     "set-allomorph-environments": {
@@ -4672,6 +6615,248 @@
         "verified_by": "sena3-dryrun"
       }
     },
+    "text-analysis-gaps": {
+      "code": "# --- PARAMS ---\nTEXT_TITLE = \"\"  # exact text title to check; \"\" means all texts\nSKIP_CAPITALIZED_NONINITIAL = True  # skip capitalized non-sentence-initial words (likely proper nouns)\n# --- END PARAMS ---\n\nimport unicodedata\nfrom SIL.LCModel import ICmObject\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\ndef resolve_wordform_and_analysis(token):\n    \"\"\"Resolve a segment occurrence token to (wordform, analysis-or-None).\n    Returns (None, None) for punctuation tokens.\"\"\"\n    cls = token.ClassName  # raw-lcm: dispatch on occurrence token subtype (documented SegmentOperations.GetAnalyses contract)\n    if cls == \"PunctuationForm\":\n        return None, None\n    if cls == \"WfiWordform\":\n        return token, None\n    if cls == \"WfiGloss\":\n        analysis = ICmObject(token).Owner  # raw-lcm: flexicon gap #575 (WfiGloss -> owning WfiAnalysis)\n    else:  # \"WfiAnalysis\"\n        analysis = token\n    wf = project.WfiAnalyses.GetOwningWordform(analysis)\n    return wf, analysis\n\n# Collect all text titles if filtering\ntarget_texts = {}\nif TEXT_TITLE:\n    wanted = nfc(TEXT_TITLE)\n    for text in project.Texts.GetAll():\n        if nfc(project.Texts.GetTitle(text)) == wanted:\n            target_texts[text] = wanted\n            break\nelse:\n    for text in project.Texts.GetAll():\n        target_texts[text] = nfc(project.Texts.GetTitle(text))\n\nif not target_texts:\n    if TEXT_TITLE:\n        report.Error(f\"no text with title {TEXT_TITLE}\")\n    else:\n        report.Info(\"no texts in project\")\nelse:\n    unanalyzed_count = 0\n    incomplete_bundle_count = 0\n\n    for text in target_texts.keys():\n        text_title = target_texts[text]\n        report.Info(f\"Checking text: {text_title}\")\n\n        for paragraph in project.Paragraphs.GetAll(text):\n            for segment in project.Segments.GetAll(paragraph):\n                for token in project.Segments.GetAnalyses(segment):\n                    wf, analysis = resolve_wordform_and_analysis(token)\n                    if wf is None:\n                        continue  # punctuation\n\n                    wf_form = nfc(project.Wordforms.GetForm(wf))\n\n                    # Skip empty forms and SFM markers\n                    if not wf_form or wf_form.startswith(\"\\\\\"):\n                        continue\n\n                    # Skip capitalized non-sentence-initial words if requested\n                    if SKIP_CAPITALIZED_NONINITIAL and wf_form[0].isupper():\n                        continue\n\n                    if analysis is None:\n                        unanalyzed_count += 1\n                        report.Warning(\n                            f\"No analysis found for word: {wf_form}\",\n                            project.BuildGotoURL(wf)\n                        )\n                        continue\n\n                    for bundle in project.WfiAnalyses.GetMorphBundles(analysis):\n                        sense = project.WfiMorphBundles.GetSense(bundle)\n                        msa = project.WfiMorphBundles.GetMSA(bundle)\n                        morph = project.WfiMorphBundles.GetMorph(bundle)\n\n                        if morph and (not sense or not msa):\n                            incomplete_bundle_count += 1\n                            morph_form = project.Allomorphs.GetForm(morph) if morph else \"?\"\n                            report.Warning(\n                                f\"Incomplete morpheme bundle in word '{wf_form}': \"\n                                f\"morph='{morph_form}' sense={'MISSING' if not sense else 'OK'} \"\n                                f\"msa={'MISSING' if not msa else 'OK'}\",\n                                project.BuildGotoURL(wf)\n                            )\n\n    # Summary\n    report.Info(f\"Unanalyzed words found: {unanalyzed_count}\")\n    report.Info(f\"Incomplete morpheme bundles found: {incomplete_bundle_count}\")\n    report.Info(\"Analysis complete\")\n",
+      "code_terms": [
+        "all",
+        "allomorphs",
+        "analyses",
+        "analysis",
+        "and",
+        "build",
+        "bundles",
+        "class",
+        "cm",
+        "error",
+        "form",
+        "goto",
+        "grammatical",
+        "i",
+        "info",
+        "isupper",
+        "keys",
+        "morph",
+        "msa",
+        "name",
+        "nfc",
+        "normalize",
+        "object",
+        "owner",
+        "owning",
+        "paragraphs",
+        "resolve",
+        "segments",
+        "sense",
+        "startswith",
+        "texts",
+        "title",
+        "url",
+        "warning",
+        "wfi",
+        "wordform",
+        "wordforms"
+      ],
+      "entities": [
+        "IMoMorphBundle",
+        "IText",
+        "IWfiAnalysis",
+        "IWfiWordform"
+      ],
+      "id": "text-analysis-gaps",
+      "intent": "Find words in text with no morpheme analysis and identify morpheme bundles missing sense or MSA",
+      "match_terms": [
+        "unanalyzed words",
+        "words with no analysis",
+        "incomplete morpheme analysis",
+        "missing sense or msa",
+        "text analysis gaps",
+        "find unanalyzed text"
+      ],
+      "notes": "Walks the selected text's (or, if TEXT_TITLE is \"\", every text's) own paragraphs, segments, and word occurrences, reporting (1) word occurrences with no analysis at all and (2) analyzed occurrences whose morpheme bundles are missing a sense or MSA. Skips punctuation tokens, SFM markers, and, by default, capitalized non-sentence-initial words (likely proper nouns; toggle with SKIP_CAPITALIZED_NONINITIAL). Segment occurrence tokens (IWfiWordform/IWfiAnalysis/IWfiGloss/IPunctuationForm) are dispatched by ClassName since the token type is polymorphic; IWfiGloss's owning IWfiAnalysis is read via the raw .Owner property, which needs raw LCM access since there is no public token-to-owning-analysis resolver besides the private one GetMorphemeBundles uses internally (flexicon gap #575).",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "From Ron/FLExTrans Published Modules/TextClasses.py (find-unanalyzed-words) and InterlinData.py (detect-incomplete-morpheme-analysis)",
+      "params": [
+        {
+          "default": "\"\"",
+          "description": "exact text title to check; \"\" means all texts",
+          "name": "TEXT_TITLE"
+        },
+        {
+          "default": "True",
+          "description": "skip capitalized non-sentence-initial words (likely proper nouns)",
+          "name": "SKIP_CAPITALIZED_NONINITIAL"
+        }
+      ],
+      "raw_lcm_lines": 2,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "text-interlinear-walk": {
+      "code": "# --- PARAMS ---\nTEXT_TITLE = \"Sample Interlinear Text\"  # exact title of the text to walk; case-sensitive\nSENTENCE_PUNCTUATION = \".!?\"  # punctuation marks that end sentences/segments\nPOS_SKIP_LIST = []  # POS abbreviations to skip when reporting (leave empty to report all)\nMAX_SEGMENTS = 0  # max segments to process (0 = all); useful for sampling large texts\n# --- END PARAMS ---\nimport unicodedata\n\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\n\n# Find text by title\ntarget_text = None\nfor text in project.Texts.GetAll():\n    if nfc(project.Texts.GetTitle(text)) == nfc(TEXT_TITLE):\n        target_text = text\n        break\n\nif target_text is None:\n    report.Error(f\"text {TEXT_TITLE!r} not found\")\nelse:\n    report.Info(f\"Walking text {TEXT_TITLE!r}\")\n\n    par_count = 0\n    seg_count = 0\n    bundle_count = 0\n    incomplete_bundles = 0\n\n    for paragraph in project.Paragraphs.GetAll(target_text):\n        par_count += 1\n        report.Info(f\"Paragraph {par_count}\")\n\n        for segment in project.Segments.GetAll(paragraph):\n            seg_count += 1\n            if MAX_SEGMENTS > 0 and seg_count > MAX_SEGMENTS:\n                break\n\n            baseline = project.Segments.GetBaselineText(segment)\n            free_trans = project.Segments.GetFreeTranslation(segment)\n\n            seg_label = f\"  Segment {seg_count}: '{baseline}'\"\n            if free_trans:\n                seg_label += f\" => '{free_trans}'\"\n            report.Info(seg_label)\n\n            analyses = project.Segments.GetAnalyses(segment)\n            for analysis in analyses:\n                # GetAnalyses yields polymorphic tokens (WfiWordform, WfiGloss,\n                # WfiAnalysis, PunctuationForm); GetMorphBundles requires a\n                # genuine WfiAnalysis and raises AttributeError on the others\n                # (WfiGloss, the fully-glossed and most common case, is not\n                # one). GetMorphemeBundles resolves the owning analysis for\n                # any token type and returns [] for punctuation/unanalyzed.\n                bundles = project.WfiAnalyses.GetMorphemeBundles(analysis)\n\n                for bundle in bundles:\n                    bundle_count += 1\n                    morph = project.WfiMorphBundles.GetMorph(bundle)\n                    morph_form = project.Allomorphs.GetForm(morph) if morph else \"(no morph)\"\n                    gloss = project.WfiMorphBundles.GetGloss(bundle) or \"\"\n                    sense = project.WfiMorphBundles.GetSense(bundle)\n                    msa = project.WfiMorphBundles.GetMSA(bundle)\n\n                    # Get entry and sense info from sense object\n                    headword = None\n                    sense_num = -1\n                    if sense:\n                        entry_obj = project.Senses.GetOwningEntry(sense)\n                        if entry_obj:\n                            headword = project.LexEntry.GetHeadword(entry_obj)\n                            senses = project.LexEntry.GetSenses(entry_obj)\n                            for idx, s in enumerate(senses):\n                                if project.Senses.GetGuid(s) == project.Senses.GetGuid(sense):\n                                    sense_num = idx\n                                    break\n\n                    # Get POS from MSA via the entry's wrapped MSAs (matched\n                    # by Hvo-equality to the bundle's raw MSA, same technique\n                    # as affix-catalog.py) -- no ClassName check or cast needed\n                    pos_abbrev = None\n                    if msa:\n                        try:\n                            owning_entry = project.Allomorphs.GetOwningEntry(morph) if morph else None\n                            if owning_entry:\n                                wrapped_msa = next(\n                                    (m for m in project.MSA.GetAll(owning_entry) if m == msa), None\n                                )\n                                if wrapped_msa and wrapped_msa.pos_main:\n                                    pos_abbrev = project.POS.GetAbbreviation(wrapped_msa.pos_main)\n                        except Exception:\n                            pass\n\n                    # Flag incomplete bundles\n                    incomplete = False\n                    incomp_reason = []\n                    if not sense:\n                        incomp_reason.append(\"no sense\")\n                        incomplete = True\n                    if not msa:\n                        incomp_reason.append(\"no MSA\")\n                        incomplete = True\n                    if POS_SKIP_LIST and pos_abbrev and pos_abbrev in POS_SKIP_LIST:\n                        incomp_reason.append(f\"POS skipped ({pos_abbrev})\")\n                        incomplete = True\n\n                    if incomplete:\n                        incomplete_bundles += 1\n\n                    # Build report line\n                    parts = [f\"morph={morph_form}\"]\n                    if headword:\n                        parts.append(f\"entry={headword}\")\n                        if sense_num >= 0:\n                            parts.append(f\"sense={sense_num+1}\")\n                    if gloss:\n                        parts.append(f\"gloss={gloss}\")\n                    if pos_abbrev:\n                        parts.append(f\"POS={pos_abbrev}\")\n\n                    if incomp_reason:\n                        parts.append(f\"INCOMPLETE[{', '.join(incomp_reason)}]\")\n                        report.Warning(f\"      {' '.join(parts)}\")\n                    else:\n                        report.Info(f\"      {' '.join(parts)}\")\n\n    report.Info(f\"Summary: {par_count} paragraph(s), {seg_count} segment(s), {bundle_count} bundle(s), {incomplete_bundles} incomplete\")\n",
+      "code_terms": [
+        "abbreviation",
+        "all",
+        "allomorphs",
+        "analyses",
+        "append",
+        "baseline",
+        "bundles",
+        "entry",
+        "enumerate",
+        "error",
+        "form",
+        "free",
+        "gloss",
+        "grammatical",
+        "guid",
+        "headword",
+        "info",
+        "join",
+        "lex",
+        "main",
+        "morph",
+        "morpheme",
+        "msa",
+        "next",
+        "nfc",
+        "normalize",
+        "of",
+        "owning",
+        "paragraphs",
+        "part",
+        "pos",
+        "segments",
+        "sense",
+        "senses",
+        "speech",
+        "text",
+        "texts",
+        "title",
+        "translation",
+        "warning",
+        "wfi",
+        "wordform"
+      ],
+      "entities": [
+        "LexEntry",
+        "Paragraph",
+        "Segment",
+        "StText",
+        "Text",
+        "WfiAnalysis",
+        "WfiMorphBundle",
+        "WfiWordform"
+      ],
+      "id": "text-interlinear-walk",
+      "intent": "Walk one interlinear text paragraph by paragraph and segment by segment, giving each word's morpheme breakdown, and flag incomplete analyses",
+      "match_terms": [
+        "walk interlinear text",
+        "interlinear data extraction",
+        "morpheme bundle breakdown",
+        "analyze text structure",
+        "incomplete morpheme analysis",
+        "text segmentation with analysis"
+      ],
+      "notes": "Walks a named text's paragraphs and segments, reporting each morpheme's form, entry headword, sense number, gloss, and POS, and flags bundles missing a sense or MSA. Baseline text and free translation are shown per segment when present. GetAnalyses yields polymorphic tokens (WfiWordform, WfiGloss, WfiAnalysis, PunctuationForm), so bundles are read via project.WfiAnalyses.GetMorphemeBundles, which resolves the owning analysis for any token type and returns [] for punctuation or unanalyzed words; calling the wordform/gloss objects' own morph-bundle accessor directly would raise on non-WfiAnalysis tokens.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "InterlinData.py (Ron Lockwood) walk-interlinear-text-structure lines 524-687",
+      "params": [
+        {
+          "default": "\"Sample Interlinear Text\"",
+          "description": "exact title of the text to walk; case-sensitive",
+          "name": "TEXT_TITLE"
+        },
+        {
+          "default": "\".!?\"",
+          "description": "punctuation marks that end sentences/segments",
+          "name": "SENTENCE_PUNCTUATION"
+        },
+        {
+          "default": "[]",
+          "description": "POS abbreviations to skip when reporting (leave empty to report all)",
+          "name": "POS_SKIP_LIST"
+        },
+        {
+          "default": "0",
+          "description": "max segments to process (0 = all); useful for sampling large texts",
+          "name": "MAX_SEGMENTS"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
+    "text-sentences-with-translation": {
+      "code": "# --- PARAMS ---\nTEXT_TITLE = \"Sample Translation Text\"  # exact title of the text to extract; case-sensitive\n# --- END PARAMS ---\nimport unicodedata\n\n\ndef nfc(text):\n    return unicodedata.normalize(\"NFC\", text or \"\")\n\n\n# Find text by title\ntarget_text = None\nfor text in project.Texts.GetAll():\n    if nfc(project.Texts.GetTitle(text)) == nfc(TEXT_TITLE):\n        target_text = text\n        break\n\nif target_text is None:\n    report.Error(f\"text {TEXT_TITLE!r} not found\")\nelse:\n    report.Info(f\"Text: {TEXT_TITLE}\")\n\n    par_num = 0\n    for paragraph in project.Paragraphs.GetAll(target_text):\n        par_num += 1\n\n        seg_num = 0\n        for segment in project.Segments.GetAll(paragraph):\n            seg_num += 1\n\n            baseline = project.Segments.GetBaselineText(segment)\n            free_trans = project.Segments.GetFreeTranslation(segment)\n            literal_trans = project.Segments.GetLiteralTranslation(segment)\n\n            # Build the output line\n            label = f\"{par_num}.{seg_num} {baseline}\"\n            if free_trans:\n                label += f\" => {free_trans}\"\n            if literal_trans:\n                label += f\" (lit: {literal_trans})\"\n\n            report.Info(label)\n",
+      "code_terms": [
+        "all",
+        "baseline",
+        "error",
+        "free",
+        "info",
+        "literal",
+        "nfc",
+        "normalize",
+        "paragraphs",
+        "segments",
+        "text",
+        "texts",
+        "title",
+        "translation"
+      ],
+      "entities": [
+        "Paragraph",
+        "Segment",
+        "StText",
+        "Text"
+      ],
+      "id": "text-sentences-with-translation",
+      "intent": "Extract paragraph and sentence hierarchy from a text with baseline text and free/literal translations numbered as p.s (paragraph.sentence)",
+      "match_terms": [
+        "text with translations",
+        "sentence translations",
+        "paragraph sentence structure",
+        "text baseline and gloss",
+        "extract text segments with translations"
+      ],
+      "notes": "Extracts the paragraph/sentence hierarchy from a named text, one segment per sentence, numbered p.s (1.1 for paragraph 1, sentence 1). Baseline text is always reported; free and literal translations are reported only when present.",
+      "operations": [
+        "read",
+        "iterate"
+      ],
+      "origin": "InterlinData.py (Ron Lockwood) checkForNewSentOrPar lines 259-287 + setFlagsAndSpaces lines 384-406",
+      "params": [
+        {
+          "default": "\"Sample Translation Text\"",
+          "description": "exact title of the text to extract; case-sensitive",
+          "name": "TEXT_TITLE"
+        }
+      ],
+      "raw_lcm_lines": 0,
+      "requires_write": false,
+      "source": "curated",
+      "takes_params": true,
+      "verified_against": {
+        "flexicon": "4.11.0",
+        "verified_by": "sena3-read"
+      }
+    },
     "wordform-analyses": {
       "code": "# --- PARAMS ---\nWORDS = [\"pikakhala\", \"ampwaza\", \"ndiwe\"]  # surface wordforms, any case\n# --- END PARAMS ---\nimport unicodedata\n\n\ndef norm(text):\n    return unicodedata.normalize(\"NFC\", text or \"\").casefold()\n\n\nprobe = set(norm(w) for w in WORDS)\nfound = set()\nfor wf in project.Wordforms.GetAll():\n    form = project.Wordforms.GetForm(wf)\n    if norm(form) not in probe:\n        continue\n    found.add(norm(form))\n    analyses = project.Wordforms.GetAnalyses(wf)\n    parser = sum(1 for a in analyses if project.WfiAnalyses.IsComputerApproved(a))\n    human = sum(1 for a in analyses if project.WfiAnalyses.IsHumanApproved(a))\n    report.Info(\n        f\"== {form} count={project.Wordforms.GetOccurrenceCount(wf)} analyses={len(analyses)} parser={parser} human={human}\"\n    )\n    for analysis in analyses:\n        parts = []\n        for bundle in project.WfiAnalyses.GetMorphBundles(analysis):\n            morph = project.WfiMorphBundles.GetMorph(bundle)\n            morph_form = project.Allomorphs.GetForm(morph) if morph else \"?\"\n            gloss = project.WfiMorphBundles.GetGloss(bundle) or \"?\"\n            parts.append(f\"{morph_form}:{gloss}\")\n        status = project.WfiAnalyses.GetApprovalStatus(analysis).name\n        report.Info(\n            f\"   {' + '.join(parts) or '(no morphemes)'}  status={status} parser={project.WfiAnalyses.IsComputerApproved(analysis)}\"\n        )\nfor word in sorted(probe - found):\n    report.Warning(f\"no wordform {word}\")\n",
       "code_terms": [
@@ -4721,7 +6906,10 @@
         "existing analyses of a word",
         "morpheme breakdown of a word",
         "interlinear analysis of a word",
-        "comparator analyses"
+        "comparator analyses",
+        "parse a wordform and get morphological decomposition",
+        "morph bundles of a wordform",
+        "verify parses of words"
       ],
       "notes": "Words are matched case-insensitively after NFC normalization of both sides. Each analysis line shows allomorph form:gloss per morpheme; \"?\" means the bundle has no allomorph or sense linked. status is the human approval; parser=True means the parser also produced it.",
       "operations": [
@@ -4819,7 +7007,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1212,
-    "unique_patterns": 120
+    "total_patterns": 1267,
+    "unique_patterns": 123
   }
 }

@@ -16,6 +16,7 @@ import re
 import ast
 import textwrap
 import tokenize
+from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Set, Optional, Any, Tuple, TypeGuard, Union
 
 try:
@@ -1325,15 +1326,137 @@ def _looks_like_lcm_member_name(name: str) -> bool:
     return bool(_LCM_SET_GET_MEMBER_RE.match(name))
 
 
+# Issue #319: flexicon Operations-wrapper facade properties on FLExProject
+# (e.g. project.Texts -> TextOperations) are pure-Python wrappers that never
+# hand raw LCM objects to reflected attribute access, so hasattr/getattr on
+# them is a false positive. project.Cache is deliberately NOT in this set:
+# it returns the raw LcmCache and must keep being flagged. Resolved lazily
+# from the installed flexicon's FLExProject.py AST (no flexicon import --
+# importing it loads a .NET runtime, which this module must never require).
+# Alias chains (e.g. project.Features -> self.InflectionFeatures) resolve to
+# the backing Operations class. Any scan failure yields an empty set, which
+# falls back to the previous conservative behaviour (flag unknown receivers).
+_FLEXICON_OPERATIONS_FACADE_ATTRS: Optional[frozenset] = None
+
+
+def _flexicon_operations_facade_attrs() -> frozenset:
+    global _FLEXICON_OPERATIONS_FACADE_ATTRS
+    if _FLEXICON_OPERATIONS_FACADE_ATTRS is not None:
+        return _FLEXICON_OPERATIONS_FACADE_ATTRS
+    _FLEXICON_OPERATIONS_FACADE_ATTRS = frozenset(_scan_flexicon_operations_facades())
+    return _FLEXICON_OPERATIONS_FACADE_ATTRS
+
+
+def _scan_flexicon_operations_facades() -> Set[str]:
+    """Names of FLExProject facade properties backed by flexicon Operations classes.
+
+    Issue #319. Parses the installed flexicon package's FLExProject.py (found
+    via importlib.util.find_spec so the module itself is never imported) and
+    applies the same memoization-idiom rule flexicon_analyzer uses: a
+    @property that assigns ``self._x = <ClassName>(self)`` resolves to
+    ClassName, and a property whose body is ``return self.<OtherProp>`` is an
+    alias of OtherProp. Only classes named ``*Operations`` (and their alias
+    chains) are exempt -- properties returning scalars (CurrentDepth,
+    PeerSchemaGuard, DefaultVernacularWs, DefaultAnalysisWs) or the raw LCM
+    escape hatch (Cache) are not.
+    """
+    result: Set[str] = set()
+    try:
+        import importlib.util
+
+        spec = importlib.util.find_spec("flexicon")
+        if spec is None or not spec.submodule_search_locations:
+            return result
+        flex_project_path = Path(spec.submodule_search_locations[0]) / "code" / "FLExProject.py"
+        if not flex_project_path.exists():
+            return result
+        with open(flex_project_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+    except (OSError, SyntaxError):
+        return result
+
+    class_node = next(
+        (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef) and n.name == "FLExProject"),
+        None,
+    )
+    if class_node is None:
+        return result
+
+    backing_class: Dict[str, str] = {}  # property name -> memoized class name
+    aliases: Dict[str, str] = {}  # property name -> self.<OtherProp> name
+    for item in class_node.body:
+        if not isinstance(item, ast.FunctionDef):
+            continue
+        if not any(
+            isinstance(d, ast.Name) and d.id == "property" for d in item.decorator_list
+        ):
+            continue
+        prop_name = item.name
+        # Issue #304 precedent: a property may import its class under another
+        # name; record the real class, not the alias.
+        import_aliases = {
+            alias.asname: alias.name
+            for sub in ast.walk(item)
+            if isinstance(sub, ast.ImportFrom)
+            for alias in sub.names
+            if alias.asname
+        }
+        for sub in ast.walk(item):
+            if isinstance(sub, ast.Assign) and isinstance(sub.value, ast.Call):
+                func = sub.value.func
+                if isinstance(func, ast.Name):
+                    class_name = func.id
+                elif isinstance(func, ast.Attribute):
+                    class_name = func.attr
+                else:
+                    continue
+                targets_self_attr = any(
+                    isinstance(t, ast.Attribute)
+                    and isinstance(t.value, ast.Name)
+                    and t.value.id == "self"
+                    for t in sub.targets
+                )
+                if not targets_self_attr:
+                    continue
+                backing_class[prop_name] = import_aliases.get(class_name, class_name)
+                break
+            if isinstance(sub, ast.Return) and isinstance(sub.value, ast.Attribute):
+                if (
+                    isinstance(sub.value.value, ast.Name)
+                    and sub.value.value.id == "self"
+                ):
+                    # e.g. `return self.InflectionFeatures` (project.Features).
+                    aliases[prop_name] = sub.value.attr
+
+    def _is_operations_backed(prop: str, seen: Set[str]) -> bool:
+        if prop in seen:
+            return False
+        seen.add(prop)
+        cls = backing_class.get(prop)
+        if cls is not None:
+            return cls.endswith("Operations")
+        target = aliases.get(prop)
+        return bool(target) and _is_operations_backed(target, seen)
+
+    for prop in list(backing_class) + list(aliases):
+        if _is_operations_backed(prop, set()):
+            result.add(prop)
+    return result
+
+
 def _receiver_may_reach_lcm(receiver: Optional[ast.AST]) -> bool:
     """Conservative answer to "could this reflective call reach LCM?".
 
-    Only two shapes are trusted: the runner-injected reporter name and
-    constant receivers (a string/number literal is never an LCM object).
-    Everything else -- unknown names, attributes, call results, subscripts,
-    and a missing receiver -- is assumed to possibly reach LCM. Errs toward
-    flagging because the write gate (not the detector) decides refusal, and
-    it only refuses write runs.
+    Only three shapes are trusted: the runner-injected reporter name,
+    constant receivers (a string/number literal is never an LCM object), and
+    -- issue #319 -- ``project.<FacadeProperty>`` where the facade property
+    resolves to a flexicon Operations wrapper class (e.g. project.Texts),
+    which cannot reach raw LCM. ``project.Cache`` is deliberately NOT
+    trusted: it is the documented raw-LcmCache escape hatch.
+    Everything else -- unknown names, other attributes, call results,
+    subscripts, and a missing receiver -- is assumed to possibly reach LCM.
+    Errs toward flagging because the write gate (not the detector) decides
+    refusal, and it only refuses write runs.
     """
     if receiver is None:
         return True
@@ -1341,6 +1464,16 @@ def _receiver_may_reach_lcm(receiver: Optional[ast.AST]) -> bool:
         return False
     if isinstance(receiver, ast.Name):
         return receiver.id not in _NON_LCM_RECEIVER_NAMES
+    if (
+        isinstance(receiver, ast.Attribute)
+        and isinstance(receiver.value, ast.Name)
+        and receiver.value.id == "project"
+        and receiver.attr in _flexicon_operations_facade_attrs()
+    ):
+        # e.g. hasattr(project.Texts, "GetGuid") -- a flexicon wrapper, not
+        # an LCM object (issue #319). Deeper chains (project.Texts.foo) are
+        # NOT exempt: wrapper methods can return raw LCM objects.
+        return False
     return True
 
 
@@ -1388,7 +1521,8 @@ def detect_reflection_bypass(code: str, tree: Optional[ast.AST] = None) -> dict:
     Never flags:
       - non-LCM member names (``getattr(obj, "lower")``)
       - calls on receivers that cannot reach LCM (the ``report`` reporter,
-        constant literals)
+        constant literals, and ``project.<FacadeProperty>`` where the facade
+        property resolves to a flexicon Operations wrapper -- issue #319)
 
     Receiver analysis is intentionally name-based and conservative: unknown
     receivers are assumed to possibly reach LCM. The write gate refuses only

@@ -20,6 +20,7 @@ missing is `HcparseVersionError("Cannot read ...: [Errno 2] ...")`).
 """
 
 import json
+import re
 import sys
 import types
 from pathlib import Path
@@ -176,8 +177,13 @@ class TestScriptShipsAsPackageData:
     def test_wheel_includes_the_script(self):
         # pyproject's package-data must keep covering the script (the "confirm
         # it ships" half of the issue); the exclusion list must not sweep it.
-        import tomllib
-
-        data = tomllib.load(open(REPO_ROOT / "pyproject.toml", "rb"))
-        included = data["tool"]["setuptools"]["package-data"]["flextoolsmcp"]
+        # Regex over the file text: tomllib is 3.11+ and we support 3.10.
+        text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        match = re.search(
+            r"^\[tool\.setuptools\.package-data\]\s*\nflextoolsmcp\s*=\s*\[(.*?)\]",
+            text,
+            re.MULTILINE | re.DOTALL,
+        )
+        assert match, "package-data table for flextoolsmcp not found"
+        included = re.findall(r'"([^"]+)"', match.group(1))
         assert any("ps1" in pattern for pattern in included), included

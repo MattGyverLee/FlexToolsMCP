@@ -1130,7 +1130,7 @@ class ParseRunner:
           parser_job_failed   state_at_failure, failure ("crashed"),
                               words_completed, words_total, run_id, log_path,
                               then `load_error` (hc's line) on a start failure
-          parser_config_failed / parser_engine_mismatch
+          parser_config_failed / parser_engine_mismatch / sandbox_unavailable
                               the client's detail, `run_id` filled in
 
         A failure with none of these codes (a bug in the client) keeps no

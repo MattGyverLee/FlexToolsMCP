@@ -701,6 +701,30 @@ class SandboxClient:
     # -- the config ---------------------------------------------------------
 
     async def _resolve_config(self) -> Path:
+        # Issue #322: an unreadable hcparse.ps1 is an unavailable sandbox
+        # engine -- a named run failure, never an unhandled exception in the
+        # run task. The wrapper catches every raise site in one place
+        # (`key_inputs` below and `cache.ensure_entry`'s own call inside it).
+        try:
+            return await self._resolve_config_inner()
+        except script.HcparseVersionError as exc:
+            raise SandboxRunError(
+                "The sandbox engine is unavailable: the packaged hcparse.ps1 "
+                f"could not be read ({exc}).",
+                error_code="sandbox_unavailable",
+                detail={
+                    "error_code": "sandbox_unavailable",
+                    "script_path": str(script.script_path()),
+                    "run_id": self.run_id,
+                    "hint": (
+                        "The packaged script ships with the flextoolsmcp "
+                        "installation; reinstall or repair the package. The "
+                        "project itself needs no fixing; no words were parsed."
+                    ),
+                },
+            ) from exc
+
+    async def _resolve_config_inner(self) -> Path:
         launch = self._launch
         if launch.config_path:
             self._write_named_log(Path(launch.config_path))

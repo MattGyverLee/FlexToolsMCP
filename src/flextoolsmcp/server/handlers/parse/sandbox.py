@@ -374,6 +374,7 @@ async def _sandbox_create(plan: _SandboxPlan) -> List[TextContent]:
     is `parser_config_failed` with `run_id: null` (section 5.2).
     """
     from ...sandbox import cache as sandbox_cache
+    from ...sandbox import script as sandbox_script
     from ...sandbox import workdir as sandbox_workdir
 
     request, project_name = plan.request, plan.project_name
@@ -414,6 +415,35 @@ async def _sandbox_create(plan: _SandboxPlan) -> List[TextContent]:
                     rationale=(
                         "The generator's own output is in log_path; health reports "
                         "where GenerateHCConfig.exe was found."
+                    ),
+                    est_cost="seconds",
+                ),
+            ],
+        )
+    except sandbox_script.HcparseVersionError as bad_script:
+        # Issue #322: an unreadable hcparse.ps1 (the logged incident was a
+        # transient checkout state) means the sandbox engine is unavailable,
+        # not that this call is broken -- an envelope, never HANDLER EXCEPTION.
+        return error_response(
+            "sandbox_unavailable",
+            "The sandbox engine is unavailable: the packaged hcparse.ps1 "
+            f"could not be read ({bad_script}).",
+            script_path=str(sandbox_script.script_path()),
+            hint=(
+                "The packaged script ships with the flextoolsmcp installation; "
+                "reinstall or repair the package. Nothing about the project "
+                "needs fixing."
+            ),
+            run_id=None,  # no run exists for create_sandbox
+            next_step=[
+                _grammar_scan_rung(project_name),
+                _rung(
+                    action="Check the environment and the sandbox components.",
+                    tool="flextools_health",
+                    args={"verbose": True},
+                    rationale=(
+                        "Health reports where the sandbox components were found; "
+                        "a missing packaged script is a broken installation."
                     ),
                     est_cost="seconds",
                 ),

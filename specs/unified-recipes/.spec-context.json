@@ -1,0 +1,18 @@
+{
+  "workflow": "companion",
+  "specName": "unified-recipes",
+  "branch": "unified-recipes",
+  "selectedAt": "2026-10-05T02:08:04.835Z",
+  "currentStep": "specify",
+  "status": "archived",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-10-05T02:42:09.275Z"
+    }
+  ],
+  "telemetryInstanceId": "d5a26562-310e-4afd-a8de-6205b4a0cba1"
+}

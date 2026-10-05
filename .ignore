@@ -1,0 +1,3 @@
+# Keep ripgrep-based search (Claude Code Grep/Glob, rg) out of retired spec docs.
+# Start from specs/<feature>/AS-BUILT.md; search the archive explicitly if needed.
+specs/_archive/

@@ -1471,8 +1471,9 @@ def _receiver_may_reach_lcm(receiver: Optional[ast.AST]) -> bool:
         and receiver.attr in _flexicon_operations_facade_attrs()
     ):
         # e.g. hasattr(project.Texts, "GetGuid") -- a flexicon wrapper, not
-        # an LCM object (issue #319). Deeper chains (project.Texts.foo) are
-        # NOT exempt: wrapper methods can return raw LCM objects.
+        # an LCM object (issue #319). Deeper chains (a member reached through
+        # the facade attribute) are NOT exempt: wrapper methods can return
+        # raw LCM objects.
         return False
     return True
 

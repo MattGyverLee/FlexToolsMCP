@@ -366,6 +366,16 @@ project-open diagnosis changes.
   When no rewrite is offered, the hint names the same-stem property that is
   actually available on the receiver -- `Did you mean 'ProdRestrictRC'?`
   for the IMoStemMsa case.
+- The reflection gate no longer flags `hasattr` / `getattr` on flexicon
+  facade properties
+  ([#319](https://github.com/MattGyverLee/FlexToolsMCP/issues/319)).
+  `hasattr(project.Texts, "GetGuid")` was rejected because `project.Texts`
+  was assumed to reach LCM, but facade properties backed by an Operations
+  class (`Texts` -> `TextOperations`) are pure-Python wrappers. The exempt
+  set is read lazily from the installed flexicon's `FLExProject.py` AST
+  (without importing flexicon), alias chains resolve through, and
+  `project.Cache` stays flagged because it returns the raw `LcmCache`. If
+  the scan fails, the gate falls back to the old conservative behavior.
 - `partial_module_structure` rejections no longer feed retry loops
   ([#334](https://github.com/MattGyverLee/FlexToolsMCP/issues/334)). Models
   often resubmitted the exact code that was just rejected, and no retry-loop

@@ -117,6 +117,10 @@ def build_plan(
     }
     if backup.get("peer_caveat"):
         backup_block["peer_caveat"] = backup["peer_caveat"]
+    # Issue #218: what the backup store's size/age caps are expected to evict
+    # when this backup is taken -- disclosed before confirmation.
+    if backup.get("prune_eviction"):
+        backup_block["prune_eviction"] = backup["prune_eviction"]
     if backup_block["outcome"] != "will_be_taken":
         backup_block["no_recovery_warning"] = wording.no_recovery_warning(
             backup_block["reason"], send_receive

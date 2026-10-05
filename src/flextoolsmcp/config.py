@@ -64,6 +64,19 @@ REPORT_EMAIL_DEFAULT = "matthew_lee@sil.org"
 #                                RunModuleInput.backup_before_write=True/False.
 # backup_retention           -- how many timestamped backups to keep per
 #                                project before pruning the oldest. Default 5.
+# backup_max_total_mb          -- total size cap (megabytes) across ALL
+#                                projects' timestamped backups. When the store
+#                                exceeds it after a backup, the oldest backups
+#                                are evicted first (issue #218). Default 2048.
+#                                0 or null disables the cap.
+# backup_max_age_days          -- age limit (days) for timestamped backups.
+#                                Backups older than this are evicted, oldest
+#                                first (issue #218). Default 180. 0 or null
+#                                disables the limit. Both caps keep the
+#                                invariants: the backup just taken is never
+#                                evicted, every project keeps its newest
+#                                backup, and nothing outside
+#                                ~/.flextoolsmcp/backups is ever touched.
 # require_write_confirmation -- enforce RunModuleInput.confirmed on mutating
 #                                writes (Rung 3). Default ON. Set False for
 #                                power users who accept the risk of unconfirmed
@@ -74,6 +87,12 @@ BACKUP_BEFORE_WRITE_DEFAULT = True
 
 BACKUP_RETENTION_KEY = "backup_retention"
 BACKUP_RETENTION_DEFAULT = 5
+
+BACKUP_MAX_TOTAL_MB_KEY = "backup_max_total_mb"
+BACKUP_MAX_TOTAL_MB_DEFAULT = 2048
+
+BACKUP_MAX_AGE_DAYS_KEY = "backup_max_age_days"
+BACKUP_MAX_AGE_DAYS_DEFAULT = 180
 
 REQUIRE_WRITE_CONFIRMATION_KEY = "require_write_confirmation"
 REQUIRE_WRITE_CONFIRMATION_DEFAULT = True

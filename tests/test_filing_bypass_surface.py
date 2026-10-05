@@ -47,7 +47,9 @@ BYPASS_SHAPED = re.compile(r"write|backup|force|override|skip|bypass|unattended|
 _FILING_ARGUMENTS = {"apply", "confirmed", "plan_id"}
 
 #: Names that existed before CP4 and match the pattern, with why each one
-#: cannot skip or pre-answer filing's confirmation.
+#: cannot skip or pre-answer filing's confirmation. Post-CP4 keys are
+#: documented here too -- the tripwire's rule is "every match says why it
+#: is harmless", and the dict is where that reasoning lives.
 _PRE_CP4_ALLOWED = {
     # Lowers run_module's confirmation rung. Filing READS it only to disclose
     # it in the plan; it never lowers filing's rung (R-08) -- asserted below.
@@ -58,6 +60,12 @@ _PRE_CP4_ALLOWED = {
     "backup_before_write": "backup opt-out, disclosed before confirmation",
     # How many backups to keep. Touches no rung.
     "backup_retention": "retention count, touches no rung",
+    # Issue #218: size/age caps for the backup store. Read only by the
+    # post-backup pruner; they cannot skip or pre-answer filing's
+    # confirmation -- they only delete older timestamped backups after a
+    # (confirmed) backup is taken, never the backup just taken.
+    "backup_max_total_mb": "pruning cap, touches no rung",
+    "backup_max_age_days": "pruning cap, touches no rung",
 }
 
 

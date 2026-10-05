@@ -410,6 +410,15 @@ def _confirmation_required(
         if backup.get("outcome") == "will_be_taken"
         else backup.get("no_recovery_warning")
     )
+    # Issue #218: nothing disappears silently -- when the store caps will
+    # evict older backups, the plan says so before confirmation.
+    eviction = backup.get("prune_eviction") or {}
+    if backup.get("outcome") == "will_be_taken" and eviction.get("backups"):
+        mb = eviction["bytes"] / (1024 * 1024)
+        note += (
+            f" Taking it will also prune {eviction['backups']} older "
+            f"backup(s) (~{mb:.1f} MB) under the backup store's size/age caps."
+        )
     resubmit = {
         "scope_kind": request.scope_kind,
         "scope_value": request.scope_value,
@@ -602,7 +611,8 @@ async def _handle_filing_request(
             basis=f"prior_run:{baseline_run['run_id']}" if baseline_run else "absent",
         ),
         backup={"outcome": intent.outcome, "reason": intent.reason,
-                "peer_caveat": intent.peer_caveat},
+                "peer_caveat": intent.peer_caveat,
+                "prune_eviction": intent.details.get("prune_eviction")},
         access=_access_block(decision),
         send_receive=send_receive,
         require_write_confirmation=bool(
@@ -847,6 +857,9 @@ def _take_filing_backup(project_name: str, decision, send_receive):
         block = {"created": True, "path": outcome.get("path")}
         if outcome.get("note"):
             block["note"] = outcome["note"]
+        # Issue #218: what the store caps evicted alongside this backup.
+        if outcome.get("pruned"):
+            block["pruned"] = outcome["pruned"]
         if filing_paths.treats_as_send_receive(send_receive):
             block["send_receive_note"] = (
                 "A local backup is a convenience for this machine, not a way to "

@@ -7,6 +7,18 @@ sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
 
+- **Backup store size/age pruning (#218)**: count-based `backup_retention`
+  alone did not bound disk use. Two new config knobs apply after it, across
+  all projects: `backup_max_total_mb` (default 2048) evicts the oldest
+  timestamped backups first when the store exceeds the cap, and
+  `backup_max_age_days` (default 180) evicts backups older than the limit;
+  either can be disabled with 0. The prune runs after every backup and once
+  at server startup, keeps the invariants (the backup just taken is never
+  evicted, every project keeps its newest backup, nothing outside
+  `~/.flextoolsmcp/backups` is touched, loose files are left alone), logs
+  removals, and is disclosed in the filing plan's `backup` block before
+  confirmation. `flextools_health` reports the store's size under `backups`.
+
 ### Other
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*

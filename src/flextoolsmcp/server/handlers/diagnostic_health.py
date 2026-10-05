@@ -91,6 +91,11 @@ except (ImportError, ValueError):
     from server.project_discovery import sweep_stale_locks
 
 try:
+    from ..backup import backup_store_summary
+except (ImportError, ValueError):
+    from server.backup import backup_store_summary
+
+try:
     from . import op_telemetry
 except ImportError:
     from server.handlers import op_telemetry
@@ -742,6 +747,9 @@ async def handle_flextools_health(args: dict) -> List[TextContent]:
         "parser_next_steps": _build_parser_next_steps(parser),
         "libraries": libraries,
         "indexes": _build_indexes_block(index_dir, libraries),
+        # Issue #218: the backup store's size and effective caps, so a
+        # growing ~/.flextoolsmcp/backups is visible before it surprises.
+        "backups": backup_store_summary(),
         "session": session_state.summary(),
         "logs": {
             "operations_log": str(get_log_dir() / "operations.log"),

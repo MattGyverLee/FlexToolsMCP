@@ -1191,6 +1191,19 @@ async def main():
     # EVERY finding as a WARNING into operations.log -- is intentionally
     # gone. At startup no session project is set yet, so nothing warns here.
 
+    # Issue #218: prune the backup store once at startup (size/age caps),
+    # beside the stale-lock sweep. Best-effort; never blocks startup.
+    try:
+        if __package__:
+            from .server.backup import prune_backup_store
+        else:
+            from server.backup import prune_backup_store
+        _startup_prune = prune_backup_store()
+        for _removed in _startup_prune.get("removed", []):
+            _log_info(f"Backup store startup prune removed {_removed}")
+    except Exception as _prune_exc:  # noqa: BLE001 -- a sweep never blocks startup
+        _log_warning(f"Backup store startup prune failed: {_prune_exc}")
+
     # Parser-check CP4 (FR-028, R-11): a filing run the previous server
     # process left saying `filing` belongs to a job nothing is executing; its
     # in-memory claim died with that process. Mark its record `crashed` (log

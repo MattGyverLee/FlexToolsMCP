@@ -19,6 +19,28 @@ automatically. Configure retention with:
 flextools_manage_config(action="set", key="backup_retention", value=10)
 ```
 
+Count-based retention alone does not bound disk use, so two more caps apply
+after it (issue #218), across **all** projects:
+
+```
+flextools_manage_config(action="set", key="backup_max_total_mb", value=4096)
+flextools_manage_config(action="set", key="backup_max_age_days", value=90)
+```
+
+- `backup_max_total_mb` (default 2048): when the timestamped backups exceed
+  this many megabytes in total, the oldest are evicted first.
+- `backup_max_age_days` (default 180): backups older than this many days are
+  evicted, oldest first.
+- Set either to 0 to disable it.
+
+The caps run after every backup and once at server startup. They keep three
+invariants: the backup just taken is never evicted, every project keeps its
+newest backup, and nothing outside `~/.flextoolsmcp/backups` is ever touched.
+Loose files in a project's backup folder (like the `before-restore.fwdata`
+below) are never counted or removed. When a filing plan's backup would push
+the store over a cap, the plan says how many older backups will be evicted,
+and `flextools_health` reports the store's size under `backups`.
+
 Opt out of the automatic backup entirely (not recommended) with:
 
 ```

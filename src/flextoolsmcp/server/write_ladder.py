@@ -284,7 +284,15 @@ def backup_intent(
         skip = predict_backup_skip(project_name)
         if skip is not None:
             return BackupIntent(outcome="not_expected", reason=skip)
-    return BackupIntent(outcome="will_be_taken", peer_caveat=caveat)
+    intent = BackupIntent(outcome="will_be_taken", peer_caveat=caveat)
+    if predict_skips:
+        # Issue #218: disclose what the backup store's size/age caps would
+        # evict, so the filing plan's backup block can say what will
+        # disappear before the user confirms. Best-effort, never raises.
+        from .backup import predict_prune_eviction
+
+        intent.details["prune_eviction"] = predict_prune_eviction(project_name)
+    return intent
 
 
 def take_backup(

@@ -57,7 +57,7 @@ KNOWN_INTENTIONAL_CAPS = {
     "mcp": (
         "2.0.0 removed the low-level Server decorator API. Dual 1.x/2.x "
         "support is tracked in issue #83; see "
-        "specs/mcp2-compat/dual-support-analysis.md."
+        "specs/_archive/mcp2-compat/dual-support-analysis.md."
     ),
 }
 

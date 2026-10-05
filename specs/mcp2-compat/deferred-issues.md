@@ -18,7 +18,7 @@ constructor-injected handlers. flextools-mcp currently caps `mcp` at
 `>=1.27.0,<2` (see specs/mcp2-compat/) to stay on the working decorator API;
 this issue tracks the eventual forward port.
 
-### Per-symbol audit (from specs/mcp2-compat/reviews/cycle1-programmer.md)
+### Per-symbol audit (from specs/_archive/mcp2-compat/reviews/cycle1-programmer.md)
 
 | # | Symbol | mcp 1.x (1.29.0) status | mcp 2.0.0 status | What a port requires |
 |---|---|---|---|---|
@@ -115,7 +115,7 @@ whichever one happened to break last.
 ```
 Title: Chain exceptions (raise ... from exc) in dual-mode import fallbacks
 
-QC P2 finding from specs/mcp2-compat/reviews/cycle1-qc.md, sibling sweep:
+QC P2 finding from specs/_archive/mcp2-compat/reviews/cycle1-qc.md, sibling sweep:
 
 `src/flextoolsmcp/server/handlers/_import_helper.py:29-104` and roughly 15
 duplicated inline blocks across `execution.py`, `admin.py`, `catalog.py`,

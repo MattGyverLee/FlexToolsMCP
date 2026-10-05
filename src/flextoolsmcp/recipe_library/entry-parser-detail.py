@@ -42,8 +42,8 @@ for entry in project.LexEntry.GetAll():
         if msa.is_stem_msa:
             stem = msa.as_stem_msa()
             icl = project.MSA.GetInflectionClass(stem)
-            restrict = [str(p) for p in project.MSA.GetExceptionFeatures(stem)]
-            report.Info(f"   stem MSA: POS={pos} infl class={str(icl) if icl else None} feats={feats or None} exception feats={restrict}")
+            restrict = [project.PossibilityLists.GetItemName(p) for p in project.MSA.GetExceptionFeatures(stem)]
+            report.Info(f"   stem MSA: POS={pos} infl class={project.InflectionFeatures.InflectionClassGetName(icl) if icl else None} feats={feats or None} exception feats={restrict}")
         elif msa.is_infl_aff_msa:
             slots = [project.POS.GetSlotName(x) for x in project.MSA.GetInflAffMsaSlots(msa)]
             report.Info(f"   infl-affix MSA: POS={pos} slots={slots} feats={feats or None}")

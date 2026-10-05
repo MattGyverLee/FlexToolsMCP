@@ -44,14 +44,23 @@ sorted position, not the top). Changes without an issue go under Other.
 - Offline suite (`pytest -m "not requires_flex"`): **5302 passed**, 4 skipped,
   119 deselected, 0 failed.
 - `python scripts/validate_integrity.py all` exits clean.
-- The four migrated recipes were checked on Sena 3 under flexicon 4.12.0:
-  `entry-parser-detail`'s readers by a read-only run,
-  `affix-template-setup`, `create-entries-idempotent` and
-  `create-entry-like-comparator` by dry run. Sena 3 has no inflection
-  classes or exception features, so the path that copies a non-empty class
-  was not exercised live. `create-entries-idempotent` also now refuses a
-  comparator whose first sense has no MSA, as `create-entry-like-comparator`
-  already did, instead of failing on it.
+- The four migrated recipes were checked on Sena 3 under flexicon 4.12.0.
+  Sena 3 had no inflection classes or exception features, so it was first
+  seeded with test data built from its own `genro` features: seven gender
+  inflection classes on Nome (1/2 ... 14/6) set on 589 noun stems, and three
+  exception features on 15 stems, modelled on the real ones in Mbugwe
+  LizzieHC practice. `create-entry-like-comparator` then copied class 7/8
+  from *cibubu* in a live write, read back and deleted.
+  `entry-parser-detail` read the seeded class and features.
+  `affix-template-setup` and `create-entries-idempotent` were dry-run.
+  Separately, `AddExceptionFeature` / `RemoveExceptionFeature` were checked
+  on a stem in Mbugwe LizzieHC practice: the feature was added, a second add
+  changed nothing, and the remove restored the original.
+- The recipes now print inflection-class and exception-feature names (`7/8`)
+  instead of the object's string form (`MoInflClass : 20233`).
+  `create-entries-idempotent` also now refuses a comparator whose first
+  sense has no MSA, as `create-entry-like-comparator` already did, instead
+  of failing on it.
 - Live FLEx suite (`requires_flex`) and Tier-2 live LLM evals: not run for
   this release.
 

@@ -63,7 +63,7 @@ for key, hw in COMPARATORS.items():
         continue
     icl = project.MSA.GetInflectionClass(msa_raw)
     comp[key] = (pos_obj, icl)
-    report.Info(f"comparator {key}={hw}: POS='{project.POS.GetName(pos_obj)}' infl={str(icl) if icl else None}")
+    report.Info(f"comparator {key}={hw}: POS='{project.POS.GetName(pos_obj)}' infl={project.InflectionFeatures.InflectionClassGetName(icl) if icl else None}")
 
 # Validate morph types and variant types before any write.
 valid_morphs = set(name for name, _mt, _is_stem in project.LexEntry.GetAvailableMorphTypes())

@@ -6,7 +6,7 @@ entities: ["LexEntry", "LexSense", "MoStemMsa", "PartOfSpeech"]
 operations: ["create"]
 requires_write: true
 origin: MCPlayground flex-parse-fixup lib/w_create_stem_like.py
-verified_against: {"flexicon": "4.12.0", "verified_by": "sena3-dryrun"}
+verified_against: {"flexicon": "4.12.0", "verified_by": "sena3-live"}
 notes: FR-053 lesson carried from w_create_stem_like.py: project.MSA.CreateStem makes a fresh stem MSA without an inflection class, so copy the comparator's class with project.MSA.GetInflectionClass / SetInflectionClass afterwards (flexicon#573, fixed in 4.12.0). Validate the comparator and morph type before any write; refuse when the comparator headword resolves to 0 or more than 1 entry. POS comes from the comparator object via Senses.GetPartOfSpeechObject, never POS.Find by name. Compare headwords after NFC on both sides. Report through report.Info/Warning/Error only.
 """
 # --- PARAMS ---
@@ -51,7 +51,7 @@ else:
                 if MORPH_TYPE not in valid_morphs:
                     report.Error(f"new form {NEW_FORM}: unknown morph type {MORPH_TYPE!r}")
                 else:
-                    report.Info(f"comparator {COMPARATOR}: POS='{project.POS.GetName(pos_obj)}' infl={str(icl) if icl else None}")
+                    report.Info(f"comparator {COMPARATOR}: POS='{project.POS.GetName(pos_obj)}' infl={project.InflectionFeatures.InflectionClassGetName(icl) if icl else None}")
                     if not modifyAllowed:
                         report.Info(f"(dry run) would create {NEW_FORM} mt={MORPH_TYPE} gloss='{GLOSS}' like {COMPARATOR}")
                     if modifyAllowed:

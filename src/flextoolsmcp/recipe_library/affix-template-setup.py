@@ -171,7 +171,7 @@ else:
                 already += 1
                 continue
             saved_icl = project.MSA.GetInflectionClass(raw_msa)
-            icl_label = str(saved_icl) if saved_icl is not None else None
+            icl_label = project.InflectionFeatures.InflectionClassGetName(saved_icl) if saved_icl is not None else None
             if not modifyAllowed:
                 report.Info(f"(dry run) would repoint sense '{gloss}' from {cur_name!r} to '{pos_name}', keeping inflection class {icl_label} if '{pos_name}' allows it")
                 continue
@@ -180,7 +180,7 @@ else:
                 kept = project.MSA.GetInflectionClass(raw_msa)
                 if saved_icl is not None and kept is None:
                     report.Warning(f"sense '{gloss}': inflection class {icl_label} does not belong to '{pos_name}' or its parents, so it was cleared")
-                report.Info(f"repointed sense '{gloss}': POS {cur_name!r} -> '{pos_name}', inflection class {str(kept) if kept is not None else None}")
+                report.Info(f"repointed sense '{gloss}': POS {cur_name!r} -> '{pos_name}', inflection class {project.InflectionFeatures.InflectionClassGetName(kept) if kept is not None else None}")
                 repointed += 1
         skipped = len(senses) - len(stems)
 

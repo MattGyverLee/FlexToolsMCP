@@ -7,7 +7,7 @@ Tests for unified-recipes T031: the raw-LibLCM gate (FR-045, R18).
 ``shipped=True``) flags casts to ``I*`` interfaces, ``*OA``/``*OS``/``*OC``/
 ``*RA``/``*RS``/``*RC`` property access, ``project.project``,
 ``ServiceLocator`` and ``ClassName`` dispatch. Wrapper suggestions come from
-the inverted flexicon bridge index (``flexicon_lcm_bridge_v4.11.0.json``),
+the inverted flexicon bridge index (``flexicon_lcm_bridge_v*.json``),
 never a hand-kept table: ``Duplicate``/``Delete`` are never suggested, and a
 ``# raw-lcm: <reason>`` note overrides a wrapper suggestion.
 """
@@ -24,7 +24,7 @@ from flextoolsmcp.server.validators import detect_raw_lcm_access
 
 @pytest.fixture(scope="module")
 def api_index():
-    """Real API index plus the real 4.11.0 bridge file."""
+    """Real API index plus the real shipped bridge file."""
     index = APIIndex.load(get_index_dir())
     index.ensure_flexicon_bridge_loaded()
     assert index.flexicon_lcm_bridge, "flexicon bridge index failed to load"
@@ -213,16 +213,18 @@ class TestRawLcmLineRatchet:
         assert any("raw_lcm_lines" in issue for issue in result["issues"])
 
     def test_serialised_bridge_file_drives_suggestions(self, api_index):
-        # The inversion is tested against the real 4.11.0 bridge file, not a
+        # The inversion is tested against the real bridge file, not a
         # fixture: reload it from disk and compare candidate sets.
         from flextoolsmcp.server.validators import _bridge_property_map
+        from flextoolsmcp.server.versioning import find_latest_versioned_api_file
 
-        raw = json.load(
-            open(
-                get_index_dir() / "python" / "flexicon_lcm_bridge_v4.11.0.json",
-                encoding="utf-8",
-            )
+        # Discovered, not hardcoded: a reindex that ships a newer bridge
+        # file must not leave this test pointing at the archived one.
+        bridge_path = find_latest_versioned_api_file(
+            get_index_dir() / "python", "flexicon_lcm_bridge"
         )
+        assert bridge_path is not None, "no shipped flexicon_lcm_bridge index found"
+        raw = json.loads(bridge_path.read_text(encoding="utf-8"))
         assert _bridge_property_map(raw).get("PhoneEnvRC", []) == _bridge_property_map(
             api_index.flexicon_lcm_bridge
         ).get("PhoneEnvRC", [])

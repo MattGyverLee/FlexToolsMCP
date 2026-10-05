@@ -442,12 +442,14 @@ def _entity_access_path(library: str, entity_name: str, entity: dict | None) -> 
     """``project.<Accessor>`` for a flexicon Operations class, or None.
 
     The entity's recorded ``access_path`` (issue #100, generator facade scan)
-    wins. Issue #304: when it is missing -- the shipped 4.11.0 index records
-    it for 62 of 122 entities, and never for ``WordformOperations``, whose
-    accessor is documented under an import alias (``WfiWordformOperations``)
-    -- derive it from FLExProject's property return types through the same
-    alias-resolving map the preflight gates use, so search / get_object_api
-    teach ``project.Wordforms`` instead of an import that weak models then
+    wins. Issue #304: when it is missing -- the shipped 4.12.0 index records
+    it for 63 of 125 entities, including ``WordformOperations`` (flexicon
+    #573 closed that gap; 4.11.0 had it for 62 of 122, never for
+    ``WordformOperations``, whose accessor is documented under an import
+    alias (``WfiWordformOperations``)) -- derive it from FLExProject's
+    property return types through the same alias-resolving map the
+    preflight gates use, so search / get_object_api teach
+    ``project.Wordforms`` instead of an import that weak models then
     misuse as ``project.WordformOperations``.
     """
     if entity:

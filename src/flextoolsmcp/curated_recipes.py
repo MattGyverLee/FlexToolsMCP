@@ -34,7 +34,7 @@ if __package__:
 else:
     from curated_deprecations import CURATED_DEPRECATIONS
 
-FLEXICON_VERIFIED_VERSION = "4.11.0"
+FLEXICON_VERIFIED_VERSION = "4.12.0"
 
 CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
     "list-entries-with-glosses": {

@@ -7,8 +7,8 @@ operations: ["create"]
 requires_write: true
 origin: MCPlayground flex-parse-fixup lib/w_create_stem_like.py
 verified_against: {"flexicon": "4.11.0", "verified_by": "sena3-live"}
-raw_lcm_lines: 3
-notes: FR-053 lesson carried from w_create_stem_like.py: project.MSA.CreateStem (like SetStemMsaPos) resets the stem MSA, so restore InflectionClassRA afterwards; inflection class has no flexicon API yet (flexicon#573) so those three lines use the raw stem MSA. Validate the comparator and morph type before any write; refuse when the comparator headword resolves to 0 or more than 1 entry. POS comes from the comparator object via Senses.GetPartOfSpeechObject, never POS.Find by name. Compare headwords after NFC on both sides. Report through report.Info/Warning/Error only.
+raw_lcm_lines: 0
+notes: FR-053 lesson carried from w_create_stem_like.py: new stems copy the comparator's POS plus inflection class with project.MSA.CreateStem and project.MSA.SetInflectionClass (flexicon#573, closed in flexicon 4.12.0); no raw LCM remains in this recipe. Validate the comparator and morph type before any write; refuse when the comparator headword resolves to 0 or more than 1 entry. POS comes from the comparator object via Senses.GetPartOfSpeechObject, never POS.Find by name. Compare headwords after NFC on both sides. Report through report.Info/Warning/Error only.
 """
 # --- PARAMS ---
 COMPARATOR = "cibubu"  # exact headword of an entry whose first-sense stem MSA supplies POS and inflection class
@@ -19,8 +19,6 @@ CITATION = None  # citation form or None
 FEATURES = None  # feature/value NAMES or None (Sena 3 has no Bantu feature names by default)
 # --- END PARAMS ---
 import unicodedata
-
-from SIL.LCModel import IMoStemMsa
 
 
 def nfc(text):
@@ -49,8 +47,7 @@ else:
             if msa_raw is None:
                 report.Error(f"comparator {COMPARATOR}: first sense has no MSA")
             else:
-                stem = IMoStemMsa(msa_raw)  # flexicon gap: #573
-                icl = stem.InflectionClassRA  # flexicon gap: #573
+                icl = project.MSA.GetInflectionClass(msa_raw)  # flexicon#573, closed in 4.12.0
                 valid_morphs = set(name for name, _mt, _is_stem in project.LexEntry.GetAvailableMorphTypes())
                 if MORPH_TYPE not in valid_morphs:
                     report.Error(f"new form {NEW_FORM}: unknown morph type {MORPH_TYPE!r}")
@@ -65,7 +62,7 @@ else:
                         s = project.LexEntry.AddSense(e, GLOSS)
                         m = project.MSA.CreateStem(s, pos_obj)
                         if icl is not None:
-                            m.InflectionClassRA = icl  # flexicon gap: #573
+                            project.MSA.SetInflectionClass(m, icl)
                         if FEATURES:
                             project.InflectionFeature.MakeFeatStruc(FEATURES, owner=m)
                         report.Info(

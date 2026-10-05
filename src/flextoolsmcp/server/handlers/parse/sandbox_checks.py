@@ -134,7 +134,8 @@ _ADVISORY_NOTES = {
 }
 
 #: Terminal failure codes re-emitted as their own envelopes (section 3, step 8).
-_SANDBOX_FAILURE_CODES = ("parser_timeout", "parser_job_failed", "parser_config_failed")
+_SANDBOX_FAILURE_CODES = ("parser_timeout", "parser_job_failed", "parser_config_failed",
+                          "sandbox_unavailable")
 
 
 

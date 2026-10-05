@@ -127,11 +127,22 @@ class TestMissingImports:
 
 class TestAccessPath:
     def test_derived_for_wordform_operations(self, idx, monkeypatch):
+        # flexicon 4.12.0 records access_path for WordformOperations (its
+        # issue #573), closing the shipped gap #304 covered -- strip it from
+        # a copy to keep exercising the derivation heuristic.
         monkeypatch.setattr(api_mod, "get_api_index", lambda: idx)
-        entity = idx.flexicon["entities"]["WordformOperations"]
-        assert "access_path" not in entity  # the shipped gap this covers
+        entity = dict(idx.flexicon["entities"]["WordformOperations"])
+        entity.pop("access_path", None)
         assert api_mod._entity_access_path("flexicon", "WordformOperations", entity) == "project.Wordforms"
         assert api_mod._build_entity_import("flexicon", "WordformOperations", "", entity) == "project.Wordforms"
+
+    def test_recorded_access_path_now_shipped(self, idx, monkeypatch):
+        # The 4.12.0 index ships the path #304 used to derive; the recorded
+        # value wins without needing the heuristic.
+        monkeypatch.setattr(api_mod, "get_api_index", lambda: idx)
+        entity = idx.flexicon["entities"]["WordformOperations"]
+        assert entity.get("access_path") == "project.Wordforms"
+        assert api_mod._entity_access_path("flexicon", "WordformOperations", entity) == "project.Wordforms"
 
     def test_recorded_access_path_wins(self, idx, monkeypatch):
         monkeypatch.setattr(api_mod, "get_api_index", lambda: idx)

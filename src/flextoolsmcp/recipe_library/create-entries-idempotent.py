@@ -7,8 +7,8 @@ operations: ["create", "iterate", "search"]
 requires_write: true
 origin: MCPlayground flex-parse-fixup lib/w_create_entries.py
 verified_against: {"flexicon": "4.11.0", "verified_by": "sena3-live"}
-raw_lcm_lines: 3
-notes: Validate every comparator, POS, morph type and variant type before any write; refuse when a PARAMS headword resolves to 0 or more than 1 entry. Idempotent: skips a row whose lexeme form plus first gloss plus POS already exists (POS compared by GUID, text by NFC). New stems copy the comparator POS plus inflection class with project.MSA.CreateStem; inflection class has no flexicon API yet (flexicon#573) so those three lines use the raw stem MSA. Otherwise never cast flexicon wrappers to LCM interfaces, never branch on ClassName, never compare Hvo, and read names through GetName rather than multistring internals. A bare reading (interjection, adverb, particle) must be morph type stem; a bound stem never parses without an affix. Report through report.Info/Warning/Error only.
+raw_lcm_lines: 0
+notes: Validate every comparator, POS, morph type and variant type before any write; refuse when a PARAMS headword resolves to 0 or more than 1 entry. Idempotent: skips a row whose lexeme form plus first gloss plus POS already exists (POS compared by GUID, text by NFC). New stems copy the comparator POS plus inflection class with project.MSA.CreateStem and project.MSA.SetInflectionClass (flexicon#573, closed in flexicon 4.12.0); no raw LCM remains in this recipe. Otherwise never cast flexicon wrappers to LCM interfaces, never branch on ClassName, never compare Hvo, and read names through GetName rather than multistring internals. A bare reading (interjection, adverb, particle) must be morph type stem; a bound stem never parses without an affix. Report through report.Info/Warning/Error only.
 """
 # --- PARAMS ---
 COMPARATORS = {"NOME": "cibubu"}  # comparator key -> exact headword of an entry whose first-sense stem MSA supplies POS and inflection class
@@ -20,8 +20,6 @@ NEW = [
 ]
 # --- END PARAMS ---
 import unicodedata
-
-from SIL.LCModel import IMoStemMsa
 
 
 def nfc(text):
@@ -60,8 +58,7 @@ for key, hw in COMPARATORS.items():
         ok = False
         continue
     msa_raw = project.Senses.GetMSA(senses[0])
-    stem = IMoStemMsa(msa_raw)  # flexicon gap: #573
-    icl = stem.InflectionClassRA  # flexicon gap: #573
+    icl = project.MSA.GetInflectionClass(msa_raw)  # flexicon#573, closed in 4.12.0
     comp[key] = (pos_obj, icl)
     report.Info(f"comparator {key}={hw}: POS='{project.POS.GetName(pos_obj)}' infl={str(icl) if icl else None}")
 
@@ -121,7 +118,7 @@ else:
                 s = project.LexEntry.AddSense(e, gloss)
                 m = project.MSA.CreateStem(s, pos)
                 if icl is not None:
-                    m.InflectionClassRA = icl  # flexicon gap: #573
+                    project.MSA.SetInflectionClass(m, icl)
                 if feats:
                     project.InflectionFeature.MakeFeatStruc(feats, owner=m)
                 out.append(f"'{gloss}' POS='{project.POS.GetName(pos)}' sense={project.Senses.GetGuid(s)}")

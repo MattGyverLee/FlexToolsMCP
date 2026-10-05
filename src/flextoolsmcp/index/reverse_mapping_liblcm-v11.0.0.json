@@ -59,7 +59,7 @@
     },
     "AllomorphOperations": {
       "category": "lexicon",
-      "method_count": 21,
+      "method_count": 28,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
@@ -68,6 +68,7 @@
         "IMoAffixAllomorphFactory",
         "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IPartOfSpeech",
         "IPhEnvironment",
         "ITsString"
       ]
@@ -418,10 +419,11 @@
     },
     "FLExProject": {
       "category": "general",
-      "method_count": 109,
+      "method_count": 110,
       "methods": {},
       "wraps_interfaces": [
         "ICmObjectRepository",
+        "ICmPossibility",
         "ICmPossibilityList",
         "ICmPossibilityRepository",
         "ICmSemanticDomain",
@@ -492,7 +494,7 @@
     },
     "InflectionFeatureOperations": {
       "category": "grammar",
-      "method_count": 28,
+      "method_count": 32,
       "methods": {},
       "wraps_interfaces": [
         "IFsClosedFeature",
@@ -523,7 +525,7 @@
     },
     "LexEntryOperations": {
       "category": "lexicon",
-      "method_count": 65,
+      "method_count": 66,
       "methods": {},
       "wraps_interfaces": [
         "ICmFileFactory",
@@ -577,7 +579,7 @@
     },
     "LexSenseOperations": {
       "category": "lexicon",
-      "method_count": 91,
+      "method_count": 92,
       "methods": {},
       "wraps_interfaces": [
         "ICmPicture",
@@ -617,9 +619,10 @@
     },
     "MSAOperations": {
       "category": "lexicon",
-      "method_count": 19,
+      "method_count": 27,
       "methods": {},
       "wraps_interfaces": [
+        "ICmPossibility",
         "ILexEntry",
         "ILexEntryRepository",
         "ILexSense",
@@ -662,7 +665,7 @@
     },
     "MorphRuleOperations": {
       "category": "grammar",
-      "method_count": 22,
+      "method_count": 24,
       "methods": {},
       "wraps_interfaces": [
         "IMoEndoCompoundFactory",
@@ -750,7 +753,7 @@
     },
     "POSOperations": {
       "category": "grammar",
-      "method_count": 32,
+      "method_count": 36,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntryRepository",
@@ -801,13 +804,14 @@
     },
     "PhonFeatureOperations": {
       "category": "grammar",
-      "method_count": 18,
+      "method_count": 20,
       "methods": {},
       "wraps_interfaces": [
         "IFsClosedFeature",
         "IFsClosedFeatureFactory",
         "IFsClosedValue",
         "IFsClosedValueFactory",
+        "IFsFeatDefn",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsSymFeatVal",
@@ -817,7 +821,7 @@
     },
     "PhonemeOperations": {
       "category": "grammar",
-      "method_count": 26,
+      "method_count": 27,
       "methods": {},
       "wraps_interfaces": [
         "ICmObjectRepository",
@@ -838,13 +842,14 @@
       "method_count": 6,
       "methods": {},
       "wraps_interfaces": [
+        "IPhBdryMarker",
         "IPhNaturalClass",
         "IPhPhoneme"
       ]
     },
     "PhonologicalRule": {
       "category": "grammar",
-      "method_count": 4,
+      "method_count": 10,
       "methods": {},
       "wraps_interfaces": [
         "ITsString"
@@ -852,7 +857,7 @@
     },
     "PhonologicalRuleOperations": {
       "category": "grammar",
-      "method_count": 24,
+      "method_count": 32,
       "methods": {},
       "wraps_interfaces": [
         "ICmObjectRepository",
@@ -965,6 +970,18 @@
     "RuleCollection": {
       "category": "grammar",
       "method_count": 6,
+      "methods": {},
+      "wraps_interfaces": []
+    },
+    "RuleFeature": {
+      "category": "system",
+      "method_count": 1,
+      "methods": {},
+      "wraps_interfaces": []
+    },
+    "RuleFeatureCollection": {
+      "category": "system",
+      "method_count": 3,
       "methods": {},
       "wraps_interfaces": []
     },
@@ -1152,7 +1169,7 @@
     },
     "WfiAnalysisOperations": {
       "category": "texts",
-      "method_count": 28,
+      "method_count": 31,
       "methods": {},
       "wraps_interfaces": [
         "ICmAgent",
@@ -1195,7 +1212,7 @@
     },
     "WordformOperations": {
       "category": "texts",
-      "method_count": 20,
+      "method_count": 23,
       "methods": {},
       "wraps_interfaces": [
         "ITsString",
@@ -1900,6 +1917,14 @@
         },
         {
           "class": "DiscourseOperations",
+          "methods": []
+        },
+        {
+          "class": "FLExProject",
+          "methods": []
+        },
+        {
+          "class": "MSAOperations",
           "methods": []
         },
         {
@@ -2760,6 +2785,10 @@
         },
         {
           "class": "OperationsMethod",
+          "methods": []
+        },
+        {
+          "class": "PhonFeatureOperations",
           "methods": []
         },
         {
@@ -4084,6 +4113,10 @@
           "methods": []
         },
         {
+          "class": "AllomorphOperations",
+          "methods": []
+        },
+        {
           "class": "ApprovalStatusTypes",
           "methods": []
         },
@@ -4105,6 +4138,13 @@
     "IPartOfSpeechFactory": {
       "flexlibs_2": {
         "class": "POSOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "IPhBdryMarker": {
+      "flexlibs_2": {
+        "class": "PhonologicalContext",
         "methods": []
       },
       "flexlibs_stable": null

@@ -248,6 +248,12 @@ class SessionState:
     # its own per-op user_request override is absent. Reset (not inherited) on every
     # configure() call because flextools_start marks a new turn boundary.
     user_request: str = ""
+    # Issue #318: per-session_id user_request slots. Concurrent agents share
+    # one server process (and one SessionState); each configure() records its
+    # turn-level request under its resolved session_id so a later agent's
+    # start cannot overwrite an earlier agent's request. run_module resolves
+    # its fallback through get_user_request(session_id).
+    user_request_by_session: Dict[str, str] = field(default_factory=dict)
     initialized: bool = False
     discovered_apis: set = field(default_factory=set)        # APIs discovered via search_by_capability
     validated_apis: set = field(default_factory=set)         # APIs validated via get_object_api
@@ -437,7 +443,10 @@ class SessionState:
         if "user_request" in kwargs:
             # Turn-level field: always reset to whatever this configure() call
             # provided (including ""), never inherited from the prior turn.
+            # Issue #318: also filed under this configure()'s session_id so
+            # concurrent agents keep their own turn-level request.
             self.user_request = kwargs["user_request"] or ""
+            self.user_request_by_session[incoming_session_id] = self.user_request
         self.initialized = True
         mode_info = f"mode={self.api_mode}, output={self.output_type}"
         mode_info += f", project={self.project_name or '(prompt)'}"
@@ -528,12 +537,20 @@ class SessionState:
         """Get whether write access is enabled for the session."""
         return self.write_enabled
 
-    def get_user_request(self) -> str:
+    def get_user_request(self, session_id: Optional[str] = None) -> str:
         """Get the turn-level verbatim user_request set by flextools_start.
 
-        Diagnostic-report feature (spec section 4). Empty string if never set
-        or if the current turn's flextools_start call omitted it.
+        Diagnostic-report feature (spec section 4). Issue #318: when
+        concurrent agents share this process, the caller passes the
+        session_id its flextools_start call used and gets that agent's own
+        request back; a session with no recorded request (or no session_id
+        given) falls back to the scalar turn-level value, preserving the
+        single-agent behavior. Empty string if never set or if the current
+        turn's flextools_start call omitted it.
         """
+        key = session_id or self.session_id
+        if key and key in self.user_request_by_session:
+            return self.user_request_by_session[key]
         return self.user_request
 
     # --- Issue #55 (Rung 2): per-(session, project) backup tracking ---
@@ -562,6 +579,7 @@ class SessionState:
     def summary(self) -> dict:
         """Return session state summary for tool responses."""
         result = {
+            "session_id": self.session_id,
             "api_mode": self.api_mode,
             "output_type": self.output_type,
             "project_name": self.project_name or "(not set)",

@@ -3907,8 +3907,12 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # per-op VERBATIM override. Falls back to the turn-level value captured
     # by flextools_start (session_state.get_user_request()) when this op
     # didn't pass its own; _log_operation_start further falls back to
-    # user_intent when both are empty.
-    user_request = args.get("user_request") or session_state.get_user_request()
+    # user_intent when both are empty. Issue #318: concurrent agents pass
+    # their flextools_start session_id so the fallback resolves to their own
+    # turn-level request, not whichever agent started last.
+    user_request = args.get("user_request") or session_state.get_user_request(
+        args.get("session_id")
+    )
     # max_info_messages (issue #25): cap the number of report.Info messages
     # returned to the LLM. Default 100 (first 50 + last 50 + truncation marker).
     # 0 disables the cap. Warnings/errors are NEVER capped regardless.

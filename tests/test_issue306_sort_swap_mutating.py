@@ -20,12 +20,20 @@ from pathlib import Path
 import pytest
 
 from flextoolsmcp.flexicon_analyzer import _name_reorders_sequence, analyze_method
+from flextoolsmcp.server import get_index_dir
 from flextoolsmcp.server.validators import certify_script_readonly
+from flextoolsmcp.server.versioning import find_latest_versioned_api_file
 
-INDEX = (
-    Path(__file__).resolve().parent.parent
-    / "src" / "flextoolsmcp" / "index" / "python" / "flexicon_api_v4.11.0.json"
-)
+
+def _shipped_api_path() -> Path:
+    # Discovered, not hardcoded: a reindex that ships a newer flexicon_api
+    # file must not leave this test pointing at the archived one.
+    path = find_latest_versioned_api_file(get_index_dir() / "python", "flexicon_api")
+    assert path is not None, "no shipped flexicon_api index found"
+    return path
+
+
+INDEX = _shipped_api_path()
 
 
 def _analyze(src: str, cls: str = "BaseOperations") -> dict:

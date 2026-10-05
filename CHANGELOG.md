@@ -290,6 +290,23 @@ project-open diagnosis changes.
   `project_not_found` now always carries `available_projects` and
   `total_count`, even when there are no fuzzy suggestions, and its hint says
   the name must be a plain project name.
+- Casting hints no longer suggest an interface unrelated to the receiver
+  ([#316](https://github.com/MattGyverLee/FlexToolsMCP/issues/316),
+  regression of #97). The runtime hint for `'IMoStemMsa' object has no
+  attribute 'ProdRestrictOA'` emitted `rewrite:
+  IMoMorphData(stem).ProdRestrictOA`; ProdRestrictOA lives on the
+  project-level morph data, not on a stem MSA, so following the hint raised
+  at runtime. Now, when the receiver's interface is known (the runtime
+  error's type name, or the preflight dataflow's proven interface set), the
+  rewrite is suppressed unless the picked owner is the receiver itself, a
+  base of it, a subtype of it, or a sibling (sharing a non-trivial
+  ancestor). The check reads a new `interface_ancestors` map in the casting
+  index (built from the LibLCM interface graph; the shipped
+  `casting_index_liblcm-v11.0.0.json` is regenerated with only that key
+  added). Unknown receivers fail open: no information, no suppression.
+  When no rewrite is offered, the hint names the same-stem property that is
+  actually available on the receiver -- `Did you mean 'ProdRestrictRC'?`
+  for the IMoStemMsa case.
 - `partial_module_structure` rejections no longer feed retry loops
   ([#334](https://github.com/MattGyverLee/FlexToolsMCP/issues/334)). Models
   often resubmitted the exact code that was just rejected, and no retry-loop

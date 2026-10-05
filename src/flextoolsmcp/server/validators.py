@@ -16,7 +16,7 @@ import re
 import ast
 import textwrap
 import tokenize
-from typing import Dict, Iterator, List, Set, Optional, Any, Tuple, TypeGuard, Union
+from typing import Dict, Iterable, Iterator, List, Set, Optional, Any, Tuple, TypeGuard, Union
 
 try:
     from .constants import (
@@ -4046,6 +4046,68 @@ def _redundant_project_cache_casting_issues(tree: ast.AST) -> List[Dict[str, Any
     return issues
 
 
+# Issue #316: LCM cardinality suffixes on property names -- OwningAtomic,
+# ReferenceAtomic, OwningSequence, OwningCollection, ReferenceSequence,
+# ReferenceCollection. A weak-model mixup across these (ProdRestrictOA for
+# the ProdRestrictRC that actually lives on the receiver) is the signature
+# shape behind the suppressed unrelated-interface rewrite.
+_LCM_CARDINALITY_SUFFIXES = ("OA", "RA", "OS", "OC", "RS", "RC")
+
+
+def _property_name_stem(property_name: str) -> str:
+    """Property name minus its trailing LCM cardinality suffix (#316)."""
+    for suffix in _LCM_CARDINALITY_SUFFIXES:
+        if property_name.endswith(suffix) and len(property_name) > len(suffix):
+            return property_name[: -len(suffix)]
+    return property_name
+
+
+def _did_you_mean_property(
+    property_name: str,
+    receiver_iface: str,
+    casting_index: Optional[Dict],
+) -> Optional[str]:
+    """A same-stem property that IS available on the receiver (#316).
+
+    When no rewrite is offered for a known receiver interface, the failure
+    is often a cardinality-suffix mixup: the caller wrote ProdRestrictOA
+    (project-level morph data) for the ProdRestrictRC that actually lives
+    on their IMoStemMsa. Suggest the same-stem alternative available on the
+    receiver's own interface, preferring a direct `defined_on` hit over an
+    inherited (descendant-of-defined_on) one. Deterministic: alphabetical
+    within each bucket.
+    """
+    if not casting_index or not property_name or not receiver_iface:
+        return None
+    stem = _property_name_stem(property_name)
+    if not stem or stem == property_name:
+        return None
+    props = casting_index.get("properties") or {}
+    prop_to_concrete = casting_index.get("property_to_concrete_mapping") or {}
+    direct: List[str] = []
+    inherited: List[str] = []
+    for other, info in props.items():
+        if not isinstance(other, str) or other == property_name:
+            continue
+        if _property_name_stem(other) != stem:
+            continue
+        defined_on = {
+            _clean_interface_head(d)
+            for d in (info.get("defined_on") or [])
+        } - {None}
+        available = set(
+            (prop_to_concrete.get(other) or {}).get("available_on") or ()
+        )
+        if receiver_iface in defined_on:
+            direct.append(other)
+        elif receiver_iface in available:
+            inherited.append(other)
+    for bucket in (direct, inherited):
+        if bucket:
+            return sorted(bucket)[0]
+    return None
+
+
 def _polymorphic_runtime_suggestion(
     object_type: str,
     property_name: str,
@@ -4053,8 +4115,14 @@ def _polymorphic_runtime_suggestion(
     rewrite: Optional[str],
     imports_needed: List[str],
     cast_candidates: List[str],
+    did_you_mean: Optional[str] = None,
 ) -> str:
     """Actionable runtime hint when preflight cannot learn from this failure (#122)."""
+    dym_clause = (
+        f" Did you mean '{did_you_mean}'? It is available on '{object_type}'."
+        if did_you_mean
+        else ""
+    )
     if rewrite:
         imports_clause = (
             f" Imports: {', '.join(imports_needed)}."
@@ -4072,12 +4140,14 @@ def _polymorphic_runtime_suggestion(
             f"Cast to a concrete interface first (from flexicon import cast_to_concrete; "
             f"concrete = cast_to_concrete(obj)). "
             f"Candidates for '{property_name}': {', '.join(cast_candidates)}."
+            f"{dym_clause}"
         )
     return (
         f"'{object_type}' has no attribute '{property_name}'. "
         f"Call flextools_resolve_property(property_name='{property_name}', "
         f"context_entity='{object_type}') to find the right cast, or use "
         f"cast_to_concrete(obj) when the runtime type is heterogeneous."
+        f"{dym_clause}"
     )
 
 
@@ -4255,7 +4325,14 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
                 cast_info = casting_props[property_name]
                 available_on = cast_info.get("available_on") or cast_info.get("defined_on") or []
                 cast_iface = _pick_cast_interface(
-                    property_name, available_on, casting_index, object_type.lower()
+                    property_name,
+                    available_on,
+                    casting_index,
+                    object_type.lower(),
+                    # Issue #316: the runtime error names the receiver's
+                    # interface -- suppress the rewrite when the picked
+                    # owner is unrelated to it (the cast would throw).
+                    receiver_interfaces={object_type},
                 )
                 if cast_iface:
                     rewrite = f"{cast_iface}(obj).{property_name}"
@@ -4264,12 +4341,21 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
         cast_candidates = [] if rewrite else _interfaces_for_cast_property(
             casting_index, property_name, available_on
         )
+        # Issue #316: no rewrite and the receiver is a known interface --
+        # offer the same-stem property that actually lives on it (e.g.
+        # ProdRestrictRC for an IMoStemMsa that asked for ProdRestrictOA).
+        did_you_mean = (
+            _did_you_mean_property(property_name, object_type, casting_index)
+            if not rewrite
+            else None
+        )
         suggestion = _polymorphic_runtime_suggestion(
             object_type,
             property_name,
             rewrite=rewrite,
             imports_needed=imports_needed,
             cast_candidates=cast_candidates,
+            did_you_mean=did_you_mean,
         )
 
         return {
@@ -8100,12 +8186,78 @@ def _clean_interface_head(entry: str) -> Optional[str]:
     return head if head.startswith("I") else None
 
 
+# Issue #316: a cast hint is only valid when the picked owner interface is
+# related to the receiver's known interface -- otherwise following the hint
+# raises at runtime (a pythonnet interface cast is a real CLR QueryInterface;
+# e.g. IMoMorphData(stem).ProdRestrictOA for an IMoStemMsa receiver, a
+# regression of #97's "wrong cast interface suggested"). The casting index's
+# `interface_ancestors` map (built by build_casting_index.py from the LibLCM
+# interface graph) supplies the transitive ancestry. The relation is
+# deliberately permissive: the cast is kept when the owner IS the receiver,
+# is a base of it (the downcast case), is a subtype of it (an upcast always
+# succeeds), or is a sibling (shares a non-trivial ancestor, e.g.
+# IMoDerivStepMsa / IMoStemMsa under IMoMorphSynAnalysis). The universal LCM
+# roots ICmObject / ICmObjectOrId do NOT count as meaningful siblinghood:
+# nearly every model interface shares them, so counting them would make
+# everything "related" and the check vacuous. Unknown receivers (not in the
+# map) fail OPEN -- a hint is never suppressed on absence of information.
+_CAST_UNRELATED_UNIVERSAL_ROOTS = frozenset({"ICmObject", "ICmObjectOrId"})
+
+
+def _interface_ancestors(
+    casting_index: Optional[Dict], interface_name: str
+) -> Set[str]:
+    """Transitive ancestors of `interface_name` per the casting index."""
+    if not casting_index or not interface_name:
+        return set()
+    ancestors_map = casting_index.get("interface_ancestors") or {}
+    return set(ancestors_map.get(interface_name) or ())
+
+
+def _cast_owner_related_to_receiver(
+    owner_iface: str,
+    receiver_ifaces: Optional[Iterable[str]],
+    casting_index: Optional[Dict] = None,
+) -> bool:
+    """True when casting a receiver to `owner_iface` is plausibly valid (#316).
+
+    `receiver_ifaces` are the receiver's known interfaces -- the runtime
+    error's type name, or the preflight dataflow's proven interface set.
+    Suppression requires a KNOWN, unrelated receiver: an empty set, or names
+    absent from the index, returns True so hints keep flowing where we have
+    no evidence they are wrong. With several known receivers (a dataflow
+    candidate-union), the cast is kept when it is related to ANY of them;
+    it is suppressed only when it is wrong for every plausible receiver type.
+    """
+    if not owner_iface:
+        return True
+    ancestors_map = (casting_index or {}).get("interface_ancestors") or {}
+    known = [
+        r
+        for r in (receiver_ifaces or ())
+        if isinstance(r, str) and r in ancestors_map
+    ]
+    if not known:
+        return True
+    owner_anc = _interface_ancestors(casting_index, owner_iface)
+    for receiver in known:
+        if receiver == owner_iface:
+            return True
+        recv_anc = _interface_ancestors(casting_index, receiver)
+        if receiver in owner_anc or owner_iface in recv_anc:
+            return True
+        if (recv_anc & owner_anc) - _CAST_UNRELATED_UNIVERSAL_ROOTS:
+            return True
+    return False
+
+
 def _pick_cast_interface(
     property_name: str,
     available_on: List[str],
     casting_index: Optional[Dict] = None,
     receiver_name: Optional[str] = None,
     polymorphic_receiver: bool = False,
+    receiver_interfaces: Optional[Iterable[str]] = None,
 ) -> Optional[str]:
     """Pick the most-specific interface to cast to for `property_name`.
 
@@ -8130,6 +8282,14 @@ def _pick_cast_interface(
          ("call flextools_resolve_property to resolve manually").
       6. Drop entries with parenthetical qualifiers like "ILexSense (raw LCM)"
          -- those are descriptive, not importable.
+      7. Issue #316: when `receiver_interfaces` names the receiver's KNOWN
+         interface(s) (runtime error type name, or preflight-proven dataflow
+         set), suppress the pick when the owner interface is unrelated to
+         every one of them -- not a base/sibling of the receiver, so the
+         cast would throw at runtime (e.g. IMoMorphData for an IMoStemMsa
+         receiver asking for ProdRestrictOA). Returns None, routing to the
+         same fallback hint as the ambiguous case. Unknown receivers never
+         trigger suppression.
 
     Issue #121 remediation (defect 3): an earlier version of this function
     had a step 7 here that preferred LCM's "IXOrY"-named interfaces
@@ -8159,46 +8319,57 @@ def _pick_cast_interface(
         head = _clean_interface_head(entry)
         if head:
             cleaned.append(head)
+    picked: Optional[str] = None
     if len(cleaned) == 1:
-        return cleaned[0]
+        picked = cleaned[0]
 
     # Consult the casting_index's defined_on for the canonical interface list.
     defined_on: List[str] = []
-    if casting_index:
+    if casting_index and picked is None:
         props = (casting_index or {}).get("properties") or {}
         info = props.get(property_name) or {}
         defined_on = [
             d for d in info.get("defined_on", []) if isinstance(d, str) and d.startswith("I")
         ]
         if len(defined_on) == 1:
-            return defined_on[0]
+            picked = defined_on[0]
 
     # Multiple candidates. Try the receiver-name tie-break before giving up
     # -- but NEVER when the receiver is confirmed polymorphic (issue #121
     # defect 4): a spelling-based guess must not override PROVEN dataflow.
-    candidates = defined_on if defined_on else cleaned
-    if receiver_name and candidates and not polymorphic_receiver:
-        preferred = _RECEIVER_NAME_TO_INTERFACE.get(receiver_name)
-        if preferred is None:
-            # Issue #30: normalize _obj/_typed/_cast suffix and retry
-            for suffix in _TYPED_RECEIVER_SUFFIXES:
-                if receiver_name.endswith(suffix):
-                    base = receiver_name[: -len(suffix)]
-                    preferred = _RECEIVER_NAME_TO_INTERFACE.get(base)
-                    if preferred is not None:
-                        break
-        if preferred and preferred in candidates:
-            return preferred
+    if picked is None:
+        candidates = defined_on if defined_on else cleaned
+        if receiver_name and candidates and not polymorphic_receiver:
+            preferred = _RECEIVER_NAME_TO_INTERFACE.get(receiver_name)
+            if preferred is None:
+                # Issue #30: normalize _obj/_typed/_cast suffix and retry
+                for suffix in _TYPED_RECEIVER_SUFFIXES:
+                    if receiver_name.endswith(suffix):
+                        base = receiver_name[: -len(suffix)]
+                        preferred = _RECEIVER_NAME_TO_INTERFACE.get(base)
+                        if preferred is not None:
+                            break
+            if preferred and preferred in candidates:
+                picked = preferred
 
-    # Ambiguous and we have no signal to disambiguate. Return None rather
-    # than picking alphabetically (Issue #21 follow-up: drop confident-wrong
-    # tie-break). The handler's fallback path emits the
-    # "call flextools_resolve_property" hint.
-    if len(cleaned) > 1 or len(defined_on) > 1:
+        # Ambiguous and we have no signal to disambiguate. Return None rather
+        # than picking alphabetically (Issue #21 follow-up: drop confident-wrong
+        # tie-break). The handler's fallback path emits the
+        # "call flextools_resolve_property" hint.
+        if picked is None:
+            if len(cleaned) > 1 or len(defined_on) > 1:
+                return None
+            if cleaned:
+                picked = cleaned[0]
+
+    # Issue #316: suppress a confidently-wrong rewrite -- the picked owner
+    # is unrelated to the receiver's known interface, so the cast would
+    # throw at runtime. None routes to the existing fallback hint.
+    if picked and not _cast_owner_related_to_receiver(
+        picked, receiver_interfaces, casting_index
+    ):
         return None
-    if cleaned:
-        return cleaned[0]
-    return None
+    return picked
 
 
 # Issue #97 Bug 1: candidate list for the ambiguous-fix message. Calls the
@@ -8899,6 +9070,14 @@ def detect_casting_needs(
                         pattern_info["available_on"],
                         casting_index,
                         receiver_name=receiver_name,
+                        # Issue #316: pass the dataflow-proven receiver
+                        # interfaces so an unrelated owner is suppressed
+                        # instead of emitted as a throwing rewrite.
+                        receiver_interfaces=(
+                            _receiver_ifaces_for(line_num, _receiver_pre)
+                            if _receiver_pre
+                            else None
+                        ),
                     )
                     rewrite = _build_cast_rewrite(
                         tree, line_num, property_name, cast_iface or ""
@@ -9053,6 +9232,10 @@ def detect_casting_needs(
                             casting_index,
                             receiver_name=obj_var,
                             polymorphic_receiver=_is_poly_receiver,
+                            # Issue #316: pass the dataflow-proven receiver
+                            # interfaces so an unrelated owner is suppressed
+                            # instead of emitted as a throwing rewrite.
+                            receiver_interfaces=_receiver_ifaces_here,
                         )
                         rewrite = _build_cast_rewrite(
                             tree, line_num, prop_name, cast_iface or ""

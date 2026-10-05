@@ -44,6 +44,7 @@ KEY_PROPERTY_MAPPING = "property_to_concrete_mapping"
 KEY_CLASS_MAPPING = "class_name_mapping"
 KEY_POLYMORPHIC = "polymorphic_collections"
 KEY_HIERARCHY = "interface_hierarchy"
+KEY_INTERFACE_ANCESTORS = "interface_ancestors"
 
 # Casting property field names
 KEY_DEFINED_ON = "defined_on"
@@ -117,6 +118,7 @@ def build_casting_index(liblcm_path: Path) -> dict:
         KEY_CLASS_MAPPING: {},
         KEY_POLYMORPHIC: {},
         KEY_HIERARCHY: {},
+        KEY_INTERFACE_ANCESTORS: {},
     }
 
     # Build class name -> interface mapping
@@ -224,6 +226,30 @@ def build_casting_index(liblcm_path: Path) -> dict:
                 "common_pattern": "Check obj.ClassName then cast: Interface(obj)",
             }
 
+    # Issue #316: transitive ancestor map (interface -> all interfaces it
+    # extends, directly or indirectly). The casting-hint validator uses it
+    # to suppress a rewrite when the picked cast target is unrelated to the
+    # receiver's known interface -- e.g. IMoMorphData(stem).ProdRestrictOA
+    # for an IMoStemMsa receiver, a cast that throws at runtime (regression
+    # of #97's "wrong cast interface suggested").
+    ancestors_cache: dict = {}
+
+    def compute_all_ancestors(iface, cache=ancestors_cache):
+        """Compute transitive ancestors with memoization."""
+        if iface in cache:
+            return cache[iface]
+        ancestors = set()
+        for parent in interface_parents.get(iface, []):
+            ancestors.add(parent)
+            ancestors.update(compute_all_ancestors(parent, cache))
+        cache[iface] = ancestors
+        return ancestors
+
+    for interface in interface_parents:
+        casting_index[KEY_INTERFACE_ANCESTORS][interface] = sorted(
+            compute_all_ancestors(interface)
+        )
+
     return casting_index
 
 
@@ -281,6 +307,7 @@ def main():
     print(f"     ClassName-to-interface mappings: {len(casting_index['class_name_mapping'])}")
     print(f"     Polymorphic collections documented: {len(casting_index['polymorphic_collections'])}")
     print(f"     Interface hierarchies: {len(casting_index['interface_hierarchy'])}")
+    print(f"     Interface ancestor entries: {len(casting_index['interface_ancestors'])}")
 
     return 0
 

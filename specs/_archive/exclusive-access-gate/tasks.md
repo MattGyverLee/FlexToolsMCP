@@ -310,12 +310,13 @@ calls before the run; flexicon's peer schema guard backs it up during the run.
   - (b) a literal new tag is refused before the run;
   - (c) a non-literal new tag is refused at run time, with WS lists unchanged;
   - (d) with the released (main) flexicon, (a) is refused because there is no guard.
-- [ ] T048 **needs-human**:
+- [X] T048 **needs-human**:
   - merge and release flexicon `feat/peer-schema-guard`;
   - then regenerate the MCP indexes against that release (release order: flexicon first);
   - optionally raise the pyflexicon floor.
   Until then the MCP refuses `Ensure()` exactly as before (fail closed).
   Status 2026-10-02: flexicon#601 is merged on flexicon main but not released (latest release 4.11.0); the pyflexicon floor and the indexes are unchanged.
+  Done 2026-10-04: pyflexicon 4.12.0 released with the `peer-schema-guard` capability (present in `src/flextoolsmcp/index/python/flexicon_api_v4.12.0.json`); PR #364 regenerated the indexes against 4.12.0 and raised the floor to `pyflexicon>=4.12.0,<5`. Release 2.15.0 (#365) ships the gate.
 
 **Constitution gate obligations**:
 

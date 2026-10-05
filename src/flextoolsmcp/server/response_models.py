@@ -478,7 +478,7 @@ class ExclusiveOnlyMatchModel(BaseModel):
 class RequiresExclusiveAccessDetail(BaseModel):
     """Detail payload for requires_exclusive_access rejections.
 
-    specs/exclusive-access-gate FR-004..FR-008: a write-enabled script that
+    specs/_archive/exclusive-access-gate FR-004..FR-008: a write-enabled script that
     changes writing systems or custom fields is refused while FieldWorks holds
     the project in shared mode (``open_shared``) or the probe cannot tell
     (``unknown``). Field order follows ProjectLockedDetail: shared fields

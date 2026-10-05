@@ -179,7 +179,7 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "of work)."
     ),
     "requires_exclusive_access": (
-        # specs/exclusive-access-gate FR-010: the script is correct; only
+        # specs/_archive/exclusive-access-gate FR-010: the script is correct; only
         # FieldWorks being open blocks it.
         "ask the user to close FieldWorks, wait until they confirm, then "
         "re-submit the identical call. Do not rewrite the script to avoid the "

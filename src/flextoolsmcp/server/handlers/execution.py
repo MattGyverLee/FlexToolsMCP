@@ -143,7 +143,7 @@ except ImportError:
     from server.write_ladder import PEER_BACKUP_CAVEAT as _PEER_BACKUP_CAVEAT
 
 # Writing-system / custom-field changes refused while FieldWorks holds the
-# project (specs/exclusive-access-gate).
+# project (specs/_archive/exclusive-access-gate).
 try:
     from .. import exclusive_access
 except ImportError:
@@ -6017,7 +6017,7 @@ MODULE_CODE = {code}
         is_mutating_script = compute_is_mutating_script(cert, cud_info)
         needs_lock = write_enabled and is_mutating_script
 
-        # Exclusive-access gate (specs/exclusive-access-gate FR-003..FR-005):
+        # Exclusive-access gate (specs/_archive/exclusive-access-gate FR-003..FR-005):
         # writing-system and custom-field changes are not safe while
         # FieldWorks holds the project. Detect them before the probe so a
         # write-enabled run that certified read-only (needs_lock False) still

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Exclusive-access gate wiring in handle_run_module (specs/exclusive-access-gate
+Exclusive-access gate wiring in handle_run_module (specs/_archive/exclusive-access-gate
 FR-004..FR-010, scenarios 1.1-1.8, 2.1).
 
 A write-enabled script that changes writing systems or custom fields is

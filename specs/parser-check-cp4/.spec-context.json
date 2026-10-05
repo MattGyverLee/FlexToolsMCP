@@ -1,0 +1,17 @@
+{
+  "workflow": "speckit",
+  "specName": "Parser Check Cp4",
+  "branch": "",
+  "currentStep": "specify",
+  "status": "archived",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-10-05T02:41:22.361Z"
+    }
+  ],
+  "telemetryInstanceId": "2b214199-50aa-47b8-adde-ee57dfab7aca"
+}

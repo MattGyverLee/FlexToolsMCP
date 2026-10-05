@@ -1,0 +1,18 @@
+{
+  "workflow": "companion",
+  "specName": "parser-check-cp2b",
+  "branch": "parser-check-cp2b",
+  "selectedAt": "2026-10-05T00:56:49.993Z",
+  "currentStep": "specify",
+  "status": "archived",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-10-05T02:41:40.703Z"
+    }
+  ],
+  "telemetryInstanceId": "ade959f7-5226-4413-a231-6b6ecff8b4c7"
+}

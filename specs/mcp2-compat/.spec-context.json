@@ -1,0 +1,17 @@
+{
+  "workflow": "speckit",
+  "specName": "Mcp2 Compat",
+  "branch": "",
+  "currentStep": "specify",
+  "status": "completed",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-28T16:51:19.465Z"
+    }
+  ],
+  "telemetryInstanceId": "7eb0b5c0-18e1-4607-9a58-eda64d722d51"
+}

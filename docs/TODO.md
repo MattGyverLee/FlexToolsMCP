@@ -38,7 +38,8 @@ Handlers already build the response dict before JSON-dumping it, so return both.
 
 **Do NOT migrate to FastMCP for this.** FastMCP's high-level `@mcp.tool` would populate
 `structuredContent` automatically, but FastMCP was previously evaluated and found NOT a good
-fit for this server (per maintainer). Option B is deliberately scoped to the low-level `mcp`
+fit for this server (per maintainer): our tool responses mix many different text and code
+pieces, which don't map cleanly onto FastMCP's decorated-function / typed-return structure. Option B is deliberately scoped to the low-level `mcp`
 API's `(list[ContentBlock], dict)` tuple return, which requires no framework change. The
 unused FastMCP 2.14 dependency is incidental and should not be treated as the intended path.
 

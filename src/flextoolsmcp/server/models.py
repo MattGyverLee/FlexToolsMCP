@@ -38,7 +38,14 @@ def _normalize_mode_list(value):
 # ============================================================
 
 class FlexToolsStartInput(BaseModel):
-    """Initialize a FlexTools MCP session."""
+    """Initialize a FlexTools MCP session.
+
+    Issue #318: `extra="allow"` so unknown keys survive dispatch validation
+    and reach `handle_start`, which reports them as `ignored_params` instead
+    of silently dropping them.
+    """
+    model_config = ConfigDict(extra="allow")
+
     api_mode: Literal["flexicon", "flexlibs_stable", "liblcm"] = Field(
         default=API_MODES_DEFAULT,
         description="Documentation and preflight context: 'flexicon' (recommended, "
@@ -51,7 +58,17 @@ class FlexToolsStartInput(BaseModel):
     task: Optional[str] = Field(
         default=None,
         description="Optional: Task/goal description in natural language. "
-                    "Can be provided now or discovered organically later."
+                    "Alias for user_request (issue #318): when user_request is "
+                    "absent, this value becomes the turn-level user_request. "
+                    "Prefer user_request."
+    )
+    session_id: Optional[str] = Field(
+        default=None,
+        description="Optional: stable token identifying this agent/conversation "
+                    "(issue #318). Concurrent agents sharing one server process "
+                    "pass distinct tokens so per-agent turn state (user_request) "
+                    "does not bleed across agents; pass the same token on every "
+                    "flextools_run_module call. Echoed back in the session summary."
     )
     project_name: Optional[str] = Field(
         default=None,
@@ -527,6 +544,13 @@ class RunModuleInput(BaseModel):
                     "Write-safety (CUD detection, unprotected-write guard) and casting "
                     "injection ALWAYS run regardless of this flag -- provenance can never "
                     "relax a safety gate. CUD still requires confirmed=True."
+    )
+    session_id: Optional[str] = Field(
+        default=None,
+        description="Issue #318: the session_id token from your flextools_start call. "
+                    "Concurrent agents sharing one server process pass their own token "
+                    "so the turn-level user_request fallback resolves to their own "
+                    "request, not whichever agent started last."
     )
 
 

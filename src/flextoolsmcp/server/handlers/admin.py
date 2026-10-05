@@ -469,6 +469,23 @@ def _resolve_inherited_flag(
     return value, inherited, downgraded
 
 
+# Issue #318: keys handle_start acts on, plus the handler-level project
+# alias and dispatch-injected bookkeeping keys. Anything else the caller
+# passed is reported as ignored rather than silently dropped.
+_START_KNOWN_PARAMS = frozenset({
+    "api_mode", "task", "session_id", "project_name", "project",
+    "output_type", "write_enabled", "user_request", "_user_provided_keys",
+})
+
+
+def _ignored_start_params(args: dict) -> list:
+    """Caller-passed keys flextools_start does not act on (issue #318)."""
+    return sorted(
+        k for k in args
+        if k not in _START_KNOWN_PARAMS and not k.startswith("_")
+    )
+
+
 def _build_index_health_offers() -> list[dict]:
     """Turn stashed index-refresh-failure notices into user-facing bug-report offers.
 
@@ -543,7 +560,12 @@ async def handle_start(args: dict) -> list[TextContent]:
     # Diagnostic-report feature (spec section 4): verbatim human request text,
     # turn-level. Reset (not inherited) on every flextools_start call -- see
     # session.SessionState.configure().
-    user_request = args.get("user_request") or ""
+    # Issue #318: `task` is an alias for `user_request` -- a caller passing
+    # task="..." gets it honored instead of silently dropped. An explicit
+    # user_request wins when both are given.
+    task_value = args.get("task")
+    user_request = args.get("user_request") or task_value or ""
+    task_aliased = bool(task_value) and not args.get("user_request")
 
     # Fuzzy resolution: autocorrect case/whitespace-only typos, return a helpful
     # error (with suggestions) for bigger mismatches. Skipped when no name was
@@ -596,6 +618,9 @@ async def handle_start(args: dict) -> list[TextContent]:
     # the same project (session continuation -- discovery state preserved).
     # Do NOT pass a per-call timestamp as session_id; that minted a fresh uuid
     # on every restart and incorrectly wiped discovery state (P0 fix).
+    # Issue #318: an explicit session_id token lets concurrent agents sharing
+    # this process keep per-agent turn state (user_request); None (the common
+    # case) leaves identity detection exactly as before.
     session_state.configure(
         api_mode=api_mode,
         output_type="auto",
@@ -603,6 +628,7 @@ async def handle_start(args: dict) -> list[TextContent]:
         write_enabled=write_enabled,
         api_versions=api_versions,
         user_request=user_request,
+        session_id=args.get("session_id"),
     )
     session_id = session_state.session_id
 
@@ -649,6 +675,22 @@ async def handle_start(args: dict) -> list[TextContent]:
 
     # Warnings
     warnings = []
+    # Issue #318: surface what the call asked for but this tool did not act on,
+    # instead of silently dropping it.
+    if task_aliased:
+        warnings.append(
+            "`task` is an alias for `user_request`; its value was used as this "
+            "turn's user_request. Prefer `user_request` directly."
+        )
+    ignored_params = _ignored_start_params(args)
+    if ignored_params:
+        warnings.append(
+            "Ignored unknown parameter(s): "
+            + ", ".join(ignored_params)
+            + ". They have no effect; check the spelling against the "
+            "flextools_start schema."
+        )
+        result["ignored_params"] = ignored_params
     if api_mode != EXECUTION_API_MODE:
         warnings.append(
             f"api_mode={api_mode!r} sets documentation/preflight context only; "

@@ -21,9 +21,11 @@ from typing import Dict, List, Any, Optional, Tuple
 if __package__:
     from .json_utils import sort_json_arrays
     from .curated_deprecations import apply_to_api_index, apply_to_bridge
+    from .lcm_type_index import load_lcm_type_index, UNINFORMATIVE_TYPES as UNINFORMATIVE_LCM_TYPES
 else:
     from json_utils import sort_json_arrays
     from curated_deprecations import apply_to_api_index, apply_to_bridge
+    from lcm_type_index import load_lcm_type_index, UNINFORMATIVE_TYPES as UNINFORMATIVE_LCM_TYPES
 
 
 # ---- Module-Level Constants (for efficient membership testing) ---------------
@@ -1016,6 +1018,186 @@ def _add_unique_to_list(collection: list, item: Any) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# Type-aware LCM member detection
+# ---------------------------------------------------------------------------
+# Name-shape detection (LCM_PROPERTY_SUFFIXES + COMMON_LCM_PROPERTIES) can see
+# 11 of LCM's 1,140 non-suffix-shaped property names. The pass below infers the
+# LCM type of a receiver and asks the index what that type owns, which both
+# widens detection and lets the access be recorded QUALIFIED -- "ILexSense.Gloss"
+# rather than a bare "Gloss" that 8 different types could have declared.
+_LCM_FACTORY_RE = re.compile(r"^(I\w+)Factory$")
+_LCM_REPOSITORY_RE = re.compile(r"^(I\w+)Repository$")
+
+#: Methods that turn a factory/repository handle into the object it manages.
+_FACTORY_PRODUCERS = frozenset({"Create", "CreateUnowned"})
+_REPOSITORY_PRODUCERS = frozenset({"GetObject", "GetObjectOrNull"})
+
+
+_DOC_ARG_RE = re.compile(r"^\s{0,12}(\*{0,2}\w+)\s*(?:\(([^)]*)\))?\s*:\s*(.*)$")
+#: Private resolvers that turn "object or HVO" into the object, preserving type.
+_RESOLVER_RE = re.compile(r"^_{1,2}\w*(Object|Obj|Resolve\w*)$")
+
+
+def _docstring_param_types(node, idx) -> Dict[str, str]:
+    """Type parameters from the Args: block of a Google-style docstring.
+
+    flexicon does not annotate LCM parameters -- every public method takes
+    `sense_or_hvo`, `entry_or_hvo` and so on -- but it does document them
+    ("sense_or_hvo: The ILexSense object or HVO"), and 100% of its methods
+    carry a description. That sentence is the only place the interface is
+    named, so it is where the type has to come from.
+    """
+    out: Dict[str, str] = {}
+    if not idx:
+        return out
+    doc = ast.get_docstring(node) or ""
+    if not doc:
+        return out
+    params = {a.arg for a in getattr(node.args, "args", [])} | \
+             {a.arg for a in getattr(node.args, "kwonlyargs", [])}
+    in_args = False
+    for line in doc.splitlines():
+        stripped = line.strip()
+        if stripped.rstrip(":").lower() in ("args", "arguments", "parameters"):
+            in_args = True
+            continue
+        if stripped.rstrip(":").lower() in ("returns", "raises", "example", "examples",
+                                            "yields", "note", "notes"):
+            in_args = False
+            continue
+        if not in_args:
+            continue
+        m = _DOC_ARG_RE.match(line)
+        if not m:
+            continue
+        name = m.group(1).lstrip("*")
+        if name not in params or name in out:
+            continue
+        for token in re.findall(r"\bI[A-Z]\w+\b", f"{m.group(2) or ''} {m.group(3) or ''}"):
+            if idx.known_type(token) and token not in UNINFORMATIVE_LCM_TYPES:
+                out[name] = token
+                break
+    return out
+
+
+def _annotation_name(ann) -> Optional[str]:
+    """The bare name of a parameter annotation, if it is a simple one."""
+    if ann is None:
+        return None
+    if isinstance(ann, ast.Name):
+        return ann.id
+    if isinstance(ann, ast.Constant) and isinstance(ann.value, str):
+        return ann.value
+    if isinstance(ann, ast.Attribute):
+        return ann.attr
+    return None
+
+
+def _lcm_expr_type(expr, env: Dict[str, str], idx) -> Optional[str]:
+    """Infer the LCM type of an expression, or None.
+
+    Handles the three shapes that actually carry LCM objects through flexicon:
+    a typed local/parameter, a traversal through a relationship property, and
+    the result of a factory or repository call.
+    """
+    if expr is None or not idx:
+        return None
+    if isinstance(expr, ast.Name):
+        return env.get(expr.id)
+    if isinstance(expr, ast.Attribute):
+        base = _lcm_expr_type(expr.value, env, idx)
+        if base:
+            return idx.target_of(base, expr.attr)
+        return None
+    if isinstance(expr, ast.Subscript):
+        return _lcm_expr_type(expr.value, env, idx)
+    if isinstance(expr, ast.Call):
+        func = expr.func
+        if isinstance(func, ast.Attribute):
+            recv = func.value
+            recv_name = recv.id if isinstance(recv, ast.Name) else None
+            recv_type = env.get(recv_name) if recv_name else None
+            candidate = recv_type or recv_name
+            if candidate:
+                m = _LCM_FACTORY_RE.match(candidate)
+                if m and func.attr in _FACTORY_PRODUCERS:
+                    return m.group(1) if idx.known_type(m.group(1)) else None
+                m = _LCM_REPOSITORY_RE.match(candidate)
+                if m and func.attr in _REPOSITORY_PRODUCERS:
+                    return m.group(1) if idx.known_type(m.group(1)) else None
+            base = _lcm_expr_type(recv, env, idx)
+            if base:
+                return idx.target_of(base, func.attr)
+        if isinstance(func, ast.Name) and func.id in ("cast_to_concrete", "require_lcm_object"):
+            return _lcm_expr_type(expr.args[0], env, idx) if expr.args else None
+        # `sense = self.__GetSenseObject(sense_or_hvo)` -- flexicon's resolvers
+        # accept "object or HVO" and hand back the object, so they preserve the
+        # LCM type of their first argument. Restricted to private *Object/
+        # *Resolve helpers on self so ordinary methods (GetAll, which returns a
+        # different type than it takes) are not swept in.
+        if (isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name)
+                and func.value.id == "self" and _RESOLVER_RE.match(func.attr)
+                and expr.args):
+            return _lcm_expr_type(expr.args[0], env, idx)
+    return None
+
+
+def _seed_lcm_types(node, lcm_imports, idx) -> Dict[str, str]:
+    """Build {local name -> LCM type} for one method body.
+
+    Two passes, because a variable can be assigned after the loop that uses it
+    and flexicon bodies are not written in dependency order.
+    """
+    env: Dict[str, str] = {}
+    if not idx:
+        return env
+    imported = {imp.get("name") for imp in (lcm_imports or []) if imp.get("name")}
+
+    if hasattr(node, "args") and node.args:
+        for arg in list(node.args.args) + list(getattr(node.args, "kwonlyargs", [])):
+            ann = _annotation_name(getattr(arg, "annotation", None))
+            if ann and idx.known_type(ann):
+                env[arg.arg] = ann
+    for pname, ptype in _docstring_param_types(node, idx).items():
+        env.setdefault(pname, ptype)
+
+    for _pass in range(2):
+        for child in ast.walk(node):
+            if isinstance(child, ast.Assign):
+                t = _lcm_expr_type(child.value, env, idx)
+                if t:
+                    for tgt in child.targets:
+                        if isinstance(tgt, ast.Name):
+                            env.setdefault(tgt.id, t)
+                elif isinstance(child.value, ast.Name) and child.value.id in imported:
+                    # `fac = ILexSenseFactory` -- the handle itself, not an instance
+                    for tgt in child.targets:
+                        if isinstance(tgt, ast.Name):
+                            env.setdefault(tgt.id, child.value.id)
+                elif isinstance(child.value, ast.Call):
+                    call_src = _get_call_string(child.value)
+                    for nm in imported:
+                        if nm and nm in call_src and (
+                                _LCM_FACTORY_RE.match(nm) or _LCM_REPOSITORY_RE.match(nm)):
+                            for tgt in child.targets:
+                                if isinstance(tgt, ast.Name):
+                                    env.setdefault(tgt.id, nm)
+            elif isinstance(child, (ast.For, ast.AsyncFor)):
+                t = _lcm_expr_type(child.iter, env, idx)
+                if t and isinstance(child.target, ast.Name):
+                    env.setdefault(child.target.id, t)
+            elif isinstance(child, ast.comprehension):
+                t = _lcm_expr_type(child.iter, env, idx)
+                if t and isinstance(child.target, ast.Name):
+                    env.setdefault(child.target.id, t)
+            elif isinstance(child, ast.withitem):
+                t = _lcm_expr_type(child.context_expr, env, idx)
+                if t and isinstance(child.optional_vars, ast.Name):
+                    env.setdefault(child.optional_vars.id, t)
+    return env
+
+
 def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]:
     """
     Extract LibLCM method calls and property accesses from a method body.
@@ -1041,6 +1223,7 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
         "repositories_used": [],
         "properties_accessed": [],
         "property_kinds": {},  # property name -> LCM field kind (see docstring)
+        "member_access": [],   # "IType.Member" -- qualified, type-resolved
         "methods_called": [],
         "utilities_used": [],
         "mapping_type": "pure_python",  # Default, will be updated
@@ -1063,6 +1246,13 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
 
     # Build set of imported LCM names for faster lookup
     {imp["name"] for imp in lcm_imports}
+
+    # Type-aware detection: infer the LCM type of each local so `x.Foo` can be
+    # resolved against what that type owns, instead of guessing from the shape
+    # of "Foo". Empty when no LibLCM index is available -- the name-shape rules
+    # below then carry the whole load, exactly as before.
+    _lcm_idx = load_lcm_type_index()
+    _lcm_env = _seed_lcm_types(node, lcm_imports, _lcm_idx)
 
     # Walk the method body AST
     for child in ast.walk(node):
@@ -1134,6 +1324,28 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
         # Look for property accesses with LCM suffixes
         if isinstance(child, ast.Attribute):
             attr_name = child.attr
+
+            # Type-resolved first: when the receiver's LCM type is known and
+            # that type owns this member, the access is a fact rather than a
+            # pattern match, and it is recorded against the DECLARING type.
+            _recv_type = _lcm_expr_type(child.value, _lcm_env, _lcm_idx)
+            _decl = (_lcm_idx.declaring_type(_recv_type, attr_name)
+                     if _recv_type else None)
+            if _decl is None and _lcm_idx and not isinstance(child.value, ast.Name):
+                _decl = None
+            if _decl is None and _lcm_idx and _recv_type is None:
+                # Unambiguous across all of LCM (28% of member names are owned
+                # by exactly one type), so an untyped receiver is still safe.
+                _decl = _lcm_idx.sole_owner(attr_name)
+            if _decl:
+                _info = _lcm_idx.member_info(_decl, attr_name) or {}
+                if _info.get("member_type") == "property":
+                    _add_unique_to_list(result["properties_accessed"], attr_name)
+                    _kind = _info.get("kind")
+                    if _kind and _kind != "property":
+                        result["property_kinds"][attr_name] = LCM_PROPERTY_SUFFIXES.get(
+                            _kind, _kind)
+                _add_unique_to_list(result["member_access"], f"{_decl}.{attr_name}")
             # Check if property ends with known LCM suffix.
             # The name is recorded BARE and the kind kept alongside it. Emitting
             # "SensesOS (OwningSequence)" here is what made this list unjoinable
@@ -2321,6 +2533,7 @@ def analyze_flexicon(flexicon_path: str) -> Dict[str, Any]:
                         "repositories_used": lcm_info.get("repositories_used", []),
                         "properties_accessed": lcm_info.get("properties_accessed", []),
                         "property_kinds": lcm_info.get("property_kinds", {}),
+                        "member_access": lcm_info.get("member_access", []),
                         "methods_called": lcm_info.get("methods_called", []),
                         "utilities_used": lcm_info.get("utilities_used", []),
                         "lcm_deps": class_info["lcm_dependencies"]
@@ -2658,6 +2871,7 @@ def analyze_flexlibs_stable(flexlibs_path: str) -> Dict[str, Any]:
                     "repositories_used": lcm_info.get("repositories_used", []),
                     "properties_accessed": lcm_info.get("properties_accessed", []),
                     "property_kinds": lcm_info.get("property_kinds", {}),
+                    "member_access": lcm_info.get("member_access", []),
                     "methods_called": lcm_info.get("methods_called", []),
                     "utilities_used": lcm_info.get("utilities_used", []),
                     "lcm_deps": class_info.get("lcm_dependencies", [])

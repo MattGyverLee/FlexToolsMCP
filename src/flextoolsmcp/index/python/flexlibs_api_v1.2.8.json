@@ -2343,6 +2343,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2384,6 +2385,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2420,6 +2422,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2456,6 +2459,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2491,10 +2495,15 @@
       "lcm_mapping": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "ILcmDirectories.ProjectsDirectory"
+        ],
         "methods_called": [],
         "param_usage": {},
-        "properties_accessed": [],
+        "properties_accessed": [
+          "ProjectsDirectory"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [
@@ -2541,14 +2550,19 @@
       "lcm_mapping": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmSettings.DisableDataMigration"
+        ],
         "methods_called": [],
         "param_usage": {
           "projectName": [
             "arg[0] of GetXmlDataFileName()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DisableDataMigration"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -2588,6 +2602,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2624,6 +2639,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2707,9 +2723,9 @@
     ],
     "mapping_types": {
       "composite": 0,
-      "convenience": 4,
-      "direct": 29,
-      "pure_python": 38
+      "convenience": 8,
+      "direct": 39,
+      "pure_python": 24
     },
     "methods_with_return_type": 0,
     "total_classes": 1,

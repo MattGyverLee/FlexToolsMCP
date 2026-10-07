@@ -13,6 +13,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "stringObj": [
@@ -76,6 +77,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "BestStr",
       "methods_called": [],
       "properties_accessed": [],
@@ -90,6 +92,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "objectOrGuid": [
@@ -158,6 +161,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "BuildGotoURL",
       "methods_called": [],
       "properties_accessed": [
@@ -174,10 +178,15 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.MainCacheAccessor"
+        ],
         "methods_called": [],
         "param_usage": {},
-        "properties_accessed": [],
+        "properties_accessed": [
+          "MainCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -228,10 +237,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.MainCacheAccessor"
+      ],
       "method": "CloseProject",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "MainCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -243,6 +257,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -297,6 +312,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "GetAllAnalysisWSs",
       "methods_called": [],
       "properties_accessed": [],
@@ -311,6 +327,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "flat": [
@@ -386,6 +403,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "GetAllSemanticDomains",
       "methods_called": [],
       "properties_accessed": [
@@ -406,6 +424,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -460,6 +479,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "GetAllVernacularWSs",
       "methods_called": [],
       "properties_accessed": [],
@@ -473,7 +493,11 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "convenience",
+        "member_access": [
+          "LcmCache.MetaDataCacheAccessor",
+          "LcmCache.DomainDataByFlid"
+        ],
         "methods_called": [
           ".get_String()"
         ],
@@ -495,7 +519,10 @@
             "arg[0] of __ValidatedHvo()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DomainDataByFlid",
+          "MetaDataCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [
@@ -567,12 +594,19 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "convenience",
+      "member_access": [
+        "LcmCache.MetaDataCacheAccessor",
+        "LcmCache.DomainDataByFlid"
+      ],
       "method": "GetCustomFieldValue",
       "methods_called": [
         ".get_String()"
       ],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "DomainDataByFlid",
+        "MetaDataCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -584,6 +618,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -638,6 +673,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "GetDateLastModified",
       "methods_called": [],
       "properties_accessed": [],
@@ -651,10 +687,15 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "CoreWritingSystemDefinition.DisplayLabel"
+        ],
         "methods_called": [],
         "param_usage": {},
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DisplayLabel"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -705,10 +746,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "CoreWritingSystemDefinition.DisplayLabel"
+      ],
       "method": "GetDefaultAnalysisWS",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "DisplayLabel"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -719,10 +765,15 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "CoreWritingSystemDefinition.DisplayLabel"
+        ],
         "methods_called": [],
         "param_usage": {},
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DisplayLabel"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -773,10 +824,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "CoreWritingSystemDefinition.DisplayLabel"
+      ],
       "method": "GetDefaultVernacularWS",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "DisplayLabel"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -787,7 +843,10 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.MetaDataCacheAccessor"
+        ],
         "methods_called": [],
         "param_usage": {
           "className": [
@@ -797,7 +856,9 @@
             "arg[1] of GetFieldId()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "MetaDataCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -848,10 +909,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.MetaDataCacheAccessor"
+      ],
       "method": "GetFieldID",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "MetaDataCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -863,6 +929,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -919,6 +986,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "GetLexicalRelationTypes",
       "methods_called": [],
       "properties_accessed": [],
@@ -935,6 +1003,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -989,6 +1058,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "GetPartsOfSpeech",
       "methods_called": [],
       "properties_accessed": [],
@@ -1003,6 +1073,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [
@@ -1063,6 +1134,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "GetPublications",
       "methods_called": [],
       "properties_accessed": [
@@ -1082,10 +1154,17 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.ServiceLocator",
+          "CoreWritingSystemDefinition.DisplayLabel"
+        ],
         "methods_called": [],
         "param_usage": {},
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DisplayLabel",
+          "ServiceLocator"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -1136,10 +1215,17 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.ServiceLocator",
+        "CoreWritingSystemDefinition.DisplayLabel"
+      ],
       "method": "GetWritingSystems",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "DisplayLabel",
+        "ServiceLocator"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -1151,6 +1237,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
@@ -1214,6 +1301,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconAddTagToField",
       "methods_called": [],
       "properties_accessed": [],
@@ -1228,6 +1316,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -1284,6 +1373,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconAllEntries",
       "methods_called": [],
       "properties_accessed": [],
@@ -1300,6 +1390,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -1360,6 +1451,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconAllEntriesSorted",
       "methods_called": [],
       "properties_accessed": [],
@@ -1373,7 +1465,11 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "convenience",
+        "member_access": [
+          "LcmCache.MetaDataCacheAccessor",
+          "LcmCache.DomainDataByFlid"
+        ],
         "methods_called": [
           ".set_String()"
         ],
@@ -1388,7 +1484,10 @@
             "arg[0] of __ValidatedHvo()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DomainDataByFlid",
+          "MetaDataCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [
@@ -1445,12 +1544,19 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "convenience",
+      "member_access": [
+        "LcmCache.MetaDataCacheAccessor",
+        "LcmCache.DomainDataByFlid"
+      ],
       "method": "LexiconClearField",
       "methods_called": [
         ".set_String()"
       ],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "DomainDataByFlid",
+        "MetaDataCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -1461,7 +1567,10 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.DomainDataByFlid"
+        ],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
@@ -1472,7 +1581,9 @@
             "arg[0] of __ValidatedHvo()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DomainDataByFlid"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -1523,10 +1634,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.DomainDataByFlid"
+      ],
       "method": "LexiconClearListFieldSingle",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "DomainDataByFlid"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -1538,6 +1654,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "entry": [
@@ -1596,6 +1713,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconEntryAnalysesCount",
       "methods_called": [],
       "properties_accessed": [],
@@ -1609,14 +1727,19 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.MetaDataCacheAccessor"
+        ],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
             "arg[0] of GetFieldType()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "MetaDataCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -1667,10 +1790,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.MetaDataCacheAccessor"
+      ],
       "method": "LexiconFieldIsAnyStringType",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "MetaDataCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -1681,14 +1809,19 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.MetaDataCacheAccessor"
+        ],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
             "arg[0] of GetFieldType()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "MetaDataCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -1739,10 +1872,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.MetaDataCacheAccessor"
+      ],
       "method": "LexiconFieldIsMultiType",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "MetaDataCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -1753,14 +1891,19 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.MetaDataCacheAccessor"
+        ],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
             "arg[0] of GetFieldType()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "MetaDataCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -1811,10 +1954,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.MetaDataCacheAccessor"
+      ],
       "method": "LexiconFieldIsStringType",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "MetaDataCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -1826,6 +1974,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -1886,6 +2035,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetAllomorphCustomFields",
       "methods_called": [],
       "properties_accessed": [],
@@ -1900,6 +2050,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".get_String()"
         ],
@@ -1983,6 +2134,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconGetCitationForm",
       "methods_called": [
         ".get_String()"
@@ -2001,6 +2153,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "fieldName": [
@@ -2059,6 +2212,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetEntryCustomFieldNamed",
       "methods_called": [],
       "properties_accessed": [],
@@ -2073,6 +2227,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2133,6 +2288,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetEntryCustomFields",
       "methods_called": [],
       "properties_accessed": [],
@@ -2147,6 +2303,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".get_String()"
         ],
@@ -2228,6 +2385,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconGetExample",
       "methods_called": [
         ".get_String()"
@@ -2244,6 +2402,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2304,6 +2463,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetExampleCustomFields",
       "methods_called": [],
       "properties_accessed": [],
@@ -2318,6 +2478,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".get_String()"
         ],
@@ -2399,6 +2560,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconGetExampleTranslation",
       "methods_called": [
         ".get_String()"
@@ -2415,6 +2577,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
@@ -2495,6 +2658,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetFieldText",
       "methods_called": [],
       "properties_accessed": [],
@@ -2509,6 +2673,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2563,6 +2728,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetHeadword",
       "methods_called": [],
       "properties_accessed": [],
@@ -2577,6 +2743,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "convenience",
+        "member_access": [],
         "methods_called": [
           ".get_String()"
         ],
@@ -2663,6 +2830,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "convenience",
+      "member_access": [],
       "method": "LexiconGetLexemeForm",
       "methods_called": [
         ".get_String()"
@@ -2684,6 +2852,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".get_String()"
         ],
@@ -2767,6 +2936,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconGetPronunciation",
       "methods_called": [
         ".get_String()"
@@ -2785,6 +2955,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2839,6 +3010,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetPublishInCount",
       "methods_called": [],
       "properties_accessed": [],
@@ -2853,6 +3025,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "fieldName": [
@@ -2917,6 +3090,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetSenseCustomFieldNamed",
       "methods_called": [],
       "properties_accessed": [],
@@ -2931,6 +3105,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -2996,6 +3171,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetSenseCustomFields",
       "methods_called": [],
       "properties_accessed": [],
@@ -3010,6 +3186,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".get_String()"
         ],
@@ -3098,6 +3275,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconGetSenseDefinition",
       "methods_called": [
         ".get_String()"
@@ -3116,6 +3294,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".get_String()"
         ],
@@ -3204,6 +3383,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconGetSenseGloss",
       "methods_called": [
         ".get_String()"
@@ -3222,6 +3402,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "sense": [
@@ -3286,6 +3467,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconGetSenseNumber",
       "methods_called": [],
       "properties_accessed": [],
@@ -3300,6 +3482,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [
@@ -3364,6 +3547,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconGetSensePOS",
       "methods_called": [],
       "properties_accessed": [
@@ -3382,6 +3566,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [
@@ -3451,6 +3636,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconGetSenseSemanticDomains",
       "methods_called": [],
       "properties_accessed": [
@@ -3469,6 +3655,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -3523,6 +3710,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconNumberOfEntries",
       "methods_called": [],
       "properties_accessed": [],
@@ -3537,6 +3725,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "sense": [
@@ -3595,6 +3784,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "LexiconSenseAnalysesCount",
       "methods_called": [],
       "properties_accessed": [],
@@ -3609,6 +3799,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".set_String()"
         ],
@@ -3683,6 +3874,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconSetExample",
       "methods_called": [
         ".set_String()"
@@ -3698,7 +3890,11 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.MetaDataCacheAccessor",
+          "LcmCache.DomainDataByFlid"
+        ],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
@@ -3714,7 +3910,10 @@
             "arg[0] of __ValidatedHvo()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DomainDataByFlid",
+          "MetaDataCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -3765,10 +3964,17 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.MetaDataCacheAccessor",
+        "LcmCache.DomainDataByFlid"
+      ],
       "method": "LexiconSetFieldInteger",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "DomainDataByFlid",
+        "MetaDataCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -3780,6 +3986,10 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "convenience",
+        "member_access": [
+          "LcmCache.MetaDataCacheAccessor",
+          "LcmCache.DomainDataByFlid"
+        ],
         "methods_called": [
           ".set_String()"
         ],
@@ -3800,7 +4010,10 @@
             "arg[0] of MakeString()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DomainDataByFlid",
+          "MetaDataCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [
@@ -3865,11 +4078,18 @@
         "ReflectionHelper"
       ],
       "mapping_type": "convenience",
+      "member_access": [
+        "LcmCache.MetaDataCacheAccessor",
+        "LcmCache.DomainDataByFlid"
+      ],
       "method": "LexiconSetFieldText",
       "methods_called": [
         ".set_String()"
       ],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "DomainDataByFlid",
+        "MetaDataCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": [
@@ -3883,6 +4103,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "convenience",
+        "member_access": [],
         "methods_called": [
           ".set_String()"
         ],
@@ -3964,6 +4185,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "convenience",
+      "member_access": [],
       "method": "LexiconSetLexemeForm",
       "methods_called": [
         ".set_String()"
@@ -3987,6 +4209,9 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.DomainDataByFlid"
+        ],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
@@ -4001,6 +4226,7 @@
           ]
         },
         "properties_accessed": [
+          "DomainDataByFlid",
           "Hvo"
         ],
         "property_kinds": {},
@@ -4059,9 +4285,13 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.DomainDataByFlid"
+      ],
       "method": "LexiconSetListFieldMultiple",
       "methods_called": [],
       "properties_accessed": [
+        "DomainDataByFlid",
         "Hvo"
       ],
       "property_kinds": {},
@@ -4074,7 +4304,10 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "convenience",
+        "member_access": [
+          "LcmCache.DomainDataByFlid"
+        ],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
@@ -4093,6 +4326,7 @@
         },
         "properties_accessed": [
           "ClassName",
+          "DomainDataByFlid",
           "Hvo"
         ],
         "property_kinds": {},
@@ -4145,11 +4379,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "convenience",
+      "member_access": [
+        "LcmCache.DomainDataByFlid"
+      ],
       "method": "LexiconSetListFieldSingle",
       "methods_called": [],
       "properties_accessed": [
         "ClassName",
+        "DomainDataByFlid",
         "Hvo"
       ],
       "property_kinds": {},
@@ -4163,6 +4401,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".set_String()"
         ],
@@ -4239,6 +4478,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "LexiconSetSenseGloss",
       "methods_called": [
         ".set_String()"
@@ -4257,6 +4497,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
@@ -4325,6 +4566,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "ListFieldLookup",
       "methods_called": [],
       "properties_accessed": [
@@ -4343,6 +4585,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
@@ -4408,6 +4651,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "ListFieldPossibilities",
       "methods_called": [],
       "properties_accessed": [
@@ -4425,7 +4669,10 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.MetaDataCacheAccessor"
+        ],
         "methods_called": [],
         "param_usage": {
           "fieldID": [
@@ -4433,7 +4680,9 @@
             "arg[0] of ReferenceTargetOwner()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "MetaDataCacheAccessor"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -4484,10 +4733,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.MetaDataCacheAccessor"
+      ],
       "method": "ListFieldPossibilityList",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "MetaDataCacheAccessor"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -4499,6 +4753,9 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.ServiceLocator"
+        ],
         "methods_called": [],
         "param_usage": {
           "hvoOrGuid": [
@@ -4508,7 +4765,8 @@
           ]
         },
         "properties_accessed": [
-          "Guid"
+          "Guid",
+          "ServiceLocator"
         ],
         "property_kinds": {},
         "repositories_used": [],
@@ -4567,10 +4825,14 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.ServiceLocator"
+      ],
       "method": "Object",
       "methods_called": [],
       "properties_accessed": [
-        "Guid"
+        "Guid",
+        "ServiceLocator"
       ],
       "property_kinds": {},
       "repositories_used": [],
@@ -4583,6 +4845,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "repository": [
@@ -4641,6 +4904,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "ObjectCountFor",
       "methods_called": [],
       "properties_accessed": [],
@@ -4654,14 +4918,19 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.ServiceLocator"
+        ],
         "methods_called": [],
         "param_usage": {
           "repository": [
             "arg[0] of GetService()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "ServiceLocator"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -4712,10 +4981,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.ServiceLocator"
+      ],
       "method": "ObjectRepository",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "ServiceLocator"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -4727,6 +5001,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "repository": [
@@ -4785,6 +5060,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "ObjectsIn",
       "methods_called": [],
       "properties_accessed": [],
@@ -4798,7 +5074,11 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "convenience",
+        "member_access": [
+          "LcmCache.LangProject",
+          "LcmCache.MainCacheAccessor"
+        ],
         "methods_called": [],
         "param_usage": {
           "projectName": [
@@ -4807,7 +5087,9 @@
           ]
         },
         "properties_accessed": [
-          "LexDbOA"
+          "LangProject",
+          "LexDbOA",
+          "MainCacheAccessor"
         ],
         "property_kinds": {
           "LexDbOA": "OwningAtomic"
@@ -4867,11 +5149,17 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "convenience",
+      "member_access": [
+        "LcmCache.LangProject",
+        "LcmCache.MainCacheAccessor"
+      ],
       "method": "OpenProject",
       "methods_called": [],
       "properties_accessed": [
-        "LexDbOA"
+        "LangProject",
+        "LexDbOA",
+        "MainCacheAccessor"
       ],
       "property_kinds": {
         "LexDbOA": "OwningAtomic"
@@ -4886,6 +5174,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -4940,6 +5229,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "ProjectName",
       "methods_called": [],
       "properties_accessed": [],
@@ -4954,6 +5244,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [
@@ -5014,6 +5305,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "PublicationType",
       "methods_called": [],
       "properties_accessed": [
@@ -5034,6 +5326,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "languageTag": [
@@ -5096,6 +5389,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "ReversalEntries",
       "methods_called": [],
       "properties_accessed": [
@@ -5114,6 +5408,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".get_String()"
         ],
@@ -5195,6 +5490,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "ReversalGetForm",
       "methods_called": [
         ".get_String()"
@@ -5211,6 +5507,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "languageTag": [
@@ -5273,6 +5570,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "ReversalIndex",
       "methods_called": [],
       "properties_accessed": [
@@ -5291,6 +5589,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [
           ".set_String()"
         ],
@@ -5365,6 +5664,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "ReversalSetForm",
       "methods_called": [
         ".set_String()"
@@ -5381,6 +5681,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "convenience",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [
@@ -5459,6 +5760,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "convenience",
+      "member_access": [],
       "method": "TextsGetAll",
       "methods_called": [],
       "properties_accessed": [
@@ -5481,6 +5783,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "pure_python",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
@@ -5535,6 +5838,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "pure_python",
+      "member_access": [],
       "method": "TextsNumberOfTexts",
       "methods_called": [],
       "properties_accessed": [],
@@ -5549,6 +5853,7 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "direct",
+        "member_access": [],
         "methods_called": [],
         "param_usage": {
           "flat": [
@@ -5625,6 +5930,7 @@
         "ReflectionHelper"
       ],
       "mapping_type": "direct",
+      "member_access": [],
       "method": "UnpackNestedPossibilityList",
       "methods_called": [],
       "properties_accessed": [
@@ -5642,7 +5948,10 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "LcmCache.ServiceLocator"
+        ],
         "methods_called": [],
         "param_usage": {
           "languageTag": [
@@ -5650,7 +5959,9 @@
             "arg[0] of WSHandle()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "ServiceLocator"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [
@@ -5707,10 +6018,15 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "LcmCache.ServiceLocator"
+      ],
       "method": "WSHandle",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "ServiceLocator"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []
@@ -5721,7 +6037,11 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "pure_python",
+        "mapping_type": "direct",
+        "member_access": [
+          "CoreWritingSystemDefinition.DisplayLabel",
+          "LcmCache.ServiceLocator"
+        ],
         "methods_called": [],
         "param_usage": {
           "languageTagOrHandle": [
@@ -5730,7 +6050,10 @@
             "arg[0] of WSUIName()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "DisplayLabel",
+          "ServiceLocator"
+        ],
         "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
@@ -5781,10 +6104,17 @@
         "WorkerThreadException",
         "ReflectionHelper"
       ],
-      "mapping_type": "pure_python",
+      "mapping_type": "direct",
+      "member_access": [
+        "CoreWritingSystemDefinition.DisplayLabel",
+        "LcmCache.ServiceLocator"
+      ],
       "method": "WSUIName",
       "methods_called": [],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "DisplayLabel",
+        "ServiceLocator"
+      ],
       "property_kinds": {},
       "repositories_used": [],
       "utilities_used": []

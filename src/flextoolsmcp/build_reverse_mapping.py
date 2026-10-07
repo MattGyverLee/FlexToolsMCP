@@ -46,6 +46,8 @@ KEY_FACTORIES = "factories"
 KEY_REPOSITORIES = "repositories"
 KEY_BY_FLEXLIBS_CLASS = "by_flexlibs_class"
 KEY_BY_LIBLCM_ENTITY = "by_liblcm_entity"
+KEY_BY_MEMBER = "by_member"
+KEY_MEMBER_ACCESS = "member_access"
 KEY_STATISTICS = "statistics"
 
 # Mapping type constant
@@ -229,8 +231,17 @@ def build_reverse_mapping(
         KEY_REPOSITORIES: defaultdict(list), # repo_name -> [FlexLibs wrappers]
         KEY_BY_FLEXLIBS_CLASS: {},           # FlexLibs class -> what it wraps
         KEY_BY_LIBLCM_ENTITY: defaultdict(lambda: {"flexlibs_stable": None, "flexlibs_2": None}),
+        # "IType.Member" -> ["WrapperClass.method", ...]. The four buckets above
+        # are keyed by BARE member name, and 270 of 293 of those names are owned
+        # by more than one LCM type -- enough to say "something wraps HeadWord"
+        # but not "ILexEntry.HeadWord is wrapped". This bucket is the one that
+        # answers a member-level question, and it is deliberately stored as
+        # qualified-name strings rather than copied wrapper records: the
+        # signature and description already ship in flexicon_api.json.
+        KEY_BY_MEMBER: defaultdict(set),
         KEY_STATISTICS: {
             "total_mappings": 0,
+            "members_mapped": 0,
             "properties_mapped": 0,
             "methods_mapped": 0,
             "factories_mapped": 0,
@@ -286,6 +297,11 @@ def build_reverse_mapping(
                     "properties_mapped",
                     result[KEY_STATISTICS]
                 )
+
+            # Index by type-resolved member access (qualified, unambiguous)
+            for qualified in lcm_mapping.get(KEY_MEMBER_ACCESS, []) or []:
+                result[KEY_BY_MEMBER][qualified].add(f"{class_name}.{method_name}")
+                result[KEY_STATISTICS]["members_mapped"] += 1
 
             # Index by methods called
             if KEY_METHODS_CALLED in lcm_mapping:
@@ -350,6 +366,7 @@ def build_reverse_mapping(
     result[KEY_FACTORIES] = dict(result[KEY_FACTORIES])
     result[KEY_REPOSITORIES] = dict(result[KEY_REPOSITORIES])
     result[KEY_BY_LIBLCM_ENTITY] = dict(result[KEY_BY_LIBLCM_ENTITY])
+    result[KEY_BY_MEMBER] = {k: sorted(v) for k, v in sorted(result[KEY_BY_MEMBER].items())}
 
     return result
 
@@ -365,14 +382,37 @@ def add_python_wrappers_to_liblcm(
 
     print("[INFO] Adding python_wrappers to LibLCM entities...")
 
+    # member -> wrappers, grouped by owning type, from the qualified bucket
+    by_entity_member: Dict[str, Dict[str, List[str]]] = defaultdict(dict)
+    for qualified, wrappers in reverse_mapping.get(KEY_BY_MEMBER, {}).items():
+        owner, _, member = qualified.partition(".")
+        if owner and member:
+            by_entity_member[owner][member] = list(wrappers)
+
     wrappers_added = 0
+    members_added = 0
     for entity_id, entity in liblcm.get("entities", {}).items():
+        covered = by_entity_member.get(entity_id)
         if entity_id in reverse_mapping[KEY_BY_LIBLCM_ENTITY]:
             wrapper_info = reverse_mapping[KEY_BY_LIBLCM_ENTITY][entity_id]
             entity["python_wrappers"] = wrapper_info
             wrappers_added += 1
+        if covered:
+            # Member-level coverage, stated positively AND negatively: an
+            # absent member used to be indistinguishable from an uncomputed
+            # one, which is the silent-absence failure the design set out to
+            # avoid. `members_not_covered` makes the gap explicit.
+            declared = {p.get("name") for p in entity.get("properties") or []} | \
+                       {m.get("name") for m in entity.get("methods") or []}
+            entity["python_wrapper_members"] = {
+                "covered": {k: sorted(v) for k, v in sorted(covered.items())},
+                "members_not_covered": sorted(declared - set(covered)),
+            }
+            members_added += len(covered)
 
     print(f"[INFO] Added python_wrappers to {wrappers_added} entities")
+    print(f"[INFO] Added member-level coverage for {members_added} members "
+          f"across {len(by_entity_member)} entities")
 
     # Save
     output = output_path or liblcm_path
@@ -389,6 +429,8 @@ def print_summary(result: Dict):
     print("Reverse Mapping Summary")
     print("=" * 50)
     print(f"  Total mappings: {stats['total_mappings']}")
+    print(f"  Members mapped (qualified): {stats.get('members_mapped', 0)} "
+          f"across {len(result.get(KEY_BY_MEMBER, {}))} distinct type.member keys")
     print(f"  Properties mapped: {stats['properties_mapped']}")
     print(f"  Methods mapped: {stats['methods_mapped']}")
     print(f"  Factories mapped: {stats['factories_mapped']}")

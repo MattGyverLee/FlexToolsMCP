@@ -180,3 +180,63 @@ def test_missing_bridge_is_empty_but_not_silent(tmp_path, capsys):
     )
     assert result["statistics"]["total_mappings"] == 0
     assert "No bridge index" in capsys.readouterr().out
+
+# ---------------------------------------------------------------------------
+# 3. qualified member coverage (type-aware detection follow-up)
+# ---------------------------------------------------------------------------
+
+def _bridge_with_member_access():
+    doc = _bridge_doc()
+    doc["by_method"]["LexSenseOperations.GetGloss"]["member_access"] = [
+        "ILexSense.Gloss", "ILexSense.ScientificName"]
+    doc["by_method"]["LexSenseOperations.SetGloss"]["member_access"] = ["ILexSense.Gloss"]
+    return doc
+
+
+def test_by_member_is_keyed_by_qualified_name(tmp_path):
+    """The bare-name buckets cannot answer a member-level question: 270 of 293
+    property names in the real index are owned by more than one LCM type."""
+    result = build_reverse_mapping(
+        _write(tmp_path, "flexicon_api_v1.0.0.json", _flexicon_doc()),
+        None, None,
+        _write(tmp_path, "flexicon_lcm_bridge_v1.0.0.json", _bridge_with_member_access()),
+    )
+    by_member = result["by_member"]
+    assert by_member["ILexSense.Gloss"] == [
+        "LexSenseOperations.GetGloss", "LexSenseOperations.SetGloss"]
+    assert by_member["ILexSense.ScientificName"] == ["LexSenseOperations.GetGloss"]
+    assert result["statistics"]["members_mapped"] == 3
+
+
+def test_by_member_absent_when_bridge_has_no_member_access(tmp_path):
+    """An older bridge predates member_access; the bucket is empty, not wrong."""
+    result = build_reverse_mapping(
+        _write(tmp_path, "flexicon_api_v1.0.0.json", _flexicon_doc()),
+        None, None,
+        _write(tmp_path, "flexicon_lcm_bridge_v1.0.0.json", _bridge_doc()),
+    )
+    assert result["by_member"] == {}
+    assert result["statistics"]["members_mapped"] == 0
+
+
+def test_python_wrapper_members_states_the_gap_explicitly(tmp_path, monkeypatch):
+    """Covered members alone would leave an absent member ambiguous between
+    'not wrapped' and 'not computed'."""
+    import json as _json
+    from flextoolsmcp.build_reverse_mapping import add_python_wrappers_to_liblcm
+
+    liblcm = {"entities": {"ILexSense": {
+        "properties": [{"name": "Gloss"}, {"name": "ScientificName"}, {"name": "Bibliography"}],
+        "methods": [],
+    }}}
+    lp = tmp_path / "liblcm_api_v1.0.0.json"
+    lp.write_text(_json.dumps(liblcm), encoding="utf-8")
+    result = build_reverse_mapping(
+        _write(tmp_path, "flexicon_api_v1.0.0.json", _flexicon_doc()),
+        None, None,
+        _write(tmp_path, "flexicon_lcm_bridge_v1.0.0.json", _bridge_with_member_access()),
+    )
+    out = add_python_wrappers_to_liblcm(lp, result, output_path=tmp_path / "out.json")
+    members = out["entities"]["ILexSense"]["python_wrapper_members"]
+    assert set(members["covered"]) == {"Gloss", "ScientificName"}
+    assert members["members_not_covered"] == ["Bibliography"]

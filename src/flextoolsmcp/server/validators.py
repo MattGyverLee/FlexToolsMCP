@@ -1908,8 +1908,11 @@ _RAW_LCM_NOTE_RE = re.compile(r"#\s*raw-lcm\s*:\s*\S+")
 def _bridge_property_map(bridge: Any) -> Dict[str, List[str]]:
     """Invert the flexicon LCM bridge index: LCM property -> wrapper methods.
 
-    Reads ``by_method[*].properties_accessed`` (entries look like
-    ``PhoneEnvRC (ReferenceCollection)``) and inverts them once. Ranking
+    Reads ``by_method[*].properties_accessed`` (bare LCM property names such
+    as ``PhoneEnvRC``; the field kind lives alongside in ``property_kinds``)
+    and inverts them once. The ``split(" ")`` below is retained so an index
+    built by an older analyzer, which annotated names as
+    ``PhoneEnvRC (ReferenceCollection)``, still inverts correctly. Ranking
     puts ``Get*``/``GetAll*`` reads first, then ``Add*``/``Set*``/
     ``Remove*``/``Create*`` writes; ``Duplicate``, ``Delete``, ``__init__``
     and ``Copy*`` are dropped as non-equivalents (R18).

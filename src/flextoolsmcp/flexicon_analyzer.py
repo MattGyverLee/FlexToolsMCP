@@ -1023,7 +1023,13 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
     Returns a dictionary with:
     - factories_used: List of factory interfaces used (e.g., ILexEntryFactory)
     - repositories_used: List of repository interfaces used
-    - properties_accessed: List of LibLCM properties accessed (with suffix type)
+    - properties_accessed: List of LibLCM property names, BARE (no annotation).
+      Bare names are what join against liblcm_api entities[*].properties[*].name;
+      the field kind lives in `property_kinds`, so neither consumer nor index
+      has to do string surgery to get one or the other.
+    - property_kinds: Dict of property name -> LCM field kind (OwningSequence,
+      ReferenceAtomic, ...) for properties whose name carries a known suffix.
+      Properties recognised by name alone (COMMON_LCM_PROPERTIES) are absent.
     - methods_called: List of specific LibLCM methods called
     - utilities_used: List of utility classes/methods used (e.g., TsStringUtils)
     - mapping_type: Classification of the mapping (direct, convenience, composite, pure_python)
@@ -1034,6 +1040,7 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
         "factories_used": [],
         "repositories_used": [],
         "properties_accessed": [],
+        "property_kinds": {},  # property name -> LCM field kind (see docstring)
         "methods_called": [],
         "utilities_used": [],
         "mapping_type": "pure_python",  # Default, will be updated
@@ -1127,18 +1134,21 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
         # Look for property accesses with LCM suffixes
         if isinstance(child, ast.Attribute):
             attr_name = child.attr
-            # Check if property ends with known LCM suffix
+            # Check if property ends with known LCM suffix.
+            # The name is recorded BARE and the kind kept alongside it. Emitting
+            # "SensesOS (OwningSequence)" here is what made this list unjoinable
+            # against the LCM index -- and because names like LexemeFormOA match
+            # BOTH this branch and COMMON_LCM_PROPERTIES below, the same property
+            # could appear in two different spellings in one file.
             for suffix, suffix_type in LCM_PROPERTY_SUFFIXES.items():
                 if attr_name.endswith(suffix) and len(attr_name) > len(suffix):
-                    prop_info = f"{attr_name} ({suffix_type})"
-                    if prop_info not in result["properties_accessed"]:
-                        result["properties_accessed"].append(prop_info)
+                    _add_unique_to_list(result["properties_accessed"], attr_name)
+                    result["property_kinds"][attr_name] = suffix_type
                     break
 
             # Check for common LCM property patterns
             if attr_name in COMMON_LCM_PROPERTIES:
-                if attr_name not in result["properties_accessed"]:
-                    result["properties_accessed"].append(attr_name)
+                _add_unique_to_list(result["properties_accessed"], attr_name)
 
             # Check for MultiString operations
             if attr_name in MULTISTRING_OPERATIONS:
@@ -2310,6 +2320,7 @@ def analyze_flexicon(flexicon_path: str) -> Dict[str, Any]:
                         "factories_used": lcm_info.get("factories_used", []),
                         "repositories_used": lcm_info.get("repositories_used", []),
                         "properties_accessed": lcm_info.get("properties_accessed", []),
+                        "property_kinds": lcm_info.get("property_kinds", {}),
                         "methods_called": lcm_info.get("methods_called", []),
                         "utilities_used": lcm_info.get("utilities_used", []),
                         "lcm_deps": class_info["lcm_dependencies"]
@@ -2646,6 +2657,7 @@ def analyze_flexlibs_stable(flexlibs_path: str) -> Dict[str, Any]:
                     "factories_used": lcm_info.get("factories_used", []),
                     "repositories_used": lcm_info.get("repositories_used", []),
                     "properties_accessed": lcm_info.get("properties_accessed", []),
+                    "property_kinds": lcm_info.get("property_kinds", {}),
                     "methods_called": lcm_info.get("methods_called", []),
                     "utilities_used": lcm_info.get("utilities_used", []),
                     "lcm_deps": class_info.get("lcm_dependencies", [])

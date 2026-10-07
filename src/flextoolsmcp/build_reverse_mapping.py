@@ -158,10 +158,33 @@ def _add_liblcm_mapping(
         by_liblcm_entity[dep][key].append(wrapper_dict)
 
 
+def _load_bridge_mappings(bridge_path: Path | None) -> Dict[str, Dict[str, Any]]:
+    """Load per-method LCM mappings from the flexicon<->LCM bridge index.
+
+    The analyzer stopped writing `lcm_mapping` inline on each method record in
+    flexicon_api.json; that data now lives in flexicon_lcm_bridge_v*.json under
+    `by_method`, keyed "<Class>.<method>". This builder kept reading the inline
+    field, so every method looked like `pure_python`, hit the early `continue`,
+    and nothing was ever indexed -- which is why statistics reported
+    total_mappings: 0 and why python_wrappers entries carried "methods": [].
+
+    Returns {"<Class>.<method>": mapping_dict}; empty when no bridge is given,
+    in which case callers fall back to the inline field.
+    """
+    if not bridge_path or not bridge_path.exists():
+        return {}
+    bridge = load_json(bridge_path)
+    by_method = bridge.get("by_method", {})
+    if not isinstance(by_method, dict):
+        return {}
+    return by_method
+
+
 def build_reverse_mapping(
     flexicon_path: Path,
     flexlibs_path: Path | None = None,
-    liblcm_path: Path | None = None
+    liblcm_path: Path | None = None,
+    bridge_path: Path | None = None
 ) -> Dict[str, Any]:
     """Build reverse mapping from LibLCM -> FlexLibs.
 
@@ -189,6 +212,13 @@ def build_reverse_mapping(
     flexicon = load_json(flexicon_path)
     flexlibs = load_json(flexlibs_path) if flexlibs_path and flexlibs_path.exists() else None
     load_json(liblcm_path) if liblcm_path and liblcm_path.exists() else None
+    bridge_methods = _load_bridge_mappings(bridge_path)
+    if bridge_methods:
+        print(f"[INFO] Bridge supplied {len(bridge_methods)} per-method LCM mappings")
+    else:
+        print("[WARN] No bridge index available -- falling back to inline "
+              "lcm_mapping, which recent analyzer versions no longer emit. "
+              "Expect an empty reverse mapping.")
 
     # Initialize result structure
     result = {
@@ -229,7 +259,10 @@ def build_reverse_mapping(
 
         for method in entity.get("methods", []):
             method_name = method.get("name", "")
-            lcm_mapping = method.get("lcm_mapping", {})
+            # Prefer the bridge record; fall back to the legacy inline field so
+            # an older flexicon_api.json still builds.
+            lcm_mapping = (bridge_methods.get(f"{class_name}.{method_name}")
+                           or method.get("lcm_mapping", {}))
             mapping_type = lcm_mapping.get(KEY_MAPPING_TYPE, MAPPING_TYPE_PURE_PYTHON)
 
             if mapping_type == MAPPING_TYPE_PURE_PYTHON:
@@ -363,6 +396,13 @@ def print_summary(result: Dict):
     print(f"  FlexLibs classes: {len(result[KEY_BY_FLEXLIBS_CLASS])}")
     print(f"  LibLCM entities with wrappers: {len(result[KEY_BY_LIBLCM_ENTITY])}")
 
+    if stats["total_mappings"] == 0:
+        print("\n  [WARN] total_mappings is 0. Nothing was indexed, so every "
+              "member-level lookup (find_wrappers_for_lcm, resolve_property) "
+              "will report no coverage rather than a real gap. Check that the "
+              "bridge index exists and that its by_method keys are "
+              "'<Class>.<method>'.")
+
     # Top wrapped properties
     print("\nTop 10 wrapped properties:")
     sorted_props = sorted(result[KEY_PROPERTIES].items(), key=lambda x: len(x[1]), reverse=True)[:10]
@@ -396,6 +436,7 @@ def main():
     flexicon_path = find_latest_versioned_api_file(python_dir, "flexicon_api")
     flexlibs_path = find_latest_versioned_api_file(python_dir, "flexlibs_api")
     liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
+    bridge_path = find_latest_versioned_api_file(python_dir, "flexicon_lcm_bridge")
 
     if not flexicon_path:
         print("[ERROR] Flexicon API file not found")
@@ -418,7 +459,11 @@ def main():
         output_path = root / args.output
 
     # Build reverse mapping
-    result = build_reverse_mapping(flexicon_path, flexlibs_path, liblcm_path)
+    if not bridge_path:
+        print("[WARN] flexicon_lcm_bridge index not found -- run the analyzer "
+              "first; without it the reverse mapping will be empty.")
+    result = build_reverse_mapping(flexicon_path, flexlibs_path, liblcm_path,
+                                   bridge_path)
 
     # Save reverse mapping
     output_path.parent.mkdir(parents=True, exist_ok=True)

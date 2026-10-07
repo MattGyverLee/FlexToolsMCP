@@ -159,3 +159,24 @@ def test_uninformative_base_types_are_not_used_for_attribution(idx):
     """Typing a receiver as ICmObject would let Hvo/Guid/ClassName masquerade
     as domain coverage on every object in the model."""
     assert idx.sole_owner("Hvo") is None
+
+
+def test_getattr_with_string_literal_is_detected(idx):
+    """Dynamic access leaves no ast.Attribute node. flexicon uses it 273 times;
+    POSOperations.GetStemNameText reads getattr(stem_name, "Name", None), which
+    is why IMoStemName read as untouched despite 18 mentions in the source."""
+    src = '''
+def f(self, stem_name_or_hvo):
+    """Doc.
+
+    Args:
+        stem_name_or_hvo: The IMoStemName object or HVO.
+    """
+    stem_name = self.__ResolveStemName(stem_name_or_hvo)
+    ms = getattr(stem_name, "Name", None)
+    ab = getattr(stem_name, "Abbreviation", None)
+    return ms, ab
+'''
+    out = _analyze(src)
+    assert "IMoStemName.Name" in out["member_access"]
+    assert "IMoStemName.Abbreviation" in out["member_access"]

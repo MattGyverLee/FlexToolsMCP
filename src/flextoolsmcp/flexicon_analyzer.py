@@ -1143,6 +1143,30 @@ def _lcm_expr_type(expr, env: Dict[str, str], idx) -> Optional[str]:
     return None
 
 
+def _record_lcm_member(result, recv_expr, attr_name, env, idx) -> bool:
+    """Attribute one member access to the type that declares it.
+
+    Returns True when the access was resolved, so callers can skip the
+    name-shape fallback.
+    """
+    if not idx:
+        return False
+    recv_type = _lcm_expr_type(recv_expr, env, idx)
+    decl = idx.declaring_type(recv_type, attr_name) if recv_type else None
+    if decl is None and recv_type is None:
+        decl = idx.sole_owner(attr_name)
+    if not decl:
+        return False
+    info = idx.member_info(decl, attr_name) or {}
+    if info.get("member_type") == "property":
+        _add_unique_to_list(result["properties_accessed"], attr_name)
+        kind = info.get("kind")
+        if kind and kind != "property":
+            result["property_kinds"][attr_name] = LCM_PROPERTY_SUFFIXES.get(kind, kind)
+    _add_unique_to_list(result["member_access"], f"{decl}.{attr_name}")
+    return True
+
+
 def _seed_lcm_types(node, lcm_imports, idx) -> Dict[str, str]:
     """Build {local name -> LCM type} for one method body.
 
@@ -1320,6 +1344,18 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
                     method_str = f".{method_name}()"
                     if method_str not in result["methods_called"]:
                         result["methods_called"].append(method_str)
+
+        # getattr(obj, "Member") -- dynamic access leaves NO ast.Attribute
+        # node, so an attribute-walking detector cannot see it at all. flexicon
+        # uses it 273 times (e.g. POSOperations.GetStemNameText reads
+        # getattr(stem_name, "Name", None)), which is why IMoStemName read as
+        # untouched despite 18 mentions in the source.
+        if (isinstance(child, ast.Call) and isinstance(child.func, ast.Name)
+                and child.func.id == "getattr" and len(child.args) >= 2
+                and isinstance(child.args[1], ast.Constant)
+                and isinstance(child.args[1].value, str)):
+            _record_lcm_member(result, child.args[0], child.args[1].value,
+                               _lcm_env, _lcm_idx)
 
         # Look for property accesses with LCM suffixes
         if isinstance(child, ast.Attribute):

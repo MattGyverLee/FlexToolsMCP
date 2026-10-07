@@ -125,9 +125,16 @@ def _index_wrapper_mapping(
         stats_key: Statistics key to increment (e.g., "properties_mapped")
         statistics: The statistics dict to update
     """
+    qualified = f"{wrapper_info['class']}.{wrapper_info['method']}"
     for item in items:
         name = extractor_fn(item)
-        result_dict[name].append(wrapper_info.copy())
+        # Qualified-name strings, not copies of wrapper_info: `signature` and
+        # `description` already ship in flexicon_api.json keyed by this exact
+        # string, and copying them into every one of ~2,100 bucket entries was
+        # 83% of this file. Nothing reads these buckets today (equivalence.py
+        # uses by_liblcm_entity only), so the duplication bought nothing.
+        if qualified not in result_dict[name]:
+            result_dict[name].append(qualified)
         statistics[stats_key] += 1
 
 
@@ -316,14 +323,18 @@ def build_reverse_mapping(
 
             # Index by factories used
             if KEY_FACTORIES_USED in lcm_mapping:
+                _qualified = f"{class_name}.{method_name}"
                 for factory in lcm_mapping[KEY_FACTORIES_USED]:
-                    result[KEY_FACTORIES][factory].append(wrapper_info.copy())
+                    if _qualified not in result[KEY_FACTORIES][factory]:
+                        result[KEY_FACTORIES][factory].append(_qualified)
                     result[KEY_STATISTICS]["factories_mapped"] += 1
 
             # Index by repositories used
             if KEY_REPOSITORIES_USED in lcm_mapping:
+                _qualified = f"{class_name}.{method_name}"
                 for repo in lcm_mapping[KEY_REPOSITORIES_USED]:
-                    result[KEY_REPOSITORIES][repo].append(wrapper_info.copy())
+                    if _qualified not in result[KEY_REPOSITORIES][repo]:
+                        result[KEY_REPOSITORIES][repo].append(_qualified)
                     result[KEY_STATISTICS]["repositories_mapped"] += 1
 
             # Add to class info
@@ -450,6 +461,8 @@ def print_summary(result: Dict):
     sorted_props = sorted(result[KEY_PROPERTIES].items(), key=lambda x: len(x[1]), reverse=True)[:10]
     for prop, wrappers in sorted_props:
         print(f"  {prop}: {len(wrappers)} wrappers")
+    print("\n  (buckets hold qualified \"Class.method\" names; look up signature "
+          "and description in flexicon_api.json)")
 
 
 def main():

@@ -151,7 +151,10 @@ def test_bridge_populates_member_buckets(tmp_path):
         _write(tmp_path, "flexicon_lcm_bridge_v1.0.0.json", _bridge_doc()),
     )
     assert "Gloss" in result["properties"]
-    assert {w["method"] for w in result["properties"]["Gloss"]} == {"GetGloss", "SetGloss"}
+    # buckets hold qualified "Class.method" strings, not copies of the wrapper
+    # record -- signature and description live in flexicon_api.json
+    assert set(result["properties"]["Gloss"]) == {
+        "LexSenseOperations.GetGloss", "LexSenseOperations.SetGloss"}
     assert "get_String" in result["methods"]
     assert "ILexSenseFactory" in result["factories"]
     assert "ILexSenseRepository" in result["repositories"]
@@ -240,3 +243,16 @@ def test_python_wrapper_members_states_the_gap_explicitly(tmp_path, monkeypatch)
     members = out["entities"]["ILexSense"]["python_wrapper_members"]
     assert set(members["covered"]) == {"Gloss", "ScientificName"}
     assert members["members_not_covered"] == ["Bibliography"]
+
+
+def test_buckets_hold_qualified_strings_not_record_copies(tmp_path):
+    """83% of this file was `signature` and `description` duplicated out of
+    flexicon_api.json into every bucket entry; nothing read them."""
+    result = build_reverse_mapping(
+        _write(tmp_path, "flexicon_api_v1.0.0.json", _flexicon_doc()),
+        None, None,
+        _write(tmp_path, "flexicon_lcm_bridge_v1.0.0.json", _bridge_doc()),
+    )
+    for bucket in ("properties", "methods", "factories", "repositories"):
+        for entries in result[bucket].values():
+            assert all(isinstance(e, str) and "." in e for e in entries), bucket

@@ -2346,6 +2346,7 @@
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
+        "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []
@@ -2386,6 +2387,7 @@
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
+        "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []
@@ -2421,6 +2423,7 @@
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
+        "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []
@@ -2456,6 +2459,7 @@
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
+        "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []
@@ -2491,6 +2495,7 @@
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
+        "property_kinds": {},
         "repositories_used": [],
         "transformations": [
           {
@@ -2544,6 +2549,7 @@
           ]
         },
         "properties_accessed": [],
+        "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []
@@ -2585,6 +2591,7 @@
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
+        "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []
@@ -2620,6 +2627,7 @@
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [],
+        "property_kinds": {},
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []

@@ -1,0 +1,115 @@
+entity,type,domain,n_properties,n_methods,members_declared,exact_mentions,stem_mentions,verdict
+TsStrBase,abstract_class,texts,3,9,12,0,0,absent from flexicon source — genuine gap
+IMoGlossItem,interface,grammar,11,0,11,0,0,absent from flexicon source — genuine gap
+ISenseOrEntry,interface,lexicon,10,1,11,0,0,absent from flexicon source — genuine gap
+FsFeatureSpecification,abstract_class,grammar,6,4,10,0,0,absent from flexicon source — genuine gap
+ICmCell,interface,core,3,7,10,0,0,absent from flexicon source — genuine gap
+PhTerminalUnit,abstract_class,grammar,8,1,9,0,0,absent from flexicon source — genuine gap
+MoCompoundRule,abstract_class,grammar,8,0,8,0,0,absent from flexicon source — genuine gap
+IPuaCharacter,interface,texts,5,2,7,0,0,absent from flexicon source — genuine gap
+IStFootnote,interface,texts,4,2,6,0,0,absent from flexicon source — genuine gap
+ITextTag,interface,texts,5,1,6,0,0,absent from flexicon source — genuine gap
+PhPhonContext,abstract_class,grammar,5,1,6,0,0,absent from flexicon source — genuine gap
+StPara,abstract_class,texts,6,0,6,0,0,absent from flexicon source — genuine gap
+TsPropsBase,abstract_class,texts,2,4,6,0,0,absent from flexicon source — genuine gap
+UCDCharacter,abstract_class,texts,2,4,6,0,0,absent from flexicon source — genuine gap
+FsAbstractStructure,abstract_class,grammar,3,2,5,0,0,absent from flexicon source — genuine gap
+IMoCompoundRule,interface,grammar,5,0,5,7,0,absent from flexicon source — genuine gap
+IMoStratumApp,interface,grammar,5,0,5,0,0,absent from flexicon source — genuine gap
+IUcdCharacter,interface,texts,2,3,5,0,0,absent from flexicon source — genuine gap
+IWordFormLookup,interface,wordform,5,0,5,0,0,absent from flexicon source — genuine gap
+PhContextOrVar,abstract_class,grammar,4,1,5,0,0,absent from flexicon source — genuine gap
+IBidiCharacterFactory,interface,texts,0,4,4,0,0,absent from flexicon source — genuine gap
+ILexEntryRefRepository,interface,lexicon,0,4,4,0,0,absent from flexicon source — genuine gap
+IMoDeriv,interface,grammar,4,0,4,0,0,absent from flexicon source — genuine gap
+IMoReferralRule,interface,grammar,4,0,4,0,0,absent from flexicon source — genuine gap
+IPhPhonemeSet,interface,grammar,4,0,4,3,0,absent from flexicon source — genuine gap
+IPuaCharacterFactory,interface,texts,0,4,4,0,0,absent from flexicon source — genuine gap
+MoDerivTrace,abstract_class,grammar,4,0,4,0,0,absent from flexicon source — genuine gap
+PhSimpleContext,abstract_class,grammar,3,1,4,0,0,absent from flexicon source — genuine gap
+ILexExtendedNote,interface,lexicon,3,0,3,0,0,absent from flexicon source — genuine gap
+IMoBinaryCompoundRule,interface,grammar,3,0,3,0,0,absent from flexicon source — genuine gap
+IMoCompoundRuleApp,interface,grammar,3,0,3,0,0,absent from flexicon source — genuine gap
+IMoDerivAffApp,interface,grammar,3,0,3,0,0,absent from flexicon source — genuine gap
+IMoInflAffixSlotApp,interface,grammar,3,0,3,0,0,absent from flexicon source — genuine gap
+IParagraphCounterRepository,interface,texts,0,3,3,0,0,absent from flexicon source — genuine gap
+IStJournalText,interface,texts,3,0,3,0,0,absent from flexicon source — genuine gap
+IStructuredTextDataAccess,interface,texts,3,0,3,0,0,absent from flexicon source — genuine gap
+IWfiWordSet,interface,wordform,3,0,3,0,0,absent from flexicon source — genuine gap
+MoRuleMapping,abstract_class,grammar,3,0,3,0,0,absent from flexicon source — genuine gap
+IChkSense,interface,lexicon,2,0,2,0,0,absent from flexicon source — genuine gap
+ICmMedia,interface,core,2,0,2,1,0,absent from flexicon source — genuine gap
+ICmObjectId,interface,core,1,1,2,0,0,absent from flexicon source — genuine gap
+ICmResource,interface,core,2,0,2,0,0,absent from flexicon source — genuine gap
+IMoInflTemplateApp,interface,grammar,2,0,2,0,0,absent from flexicon source — genuine gap
+IMoModifyFromInput,interface,grammar,2,0,2,0,0,absent from flexicon source — genuine gap
+IMoMorphTypeFactory,interface,grammar,0,2,2,0,0,absent from flexicon source — genuine gap
+IMoPhonolRuleApp,interface,grammar,2,0,2,0,0,absent from flexicon source — genuine gap
+INormalizationCharacterFactory,interface,texts,0,2,2,0,0,absent from flexicon source — genuine gap
+IStStyleFactory,interface,texts,0,2,2,0,0,absent from flexicon source — genuine gap
+IStyleProp,interface,texts,2,0,2,0,0,absent from flexicon source — genuine gap
+IWordformLookupList,interface,wordform,2,0,2,0,0,absent from flexicon source — genuine gap
+ICmIndirectAnnotation,interface,core,1,0,1,0,0,absent from flexicon source — genuine gap
+ICmPossibilitySupplier,interface,core,0,1,1,0,0,absent from flexicon source — genuine gap
+ICmRow,interface,core,1,0,1,0,0,absent from flexicon source — genuine gap
+IDsChartRepository,interface,discourse,0,1,1,0,0,absent from flexicon source — genuine gap
+IDsDiscourseDataRepository,interface,discourse,1,0,1,0,0,absent from flexicon source — genuine gap
+IFsDisjunctiveValue,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IFsFeatStrucDisj,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IFsNegatedValue,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IFsOpenValue,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IFsSharedValue,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+ILexAppendix,interface,lexicon,1,0,1,0,0,absent from flexicon source — genuine gap
+ILexDbRepository,interface,lexicon,1,0,1,0,0,absent from flexicon source — genuine gap
+ILexReferenceRepository,interface,lexicon,0,1,1,0,0,absent from flexicon source — genuine gap
+IMoCopyFromInput,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IMoDerivTrace,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IMoGlossSystem,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IMoInsertNC,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IMoInsertPhones,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IMoModifyFromInputRepository,interface,grammar,0,1,1,0,0,absent from flexicon source — genuine gap
+IMoMorphDataRepository,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IMoMorphTypeRepository,interface,grammar,0,1,1,0,0,absent from flexicon source — genuine gap
+IParagraphCounter,interface,texts,0,1,1,0,0,absent from flexicon source — genuine gap
+IPhBdryMarkerFactory,interface,grammar,0,1,1,0,0,absent from flexicon source — genuine gap
+IPhEnvironmentRepository,interface,grammar,0,1,1,0,0,absent from flexicon source — genuine gap
+IPhIterationContextRepository,interface,grammar,0,1,1,0,0,absent from flexicon source — genuine gap
+IPhPhonDataRepository,interface,grammar,1,0,1,0,0,absent from flexicon source — genuine gap
+IPhPhonRuleFeat,interface,grammar,1,0,1,7,0,absent from flexicon source — genuine gap
+IPhSequenceContextRepository,interface,grammar,0,1,1,0,0,absent from flexicon source — genuine gap
+IPhSimpleContextNCRepository,interface,grammar,0,1,1,0,0,absent from flexicon source — genuine gap
+IPhSimpleContextSegRepository,interface,grammar,0,1,1,0,0,absent from flexicon source — genuine gap
+IRnResearchNbkRepository,interface,notebook,1,0,1,1,0,absent from flexicon source — genuine gap
+IStFootnoteRepository,interface,texts,0,1,1,0,0,absent from flexicon source — genuine gap
+IStTextRepository,interface,texts,0,1,1,0,0,absent from flexicon source — genuine gap
+IStTxtParaRepository,interface,texts,0,1,1,0,0,absent from flexicon source — genuine gap
+IStoresDataAccess,interface,texts,1,0,1,0,0,absent from flexicon source — genuine gap
+IStoresLcmCache,interface,texts,1,0,1,0,0,absent from flexicon source — genuine gap
+IStylesheet,interface,texts,0,1,1,0,0,absent from flexicon source — genuine gap
+ITextTagFactory,interface,texts,0,1,1,0,0,absent from flexicon source — genuine gap
+ITextTagRepository,interface,texts,0,1,1,0,0,absent from flexicon source — genuine gap
+ILexDb,interface,lexicon,23,3,26,0,4,named in flexicon source — likely detection blind spot
+IPhMetathesisRule,interface,grammar,12,4,16,11,37,named in flexicon source — likely detection blind spot
+IPhPhonData,interface,grammar,7,5,12,2,3,named in flexicon source — likely detection blind spot
+IMoInflAffixTemplate,interface,grammar,11,0,11,21,11,named in flexicon source — likely detection blind spot
+IMoMorphData,interface,grammar,9,0,9,0,11,named in flexicon source — likely detection blind spot
+IPhSegRuleRHS,interface,grammar,7,0,7,11,4,named in flexicon source — likely detection blind spot
+MoAffixForm,abstract_class,grammar,4,3,7,1,1,named in flexicon source — likely detection blind spot
+IMoStemName,interface,grammar,6,0,6,18,5,named in flexicon source — likely detection blind spot
+IMoDerivStepMsa,interface,grammar,5,0,5,0,6,named in flexicon source — likely detection blind spot
+IRnResearchNbk,interface,notebook,5,0,5,3,4,named in flexicon source — likely detection blind spot
+IStyle,interface,texts,4,1,5,0,2,named in flexicon source — likely detection blind spot
+MoAdhocProhib,abstract_class,grammar,5,0,5,1,1,named in flexicon source — likely detection blind spot
+ILexEntryInflType,interface,lexicon,4,0,4,4,8,named in flexicon source — likely detection blind spot
+IMoAffixProcess,interface,grammar,3,1,4,0,1,named in flexicon source — likely detection blind spot
+IMoAdhocProhibGr,interface,grammar,3,0,3,6,17,named in flexicon source — likely detection blind spot
+IMoAlloAdhocProhib,interface,grammar,3,0,3,3,1,named in flexicon source — likely detection blind spot
+IMoMorphAdhocProhib,interface,grammar,3,0,3,3,1,named in flexicon source — likely detection blind spot
+IPhIterationContext,interface,grammar,3,0,3,6,8,named in flexicon source — likely detection blind spot
+IPhRegularRule,interface,grammar,2,1,3,14,51,named in flexicon source — likely detection blind spot
+IFsOpenFeature,interface,grammar,2,0,2,0,2,named in flexicon source — likely detection blind spot
+IMoAdhocProhib,interface,grammar,2,0,2,4,1,named in flexicon source — likely detection blind spot
+IMoEndoCompound,interface,grammar,2,0,2,10,36,named in flexicon source — likely detection blind spot
+IMoExoCompound,interface,grammar,1,0,1,9,32,named in flexicon source — likely detection blind spot
+IPhSimpleContextBdry,interface,grammar,1,0,1,9,17,named in flexicon source — likely detection blind spot
+IPhSimpleContextSeg,interface,grammar,1,0,1,10,22,named in flexicon source — likely detection blind spot

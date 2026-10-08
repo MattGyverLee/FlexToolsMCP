@@ -1,0 +1,66 @@
+entity,members,exact_mentions,stem_mentions,verdict
+IPhMetathesisRule,16,11,37,detection blind spot — named in source
+IMoStemName,6,18,5,detection blind spot — named in source
+IStyle,5,0,2,detection blind spot — named in source
+IFsOpenFeature,2,0,2,detection blind spot — named in source
+IMoAffixProcess,4,0,1,detection blind spot — named in source
+IMoAlloAdhocProhib,3,3,1,detection blind spot — named in source
+IMoMorphAdhocProhib,3,3,1,detection blind spot — named in source
+IMoAdhocProhib,2,4,1,detection blind spot — named in source
+TsStrBase,12,0,0,genuine gap — absent from source
+IMoGlossItem,11,0,0,genuine gap — absent from source
+ICmCell,9,0,0,genuine gap — absent from source
+IPuaCharacter,7,0,0,genuine gap — absent from source
+IStFootnote,6,0,0,genuine gap — absent from source
+TsPropsBase,6,0,0,genuine gap — absent from source
+IMoDeriv,4,0,0,genuine gap — absent from source
+IMoReferralRule,4,0,0,genuine gap — absent from source
+UCDCharacter,4,0,0,genuine gap — absent from source
+ILexEntryRefRepository,3,0,0,genuine gap — absent from source
+IMoBinaryCompoundRule,3,0,0,genuine gap — absent from source
+IMoCompoundRuleApp,3,0,0,genuine gap — absent from source
+IMoDerivAffApp,3,0,0,genuine gap — absent from source
+IMoInflAffixSlotApp,3,0,0,genuine gap — absent from source
+IParagraphCounterRepository,3,0,0,genuine gap — absent from source
+IStJournalText,3,0,0,genuine gap — absent from source
+IStructuredTextDataAccess,3,0,0,genuine gap — absent from source
+IUcdCharacter,3,0,0,genuine gap — absent from source
+IWfiWordSet,3,0,0,genuine gap — absent from source
+ICmResource,2,0,0,genuine gap — absent from source
+IMoModifyFromInput,2,0,0,genuine gap — absent from source
+IMoPhonolRuleApp,2,0,0,genuine gap — absent from source
+IStyleProp,2,0,0,genuine gap — absent from source
+IWordformLookupList,2,0,0,genuine gap — absent from source
+ICmIndirectAnnotation,1,0,0,genuine gap — absent from source
+ICmPossibilitySupplier,1,0,0,genuine gap — absent from source
+IDsChartRepository,1,0,0,genuine gap — absent from source
+IDsDiscourseDataRepository,1,0,0,genuine gap — absent from source
+IFsDisjunctiveValue,1,0,0,genuine gap — absent from source
+IFsFeatStrucDisj,1,0,0,genuine gap — absent from source
+IFsOpenValue,1,0,0,genuine gap — absent from source
+ILexDbRepository,1,0,0,genuine gap — absent from source
+ILexReferenceRepository,1,0,0,genuine gap — absent from source
+IMoCopyFromInput,1,0,0,genuine gap — absent from source
+IMoDerivTrace,1,0,0,genuine gap — absent from source
+IMoGlossSystem,1,0,0,genuine gap — absent from source
+IMoInsertNC,1,0,0,genuine gap — absent from source
+IMoInsertPhones,1,0,0,genuine gap — absent from source
+IMoModifyFromInputRepository,1,0,0,genuine gap — absent from source
+IMoMorphDataRepository,1,0,0,genuine gap — absent from source
+IMoMorphTypeRepository,1,0,0,genuine gap — absent from source
+IParagraphCounter,1,0,0,genuine gap — absent from source
+IPhEnvironmentRepository,1,0,0,genuine gap — absent from source
+IPhIterationContextRepository,1,0,0,genuine gap — absent from source
+IPhPhonDataRepository,1,0,0,genuine gap — absent from source
+IPhPhonRuleFeat,1,7,0,genuine gap — absent from source
+IPhSequenceContextRepository,1,0,0,genuine gap — absent from source
+IPhSimpleContextNCRepository,1,0,0,genuine gap — absent from source
+IPhSimpleContextSegRepository,1,0,0,genuine gap — absent from source
+IRnResearchNbkRepository,1,1,0,genuine gap — absent from source
+IStFootnoteRepository,1,0,0,genuine gap — absent from source
+IStTextRepository,1,0,0,genuine gap — absent from source
+IStTxtParaRepository,1,0,0,genuine gap — absent from source
+IStoresDataAccess,1,0,0,genuine gap — absent from source
+IStylesheet,1,0,0,genuine gap — absent from source
+ITextTagFactory,1,0,0,genuine gap — absent from source
+ITextTagRepository,1,0,0,genuine gap — absent from source

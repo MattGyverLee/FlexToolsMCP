@@ -1,0 +1,1335 @@
+{
+ "_note": "Excerpt from src/flextoolsmcp/index/reverse_mapping_liblcm-v11.0.0.json @ f1c0c90 (sha256 7e507ce6c681). Not a complete file - shows the structures the coverage analysis reads. NOTE: this index was last regenerated at 08e2062, which predates 2a9d1de (bucket slimming + getattr detection); the bare-name buckets below still carry full wrapper records.",
+ "_structure": {
+  "_schema": "str",
+  "by_flexlibs_class": "111 keys",
+  "by_liblcm_entity": "216 keys",
+  "by_member": "273 keys",
+  "factories": "66 keys",
+  "methods": "11 keys",
+  "properties": "293 keys",
+  "repositories": "11 keys",
+  "statistics": "6 keys"
+ },
+ "statistics": {
+  "factories_mapped": 139,
+  "members_mapped": 1328,
+  "methods_mapped": 762,
+  "properties_mapped": 1862,
+  "repositories_mapped": 18,
+  "total_mappings": 1085
+ },
+ "by_member__sample": {
+  "ILexSense.AllSenses": [
+   "LexEntryOperations.GetAllSenses",
+   "LexSenseOperations.GetAllSenses"
+  ],
+  "ILexSense.Bibliography": [
+   "LexSenseOperations.GetSyncableProperties"
+  ],
+  "ILexSense.Definition": [
+   "LexSenseOperations.GetDefinition",
+   "LexSenseOperations.GetDefinitionOrGloss",
+   "LexSenseOperations.GetSyncableProperties",
+   "LexSenseOperations.SetDefinition"
+  ],
+  "ILexSense.DiscourseNote": [
+   "LexSenseOperations.GetSyncableProperties"
+  ]
+ },
+ "by_liblcm_entity__ILexSense": {
+  "flexlibs_2": [
+   {
+    "class": "CustomFieldOperations",
+    "methods": [
+     "AddListValue",
+     "ClearValue",
+     "CreateField",
+     "GetAllFields",
+     "GetFieldName",
+     "GetFieldType",
+     "GetListValues",
+     "GetOwnerClass",
+     "GetValue",
+     "RemoveListValue",
+     "SetListFieldMultiple",
+     "SetListFieldSingle",
+     "SetValue"
+    ]
+   },
+   {
+    "class": "ExampleOperations",
+    "methods": [
+     "AddDoNotPublishIn",
+     "AddMediaFile",
+     "ApplySyncableProperties",
+     "Create",
+     "Delete",
+     "Duplicate",
+     "GetAll",
+     "GetDoNotPublishIn",
+     "GetExample",
+     "GetGuid",
+     "GetLiteralTranslation",
+     "GetMediaCount",
+     "GetMediaFiles",
+     "GetOwningSense",
+     "GetReference",
+     "GetSyncableProperties",
+     "GetTranslation",
+     "GetTranslations",
+     "MoveMediaFile",
+     "RemoveDoNotPublishIn",
+     "RemoveMediaFile",
+     "RemoveTranslation",
+     "Reorder",
+     "SetExample",
+     "SetLiteralTranslation",
+     "SetReference",
+     "SetTranslation"
+    ]
+   },
+   {
+    "class": "FLExProject",
+    "methods": [
+     "AbortSession",
+     "BuildGotoURL",
+     "CloseProject",
+     "FromOpenProject",
+     "GetAudioPath",
+     "GetCustomFieldValue",
+     "GetFactory",
+     "GetFieldID",
+     "GetMultiStringDict",
+     "GetPartsOfSpeech",
+     "GetService",
+     "LexiconAddAllomorph",
+     "LexiconAddComplexForm",
+     "LexiconAddEntry",
+     "LexiconAddPronunciation",
+     "LexiconAddVariantForm",
+     "LexiconClearField",
+     "LexiconClearListFieldSingle",
+     "LexiconDeleteObject",
+     "LexiconFieldIsAnyStringType",
+     "LexiconFieldIsMultiType",
+     "LexiconFieldIsStringType",
+     "LexiconGetAllomorphCustomFields",
+     "LexiconGetAlternateForm",
+     "LexiconGetComplexFormType",
+     "LexiconGetEntryCustomFieldNamed",
+     "LexiconGetEntryCustomFields",
+     "LexiconGetExampleCustomFields",
+     "LexiconGetExampleTranslation",
+     "LexiconGetSense",
+     "LexiconGetSenseByName",
+     "LexiconGetSenseCustomFieldNamed",
+     "LexiconGetSenseCustomFields",
+     "LexiconGetSenseDefinition",
+     "LexiconGetSenseGloss",
+     "LexiconGetSenseNumber",
+     "LexiconGetSensePOS",
+     "LexiconGetSenseSemanticDomains",
+     "LexiconSenseAnalysesCount",
+     "LexiconSetComplexFormType",
+     "LexiconSetFieldInteger",
+     "LexiconSetFieldText",
+     "LexiconSetListFieldMultiple",
+     "LexiconSetListFieldSingle",
+     "LexiconSetSenseGloss",
+     "ListFieldLookup",
+     "ListFieldPossibilities",
+     "ListFieldPossibilityList",
+     "Object",
+     "ObjectRepository",
+     "OpenProject",
+     "Redo",
+     "SetAudioPath",
+     "SyncForeignChanges",
+     "TextsGetAll",
+     "Undo",
+     "UnpackNestedPossibilityList",
+     "WSHandle",
+     "WSUIName"
+    ]
+   },
+   {
+    "class": "LexEntryOperations",
+    "methods": [
+     "AddComplexFormComponent",
+     "AddDoNotPublishIn",
+     "AddDoNotShowMainEntryIn",
+     "AddSense",
+     "ApplySyncableProperties",
+     "Create",
+     "Delete",
+     "Duplicate",
+     "Find",
+     "FindComplexFormType",
+     "GetAll",
+     "GetAllByMorphType",
+     "GetAllComplexFormTypes",
+     "GetAllSenses",
+     "GetAvailableMorphTypes",
+     "GetBestVernacularAlternative",
+     "GetBibliography",
+     "GetCitationForm",
+     "GetComment",
+     "GetComplexFormComponents",
+     "GetComplexFormsNotSubentries",
+     "GetDateCreated",
+     "GetDateModified",
+     "GetDoNotPublishIn",
+     "GetDoNotShowMainEntryIn",
+     "GetDoNotUseForParsing",
+     "GetGuid",
+     "GetHeadword",
+     "GetHomographNumber",
+     "GetImportResidue",
+     "GetLIFTid",
+     "GetLexemeForm",
+     "GetLiteralMeaning",
+     "GetLongName",
+     "GetMinimalLexReferences",
+     "GetMorphType",
+     "GetMorphTypeName",
+     "GetRestrictions",
+     "GetSenseCount",
+     "GetSenses",
+     "GetSummaryDefinition",
+     "GetSyncableProperties",
+     "GetVisibleComplexFormBackRefs",
+     "MergeObject",
+     "RemoveComplexFormComponent",
+     "RemoveDoNotPublishIn",
+     "RemoveDoNotShowMainEntryIn",
+     "SetBibliography",
+     "SetCitationForm",
+     "SetComment",
+     "SetDoNotUseForParsing",
+     "SetHomographNumber",
+     "SetImportResidue",
+     "SetLexemeForm",
+     "SetLiteralMeaning",
+     "SetMorphType",
+     "SetRestrictions",
+     "SetSummaryDefinition"
+    ]
+   },
+   {
+    "class": "LexRefMappingTypes",
+    "methods": []
+   },
+   {
+    "class": "LexReferenceOperations",
+    "methods": [
+     "AddTarget",
+     "ApplySyncableProperties",
+     "Create",
+     "CreateType",
+     "Delete",
+     "DeleteType",
+     "FindType",
+     "GetAll",
+     "GetAllTypes",
+     "GetComplexFormEntries",
+     "GetComponentEntries",
+     "GetMappingType",
+     "GetReferencesOfType",
+     "GetSyncableProperties",
+     "GetTargets",
+     "GetType",
+     "GetTypeName",
+     "GetTypeReverseName",
+     "RemoveTarget",
+     "SetTypeName",
+     "SetTypeReverseName",
+     "ShowComplexFormsIn"
+    ]
+   },
+   {
+    "class": "LexSenseOperations",
+    "methods": [
+     "AddAnthroCode",
+     "AddDoNotPublishIn",
+     "AddDomainType",
+     "AddExample",
+     "AddPicture",
+     "AddSemanticDomain",
+     "AddUsageType",
+     "ApplySyncableProperties",
+     "Create",
+     "CreateSubsense",
+     "Delete",
+     "Duplicate",
+     "Find",
+     "GetAll",
+     "GetAllSenses",
+     "GetAnthroCodes",
+     "GetAnthroNote",
+     "GetBibliography",
+     "GetCaption",
+     "GetComplexFormsNotSubentries",
+     "GetDefinition",
+     "GetDefinitionOrGloss",
+     "GetDiscourseNote",
+     "GetDoNotPublishIn",
+     "GetDomainTypes",
+     "GetEncyclopedicInfo",
+     "GetExampleCount",
+     "GetExamples",
+     "GetGeneralNote",
+     "GetGloss",
+     "GetGrammarNote",
+     "GetGrammaticalInfo",
+     "GetGrammaticalInfoText",
+     "GetGuid",
+     "GetMSA",
+     "GetPartOfSpeech",
+     "GetPartOfSpeechObject",
+     "GetPhonologyNote",
+     "GetPictureCount",
+     "GetPictures",
+     "GetRestrictions",
+     "GetReversalCount",
+     "GetReversalEntries",
+     "GetSemanticDomains",
+     "GetSemanticsNote",
+     "GetSenseType",
+     "GetSocioLinguisticsNote",
+     "GetStatus",
+     "GetSubsenses",
+     "GetSyncableProperties",
+     "GetUsageTypes",
+     "GetVisibleComplexFormBackRefs",
+     "MergeObject",
+     "MovePicture",
+     "RemoveAnthroCode",
+     "RemoveDoNotPublishIn",
+     "RemoveDomainType",
+     "RemovePicture",
+     "RemoveSemanticDomain",
+     "RemoveUsageType",
+     "RenamePicture",
+     "Reorder",
+     "SetAnthroNote",
+     "SetBibliography",
+     "SetCaption",
+     "SetDefinition",
+     "SetDiscourseNote",
+     "SetEncyclopedicInfo",
+     "SetGeneralNote",
+     "SetGloss",
+     "SetGrammarNote",
+     "SetGrammaticalInfo",
+     "SetPartOfSpeech",
+     "SetPhonologyNote",
+     "SetRestrictions",
+     "SetScientificName",
+     "SetSemanticsNote",
+     "SetSenseType",
+     "SetSocioLinguisticsNote",
+     "SetStatus"
+    ]
+   },
+   {
+    "class": "MSAOperations",
+    "methods": [
+     "AddExceptionFeature",
+     "ApplySyncableProperties",
+     "ChangeAffixVariant",
+     "CreateDerivAff",
+     "CreateInflAff",
+     "CreateStem",
+     "CreateUnclassifiedAffix",
+     "GetAll",
+     "GetExceptionFeatures",
+     "GetFeatures",
+     "GetInflAffMsaSlots",
+     "GetSyncableProperties",
+     "RemoveExceptionFeature",
+     "RemoveOrphaned",
+     "SetDerivAffMsaPos",
+     "SetInflAffMsaSlots",
+     "SetInflectionClass",
+     "SetStemMsaPos"
+    ]
+   },
+   {
+    "class": "ReversalIndexEntryOperations",
+    "methods": [
+     "AddSense",
+     "Create",
+     "Delete",
+     "Find",
+     "GetAll",
+     "GetForm",
+     "GetSenses",
+     "GetSubentries",
+     "RemoveSense",
+     "SetForm"
+    ]
+   },
+   {
+    "class": "WfiMorphBundleOperations",
+    "methods": [
+     "Create",
+     "Delete",
+     "Duplicate",
+     "GetAll",
+     "GetForm",
+     "GetGloss",
+     "GetGuid",
+     "GetInflType",
+     "GetInflectionClass",
+     "GetMSA",
+     "GetMorph",
+     "GetMorphType",
+     "GetOwningAnalysis",
+     "GetSense",
+     "GetSyncableProperties",
+     "Reorder",
+     "SetForm",
+     "SetInflType",
+     "SetInflectionClass",
+     "SetMSA",
+     "SetMorph",
+     "SetSense"
+    ]
+   }
+  ],
+  "flexlibs_stable": {
+   "class": "FLExProject",
+   "methods": [
+    "BestStr",
+    "BuildGotoURL",
+    "CloseProject",
+    "GetAllAnalysisWSs",
+    "GetAllSemanticDomains",
+    "GetAllVernacularWSs",
+    "GetCustomFieldValue",
+    "GetDateLastModified",
+    "GetDefaultAnalysisWS",
+    "GetDefaultVernacularWS",
+    "GetFieldID",
+    "GetLexicalRelationTypes",
+    "GetPartsOfSpeech",
+    "GetPublications",
+    "GetWritingSystems",
+    "LexiconAddTagToField",
+    "LexiconAllEntries",
+    "LexiconAllEntriesSorted",
+    "LexiconClearField",
+    "LexiconClearListFieldSingle",
+    "LexiconEntryAnalysesCount",
+    "LexiconFieldIsAnyStringType",
+    "LexiconFieldIsMultiType",
+    "LexiconFieldIsStringType",
+    "LexiconGetAllomorphCustomFields",
+    "LexiconGetCitationForm",
+    "LexiconGetEntryCustomFieldNamed",
+    "LexiconGetEntryCustomFields",
+    "LexiconGetExample",
+    "LexiconGetExampleCustomFields",
+    "LexiconGetExampleTranslation",
+    "LexiconGetFieldText",
+    "LexiconGetHeadword",
+    "LexiconGetLexemeForm",
+    "LexiconGetPronunciation",
+    "LexiconGetPublishInCount",
+    "LexiconGetSenseCustomFieldNamed",
+    "LexiconGetSenseCustomFields",
+    "LexiconGetSenseDefinition",
+    "LexiconGetSenseGloss",
+    "LexiconGetSenseNumber",
+    "LexiconGetSensePOS",
+    "LexiconGetSenseSemanticDomains",
+    "LexiconNumberOfEntries",
+    "LexiconSenseAnalysesCount",
+    "LexiconSetExample",
+    "LexiconSetFieldInteger",
+    "LexiconSetFieldText",
+    "LexiconSetLexemeForm",
+    "LexiconSetListFieldMultiple",
+    "LexiconSetListFieldSingle",
+    "LexiconSetSenseGloss",
+    "ListFieldLookup",
+    "ListFieldPossibilities",
+    "ListFieldPossibilityList",
+    "Object",
+    "ObjectCountFor",
+    "ObjectRepository",
+    "ObjectsIn",
+    "OpenProject",
+    "ProjectName",
+    "PublicationType",
+    "ReversalEntries",
+    "ReversalGetForm",
+    "ReversalIndex",
+    "ReversalSetForm",
+    "TextsGetAll",
+    "TextsNumberOfTexts",
+    "UnpackNestedPossibilityList",
+    "WSHandle",
+    "WSUIName"
+   ]
+  }
+ },
+ "by_flexlibs_class__LexSenseOperations": {
+  "category": "lexicon",
+  "method_count": 92,
+  "methods": {
+   "AddAnthroCode": {
+    "lcm_calls": [
+     "AnthroCodesRC",
+     ".Add()"
+    ],
+    "mapping_type": "direct"
+   },
+   "AddDoNotPublishIn": {
+    "lcm_calls": [
+     "DoNotPublishInRC",
+     ".Add()"
+    ],
+    "mapping_type": "direct"
+   },
+   "AddDomainType": {
+    "lcm_calls": [
+     "DomainTypesRC",
+     ".Add()"
+    ],
+    "mapping_type": "direct"
+   },
+   "AddExample": {
+    "lcm_calls": [
+     "ExamplesOS",
+     "ServiceLocator",
+     ".Add()",
+     ".Create()",
+     ".set_String()"
+    ],
+    "mapping_type": "composite"
+   },
+   "AddPicture": {
+    "lcm_calls": [
+     "PictureFileRA",
+     "PicturesOS",
+     "ServiceLocator",
+     ".Add()",
+     ".Create()",
+     ".set_String()"
+    ],
+    "mapping_type": "composite"
+   },
+   "AddSemanticDomain": {
+    "lcm_calls": [
+     "SemanticDomainsRC",
+     ".Add()"
+    ],
+    "mapping_type": "direct"
+   },
+   "AddUsageType": {
+    "lcm_calls": [
+     "UsageTypesRC",
+     ".Add()"
+    ],
+    "mapping_type": "direct"
+   },
+   "ApplySyncableProperties": {
+    "lcm_calls": [
+     "Guid",
+     "PossibilitiesOS",
+     "PublicationTypesOA",
+     "SenseTypeRA",
+     ".Add()",
+     ".Clear()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "Create": {
+    "lcm_calls": [
+     "Gloss",
+     "SensesOS",
+     "ServiceLocator",
+     ".Add()",
+     ".Create()",
+     ".set_String()"
+    ],
+    "mapping_type": "composite"
+   },
+   "CreateSubsense": {
+    "lcm_calls": [
+     ".Create()"
+    ],
+    "mapping_type": "direct"
+   },
+   "Delete": {
+    "lcm_calls": [
+     "SensesOS",
+     ".Remove()"
+    ],
+    "mapping_type": "direct"
+   },
+   "Duplicate": {
+    "lcm_calls": [
+     "ClassName",
+     "Hvo",
+     "Owner",
+     "SensesOS",
+     "ServiceLocator",
+     ".Add()",
+     ".Create()",
+     ".Insert()"
+    ],
+    "mapping_type": "composite"
+   },
+   "Find": {
+    "lcm_calls": [
+     "Gloss",
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetAll": {
+    "lcm_calls": [
+     "AllSenses",
+     "SensesOS"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetAllSenses": {
+    "lcm_calls": [
+     "AllSenses",
+     "SensesOS"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetAnthroCodes": {
+    "lcm_calls": [
+     "AnthroCodesRC",
+     "Guid"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetAnthroNote": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetBibliography": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetCaption": {
+    "lcm_calls": [
+     "Caption",
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetComplexFormsNotSubentries": {
+    "lcm_calls": [
+     "Hvo",
+     "PrimaryLexemesRS"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetDefinition": {
+    "lcm_calls": [
+     "Definition",
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetDefinitionOrGloss": {
+    "lcm_calls": [
+     "Definition",
+     "Gloss",
+     ".get_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "GetDiscourseNote": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetDoNotPublishIn": {
+    "lcm_calls": [
+     "DoNotPublishInRC",
+     "Guid",
+     "Name"
+    ],
+    "mapping_type": "convenience"
+   },
+   "GetDomainTypes": {
+    "lcm_calls": [
+     "DomainTypesRC",
+     "Guid"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetEncyclopedicInfo": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetExampleCount": {
+    "lcm_calls": [
+     "ExamplesOS"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetExamples": {
+    "lcm_calls": [
+     "ExamplesOS"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetGeneralNote": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetGloss": {
+    "lcm_calls": [
+     "Gloss",
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetGrammarNote": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetGrammaticalInfo": {
+    "lcm_calls": [
+     "MorphoSyntaxAnalysisRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetGrammaticalInfoText": {
+    "lcm_calls": [
+     "MSA",
+     "MorphoSyntaxAnalysisRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetGuid": {
+    "lcm_calls": [
+     "Guid"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetMSA": {
+    "lcm_calls": [
+     "MorphoSyntaxAnalysisRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetPartOfSpeech": {
+    "lcm_calls": [
+     "InterlinearAbbr",
+     "MorphoSyntaxAnalysisRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetPartOfSpeechObject": {
+    "lcm_calls": [
+     "MorphoSyntaxAnalysisRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetPhonologyNote": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetPictureCount": {
+    "lcm_calls": [
+     "PicturesOS"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetPictures": {
+    "lcm_calls": [
+     "PicturesOS"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetRestrictions": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetReversalCount": {
+    "lcm_calls": [
+     "ReferringReversalIndexEntries"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetReversalEntries": {
+    "lcm_calls": [
+     "ReferringReversalIndexEntries"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetSemanticDomains": {
+    "lcm_calls": [
+     "SemanticDomainsRC"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetSemanticsNote": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetSenseType": {
+    "lcm_calls": [
+     "SenseTypeRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetSocioLinguisticsNote": {
+    "lcm_calls": [
+     ".get_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetStatus": {
+    "lcm_calls": [
+     "StatusRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetSubsenses": {
+    "lcm_calls": [
+     "SensesOS"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetSyncableProperties": {
+    "lcm_calls": [
+     "Bibliography",
+     "Definition",
+     "DiscourseNote",
+     "DoNotPublishInRC",
+     "EncyclopedicInfo",
+     "GeneralNote",
+     "Gloss",
+     "GrammarNote",
+     "Guid",
+     "ImportResidue",
+     "MorphoSyntaxAnalysisRA",
+     "PhonologyNote",
+     "Restrictions",
+     "ScientificName",
+     "SemanticsNote",
+     "SenseTypeRA",
+     "SocioLinguisticsNote",
+     "Source",
+     "StatusRA",
+     ".get_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "GetUsageTypes": {
+    "lcm_calls": [
+     "Guid",
+     "UsageTypesRC"
+    ],
+    "mapping_type": "direct"
+   },
+   "GetVisibleComplexFormBackRefs": {
+    "lcm_calls": [
+     "VisibleComplexFormBackRefs"
+    ],
+    "mapping_type": "direct"
+   },
+   "MergeObject": {
+    "lcm_calls": [
+     "Hvo"
+    ],
+    "mapping_type": "direct"
+   },
+   "MovePicture": {
+    "lcm_calls": [
+     "Guid",
+     "PicturesOS",
+     ".Add()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "RemoveAnthroCode": {
+    "lcm_calls": [
+     "AnthroCodesRC",
+     ".Remove()"
+    ],
+    "mapping_type": "direct"
+   },
+   "RemoveDoNotPublishIn": {
+    "lcm_calls": [
+     "DoNotPublishInRC",
+     ".Remove()"
+    ],
+    "mapping_type": "direct"
+   },
+   "RemoveDomainType": {
+    "lcm_calls": [
+     "DomainTypesRC",
+     ".Remove()"
+    ],
+    "mapping_type": "direct"
+   },
+   "RemovePicture": {
+    "lcm_calls": [
+     "PictureFileRA",
+     "PicturesOS",
+     ".Remove()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "RemoveSemanticDomain": {
+    "lcm_calls": [
+     "SemanticDomainsRC",
+     ".Remove()"
+    ],
+    "mapping_type": "direct"
+   },
+   "RemoveUsageType": {
+    "lcm_calls": [
+     "UsageTypesRC",
+     ".Remove()"
+    ],
+    "mapping_type": "direct"
+   },
+   "RenamePicture": {
+    "lcm_calls": [
+     "InternalPath",
+     "PictureFileRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "Reorder": {
+    "lcm_calls": [
+     "SensesOS"
+    ],
+    "mapping_type": "direct"
+   },
+   "SetAnthroNote": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetBibliography": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetCaption": {
+    "lcm_calls": [
+     "Caption",
+     ".set_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "SetDefinition": {
+    "lcm_calls": [
+     "Definition",
+     ".set_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "SetDiscourseNote": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetEncyclopedicInfo": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetGeneralNote": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetGloss": {
+    "lcm_calls": [
+     "Gloss",
+     ".set_String()"
+    ],
+    "mapping_type": "direct"
+   },
+   "SetGrammarNote": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetGrammaticalInfo": {
+    "lcm_calls": [
+     "MorphoSyntaxAnalysisRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "SetPartOfSpeech": {
+    "lcm_calls": [
+     "ClassName",
+     "MSA",
+     "MorphoSyntaxAnalysisRA",
+     "PartOfSpeechRA",
+     "ServiceLocator",
+     "ToPartOfSpeechRA"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetPhonologyNote": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetRestrictions": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetScientificName": {
+    "lcm_calls": [
+     "DefaultVernWs"
+    ],
+    "mapping_type": "direct"
+   },
+   "SetSemanticsNote": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetSenseType": {
+    "lcm_calls": [
+     "SenseTypeRA"
+    ],
+    "mapping_type": "direct"
+   },
+   "SetSocioLinguisticsNote": {
+    "lcm_calls": [
+     ".set_String()"
+    ],
+    "mapping_type": "convenience"
+   },
+   "SetStatus": {
+    "lcm_calls": [
+     "StatusRA"
+    ],
+    "mapping_type": "direct"
+   }
+  },
+  "wraps_interfaces": [
+   "ICmPicture",
+   "ICmPictureFactory",
+   "ICmSemanticDomain",
+   "ICmTranslationFactory",
+   "ILexEntry",
+   "ILexExampleSentenceFactory",
+   "ILexSense",
+   "ILexSenseFactory",
+   "IReversalIndexEntry",
+   "ITsString"
+  ]
+ },
+ "properties__sample_bucket_unslimmed": {
+  "Abbreviation": [
+   {
+    "class": "AnthropologyOperations",
+    "description": "Duplicate an anthropology item, creating a new copy with a new GUID.",
+    "mapping_type": "composite",
+    "method": "Duplicate",
+    "signature": "Duplicate(item_or_hvo, insert_after=True, deep=True)"
+   },
+   {
+    "class": "AnthropologyOperations",
+    "description": "Get the abbreviation of an anthropology item.",
+    "mapping_type": "direct",
+    "method": "GetAbbreviation",
+    "signature": "GetAbbreviation(item_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "AnthropologyOperations",
+    "description": "Set the abbreviation of an anthropology item.",
+    "mapping_type": "direct",
+    "method": "SetAbbreviation",
+    "signature": "SetAbbreviation(item_or_hvo, abbreviation, wsHandle=None)"
+   },
+   {
+    "class": "InflectionFeatureOperations",
+    "description": "Set the abbreviation of an inflection class.",
+    "mapping_type": "direct",
+    "method": "InflectionClassSetAbbreviation",
+    "signature": "InflectionClassSetAbbreviation(ic_or_hvo, abbr, wsHandle=None)"
+   },
+   {
+    "class": "LocationOperations",
+    "description": "Duplicate a location, creating a new copy with a new GUID.",
+    "mapping_type": "composite",
+    "method": "Duplicate",
+    "signature": "Duplicate(location_or_hvo, insert_after=True, deep=True)"
+   },
+   {
+    "class": "LocationOperations",
+    "description": "Get the alias/abbreviation of a location.",
+    "mapping_type": "direct",
+    "method": "GetAlias",
+    "signature": "GetAlias(location_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "LocationOperations",
+    "description": "Get syncable properties for cross-project synchronization.",
+    "mapping_type": "convenience",
+    "method": "GetSyncableProperties",
+    "signature": "GetSyncableProperties(item)"
+   },
+   {
+    "class": "LocationOperations",
+    "description": "Set the alias/abbreviation of a location.",
+    "mapping_type": "convenience",
+    "method": "SetAlias",
+    "signature": "SetAlias(location_or_hvo, alias, wsHandle=None)"
+   },
+   {
+    "class": "NaturalClassOperations",
+    "description": "Duplicate a natural class, creating a new copy with a new GUID.",
+    "mapping_type": "composite",
+    "method": "Duplicate",
+    "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)"
+   },
+   {
+    "class": "NaturalClassOperations",
+    "description": "Get the abbreviation of a natural class.",
+    "mapping_type": "direct",
+    "method": "GetAbbreviation",
+    "signature": "GetAbbreviation(nc_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "POSOperations",
+    "description": "Duplicate a part of speech, creating a new copy with a new GUID.",
+    "mapping_type": "composite",
+    "method": "Duplicate",
+    "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)"
+   },
+   {
+    "class": "POSOperations",
+    "description": "Get the abbreviation of a part of speech.",
+    "mapping_type": "direct",
+    "method": "GetAbbreviation",
+    "signature": "GetAbbreviation(pos_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "POSOperations",
+    "description": "Set the abbreviation of a part of speech.",
+    "mapping_type": "direct",
+    "method": "SetAbbreviation",
+    "signature": "SetAbbreviation(pos_or_hvo, abbr, wsHandle=None)"
+   },
+   {
+    "class": "PersonOperations",
+    "description": "Duplicate a person, creating a new copy with a new GUID.",
+    "mapping_type": "composite",
+    "method": "Duplicate",
+    "signature": "Duplicate(person_or_hvo, insert_after=True, deep=False)"
+   },
+   {
+    "class": "PersonOperations",
+    "description": "Get the address of a person.",
+    "mapping_type": "direct",
+    "method": "GetAddress",
+    "signature": "GetAddress(person_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "PersonOperations",
+    "description": "Get syncable properties for cross-project synchronization.",
+    "mapping_type": "convenience",
+    "method": "GetSyncableProperties",
+    "signature": "GetSyncableProperties(item)"
+   },
+   {
+    "class": "PersonOperations",
+    "description": "Set the address of a person.",
+    "mapping_type": "direct",
+    "method": "SetAddress",
+    "signature": "SetAddress(person_or_hvo, address, wsHandle=None)"
+   },
+   {
+    "class": "PossibilityListOperations",
+    "description": "Duplicate a possibility item, creating a new copy with a new GUID.",
+    "mapping_type": "composite",
+    "method": "Duplicate",
+    "signature": "Duplicate(item_or_hvo, insert_after=True, deep=True)"
+   },
+   {
+    "class": "PossibilityListOperations",
+    "description": "Get the abbreviation of a possibility item.",
+    "mapping_type": "direct",
+    "method": "GetItemAbbreviation",
+    "signature": "GetItemAbbreviation(item_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "PossibilityListOperations",
+    "description": "Get syncable properties for cross-project synchronization.",
+    "mapping_type": "convenience",
+    "method": "GetSyncableProperties",
+    "signature": "GetSyncableProperties(item)"
+   },
+   {
+    "class": "PossibilityListOperations",
+    "description": "Set the abbreviation of a possibility item.",
+    "mapping_type": "direct",
+    "method": "SetItemAbbreviation",
+    "signature": "SetItemAbbreviation(item_or_hvo, abbr, wsHandle=None)"
+   },
+   {
+    "class": "PublicationOperations",
+    "description": "Get the page layout description for a publication.",
+    "mapping_type": "direct",
+    "method": "GetPageLayout",
+    "signature": "GetPageLayout(publication_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "PublicationOperations",
+    "description": "Set the page layout description for a publication.",
+    "mapping_type": "convenience",
+    "method": "SetPageLayout",
+    "signature": "SetPageLayout(publication_or_hvo, layout, wsHandle=None)"
+   },
+   {
+    "class": "SemanticDomainOperations",
+    "description": "Duplicate a semantic domain, creating a new copy with a new GUID.",
+    "mapping_type": "composite",
+    "method": "Duplicate",
+    "signature": "Duplicate(item_or_hvo, insert_after=True, deep=True)"
+   },
+   {
+    "class": "SemanticDomainOperations",
+    "description": "Get the abbreviation of a semantic domain.",
+    "mapping_type": "direct",
+    "method": "GetAbbreviation",
+    "signature": "GetAbbreviation(domain_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "SemanticDomainOperations",
+    "description": "Get the domain number of a semantic domain.",
+    "mapping_type": "direct",
+    "method": "GetNumber",
+    "signature": "GetNumber(domain_or_hvo)"
+   },
+   {
+    "class": "SemanticDomainOperations",
+    "description": "Get all syncable properties of a semantic domain for comparison.",
+    "mapping_type": "convenience",
+    "method": "GetSyncableProperties",
+    "signature": "GetSyncableProperties(item)"
+   },
+   {
+    "class": "TextOperations",
+    "description": "Duplicate a text, creating a new text with the same properties.",
+    "mapping_type": "composite",
+    "method": "Duplicate",
+    "signature": "Duplicate(item_or_hvo, deep=True)"
+   },
+   {
+    "class": "TextOperations",
+    "description": "Get the abbreviation for a text.",
+    "mapping_type": "direct",
+    "method": "GetAbbreviation",
+    "signature": "GetAbbreviation(text_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "TranslationTypeOperations",
+    "description": "Get the abbreviation of a translation type.",
+    "mapping_type": "direct",
+    "method": "GetAbbreviation",
+    "signature": "GetAbbreviation(type_or_hvo, wsHandle=None)"
+   },
+   {
+    "class": "TranslationTypeOperations",
+    "description": "Set the abbreviation of a translation type.",
+    "mapping_type": "direct",
+    "method": "SetAbbreviation",
+    "signature": "SetAbbreviation(type_or_hvo, abbreviation, wsHandle=None)"
+   },
+   {
+    "class": "TranslationTypeOperations",
+    "description": "Set the name and abbreviation for a translation type in a specific\nwriting system.",
+    "mapping_type": "convenience",
+    "method": "SetAnalysisWS",
+    "signature": "SetAnalysisWS(type_or_hvo, wsHandle, name=None, abbreviation=None)"
+   }
+  ],
+  "ActionHandlerAccessor": [
+   {
+    "class": "CustomFieldOperations",
+    "description": "Create a new custom field.",
+    "mapping_type": "direct",
+    "method": "CreateField",
+    "signature": "CreateField(owner_class, name, field_type, ws_type=None)"
+   },
+   {
+    "class": "FLExProject",
+    "description": "Discard every uncommitted change in the currently open unit of work.",
+    "mapping_type": "direct",
+    "method": "AbortSession",
+    "signature": "AbortSession()"
+   },
+   {
+    "class": "FLExProject",
+    "description": "Redo the last undone UndoableOperation.",
+    "mapping_type": "direct",
+    "method": "Redo",
+    "signature": "Redo()"
+   },
+   {
+    "class": "FLExProject",
+    "description": "Undo the last UndoableOperation.",
+    "mapping_type": "direct",
+    "method": "Undo",
+    "signature": "Undo()"
+   }
+  ],
+  "AdhocCoProhibitionsOC": [
+   {
+    "class": "MorphRuleOperations",
+    "description": "Delete a morphological rule.",
+    "mapping_type": "convenience",
+    "method": "Delete",
+    "signature": "Delete(rule_or_hvo)"
+   },
+   {
+    "class": "MorphRuleOperations",
+    "description": "Get all ad hoc co-occurrence prohibitions from MoMorphData.",
+    "mapping_type": "direct",
+    "method": "GetAllAdhocCoProhibitions",
+    "signature": "GetAllAdhocCoProhibitions()"
+   }
+  ]
+ }
+}

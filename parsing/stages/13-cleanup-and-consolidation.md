@@ -147,6 +147,46 @@ verification.
 - **Referrer-aware deletion**: refuse to delete a referenced object and name the
   referrers.
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **ADDS: disable before delete** (D-S4-08, C-S4-01).
+  1. Set `DoNotUseForParsing`.
+  2. Check that no root was left unparseable and that no curated entry was caught.
+  3. List every disabled entry with the analyses that reference it.
+  4. Delete only on explicit authorization, skipping any entry that carries content
+     (citation form, etymology, pronunciation, references, definition, examples).
+  The disable step is what made a faulty valency heuristic cheap to undo one minute
+  later.
+- **ADDS: tiered cleanup driven by a manifest** (D-S5-05). One GUID-keyed JSON manifest
+  (action, order, target), run in tiers:
+  1. additive;
+  2. non-destructive edits;
+  3. deletes, re-checking references live just before each one;
+  4. a sweep for dangling analyses;
+  5. merges that move senses to the survivor;
+  6. only then, tagging the survivors.
+  Order: **classify, then clean, then tag.** Rows whose target has already gone are
+  counted, not errors.
+- **ADDS: check references across the whole owned subtree** (C-S5-01). A reference check
+  on the entry alone missed analyses pointing at its allomorph/MSA/sense (`bali` left a
+  dangling analysis on *alikubali*). Check the subtree, or always run the dangling
+  sweep.
+- **ADDS: a merge must repoint references, not delete them** (C-S4-03). The merges here
+  deleted the analyses that referenced the losing entry, and lost their approvals.
+- **ADDS: decomposition audits** (D-S2-05):
+  - stems still carrying a class prefix;
+  - a prefix that disagrees with its stem's class;
+  - compounds found as substring pairs;
+  - TAM or extensions baked into verb stems.
+- **ADDS: feature-matrix pruning** (D-S3-09; see
+  [Stage 03](03-phonological-features.md)).
+- **ADDS: reusable QA modules** (D-S5-09). The citation==lexeme check became a
+  read-only FlexTools module. Caveat: for verbs the citation form carries the class
+  information (`ku`+stem(+V), D-S5-04), so do not apply it to verbs blindly.
+- **Failure mode: unguarded whole-lexicon delete for a "clean rebuild"** (C-S1-02).
+
 ## Provenance
 
 - M1 op 35 (2026-09-11 12:10) -- 25 rule-derivable allomorphs pruned; op 41
@@ -163,7 +203,8 @@ verification.
   D-M8-07; M8 §6, M8 §9.
 - G1 §5 "Verify (step 5)" -- cross-theme regression check, language-independent per
   G1 §9.
-- **Merge seam:** Matthew's cleanup cadence and his tolerance for redundancy.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Cadence (Q-27): still opportunistic, but each cleanup ran as a planned, tiered batch.
+  *(Original seam: Matthew's cleanup cadence and his tolerance for redundancy.)*
 
 ## Open Questions
 

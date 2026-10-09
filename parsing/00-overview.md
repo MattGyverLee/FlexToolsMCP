@@ -156,6 +156,37 @@ and the language-neutral modeling logic lives in:
 
 - [`reference/flex-modeling-decisions.md`](reference/flex-modeling-decisions.md)
 
-Stage bodies cite them by link.
+Stage bodies cite them by link. The second operator's language-specific material is in
+[`reference/swahili-morphophonology.md`](reference/swahili-morphophonology.md).
+
+---
+
+## 5. The principles tested against a second operator
+
+The merge notes asked that each principle be tested against Matthew's Swahili practice
+(shards S1-S5, partial). P2 and P6 were predicted to be the most idiosyncratic to Ron.
+That prediction did not hold: P6 is confirmed and P2 is refined, not refuted.
+
+| Principle | Matthew's practice | Verdict | Evidence |
+|---|---|---|---|
+| P1 Bottom-up | Dependency order kept, but features (from the catalog) came before phonemes, rules before the lexicon, templates after it | **Partly** -- see [README 4.9](README.md) | D-S1-01, D-S1-02, C-S1-08 |
+| P2 Inflection first | Derivation scoped *in*: a derived word enters with its base and a derivational affix (R4). The early build put extensions in inflectional slots instead -- the same error P2 exists to prevent | **Refined:** "derivation with its pieces, never in a template" rather than "derivation later" | L-S3-01, C-S1-06 |
+| P3 Cheap version first | Not visible as a standing instruction; one-variable experiments play the same role | Not tested | D-S4-09 |
+| P4 Plan first | Strong from S3 on: dry runs, manifests, hold lists. Absent in S1-S2 (a whole-lexicon delete with no plan) | **Confirmed** (late) | D-S4-11, D-S5-05, C-S1-02 |
+| P5 validate_only first | Absent in S1-S2 and June; standard from August, extended into a ladder (`validate_only` -> dry run -> 5-entry batch -> full) | **Confirmed and extended** | D-S3-04, C-S3-04 |
+| P6 Proof of recipe | One phoneme before the inventory; 10 approvals before the bulk run; tag classes before restricting allomorphs | **Confirmed** | D-S1-04, L-S2-03, D-S5-04 |
+| P7 Verification | Fresh-session verification after every write; identity assertions; GUID keys | **Confirmed** | D-S4-07 |
+| P8 Blast radius | Referrer listing before replacing classes; reference checks before deletes -- but entry-level only, missing owned objects | **Confirmed, with a gap** | L-S1-03, C-S5-01 |
+| P9 Distrust the result | Verified the reviewers' claims against the lexicon; rejected only verified-bad analyses; questioned a parse the template should block | **Confirmed** | D-S4-10, D-S5-01 |
+| P10 Decompose | Demonstratives and connectives decomposed; suppletives kept whole. Verb extensions **not** decomposed | **Confirmed in principle, incomplete in practice** | D-S2-04, C-S2-03 |
+
+**Candidate additions from the second operator** (not yet promoted to principles --
+one project's evidence):
+
+- **P11 (candidate). Define "done" per entry before populating.** Write an explicit
+  parse-ready standard and measure the whole lexicon against it (D-S3-03).
+- **P12 (candidate). Soft before hard.** Disable before delete, and reject before
+  delete. Keep a hold list for anything evidence cannot settle (D-S4-08, D-S4-10,
+  D-S3-05).
 </content>
 </invoke>

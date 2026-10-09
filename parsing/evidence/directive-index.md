@@ -2,8 +2,10 @@
 
 [Back to README](../README.md)
 
-Every `D-` (Ron directive), `L-` (linguistic finding) and `C-` (correction to the AI)
-id from all nine extraction shards, exactly once. **179 rows.**
+Every `D-` (operator directive), `L-` (linguistic finding) and `C-` (correction to the AI)
+id from all extraction shards, exactly once: Ron's nine (M1-M8, G1) **179 rows**, and
+Matthew's five Swahili shards (S1-S5) **86 rows** -- see
+[Second operator](#second-operator----matthew-swahili-project-claude-swahili). **265 rows.**
 
 Timestamps are as given in the shards. Where a shard gave only a time, the date is
 carried from the shard's span. Quotes are trimmed; `(intent)` marks a User-intent field
@@ -263,9 +265,161 @@ scope** for the grammar-construction and parse-verification stages.
 
 ---
 
+## Second operator -- Matthew, Swahili (project "Claude-Swahili")
+
+**Provisional and partial.** These five shards come from the FlexToolsMCP runtime logs
+on one machine (`~/.flextoolsmcp/logs/`, every operation whose `Project:` is
+Claude-Swahili, 2026-05-21 .. 2026-09-20). More of Matthew's Swahili work is in logs on
+another machine and has not been ingested yet. A stage that looks absent here may simply
+be in those logs.
+
+The log format records submitted code, `User request:` / `User intent:` lines (from
+2026-08-12 on only), warnings and errors -- **not** report output. Results below are
+therefore read from the code, its comments and docstrings, and the next operation's
+framing. `(request)` marks Matthew's verbatim `User request:` text; `(intent)` the
+agent-written intent line; `(code)` a code comment or docstring; `(plan)` the phase
+plans in `MyFlextool/plans/swahili-noun-phases/` that the logs execute; `(inferred)` a
+conclusion the shard draws but the log does not state. Op numbers are per log file.
+
+Shard key:
+
+| Shard | Log file(s) | Dates | Content |
+|---|---|---|---|
+| S1 | `2026-05-21/session_20260521-115257.log` (A), `session_20260521-131243.log` (B) | 05-21 11:52 .. 20:18 | greenfield build: POS, feature catalog, phonemes incl. archiphoneme, natural classes, rules, Bantu noun-class features, CAWL import, templates |
+| S2 | `2026-05-21/session_20260521-201358.log` (L1), `2026-05-22/session_20260522-012605.log` (L2) | 05-21 20:14 .. 05-22 09:17 | zero morphs, rule anchoring, closed-class decomposition, real-text (Genesis) unanalyzed-wordform loop, analysis approval |
+| S3 | `2026-06-17/*` (4 logs), `2026-08-12/*`, `2026-08-13/*`, `2026-09-20/session_211805_*` | 06-17 .. 09-20 | catalog-sourced noun-class features, frequency queue, parse-ready standard, Phase 0 baseline, licence policy, feature-matrix pruning |
+| S4 | `2026-09-06/session_183210_*`, `session_230055_*` | 09-06 18:32 .. 09-07 01:42 | real interlinear text as fixture, analysis rejection, over-generation diagnosis, concord cloning, BantuMany relocation, disable-then-delete, duplicates |
+| S5 | `2026-09-07/*` (3 logs), `2026-09-08/*`, `2026-09-10/*`, `2026-09-11/*` | 09-07 01:36 .. 09-11 06:26 | template blocking, verb inflection classes, staleness scan, tiered manifest cleanup, interlinear gloss repair, domain rulings, noun-class paradigm text |
+
+Counts: S1 18 (7 D, 3 L, 8 C) | S2 16 (6/3/7) | S3 16 (9/2/5) | S4 19 (11/4/4) |
+S5 17 (9/3/5). **86 rows.**
+
+---
+
+## S1 -- 2026-05-21 11:52 .. 20:18 (greenfield build)
+
+| id | type | shard | op / time | verbatim quote (trimmed) | where it landed |
+|---|---|---|---|---|---|
+| D-S1-01 | workflow | S1 | A#3-7 | (code) find-or-create table of 11 POS by GOLD catalog id; `GOLD:Conjunction` absent from the catalog killed the loop mid-run, rerun with Connective and Demonstrative | [README#4.9](../README.md); [stages/05#Second-operator](../stages/05-categories-and-templates.md) |
+| D-S1-02 | data-convention | S1 | B#2-3 | (code) "Use ImportCatalog to pull the whole catalog, then we'll inventory + prune. Simpler than guessing catalog ids one at a time." -- then "Create archi feature (custom; not in catalog)" | [stages/03#Second-operator](../stages/03-phonological-features.md); [README#4.9](../README.md) |
+| D-S1-03 | linguistic-insight | S1 | B#10, #17, #20 | (code) "Archiphoneme N (with combining low line U+0332)"; "Surface variants for archi-rule outputs"; "Alpha-feature constraints for place" | [stages/02#Second-operator](../stages/02-phoneme-inventory.md); [stages/08#Second-operator](../stages/08-phonological-rules.md); [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 28; [reference/swahili-morphophonology#1](../reference/swahili-morphophonology.md) |
+| D-S1-04 | workflow | S1 | B#8, #10-12 | (code) "Test pattern: create one phoneme + add graphemes + set features" ... "Full Swahili phoneme inventory" (31 rows: rep, lower/upper graphemes, IPA, description, features); "Delete /x/ (not used in Swahili) and the duplicate /ŋ/" | [stages/02#Second-operator](../stages/02-phoneme-inventory.md); [00-overview#5](../00-overview.md) P6 |
+| D-S1-05 | QC-check | S1 | B#82-83 | (code) "Stage H ... per recipe §E": no two phonemes share a feature vector, no grapheme in two phonemes, no empty/`***` codes; then re-specify every phoneme over all features as a "+" list with "-" as default | [stages/02#Second-operator](../stages/02-phoneme-inventory.md); [stages/03#Second-operator](../stages/03-phonological-features.md) |
+| D-S1-06 | data-convention | S1 | B#31, #81, #113, #187 | (code) "LCM workaround: create BantuSG/BantuPl/BantuMany closed features with class values"; stem MSA carries singular class + paired plural class; `NA` filled into unused features | [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 25; [README#4.10](../README.md); [stages/05#Second-operator](../stages/05-categories-and-templates.md); [conventions/flex-data-conventions#13](../conventions/flex-data-conventions.md) |
+| D-S1-07 | workflow | S1 | B#32-61, #188 | (code) SIL CAWL LIFT file parsed inside the module; noun-class prefix stripped heuristically; plural kept as stem evidence; gloss-to-class sample checks printed | [stages/06#Second-operator](../stages/06-stem-and-affix-population.md) |
+| L-S1-01 | finding | S1 | B#111-112, #124 | (system) "lexeme_form cannot be empty or contain only whitespace" -- null prefixes went through "Ø9"/"Ø10" markers and a Ø phoneme before the form was emptied through raw LCM | [stages/07#Second-operator](../stages/07-allomorphy-modeling.md); [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 26 |
+| L-S1-02 | finding | S1 | B#152 | (code, docstring) after merging separate prefix entries into allomorphs, the lexeme form holds the most-restricted form *with* an environment and the alternate holds the default form, also with an environment -- no elsewhere form remains | [README#4.11](../README.md); [stages/07#Second-operator](../stages/07-allomorphy-modeling.md); [open-questions#Q-37](../open-questions.md) |
+| L-S1-03 | finding | S1 | B#92-95, #139-140 | (code) Vowels/Consonants found to be segment-based; list referrers of each old class, build feature-based replacements, repoint rule contexts, delete old, rename new | [stages/04#Second-operator](../stages/04-natural-classes.md) |
+| C-S1-01 | correction | S1 | B#37-61 | (system) "Custom field 'Plural' not found for LexSense"; "Commit at wrong place"; "Project must be opened with undoable=True to use Undo()" -- field created via raw LCM did not persist; abandoned-mutex failure on reopen; entries lost; field re-created by the user in the FLEx GUI; import rebuilt | [conventions/ai-collaboration-guardrails#K6](../conventions/ai-collaboration-guardrails.md); [stages/06#Second-operator](../stages/06-stem-and-affix-population.md) |
+| C-S1-02 | correction | S1 | B#41, #43 | (code) whole-lexicon delete for a "clean rebuild", no backup, no filter | [stages/13#Second-operator](../stages/13-cleanup-and-consolidation.md) |
+| C-S1-03 | correction | S1 | B#64, #130-191, #173 | (code) allomorphs first created as separate entries glossed "(before V)" etc., later merged into one entry each; B#173 searches glosses for leftover "(before X)" annotations | [stages/07#Second-operator](../stages/07-allomorphy-modeling.md) |
+| C-S1-04 | correction | S1 | B#108, #115, #127, #165 | (code) "do NOT default to 9" ... then "Last resort default: cl.9/10" -- 17 manual overrides followed (words wrongly given class 15; kinship terms and Arabic loans moved to 1a) | [stages/06#Second-operator](../stages/06-stem-and-affix-population.md); [conventions/ai-collaboration-guardrails#K8](../conventions/ai-collaboration-guardrails.md) |
+| C-S1-05 | correction | S1 | B#155, #161 | (system) `KeyError 13092`; (code) "HVOs may have shifted again" -- switched to lookup by gloss and form | [conventions/flex-data-conventions#13](../conventions/flex-data-conventions.md); [conventions/ai-collaboration-guardrails#K3](../conventions/ai-collaboration-guardrails.md) |
+| C-S1-06 | correction | S1 | B#79 | (code) causative, applicative, reciprocal, passive, stative, statal and locative -ni put into inflectional template slots, although the code's own comment labels them "DERIVATIONAL"; affixes assigned to slots by gloss keyword | [reference/flex-modeling-decisions#1b](../reference/flex-modeling-decisions.md) row 16; [stages/05#Second-operator](../stages/05-categories-and-templates.md) |
+| C-S1-07 | correction | S1 | B#18-20 | (code) "For MVP: rewrite i to e after a"; glide formation "i -> y / _ V" with no boundary; coalescence with no context | [stages/08#Second-operator](../stages/08-phonological-rules.md) |
+| C-S1-08 | correction | S1 | B#201-206 | (system) "no RightHandSidesOS" -- rules created at 13:26 were unwired until 20:13; wiring needed the unwrapped LCM rule object; output class changed from `Nasal-surf` to `C`, untested | [stages/08#Second-operator](../stages/08-phonological-rules.md) |
+
+---
+
+## S2 -- 2026-05-21 20:14 .. 2026-05-22 09:17 (zero morphs, real-text loop)
+
+| id | type | shard | op / time | verbatim quote (trimmed) | where it landed |
+|---|---|---|---|---|---|
+| D-S2-01 | data-convention | S2 | L1#1-3, #61 | (code) null class prefixes cl.5/9/10/1a (later cl.16) changed from `IsAbstract=True` to form "∅", `IsAbstract=False`, citation "∅" | [stages/07#Second-operator](../stages/07-allomorphy-modeling.md); [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 26 |
+| D-S2-02 | data-convention | S2 | L1#55 | (code) full-stem reduplication as suffix `[...]`, `IsAbstract=True`, citation RDP, in a new Redup slot | [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 27; [stages/07#Second-operator](../stages/07-allomorphy-modeling.md) |
+| D-S2-03 | linguistic-insight | S2 | L1#13, #29 | (code) rules fire only across "+"; glide context narrowed to feature-based [Vnh] = [-high,+syl], justified in the docstring by test words hii, hivyo, mwana, kwenda | [stages/08#Second-operator](../stages/08-phonological-rules.md); [stages/04#Second-operator](../stages/04-natural-classes.md) |
+| D-S2-04 | workflow | S2 | L1#25-55 | (code) demonstratives -> h- + concord + deictic with own template (22 whole-word entries deleted); connective "of" -> concord prefix + -a stem; compounds deleted after their parts exist; suppletive pronouns kept whole: "No parsing benefit." | [stages/09#Second-operator](../stages/09-compounding-and-clitics.md); [reference/flex-modeling-decisions#1b](../reference/flex-modeling-decisions.md) row 20 |
+| D-S2-05 | QC-check | S2 | L1#30-34, #39-41, #45, #47, #49 | (code) decomposition audit scans: stems whose lexeme still starts with a class prefix; prefix disagreeing with stem class features; compounds as substring pairs; TAM or extension baked into a verb | [stages/13#Second-operator](../stages/13-cleanup-and-consolidation.md) |
+| D-S2-06 | workflow | S2 | L1#56-77, L2#116-158 | (code) "analysis state is static until FLEx reparse" -- an eight-times-repeated loop over Genesis: list zero-analysis wordforms, bucket, heuristic affix stripping to propose roots by frequency, bulk add, relax slots, re-survey; no paradigm text | [README#4.12](../README.md); [stages/10#Second-operator](../stages/10-paradigm-text-construction.md); [stages/12#Second-operator](../stages/12-real-corpus-stress-test.md) |
+| L-S2-01 | finding | S2 | L1#22-23, #29 | (system) "Add/populate FAILED: Object has not been initialized." -- members of a `PhSequenceContext` are references; each must first be owned by `PhPhonData.ContextsOS`. Removing a member from `MembersRS` without deleting it leaves an orphaned context | [stages/08#Second-operator](../stages/08-phonological-rules.md) |
+| L-S2-02 | finding | S2 | L1#90 | (code) scoring penalises "two or more Ø prefixes" -- null prefixes stack into spurious analyses | [stages/07#Second-operator](../stages/07-allomorphy-modeling.md) |
+| L-S2-03 | finding | S2 | L1#94-95, L2#141-143 | (code) `SetEvaluation` tested on 10 analyses before the bulk run; one analysis before the second bulk run | [00-overview#5](../00-overview.md) P6 |
+| C-S2-01 | correction | S2 | L1#81-95, L2#138-148 | (code) one analysis per wordform auto-approved as the **Human** agent by a "fewest morphemes wins" score, all others disapproved; L2#138 drops the parsimony penalties and re-approves; #145-148 delete 412 disapproved/failed analyses | [README#4.14](../README.md); [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md); [conventions/ai-collaboration-guardrails#K1](../conventions/ai-collaboration-guardrails.md) |
+| C-S2-02 | correction | S2 | L1#74, #77, L2#123 | (code) TAM, ConnConcord, Adjective Concord, FV and Subj slots made optional so forms would parse; no over-generation check | [README#4.13](../README.md); [reference/flex-modeling-decisions#1b](../reference/flex-modeling-decisions.md) row 24; [conventions/ai-collaboration-guardrails#K2](../conventions/ai-collaboration-guardrails.md) |
+| C-S2-03 | correction | S2 | L1#60, L2#124, #136, #150-158 | (code) roots added without the final vowel (umb, on, wek), then with it (chukua, ona), then bare stems alongside; subjunctive, passive, applicative, causative listed as stems (ambie, letwa, chukuliwa, hesabiwe, mpelekee, leteni) | [stages/06#Second-operator](../stages/06-stem-and-affix-population.md); [reference/swahili-morphophonology#4](../reference/swahili-morphophonology.md); [open-questions#Q-40](../open-questions.md) |
+| C-S2-04 | correction | S2 | L1#64-67, #78-79 | (code) placeholder and inflected forms created as entries (`ji_stem`, `ji_refl`, `nililia`, `niua`, `kupend`, `ku`, `tw`); only underscore entries removed, then an illegal-character lint | [stages/06#Second-operator](../stages/06-stem-and-affix-population.md) |
+| C-S2-05 | correction | S2 | L1#74, #98 | (code) "AlternateForms aren't matched by parser" -- turned 'mu' and capitalised forms into separate entries; no reparse between the ops, so a stale parse is the likelier cause (inferred) | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md); [conventions/ai-collaboration-guardrails#K10](../conventions/ai-collaboration-guardrails.md) |
+| C-S2-06 | correction | S2 | L1#64 onward, L2#131, #150-157 | (code) idempotency guard keyed on form only (homographs skipped); later nouns added with no Bantu features and some with prefix still attached (mfalme next to falme); duplicate mu/pa entries ("pa_old", "pa_new") | [stages/06#Second-operator](../stages/06-stem-and-affix-population.md) |
+| C-S2-07 | correction | S2 | L1#74-75, #98 | (code) capitalised sentence-initial and inflected words entered as stems (Akamjibu, Nimemuua) | [stages/02#Second-operator](../stages/02-phoneme-inventory.md); superseded by D-S5-02 |
+
+---
+
+## S3 -- 2026-06-17 .. 2026-08-13, and 2026-09-20 (standards, sources, feature pruning)
+
+| id | type | shard | op / time | verbatim quote (trimmed) | where it landed |
+|---|---|---|---|---|---|
+| D-S3-01 | data-convention | S3 | 06-17 014501 #4-35 | (intent) "Identify which Bantu features are catalog-sourced vs custom by reading CatalogSourceId." -- count MSAs per feature before migrating; create catalog `fBantuPl`; repoint specs; delete the "Wrong" features; re-wrap as `FsComplexValue` under `noun agreement`; descriptions read from `EticGlossList.xml` when `CreateFromCatalog` failed (flexlibs#192) | [stages/05#Second-operator](../stages/05-categories-and-templates.md); [stages/03#Second-operator](../stages/03-phonological-features.md); [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 25 |
+| D-S3-02 | workflow | S3 | 06-17 031602 #1-5 | (intent) "List top wordforms with 0 analyses, sorted by occurrence count desc" | [stages/12#Second-operator](../stages/12-real-corpus-stress-test.md) |
+| D-S3-03 | QC-check | S3 | 08-12 215659 #14; (plan) 00-COMMON-CONTEXT §1 | (intent) "Measure the gap between current noun data and the target: bound root lexeme form, singular citation form, noun class, gloss." -- Phase 0 buckets: 832/1,024 parse-ready, 134 bound but featureless, 0 orphaned, 58 free stems | [stages/01#Second-operator](../stages/01-project-survey-and-inventory.md); [stages/06#Second-operator](../stages/06-stem-and-affix-population.md) |
+| D-S3-04 | workflow | S3 | 08-12 235236 (request); (plan) phase-0-safety-preflight | (request) "use subagents to implement ...phase-0-safety-preflight.md" -- (plan) "Record the exact query used so Phase 7 can repeat it"; "Do not claim a parser baseline you did not actually obtain"; ladder `validate_only` -> dry run -> 5-entry batch -> full | [stages/01#Second-operator](../stages/01-project-survey-and-inventory.md); [stages/06#Second-operator](../stages/06-stem-and-affix-population.md) |
+| D-S3-05 | data-convention | S3 | (plan) 00-COMMON-CONTEXT §10, R3 | (plan) kaikki facts only, "write our own glosses"; wold importable with attribution; the prefix test ranks first "it is what the parser enforces"; undecidable classes ship as tier C with a `class-negotiable` flag; "Do not escalate to human review that no evidence can settle." | [stages/06#Second-operator](../stages/06-stem-and-affix-population.md); [stages/12#Second-operator](../stages/12-real-corpus-stress-test.md) |
+| D-S3-06 | workflow | S3 | (plan) phase-0 report | (plan, quoting the user) "only phase 0 from lexical resources, no digging into texts and wordforms" | [stages/12#Second-operator](../stages/12-real-corpus-stress-test.md) |
+| D-S3-07 | data-convention | S3 | 08-13 005026, 005815 | (request) "assure that these verbal stems are in the database, add them if needed: chemk boil (intransitive), amk wake up, ... lip pay"; "user chose: new homograph 'ja' = be full, correct 'lip' gloss to 'pay'" -- gloss updates skipped unless the expected old gloss uniquely matches | [stages/06#Second-operator](../stages/06-stem-and-affix-population.md) |
+| D-S3-08 | workflow | S3 | 08-12 232416 | (request) "we need confirmed-good examples and recipes. can we harvest them from fieldworks or existing flextools" -- Sena 3 (a Bantu project) probed | [stages/01#Second-operator](../stages/01-project-survey-and-inventory.md) |
+| L-S3-01 | finding | S3 | (plan) R4; 08-12 215659 #16 | (plan) a derived noun enters with its base and a derivational affix carrying From=Verb, To=Noun; only multi-character suffixes counted (about 85 candidates) | [stages/06#Second-operator](../stages/06-stem-and-affix-population.md); [00-overview#5](../00-overview.md) P2 |
+| L-S3-02 | finding | S3 | 08-12 215659 #14 -> #17 | (intent) "Recompute the target gap using bound stem (the lexicon's existing convention) instead of bound root." | [stages/01#Second-operator](../stages/01-project-survey-and-inventory.md) |
+| D-S3-09 | QC-check | S3 | 09-20 211805 #11-24 | (code) features partitioned LOCKED (referenced by a natural class or rule) / FREE (inventory-only); exhaustive subset search over FREE for the largest removal keeping all 31 phoneme fingerprints unique; `dr` and `labio-dental` deleted behind three gates; re-verified 20 classes and 5 rules unchanged | [stages/03#Second-operator](../stages/03-phonological-features.md); [stages/13#Second-operator](../stages/13-cleanup-and-consolidation.md) |
+| C-S3-01 | correction | S3 | 06-17 034321 #59-65 | (intent) "Add missing verb/noun stems and closed-class surface forms (possessives, fixed verbal forms)" -- `lake`, `changu`, `zake`, `msifuni` as Verb, `walio` as Pronoun, prefixed nouns typed as bound stem | [stages/12#Second-operator](../stages/12-real-corpus-stress-test.md) |
+| C-S3-02 | correction | S3 | 06-17 014501 #24-29 | (intent) "Recovery pass: re-add NA fillers for any Bantu feature missing inside nested noun-agreement." | [stages/05#Second-operator](../stages/05-categories-and-templates.md) |
+| C-S3-03 | correction | S3 | 08-12 215659 #4-8 | (intent) "Debug why the noun count came back zero" -- `GetPartOfSpeechObject()` returned None and 0 looked like a real answer (flexicon#232) | [stages/01#Second-operator](../stages/01-project-survey-and-inventory.md); [conventions/ai-collaboration-guardrails#K9](../conventions/ai-collaboration-guardrails.md) |
+| C-S3-04 | correction | S3 | 06-17 031602-034321 #46-52 | (intent) "Wire previously-created entries and add remaining proper-nouns/loans" -- writes without `validate_only` left half-built entries | [stages/06#Second-operator](../stages/06-stem-and-affix-population.md) |
+| C-S3-05 | correction | S3 | 06-17 014501 #12-13 | (system) "Execution error: 18374" -> (intent) "Migrate MSA feature specs by resolving features by name+catalog id (HVO-independent)." | [conventions/flex-data-conventions#13](../conventions/flex-data-conventions.md); [conventions/ai-collaboration-guardrails#K3](../conventions/ai-collaboration-guardrails.md) |
+
+---
+
+## S4 -- 2026-09-06 18:32 .. 2026-09-07 01:42 (real-text repair, over-generation)
+
+| id | type | shard | op / time | verbatim quote (trimmed) | where it landed |
+|---|---|---|---|---|---|
+| D-S4-01 | workflow | S4 | 183210 #1-7 | (request) "Can we find a human phrase-by-phrase 'free translation' and add that to the 'Sungara ni fisi' text (using the proper Free Translation function)?" | [stages/10#Second-operator](../stages/10-paradigm-text-construction.md) |
+| D-S4-02 | QC-check | S4 | 183210 #8-18 | (intent) "Write 7 free translations and reject 11 ungrammatical analyses in 'Sungura na Fisi', with in-process verification." -- each rejection GUID-keyed with a reason ("Neg2 prefix-slot realized post-stem", "v prefix on num stem (num has no slots)") | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md); [README#4.14](../README.md) |
+| D-S4-03 | workflow | S4 | 183210 #19-32 | (intent) "Fix the six malformed affix lexicon entries: reslot -i to FV, disable cha- for parsing, give m-/pa-/mu- proper inflectional affix MSAs." | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md) |
+| D-S4-04 | QC-check | S4 | 183210 #51 | (intent) "Decisive test: does any parser-generated analysis in the project use a ClassPrefix morpheme?" -- (code) warns "ClassPrefix appears in ZERO analyses project-wide" | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md) |
+| D-S4-05 | workflow | S4 | 230055 #1-12 | (request) "use subagents to move each BantuMany feature to the most reasonable option of BantuSg and BantuPL. Make sure they stay connected to each morpheme." | [stages/05#Second-operator](../stages/05-categories-and-templates.md); [reference/swahili-morphophonology#2](../reference/swahili-morphophonology.md) |
+| D-S4-06 | data-convention | S4 | 183210 #40-50 | (intent) "Deep-copy the class features from each ConnConcord MSA onto the matching new PossConcord MSA." -- (code) "attach each struct to its owner BEFORE populating FeatureSpecsOC" | [stages/05#Second-operator](../stages/05-categories-and-templates.md) |
+| D-S4-07 | QC-check | S4 | 183210 #59-64 | (intent) "Re-verify the 7 lexicon changes keyed on headword rather than hvo."; "Capture hvo and guid for landmark entries, pass 1, to test hvo stability." | [conventions/flex-data-conventions#13](../conventions/flex-data-conventions.md); [conventions/ai-collaboration-guardrails#K3](../conventions/ai-collaboration-guardrails.md) |
+| D-S4-08 | workflow | S4 | 230055 #110-116 | (intent) "Enumerate every DoNotUseForParsing entry, its citation form, and how many analyses reference it, before deleting." -- then "User explicitly authorized deletion"; entries with citation form, etymology, pronunciation, entryRefs, allomorphs, definition or examples skipped | [stages/13#Second-operator](../stages/13-cleanup-and-consolidation.md); [conventions/ai-collaboration-guardrails#K4](../conventions/ai-collaboration-guardrails.md); [conventions/flex-data-conventions#13](../conventions/flex-data-conventions.md) |
+| D-S4-09 | workflow | S4 | 183210 #62 | (code) "Controlled experiment: convert only *sungura to a free stem" -- "comparing the two isolates whether bound-vs-free is the deciding factor" (`*fisi` untouched as control) | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md) |
+| D-S4-10 | workflow | S4 | 183210 #21-24, 230055 #79 | (code) "Reviewed decisions from three independent domain passes"; 11 rows HELD with reasons ("'umilele' not a word"); reviewers' "invented stem" claims checked against the lexicon, only "the one verified analysis" rejected | [conventions/ai-collaboration-guardrails#K7](../conventions/ai-collaboration-guardrails.md) |
+| D-S4-11 | workflow | S4 | 230055 #73-80 | (intent) "Validate the BantuMany relocation script against the preflight gates before any write." -> "Dry-run the BantuMany relocation" -> write -> "Verify the relocation landed" | [00-overview#5](../00-overview.md) P4/P5 |
+| L-S4-01 | finding | S4 | 183210 #63-72 | (intent) "Count actual feature specs on the null prefixes and noun stems to confirm the disjoint-feature over-generation."; "Check whether any noun stem is class 16, i.e. whether the cl.16 null prefix has any legitimate customer." | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md); [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 26 |
+| L-S4-02 | finding | S4 | 230055 #105-111 | (code) "root is 'ambi' (FV alternates: aniambie)" -- fused root+FV stem is a duplicate; a long form that "adds valency ... APPLICATIVE, not fused FV" is held | [stages/07#Second-operator](../stages/07-allomorphy-modeling.md); [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 31 |
+| L-S4-03 | finding | S4 | 230055 #98-104 | (intent) "Determine the real approval provenance of these analyses and whether duplicate analyses come from duplicate lexical entries." -- three cl.1 OM `mu` entries; `ambia`/`ambi` | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md) |
+| L-S4-04 | finding | S4 | 183210 #38 | (intent) "Check the null ClassPrefix entries' actual forms and find bound stems in categories with no affix slots." -- unparseable by construction | [stages/05#Second-operator](../stages/05-categories-and-templates.md) |
+| C-S4-01 | correction | S4 | 230055 #110-111 | (intent) "Re-enable verb stems wrongly disabled by the faulty valency rule, using the corrected test." (one minute after the disable) | [stages/13#Second-operator](../stages/13-cleanup-and-consolidation.md) |
+| C-S4-02 | correction | S4 | 183210 #42-45, 230055 #96 | (intent) "Check what the partially-applied slot/template/sense creation actually left behind." -- validate passed, runtime failed after backup, `undoable=False` | [stages/05#Second-operator](../stages/05-categories-and-templates.md) |
+| C-S4-03 | correction | S4 | 230055 #121 | (intent) "Merge the 11 unambiguous duplicate entry pairs, carrying richer glosses onto survivors." -- merge implemented as delete referencing analyses, then delete the loser; approvals lost | [stages/13#Second-operator](../stages/13-cleanup-and-consolidation.md) |
+| C-S4-04 | correction | S4 | 183210 #35 | (intent) "Urgent check: has analysis data been lost from the Sungura text since the lexicon fixes?" -- counts compared with a hardcoded baseline ("was 116") | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md) |
+
+---
+
+## S5 -- 2026-09-07 01:36 .. 2026-09-11 06:26 (templates, verb classes, cleanup, glosses)
+
+| id | type | shard | op / time | verbatim quote (trimmed) | where it landed |
+|---|---|---|---|---|---|
+| D-S5-01 | QC-check | S5 | 09-07 013534 | (request) "look at the parses of Akampandisha, why is there an option with 2 subject affixes, I don't think that's a valid analysis and it should be blocked by the affix template." | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md) |
+| D-S5-02 | data-convention | S5 | 09-07 013534 #5-6 | (request) "delete the stems. We don't need the caps allomorphs if caps exist as graphemes." | [stages/02#Second-operator](../stages/02-phoneme-inventory.md); [reference/flex-modeling-decisions#1b](../reference/flex-modeling-decisions.md) row 21 |
+| D-S5-03 | QC-check | S5 | 09-07 024114 #1-8 | (request) "examine the 3 parses for alikubali" -- (intent) "Measure how many analyses project-wide have an Obj prefix but no TAM prefix" | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md); [conventions/ai-collaboration-guardrails#K10](../conventions/ai-collaboration-guardrails.md) |
+| D-S5-04 | linguistic-insight | S5 | 09-07 024114 #13-14 | (intent) "Apply the citation-form discriminator to all 824 verb stems to build an authoritative inflection-class tagging plan" -- "Tag 563 verb stems FVt and 76 Inv per the reconciled plan; do not restrict FV allomorphs yet" | [stages/07#Second-operator](../stages/07-allomorphy-modeling.md); [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 31; [README#4.15](../README.md) |
+| D-S5-05 | workflow | S5 | 09-07 024114 #15-33 | (request) "create what is needed to describe these correctly. You're in charge of the lexicon" ... "apply" ... "yes, permitted" -- manifest tiers: additive, non-destructive, reference-checked deletes, dangling sweep, merges, class tagging on survivors | [stages/13#Second-operator](../stages/13-cleanup-and-consolidation.md) |
+| D-S5-06 | workflow | S5 | 09-07 134819 | (request) "the Sungura na Fisi text's word analyses look good, but some of the word glosses, like 'die' seem incorrect. Work through each one" -- three stages: link senses + word glosses + disambiguate; hand-build 4 analyses; delete 14 unreferenced competitors | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md) |
+| D-S5-07 | workflow | S5 | 09-08 085433 | (request) "use /lex-domain and your knowledge of Swahili to resolve those issues. Forest makes more sense than bush-dweller" -- (code) docstrings cite "Ruling D13", "ruling D18" | [conventions/ai-collaboration-guardrails#K7](../conventions/ai-collaboration-guardrails.md) |
+| D-S5-08 | workflow | S5 | 09-10 154034 | (intent) "Create a FLEx text of Swahili noun-class singular/plural examples with English-tagged class labels at the end of each row." | [stages/10#Second-operator](../stages/10-paradigm-text-construction.md) |
+| D-S5-09 | QC-check | S5 | 09-11 055058, 062148 | (request) "find Citation forms that are the same as the lexeme." -- turned into a read-only FlexTools module | [stages/13#Second-operator](../stages/13-cleanup-and-consolidation.md) |
+| L-S5-01 | finding | S5 | 09-07 013534 #4 | (intent) "Dry run the guard logic that distinguishes the bad multi-slot m- entry from the good Subj-only one" -- one MSA in two co-occurring slots (Subj and Obj) licensed a two-subject parse | [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 30; [stages/05#Second-operator](../stages/05-categories-and-templates.md) |
+| L-S5-02 | finding | S5 | 09-07 024114 #9-12 | (code) "slot object identity across the two verb templates (is Optional shared?)" -- TAM2 (`Optional=False`) cloned for the object template; separate subjunctive template with required FVsubj -e | [reference/flex-modeling-decisions#1](../reference/flex-modeling-decisions.md) row 29; [stages/05#Second-operator](../stages/05-categories-and-templates.md); [README#4.13](../README.md) |
+| L-S5-03 | finding | S5 | 09-08 085433 #5-9 | (intent) "Apply lex-domain rulings: fix msitu and kuwa glosses, create two ku- entries, widen m-4, relink wenye." -- ku- split by function (infinitive/augment in TAM/TAM2 vs negative past) | [reference/flex-modeling-decisions#1b](../reference/flex-modeling-decisions.md) row 22 |
+| C-S5-01 | correction | S5 | 09-07 024114 #24-27 | (intent) "Check whether deleting bali left a dangling analysis on the wordform alikubali." -- entry-level `ReferringObjects` check missed references to owned allomorph/MSA/sense | [stages/13#Second-operator](../stages/13-cleanup-and-consolidation.md); [conventions/ai-collaboration-guardrails#K5](../conventions/ai-collaboration-guardrails.md) |
+| C-S5-02 | correction | S5 | 09-07 013534 02:08 | (system) "Key d66eaaaa-... not found in identity map" -- the GUID manifest had gone stale; `resolve()` made tolerant, counting "already absent" | [stages/01#Second-operator](../stages/01-project-survey-and-inventory.md) |
+| C-S5-03 | correction | S5 | 09-10 154034 #4-5 | (system) "'ITsString' object has no attribute 'get_WritingSystem'" -- verification crashed after the commit; a separate op had to establish whether the text existed | [stages/10#Second-operator](../stages/10-paradigm-text-construction.md) |
+| C-S5-04 | correction | S5 | 09-07 134819 #14 | (intent) "Stage 2 write: build analyses for Hapo, moja, Akampandisha, nikinunua and disambiguate their tokens." -- hand-built, no reparse logged (inferred risk: the grammar may still not produce them) | [stages/11#Second-operator](../stages/11-parse-and-repair-loop.md) |
+| C-S5-05 | correction | S5 | 09-08 085433 #10-11 | (system) "Failed to open project 'Claude-Swahili': Exception of type 'System.OutOfMemoryException'" then "Object reference not set" -- write never confirmed | [stages/01#Second-operator](../stages/01-project-survey-and-inventory.md) |
+
+---
+
 ## Unplaced ids
 
-**None.** All 179 ids are placed.
+**None.** All 265 ids are placed (179 M/G + 86 S).
 
 Six ids are placed as **"recorded, not applied"** because G1 §9 classifies them as
 deck-project material that must not shape the grammar-construction stages:

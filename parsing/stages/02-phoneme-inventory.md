@@ -114,6 +114,30 @@ plus direct LCM casts where wrappers misclassify class type.
   throwing (fixes C-M1-01 at the wrapper level).
 - A script-aware lint for the dependent/independent vowel-form trap.
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **CONTRADICTS P1 ordering: features before phonemes** (D-S1-02, D-S1-04;
+  [README 4.9](../README.md#49-stage-order-features-first-s1-vs-phonemes-first-p1)).
+  With the feature catalog already imported, each phoneme was created with its feature
+  bundle in one pass.
+- **ADDS: archiphonemes** (D-S1-03). A neutralized segment (Swahili `N̲`, a nasal
+  unspecified for place) is a phoneme of its own marked by a custom `[+archi]` feature.
+  Real phonemes are `[-archi]`, which lets Stage 04 define surface classes for rule
+  outputs. See [row 28](../reference/flex-modeling-decisions.md).
+- **ADDS: the inventory as one data table, proved on one row first** (D-S1-04). One
+  phoneme (/p/) built and checked, then 31 rows of (representation, lower-case
+  graphemes, upper-case graphemes, IPA, description, features). Default phonemes the
+  language lacks (/x/, a duplicate /ŋ/) were deleted.
+- **ADDS: a three-check distinctness audit** (D-S1-05): no two phonemes share a feature
+  vector; no grapheme belongs to two phonemes; no empty or `***` codes remain. Integrity
+  was re-checked later (an empty representation fixed, D-S3-09).
+- **ADDS: case lives in the grapheme inventory, not the lexicon** (D-S5-02). *"We don't
+  need the caps allomorphs if caps exist as graphemes."* Give each phoneme its
+  upper-case grapheme so sentence-initial capitals parse. The earlier alternative --
+  capitalised allomorphs or whole capitalised entries (C-S2-07) -- was deleted.
+
 ## Provenance
 
 - M1 ops 1-4 (2026-09-10 16:13-16:16), op 8 (18:30), op 9 (18:37); D-M1-01; L-M1-06;
@@ -124,8 +148,8 @@ plus direct LCM casts where wrappers misclassify class type.
 - M5 ops 5-7 (2026-09-13 22:42-22:43).
 - M7 op 33 (2026-09-15 10:32) -- phoneme lookup rebuilt from code, not short name.
 - M8 D-M8-02 (2026-09-15 14:06).
-- **Merge seam:** Matthew may derive the inventory from an existing writing-system
-  definition or LIFT import rather than authoring it; record his source.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Matthew authored the inventory as a table rather than deriving it from a writing system.
+  *(Original seam: Matthew may derive the inventory from an existing writing-system definition or LIFT import rather than authoring it; record his source.)*
 
 ## Open Questions
 

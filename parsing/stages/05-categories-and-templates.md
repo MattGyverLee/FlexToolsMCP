@@ -135,6 +135,50 @@ inflection/derivation call.
 - Shared-slot impact report: "this slot is shared by these N categories".
 - A category-name registry so creation and consumption cannot diverge (C-M5-01).
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **POS first, from the catalog, idempotently** (D-S1-01) -- CONFIRMS the catalog rule.
+  **ADDS:** check every catalog id exists *before* the loop (`GOLD:Conjunction` did not,
+  and killed a half-run).
+- **ADDS: noun class as agreement features**
+  ([row 25](../reference/flex-modeling-decisions.md); D-S1-06, D-S3-01, D-S4-05).
+  - Three closed inflection features hold the class: singular class, plural class, and
+    a third for classes without a singular/plural pair.
+  - A stem's grammatical info (MSA) carries its singular class and its paired plural
+    class. Class prefixes carry matching values and sit in an obligatory ClassPrefix
+    slot.
+  - Every unused feature is filled with `NA`, so values unify exactly.
+  - The features were later moved to catalog-sourced ones (`fBantuSg/Pl/Many`) and
+    nested under the `noun agreement` complex feature. Count the specs that point at
+    each feature before migrating.
+  - Run a recovery pass afterwards: one refactor dropped `NA` fillers (C-S3-02).
+- **ADDS: one template per construction that cannot co-occur; clone a slot when its
+  optionality must differ** ([row 29](../reference/flex-modeling-decisions.md); L-S5-02).
+  - Whether a slot is optional is set on the slot itself, so every template that uses
+    the slot shares the setting.
+  - To make TAM required only in the template with an object marker, a required copy
+    (TAM2) was cloned and swapped in.
+  - The subjunctive got its own template with a required FVsubj (-e) slot and no TAM
+    slot.
+  - This is the right replacement for the earlier practice of making shared slots
+    optional so words would parse (C-S2-02; [README 4.13](../README.md)).
+- **ADDS: one affix in several slots only if those slots never co-occur**
+  ([row 30](../reference/flex-modeling-decisions.md); L-S5-01). An `m-` assigned to both
+  Subj and Obj licensed a two-subject parse (D-S5-01).
+- **ADDS: build a new concord series by cloning an existing one** (D-S4-06).
+  PossConcord and NumConcord were built by deep-copying each ConnConcord feature
+  structure. Attach each new structure to its owner *before* filling it.
+- **ADDS a lint: a bound stem whose POS has no slots cannot parse** (L-S4-04).
+- **CONFIRMS G4 by repeating Ron's mistake** (C-S1-06). Verb extensions went into
+  inflectional slots, and affixes were assigned to slots by matching keywords in their
+  glosses. Both are wrong, for the reasons in [row 16](../reference/flex-modeling-decisions.md).
+- **ADDS a failure mode: validate_only passed, then the live run broke partway**
+  (C-S4-02). Slot, template and sense creation was left half-done in a non-undoable
+  session. Always follow a structural write with a "what did it actually leave behind"
+  read.
+
 ## Provenance
 
 - M1 ops 5, 10, 15 (2026-09-10 16:16, 19:52, 20:42); D-M1-02, D-M1-03; M1 §5
@@ -145,8 +189,8 @@ inflection/derivation call.
 - M6 ops 17-18, 25 (2026-09-14 16:26-16:39); **C-M6-03**, L-M6-03, L-M6-06.
 - M7 op 8-9 (2026-09-15 08:18) -- augment built as a Number-slot affix; L-M7-01.
 - M8 ops 2, 4-6 (2026-09-15 14:04-14:09); D-M8-03, D-M8-04; L-M8-02; C-M8-03.
-- **Merge seam:** Matthew's category inventory and slot conventions; in particular
-  whether he uses shared parent-category slots at all.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Matthew used no shared parent-category slots in these logs.
+  *(Original seam: Matthew's category inventory and slot conventions; in particular whether he uses shared parent-category slots at all.)*
 
 ## Open Questions
 

@@ -134,6 +134,27 @@ ordering.
 - Surfacing the FLEx "apply rules to clitics" setting through the MCP so a data-level
   diagnosis is not chasing an application-level cause (D-M3-03).
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **ADDS an LCM fact** (L-S2-01): each member of a `PhSequenceContext` is a reference,
+  so it must first be **owned by `PhPhonData.ContextsOS`**. Otherwise you get "Object
+  has not been initialized".
+- **ADDS: alpha-feature place assimilation for an archiphoneme** (D-S1-03): `N̲`
+  becomes a consonant agreeing in place / _ + C, with `[-archi]` surface classes for
+  the output.
+- **CONFIRMS boundary anchoring, from the opposite starting point** (C-S1-07, D-S2-03).
+  The first rules had no boundary and, in one case, no context at all. They were
+  rewritten to fire only across "+" ("a+i -> e", "i -> y / _ + V"). The second project
+  arrived at Ron's L-M3-02 independently.
+- **CONTRADICTS P1 ordering: rules written before any stem existed** (S1). The rules
+  were created hours before they were wired up, and the wiring failed until the
+  underlying LCM rule object was used (C-S1-08). One output-class change was never
+  tested. A rule nobody parses against is unverified.
+- **ADDS: test words in the docstring** (D-S2-03). Every narrowed context names the
+  words it was narrowed for.
+
 ## Provenance
 
 - M1 ops 28-32 (2026-09-11 11:37-11:41); D-M1-07; L-M1-01, L-M1-02, L-M1-03; M1 §5
@@ -144,8 +165,8 @@ ordering.
   C-M3-03.
 - M6 ops 29, 34 (2026-09-14 16:49, 09-15 06:54); L-M6-10.
 - M7 ops 21-35 (2026-09-15 09:52-10:35); D-M7-06; L-M7-02, L-M7-03; C-M7-03.
-- **Merge seam:** Matthew may use metathesis or other rule types the corpus only
-  enumerated (M6 L-M6-10 lists the available rule and context types).
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. No rule-ordering policy appears in these logs either (Q-16 stays open).
+  *(Original seam: Matthew may use metathesis or other rule types the corpus only enumerated (M6 L-M6-10 lists the available rule and context types).)*
 
 ## Open Questions
 

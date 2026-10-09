@@ -124,6 +124,34 @@ touching any `OC`/`RC`/`OA`/`RA` property -- C-M6-04), `flextools_resolve_type`.
   inflection classes) so C-M6-02 cannot recur.
 - Overflow-safe output: automatic spill of large report payloads to a file.
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **ADDS: survey against a written target, not just an inventory** (D-S3-03). The
+  August re-entry first wrote down what a finished entry looks like (four fields:
+  bound-stem lexeme form, singular citation form, noun class, gloss), then bucketed
+  every noun against it: 832/1,024 parse-ready, 134 "bound but featureless -> zero
+  parses", 0 orphaned, 58 free stems. The orphaned bucket is kept as a standing
+  regression alarm ("any rise above 0 ... silent zero-parse defect").
+- **ADDS: Phase 0 baseline with stop conditions** (D-S3-04). Before any work: lock file,
+  version match, and a *grammar-before-lexicon* gate -- check that the class-prefix
+  allomorph pairs exist, because "No amount of stem work will make anything parse"
+  without them. Record each count's exact query so a later phase can repeat it. "Do not
+  claim a parser baseline you did not actually obtain."
+- **ADDS: adopt the project's existing convention** (L-S3-02). The target moved from
+  "bound root" to "bound stem (the lexicon's existing convention)" once the survey
+  showed what the lexicon actually used.
+- **ADDS: harvest recipes from a reference project** (D-S3-08) -- probe a mature project
+  of a related language (here Sena 3, also Bantu) for confirmed-good structures before
+  inventing them.
+- **CONFIRMS C-M2-06 (re-survey after outside change)** (C-S5-02, C-S5-05). A GUID
+  manifest went stale between sessions; a project held open elsewhere refused to open
+  for writing (OutOfMemory, then NullReference) and the write was never confirmed.
+- **ADDS a failure mode: a silent None reads as data** (C-S3-03). A noun count of 0 came
+  from an accessor returning None, and "looked like a real answer". Sanity-check every
+  zero in a survey against a second route.
+
 ## Provenance
 
 - M1 ops 3, 11, 12, 29, 31 (2026-09-10 16:14 .. 09-11 11:39) -- inspect/audit operations.
@@ -138,7 +166,8 @@ touching any `OC`/`RC`/`OA`/`RA` property -- C-M6-04), `flextools_resolve_type`.
 - M8 §5 "Gap-analysis audit" (2026-09-15 14:02); D-M8-01/02/04; C-M8-01/02/03/05.
 - G1 §5 "Candidate Dump (step 1)" (2026-09-04 22:39) and L-G1-04 -- language-independent
   per G1 §9.
-- **Merge seam:** Matthew's survey practice may differ in scope or in what he records.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Remaining: the other machine's logs; whether Matthew surveys greenfield projects the same way.
+  *(Original seam: Matthew's survey practice may differ in scope or in what he records.)*
 
 ## Open Questions
 

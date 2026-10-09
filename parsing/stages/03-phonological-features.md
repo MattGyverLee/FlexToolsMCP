@@ -113,6 +113,28 @@ non-segmental marks sit.
 - A distinguishability report: "these N phonemes are not separable by the current
   feature set" and "these features are never used by any class or rule".
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **Answers Q-06: Matthew uses features** -- feature-based natural classes, alpha-feature
+  rules, and a full matrix (S1). Q-06 is not closed: a language may still manage
+  without them, but this second project did not try.
+- **ADDS a step-1 variant: import the whole catalog, then add only what it lacks**
+  (D-S1-02): `ImportCatalog`, then a custom `archi` (+/-). Simpler than choosing
+  catalog ids one at a time, at the cost of a pruning pass later.
+- **CONFIRMS step 2 (fully specified) with a compact idiom** (D-S1-05): write each
+  phoneme's matrix as its list of "+" features and default every other feature to "-".
+- **ADDS: prune the feature set later, against what uses it** (D-S3-09; see
+  [Stage 13](13-cleanup-and-consolidation.md)). Mark each feature LOCKED (some natural
+  class or rule uses it) or FREE (only the inventory does). Search exhaustively over the
+  FREE features for the largest set you can drop while every phoneme's feature bundle
+  stays unique. Delete behind gates, then re-verify that classes and rules are unchanged.
+  This turns D-M1-04's minimality proof into a whole-feature procedure. It can only run
+  *after* Stages 04 and 08, so it belongs in cleanup, not here.
+- **ADDS: catalog provenance applies to inflection features too** (D-S3-01) -- see
+  [Stage 05](05-categories-and-templates.md).
+
 ## Provenance
 
 - M1 ops 18-26 (2026-09-11 09:39 .. 11:10); D-M1-04, D-M1-05, D-M1-06; L-M1-06;
@@ -120,8 +142,8 @@ non-segmental marks sit.
 - M2 op 8 (2026-09-11 14:29); L-M2-06; C-M2-04.
 - M3 L-M3-01 (feature-bundle definition of a class), C-M3-01.
 - M7 op 34 (2026-09-15 10:33), L-M7-03.
-- **Merge seam:** Matthew may skip features entirely and use segment-list classes
-  only. If so, record the trade-off explicitly -- it changes Stage 04 and Stage 08.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above (Q-06 answered for this project: features used).
+  *(Original seam: Matthew may skip features entirely and use segment-list classes only. If so, record the trade-off explicitly -- it changes Stage 04 and Stage 08.)*
 
 ## Open Questions
 

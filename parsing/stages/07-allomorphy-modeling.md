@@ -196,6 +196,45 @@ listed above.
 - **Feature-object identity helper**: attach *the same* feature/value objects an
   existing affix uses, rather than creating equivalents (L-M6-04).
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **ADDS: zero morphs as real entries**
+  ([row 26](../reference/flex-modeling-decisions.md); D-S2-01, L-S1-01).
+  - A null class prefix is an entry with the form `∅`, `IsAbstract=False` and citation
+    `∅`. Empty forms are rejected, and placeholder markers ("Ø9") or a Ø phoneme are
+    dead ends.
+  - Give zero morphs feature values **on the same features the stems use**. Disjoint
+    features never clash, so the zero morph attaches everywhere (L-S4-01).
+  - Zero morphs also stack: an analysis with two zero prefixes is a warning sign
+    (L-S2-02).
+- **ADDS: full reduplication** as an abstract `[...]` affix in its own slot
+  ([row 27](../reference/flex-modeling-decisions.md); D-S2-02). This was never confirmed
+  by a parse.
+- **ADDS: inflection classes derived from data already in the lexicon**
+  ([row 31](../reference/flex-modeling-decisions.md); D-S5-04).
+  - The citation form (`ku`+lexeme versus `ku`+lexeme+vowel) assigned 563 verbs to FVt
+    and 76 to Inv in one pass. Anomalies went to a human.
+  - Tag the class first; restrict the allomorphs only after ("do not restrict FV
+    allomorphs yet"). That is P6.
+  - Contrast [README 4.7](../README.md): Ron grew his class inventory as the corpus
+    forced it.
+- **ADDS: root versus root+final-vowel stems** (L-S4-02).
+  - The root is the entry. A long form that differs only by the final vowel is a
+    duplicate and is retired.
+  - A long form that adds an extension (applicative etc.) is a separate entry and is
+    held.
+- **CONTRADICTS F1 (unresolved)** (L-S1-02; [README 4.11](../README.md)). After merging,
+  the lexeme form held the *most restricted* form with an environment, so no elsewhere
+  form was left. F1 is an LCM ordering fact, so follow F1 until a parse shows otherwise
+  (Q-37).
+- **CONFIRMS P10/L-M3-15 via a detour** (C-S1-03). Allomorphs entered first as
+  separate entries glossed "(before V)" were later merged into one entry each. A lint
+  then searched glosses for leftover "(before X)" notes.
+- **ADDS: split a homograph by function** (L-S5-03). `ku-` became two entries: an
+  infinitive/augment in TAM/TAM2, and a negative past.
+
 ## Provenance
 
 - M1 ops 33-38, 42-46 (2026-09-11 11:42 .. 12:48); D-M1-08, **D-M1-09, D-M1-10,
@@ -216,9 +255,8 @@ listed above.
 - M8 ops 7-25 (2026-09-15 16:40-17:08); **D-M8-05, D-M8-06, D-M8-07**; L-M8-01,
   L-M8-04, L-M8-05, L-M8-06; C-M8-05; M8 §5 "Root-cause diagnosis-then-generalize";
   M8 §9.
-- **Merge seam:** this is the stage where Matthew's process is most likely to diverge.
-  Capture his construct preferences as a second column in
-  [`reference/flex-modeling-decisions.md`](../reference/flex-modeling-decisions.md).
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Matthew's construct preferences are in the "Matthew's choice" table of [flex-modeling-decisions](../reference/flex-modeling-decisions.md).
+  *(Original seam: this is the stage where Matthew's process is most likely to diverge. Capture his construct preferences as a second column in [`reference/flex-modeling-decisions.md`](../reference/flex-modeling-decisions.md).)*
 
 ## Open Questions
 

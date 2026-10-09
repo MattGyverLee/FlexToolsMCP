@@ -266,3 +266,62 @@ source: where his corrections confirm one of these, add his evidence to the exis
 rule; where they contradict one, keep both and mark the divergence.
 </content>
 </invoke>
+
+**Partial merge (shards S1-S5, Swahili).** New rules are in section K below.
+Confirmations of existing rules:
+
+| Existing rule | Swahili evidence | Note |
+|---|---|---|
+| C2 validate_only first | D-S3-04, D-S4-11; violated in C-S3-04 | extended into a ladder: validate_only -> dry run -> 5-entry batch -> full |
+| C3 plan first | D-S5-05 | GUID-keyed manifest with ordered tiers |
+| C6 backup before delete | C-S1-02 (violated: whole-lexicon delete, no backup) | |
+| C9 referrers before delete | C-S5-01 | extend to the entry's **owned** objects -- see K5 |
+| D1 shape + category | C-S1-04 | a default for "unknown" acts like an unfiltered shape rule |
+| E1 no shared-object edits for local fixes | L-S5-02 | the same holds for slot optionality: clone the slot |
+| G4 no derivation in templates | C-S1-06 | Matthew repeated Ron's mistake independently |
+| G7 proof of recipe | D-S1-04, L-S2-03 | |
+| H2 post-write verification | D-S4-07; C-S5-03 | verify in a **separate** op -- an in-op check can crash after the commit |
+| H5 ambiguity is not a bug | C-S2-01 | applies to approvals too |
+| H6 no invented forms | D-S5-08 (paradigm text from general knowledge) | |
+| I1 external changes | C-S5-02, C-S5-05 | stale manifest; project held open elsewhere |
+
+---
+
+## K. Added from the Swahili corpus (provisional)
+
+**K1. NEVER record a heuristic judgement as a Human approval.** A "fewest morphemes
+wins" pass approved one analysis per word as the Human agent and disapproved genuine
+alternatives; it had to be reversed (C-S2-01). Use a non-human agent or leave the
+analysis unapproved.
+
+**K2. NEVER relax a slot to make a word parse** without checking what else it now
+lets through. Prefer a separate template for the construction (C-S2-02, L-S5-02).
+
+**K3. ALWAYS key targets by GUID** (or name + catalog id), never by hvo. Hvos shifted
+within a session; hvo-keyed verification failed (C-S1-05, C-S3-05, D-S4-07).
+
+**K4. ALWAYS disable (`DoNotUseForParsing`) before deleting** a lexical entry the
+parser uses, and list referrers of everything disabled before the delete. A faulty
+heuristic was undone in one minute because of this (D-S4-08, C-S4-01).
+
+**K5. ALWAYS check references across an entry's owned subtree** (allomorphs, MSAs,
+senses), not just the entry, and sweep for dangling analyses after any delete batch
+(C-S5-01).
+
+**K6. NEVER create custom fields or writing systems through raw LCM.** Do schema
+changes in the FLEx GUI. A raw-LCM custom field did not persist, and the session
+that depended on it lost the lexicon (C-S1-01).
+
+**K7. ALWAYS verify the reviewer.** Check a domain or AI reviewer's factual claims
+("this stem is invented") against the lexicon before acting. Number the rulings and
+cite them in the code that applies them (D-S4-10, D-S5-07).
+
+**K8. NEVER default an undecidable value.** Hold it, or flag it (`class-negotiable`).
+A default "cl.9/10" for unknown nouns cost 17 manual overrides (C-S1-04, D-S3-05).
+
+**K9. NEVER accept a zero or empty result without a second route.** An accessor
+returning None produced a plausible noun count of 0 (C-S3-03).
+
+**K10. NEVER conclude the parser ignores something from analyses older than the last
+reparse.** Re-check stored analyses against the current grammar first (C-S2-05,
+D-S5-03).

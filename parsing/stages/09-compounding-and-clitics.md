@@ -136,6 +136,20 @@ device choice for boundary epenthesis.
   half of L-M5-07, leaving the human only the semantic judgement.
 - Attachment declaration as a wrapper call (the corpus had to drop to raw LCM, M2 §6).
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **ADDS: closed-class decomposition through templates** (D-S2-04).
+  - Demonstratives became h- + concord + deictic suffix, with their own template; 22
+    whole-word entries were retired.
+  - The connective "of" became a concord prefix + an `-a` stem, again with its own
+    template.
+  - Compound entries were deleted only after their parts existed.
+- **CONFIRMS P10's transparency limit** (D-S2-04). Suppletive pronouns were kept whole:
+  "No parsing benefit."
+- No compound rules and no clitic entries appear in these logs.
+
 ## Provenance
 
 - M2 ops 2-4, 12 (2026-09-10 19:45-19:52; 09-11 14:34); **D-M2-06**; L-M2-09; M2 §6.
@@ -144,8 +158,8 @@ device choice for boundary epenthesis.
   L-M5-01, L-M5-05, L-M5-06, **L-M5-07**, L-M5-08.
 - M6 ops 27-30 (2026-09-14 16:47-17:25); **L-M6-07, L-M6-08**, L-M6-09; C-M6-04;
   M6 §5 stage 6.
-- **Merge seam:** Matthew's clitic conventions, and whether his projects use compound
-  rules at all.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. No compound rules or clitics in the Swahili logs seen so far.
+  *(Original seam: Matthew's clitic conventions, and whether his projects use compound rules at all.)*
 
 ## Open Questions
 

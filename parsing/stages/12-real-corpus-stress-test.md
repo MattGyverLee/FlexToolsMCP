@@ -137,6 +137,23 @@ typo / model error.
 - Keeping multiple stress corpora simultaneously with per-corpus parse reporting, so
   retiring one is not necessary (D-M6-01).
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **CONFIRMS a frequency-ordered work queue** (D-S3-02, D-S2-06): "List top wordforms
+  with 0 analyses, sorted by occurrence count desc". It ran as an eight-round loop over
+  Genesis.
+- **ADDS a failure mode: a queue without an entry standard produces listing, not
+  analysis** (C-S3-01). Possessives, inflected verbs and prefixed nouns went in as stems
+  (`zake`, `msifuni`, `mnyama`). The August parse-ready standard (D-S3-03) cleaned this
+  up afterwards. A heuristic affix stripper with hard-coded affix lists was rewritten
+  about eight times. Read the affixes from the slots instead (T-23).
+- **ADDS: a path with no text at all** (D-S3-06). *"only phase 0 from lexical resources,
+  no digging into texts and wordforms"*: population driven by outside lexical sources
+  (Stage 06's licence policy, D-S3-05) rather than by corpus failures.
+- **EXTENDS step 1 (licensing)** to lexical sources as well as texts (D-S3-05).
+
 ## Provenance
 
 - M5 ops 62, 68, 72, 76-78 (2026-09-14 12:37 .. 14:21); **D-M5-11, D-M5-12, D-M5-13**;
@@ -146,8 +163,8 @@ typo / model error.
 - M8 ops 1-6 (2026-09-15 14:02-14:09); **D-M8-01, D-M8-04**; L-M8-02, L-M8-03;
   D-M8-02.
 - M7 L-M7-03 (proper-noun-specific rule scoping arising from the biblical text).
-- **Merge seam:** Matthew's corpus sources and licensing practice; whether he
-  frequency-orders the work queue.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Matthew does frequency-order the queue.
+  *(Original seam: Matthew's corpus sources and licensing practice; whether he frequency-orders the work queue.)*
 
 ## Open Questions
 

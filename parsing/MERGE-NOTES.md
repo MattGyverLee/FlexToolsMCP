@@ -24,6 +24,39 @@ Two things live here:
 Merging Matthew's process is therefore not "adding more evidence for the same claims" --
 it is the **first independent test** of whether any of this generalizes.
 
+### Merge status (2026-10-09): partial
+
+Matthew's Swahili work (project Claude-Swahili) from **one machine's** FlexToolsMCP
+logs is merged as shards **S1-S5** (86 ids, 2026-05-21 .. 09-20). **More of his
+Swahili logs are on another machine and are not yet ingested.** Where the evidence
+landed:
+
+- [evidence/directive-index.md](evidence/directive-index.md) -- the S1-S5 sections, one
+  row per id.
+- Each stage file -- a **"Second-Operator Evidence (Swahili)"** section placed before
+  Provenance. It is kept separate from Ron's text so it can be revised.
+- [reference/flex-modeling-decisions.md](reference/flex-modeling-decisions.md) -- the
+  "Matthew's choice" table (section 1b) and new rows 25-31.
+- [reference/swahili-morphophonology.md](reference/swahili-morphophonology.md) -- new.
+- [README 4.9-4.15](README.md#4-conflicts-and-divergences) -- seven new or reopened
+  conflicts.
+- [00-overview section 5](00-overview.md) -- P1-P10 tested against Matthew's practice,
+  plus two candidate principles.
+- [Guardrails section K](conventions/ai-collaboration-guardrails.md),
+  [data conventions section 13](conventions/flex-data-conventions.md), and
+  [open-questions](open-questions.md) Q-37 to Q-42.
+
+**When the other machine's logs arrive:**
+
+1. Extract them as S6 onward.
+2. Re-check every "Second-Operator Evidence" section, the Matthew's-choice table and
+   README 4.9-4.15.
+3. Update the counts in `reference/swahili-morphophonology.md`.
+4. Re-derive section 4.
+
+Several findings are labelled *inferred* only because these logs lack report output
+(T-43). Those are the first to re-check.
+
 ---
 
 ## 2. Merge seams, by file
@@ -178,6 +211,62 @@ its absence caused.
 | T-42 | **Overflow-safe output**: spill large report payloads to a file automatically | M8 §6 (320 messages truncated to 100) |
 | T-43 | **Persist report output in the operation log**, not only source code and message counts | This is why Q-08, Q-13, Q-17, Q-20 are open at all. The log format is the reason several conclusions in this corpus are unrecoverable |
 
+### Added by the Swahili partial merge (S1-S5)
+
+**Confirmed by S1-S5:**
+
+- **T-43** (report output not persisted): confirmed in every Swahili shard. It is the
+  reason most Swahili results are inferred.
+- **T-08** (atomicity): C-S1-01, C-S4-02, C-S5-03.
+- **T-09** (guarded bulk delete): C-S1-02, C-S5-01.
+- **T-01** (in-band parse): the GUI parser was run at the keyboard.
+- **T-22** (over-generation probing): L-S4-01 is a mechanizable case.
+- Also confirmed: T-10, T-16, T-17, T-19, T-20, T-23, T-24, T-25, T-27, T-30, T-37.
+
+Some P0 items, notably the in-band parsing tools, have shipped in FlexToolsMCP since
+this list was written. Reconcile against the current tool list before building.
+
+#### P0 -- the analysis layer ([Stage 11](stages/11-parse-and-repair-loop.md))
+
+| # | Requirement | Why |
+|---|---|---|
+| T-44 | **Approve / reject analysis with agent and reason**, recorded and queryable | Approve/reject wrappers failed silently. Raw `ICmAgent.SetEvaluation` was needed, and a heuristic was recorded as Human (C-S2-01, D-S4-02) |
+| T-45 | **`analyses_violating_grammar()`** -- stored analyses whose slot sequence the current templates forbid | D-S5-03; stale analyses also caused a misdiagnosis (C-S2-05) |
+| T-46 | **`slot_usage_report()`** -- per-slot usage across all analyses (the slot twin of T-19) | D-S4-04's "ZERO analyses project-wide" test |
+| T-47 | **Interlinear helpers**: pick an analysis by morph signature, link senses, set the word gloss, approve, point a token at an analysis, hand-build an analysis; mixed-WS paragraph creation and a per-run WS read | D-S5-06, D-S5-08, C-S5-03 |
+
+#### P1 -- lints ([Stages 05, 07, 13](stages/05-categories-and-templates.md))
+
+| # | Requirement | Why |
+|---|---|---|
+| T-48 | **Feature-disjointness lint**: an affix whose feature names never overlap any stem's; an affix value with zero stem customers | L-S4-01 (null prefixes over-generating; cl.16) |
+| T-49 | **Slotless-POS lint**: bound stems whose POS has no affix slots | L-S4-04 |
+| T-50 | **Co-occurring-slot lint**: one MSA in two slots of the same template | L-S5-01 (the two-subject parse) |
+| T-51 | **Decomposition audit**: lexeme still carries a class prefix; prefix/feature disagreement; compound substrings; TAM or extension baked into a verb | D-S2-05 |
+| T-52 | **Parse-ready profile per POS** -- a static readiness check against a declared standard, with an orphan bucket. Extends T-17 | D-S3-03 |
+
+#### P1 -- safer structural writes ([Stage 13](stages/13-cleanup-and-consolidation.md))
+
+| # | Requirement | Why |
+|---|---|---|
+| T-53 | **Owned-subtree reference check + dangling-analysis sweep**. Extends T-09 | C-S5-01 (`bali` / *alikubali*) |
+| T-54 | **`merge_entries(victim, survivor)`** that repoints references and approvals. Different from T-31 | C-S4-03 (merge-by-delete lost approvals) |
+| T-55 | **Soft-delete lifecycle**: disable, list with referrer counts, protected-content guard, then delete | D-S4-08 |
+| T-56 | **Tiered manifest executor**: GUID-keyed, ordered tiers, live reference re-check, tolerant of already-absent targets. Extends T-35 | D-S5-05, C-S5-02 |
+
+#### P2 -- construction helpers
+
+| # | Requirement | Why |
+|---|---|---|
+| T-57 | **`clone_slot` / `clone_slot_series(src, dst_pos)` including feature structures**, plus a report of slot optionality shared across templates. Extends T-29 | D-S4-06, L-S5-02 |
+| T-58 | **Feature-structure deep-copy and migrate/repoint** (flat to complex value; custom to catalog) | D-S3-01, D-S4-05, C-S3-02 |
+| T-59 | **Catalog import of nested EticGlossList items** (flexlibs#192) and a catalog-provenance audit | D-S3-01 |
+| T-60 | **Feature-pruning search**: LOCKED/FREE partition plus a uniqueness-preserving removal search. Extends T-27 | D-S3-09 |
+| T-61 | **Wrappers** for slots, templates, affix MSAs, null affixes and closed inflection features with values, and **custom-field creation that persists** | C-S1-01, L-S1-01, C-S4-02 |
+| T-62 | **GUID lookup helpers and stable-id guidance** | C-S1-05, D-S4-07 |
+| T-63 | **Guard against accessors that silently return None** | C-S3-03 (flexicon#232) |
+| T-64 | **Pre-flight false positives** -- they push code into `getattr` obfuscation that defeats the validator | S1, S2 |
+
 ---
 
 ## 5. Suggested merge order
@@ -197,5 +286,19 @@ its absence caused.
 7. Close every open question marked *Audience: Matthew*.
 8. Re-derive the tooling backlog in section 4 -- his process will add requirements and
    may demote some of these.
+
+**Progress after the S1-S5 partial merge:**
+
+| Step | Status |
+|---|---|
+| 1. Directive index | Done for S1-S5 |
+| 2. Stages vs his workflow | Done as per-stage evidence sections. No renumbering was needed: his work fits the 13 stages, with 10/12 merged and Stage 11 extended |
+| 3. Matthew's-choice column | Done as section 1b plus rows 25-31 |
+| 4. Re-open conflicts | Done: README 4.9-4.15 |
+| 5. Split reference/ | Done: `swahili-morphophonology.md` added; language-neutral items promoted to rows 25-31 |
+| 6. Guardrails by rule | Done: confirmation table plus section K |
+| 7. Open questions | Partly: Q-12 answered for Swahili; Q-06 not tested; Q-16/21/23/27 annotated; Q-37-Q-42 added |
+| 8. Tooling backlog | T-44 to T-64 added; existing items annotated |
+| **Remaining** | Ingest the other machine's logs (S6 onward); re-check everything marked *inferred* |
 </content>
 </invoke>

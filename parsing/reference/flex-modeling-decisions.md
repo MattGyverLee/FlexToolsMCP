@@ -41,6 +41,32 @@ root of both of the corpus's largest rework cycles.
 | 22 | A form homographic with an unrelated existing entry | -- | A **separate homograph entry**; log the collision | reusing the unrelated entry | L-M6-05, D-M5-03 |
 | 23 | A category whose members never inflect | -- | The POS owns **zero** templates and slots | an empty template | L-M2-10 |
 | 24 | A bare stem that cannot surface as a word | morphotactic | Mark the relevant slot **non-optional** | optional (it will over-generate bare stems) | **D-M1-02** |
+| 25 | **Noun class / gender that affixes and concord must agree with** (Bantu noun classes) | grammatical, agreement | **Closed inflection features** on the stem's MSA: the singular class plus the paired plural class, and `NA` in every inapplicable feature. Prefixes carry matching values in an obligatory ClassPrefix slot. Catalog-sourced features, nested under one complex feature (`noun agreement`) | an inflection class (it carries no agreement value for concord to match); leaving features unspecified (unification then cannot block anything) | **D-S1-06, D-S3-01, D-S4-05** -- *Swahili, provisional* |
+| 26 | A **zero morph** filling an obligatory slot (null class prefix) | morphological | An affix entry with form `∅`, `IsAbstract=False`, carrying feature values **on the same features the stems carry** | an empty form (rejected); a placeholder grapheme; features disjoint from the stems' (it then matches everything) | **D-S2-01, L-S1-01, L-S4-01, L-S2-02** -- *Swahili* |
+| 27 | **Full reduplication** | morphological | Affix with form `[...]`, `IsAbstract=True`, in its own slot | listing reduplicated words | D-S2-02 -- *Swahili, never parse-verified* |
+| 28 | A **neutralized segment** whose surface value depends on context (a placeless nasal) | phonological | An **archiphoneme**: a phoneme marked by a custom `[+archi]` feature, `[-archi]` surface natural classes, and an alpha-feature rule that fills in the value | storing every assimilated allomorph | D-S1-03 -- *Swahili* |
+| 29 | A slot is **obligatory in one construction and absent or optional in another** (TAM required with an object marker; no TAM in the subjunctive) | morphotactic | **Separate templates per construction.** Where only the optionality differs, **clone the slot** (TAM2) -- optionality lives on the shared slot object | making the shared slot optional (over-generates everywhere) | **L-S5-02**, contrast C-S2-02 -- *Swahili* |
+| 30 | One affix appears in **more than one slot** | morphotactic | Reuse the MSA across slots **only if those slots never co-occur in any template** | putting it in co-occurring slots (one form fills both: the two-subject parse) | **L-S5-01, D-S5-01** -- *Swahili* |
+| 31 | A verb class predictable from an **existing lexical field** (citation `ku`+stem vs `ku`+stem+V marks final-vowel behaviour) | lexical | Inflection classes (row 6), **assigned by a rule over the lexicon's own field**, anomalies to a human. Roots stored without the fused final vowel. Root+FV entries are duplicates; root+extension entries are separate (derived) entries | growing the class inventory one corpus failure at a time; listing root+FV stems | **D-S5-04, L-S4-02** -- *Swahili* |
+
+### 1b. Matthew's choice (Swahili, provisional)
+
+Section 7's merge instruction asked for a "Matthew's choice" column. To keep the table
+above readable it is given here, keyed by row number. Rows 25-31 above are new and
+come from Matthew's project only. **Both rows are kept wherever the two practices
+differ.** Source shards S1-S5; more Swahili logs are not yet ingested.
+
+| Row | Matthew's choice | Agrees? | Evidence |
+|---|---|---|---|
+| 2 | After merging allomorphs, the **lexeme form held the most-restricted form** with an environment, and no elsewhere form remained | **No** -- conflicts with F1; never parse-verified. See [README 4.11](../README.md), Q-37 | L-S1-02 |
+| 3-4 | Feature-based classes; rebuilt segment-based Vowels/Consonants as feature-based through a referrer repoint | Yes | L-S1-03, D-S2-03 |
+| 6-7 | Not used for noun class (row 25 instead). Used for verb final-vowel classes, assigned from the citation form (row 31) | Partly -- different language type | D-S5-04 |
+| 13 | Started unanchored (and in one case context-free), then anchored every rule on "+" | Yes (arrived at independently) | C-S1-07, D-S2-03 |
+| 16 | Same mistake as Ron's M6: verb extensions (causative, applicative, passive...) in inflectional slots; later plan R4 puts derivation in with derivational MSAs | Yes, by repeating the error | C-S1-06, C-S2-03, L-S3-01 |
+| 20 | Decomposed demonstratives and the connective through templates; kept suppletive pronouns whole: "No parsing benefit." | Yes | D-S2-04 |
+| 21 | Case variants: **upper-case graphemes** in the phoneme inventory, not capitalised allomorphs or entries | Adds a case Ron did not meet | D-S5-02 |
+| 22 | Homographs split **by function** (`ku-` infinitive vs negative past, in different slots) | Yes, extended | L-S5-03 |
+| 24 | First relaxed slots so forms would parse; later replaced by per-construction templates (row 29) | Late practice agrees | C-S2-02, L-S5-02 |
 
 ---
 
@@ -198,5 +224,18 @@ When Matthew's process is merged, add a column to the table in section 1: **"Mat
 choice"**, with its own evidence. Where the two differ, keep both rows and record the
 reason rather than picking a winner -- a difference here is likely to be a real
 difference in language type or in project goal, not an error.
+
+**Status (partial merge, shards S1-S5):** done as section 1b plus rows 25-31. Re-check
+both when the remaining Swahili logs are ingested. The largest open item is row 2
+versus L-S1-02 (Q-37).
+
+### Cross-cutting rules added from the Swahili corpus
+
+10. **Key every target by GUID** (or name + catalog id), never by hvo -- hvos shifted
+    within one session (C-S1-05, C-S3-05, D-S4-07).
+11. **Give a zero morph or an agreement affix the same features the stems carry.**
+    Features with no overlap cannot clash, so nothing blocks them (L-S4-01).
+12. **Clone, do not mutate, a shared slot** when one construction needs different
+    optionality (L-S5-02).
 </content>
 </invoke>

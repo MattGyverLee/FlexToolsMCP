@@ -195,6 +195,57 @@ judgement.
 10. **Failure-to-stage routing hints**: classify a failure by the kind of object that
     blocked it, so step 6 above can be suggested rather than reasoned out each time.
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+**Parser used:** the FLEx GUI parser, run by Matthew at the keyboard. Results reached
+the MCP only as stored analyses ("analysis state is static until FLEx reparse",
+D-S2-06). The gaps of 14-60 minutes between operations match reparse breaks
+(inferred).
+
+- **ADDS a layer the spec lacks: analysis approval and word glosses** (D-S4-02,
+  D-S5-06; [README 4.14](../README.md)).
+  - In bucket B/D, **reject** each wrong analysis by GUID with a linguistic reason
+    ("v prefix on num stem (num has no slots)"). Then trace it to the entry that
+    licensed it and fix that entry (D-S4-03: six malformed affix entries).
+  - Repair glosses in three stages:
+    1. Pick the analysis whose morph signature matches, link each morph's sense, set the
+       word gloss, approve it, and point the text token at it.
+    2. Hand-build analyses only for forms with no correct parse.
+    3. Delete competing analyses that no other text references.
+  - Exit check: **no wordform left with zero live analyses** after rejections.
+- **ADDS: an approval policy** (C-S2-01). Never record a heuristic judgement
+  ("fewest morphemes wins") as a *Human* approval. Never disapprove genuine
+  ambiguity -- H5 applies to approvals too.
+- **ADDS: a slot-usage census as a decisive test** (D-S4-04). Count how often each slot
+  is used across every analysis in the project. "ClassPrefix appears in ZERO analyses
+  project-wide" localised a whole class of failures in one operation. This is the
+  slot-level twin of M1 op 41's allomorph count.
+- **ADDS a mechanical bucket-D check** (L-S4-01). Compare the feature names on zero (and
+  other) affixes with those on the stems.
+  - An affix whose features share no feature name with any stem never clashes, so it
+    attaches everywhere.
+  - An affix value that no stem carries (class 16) has no legitimate use.
+  - This is a concrete, automatable case of T-22.
+- **ADDS: re-check stored analyses after any template change** (D-S5-03). Group the
+  stored analyses by slot sequence and list the shapes the current grammar forbids
+  (Obj without TAM). Old parser output goes stale. Also: never conclude "the parser
+  ignores X" from analyses that predate the last reparse (C-S2-05).
+- **ADDS: a one-variable experiment for the human to reparse** (D-S4-09). Change only
+  `*sungura` (bound to free) and leave `*fisi` untouched as a control. It is cheaper
+  and more decisive than a fix-everything pass.
+- **ADDS a duplicate source to step 4** (L-S4-03): duplicate lexical entries or senses
+  with identical grammatical info (three `mu` object markers; `ambia`/`ambi`). Group
+  multi-analyses by entry+sense+grammatical info, not by gloss string.
+- **ADDS a template check for bucket D** (D-S5-01). A two-subject parse means the
+  template is not blocking something it should -- look for an affix sitting in two
+  slots that co-occur ([row 30](../reference/flex-modeling-decisions.md)).
+- **Failure modes:**
+  - Comparing post-reparse counts with a hardcoded baseline ("was 116") instead of a
+    recorded run (C-S4-04).
+  - Hand-built analyses with no reparse logged afterwards (C-S5-04).
+
 ## Provenance
 
 - M1 ops 7, 39-45 (2026-09-10 18:48; 09-11 12:36-12:47) -- simulated parse, failure
@@ -211,9 +262,8 @@ judgement.
 - M7 §9 (converged practice: verification-after-mutation is standard).
 - M8 ops 7-25; **D-M8-05** (over-generation found by reasoning, not by a failure
   report); M8 §9.
-- **Merge seam:** Matthew's parse-triage practice, and whether he uses the FLEx GUI
-  parser, HermitCrab CLI, or the new in-MCP tooling. His bucket definitions and
-  acceptance thresholds should be captured alongside these.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Acceptance threshold still unstated (Q-23); Phase 0 used a static parse-readiness proxy instead.
+  *(Original seam: Matthew's parse-triage practice, and whether he uses the FLEx GUI parser, HermitCrab CLI, or the new in-MCP tooling. His bucket definitions and acceptance thresholds should be captured alongside these.)*
 
 ## Open Questions
 

@@ -86,6 +86,9 @@ not a measured effect. *Audience: Ron.* [Stage 03](stages/03-phonological-featur
 
 **Q-06. Can a project skip phonological features entirely** and use segment-list
 natural classes only? *Audience: Matthew.* [Stage 03](stages/03-phonological-features.md).
+*Partial answer (S1, S3):* Matthew used features throughout -- catalog import, a full
+matrix, feature-based classes, alpha rules. So the second project did not test
+skipping them. Still open.
 
 **Q-09. When should a shared parent category (e.g. "Nominal") be introduced** versus
 duplicating slots per child category? The corpus's Nominal restructuring was done by
@@ -96,6 +99,10 @@ Ron in the GUI with no recorded rationale (D-M5-02).
 (e.g. an infinitive vs a stem)? Raised in the German project and never resolved
 (L-G1-03). *Audience: Matthew, Native speaker.*
 [Stage 06](stages/06-stem-and-affix-population.md).
+*Answered for Swahili (D-S3-03, D-S5-04):* yes. Nouns keep the full singular word as
+the citation form over a bound-stem lexeme form. Verbs keep `ku`+stem(+V), and the
+difference encodes the inflection class. See
+[flex-data-conventions section 13](conventions/flex-data-conventions.md).
 
 **Q-16. No rule-ordering / stratum policy is stated anywhere in the corpus.**
 Compound-rule strata were checked once (M6 op 29); phonological rule ordering never
@@ -186,6 +193,54 @@ string** was never resolved; the failing code path was abandoned (C-M3-04, M3 §
 **Q-36. The exact content of the feature-assignment source files** was never captured
 (M1 §7), so the feature matrix is reproducible only from the live project.
 *Audience: Ron.*
+
+---
+
+## Second operator (Swahili) -- partial merge
+
+**Status of the questions addressed to Matthew** (shards S1-S5; the rest of his logs
+are not yet ingested):
+
+| Q | Status after the partial merge |
+|---|---|
+| Q-06 | Not tested -- features were used throughout (see above) |
+| Q-12 | Answered for Swahili (see above) |
+| Q-16 | Still open -- no rule-ordering policy appears in the Swahili logs either |
+| Q-21 | One data point: the one noun-class paradigm text used one unambiguous pair per class (D-S5-08) |
+| Q-23 | Still open. Matthew used a *static* threshold instead: 0 entries in the "orphaned" bucket, and a parse-ready count per phase (D-S3-03) |
+| Q-27 | Cleanup was opportunistic in timing too, but each run was a planned, tiered batch (D-S5-05) |
+
+**New questions:**
+
+**Q-37. Does a lexeme form holding the *most-restricted* allomorph, with no elsewhere
+form, actually parse?** Matthew's merged prefix entries did this (L-S1-02), against F1.
+No parse in the logs tests it. *Audience: Matthew, Tooling.*
+[Stage 07](stages/07-allomorphy-modeling.md), [README 4.11](README.md).
+
+**Q-38. Does a class-9 prefix with `BantuPl=NA` unify with a 9/10 stem carrying
+`BantuPl=10`?** If `NA` is a real value, the `NA` fill could block the very forms it
+was meant to license. Raised from the S1 code; never tested. *Audience: Matthew,
+Tooling.* [reference/swahili-morphophonology section 2](reference/swahili-morphophonology.md).
+
+**Q-39. What happened to the class-16 null prefix and the 11 held BantuMany rows?**
+L-S4-01 found no class-16 stem, and D-S4-10 held 11 rows with reasons. Neither
+outcome is in the logs. *Audience: Matthew (other machine's logs).*
+
+**Q-40. Are the Swahili verb extensions going to be decomposed?** Applicative,
+causative, passive, stative and reciprocal were first put in inflectional slots
+(C-S1-06), then listed inside stems (C-S2-03). Plan R4 points to derivational MSAs,
+but no log applies it to verbs. This is the largest open gap against P10.
+*Audience: Matthew.*
+
+**Q-41. When should an analysis be approved, and by which agent?** S2 auto-approved by
+heuristic as Human and reversed it. S4 rejected with reasons. No written policy exists
+for approving, versus leaving parser output unapproved. *Audience: Matthew, Ron.*
+[Stage 11](stages/11-parse-and-repair-loop.md).
+
+**Q-42. Are AI-drafted free translations and textbook paradigm forms acceptable test
+material?** D-S4-01 drafted English free translations by machine, and D-S5-08 took
+paradigm forms from general knowledge. Both conflict with H6, unless they are labelled
+as unverified. *Audience: Matthew, Native speaker.*
 
 ---
 

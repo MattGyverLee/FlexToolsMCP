@@ -36,12 +36,40 @@ Ron is an expert computational linguist with strong analytical intuition. He doe
   problem, how to debug a parse failure, how to verify a fix, and when to distrust
   a result.
 - **Every Malayalam claim in this spec is a hypothesis**, either asserted by Ron on
-  analytic grounds or proposed by the AI and accepted by Ron. None of it is
-  native-speaker verified.
+  analytic grounds or proposed by the AI and accepted by Ron. It may not be native-speaker verified.
 - The `reference/` files therefore document **"the analysis this project arrived at,
   and how it was arrived at"** -- carrying each item's `status`
   (`asserted-by-Ron` / `AI-proposed-accepted` / `unresolved`) -- and must **not** be
   read as authoritative Malayalam grammar.
+
+### Second operator: Matthew, Swahili (partial merge)
+
+A second, independent corpus has been partly merged: Matthew's work on the FLEx project
+**Claude-Swahili**, taken from the FlexToolsMCP runtime logs on one machine. The
+practitioner and the language are different, and so is the language type: Bantu noun
+class agreement and verb templates instead of Dravidian agglutination.
+
+| Shard | Dates | Content |
+|---|---|---|
+| S1 | 2026-05-21 | greenfield build: POS, feature catalog, phonemes incl. an archiphoneme, natural classes, rules, noun-class features, CAWL wordlist import, templates |
+| S2 | 2026-05-21 .. 05-22 | zero morphs, boundary anchoring, closed-class decomposition, real-text (Genesis) unanalyzed-wordform loop, analysis approval |
+| S3 | 2026-06-17 .. 08-13, 09-20 | catalog-sourced noun-class features, frequency queue, per-entry parse-ready standard, Phase 0 baseline, licence policy, feature-matrix pruning |
+| S4 | 2026-09-06 .. 09-07 | real interlinear text as test fixture, analysis rejection, over-generation diagnosis, concord cloning, disable-then-delete |
+| S5 | 2026-09-07 .. 09-11 | template blocking, final-vowel verb classes, staleness scan, tiered manifest cleanup, interlinear gloss repair, domain rulings |
+
+**Read this first:**
+
+- **Partial.** More of Matthew's Swahili work is in logs on another machine that have
+  not been ingested. A stage that looks thin in S1-S5 may simply be in those logs.
+- **Results are inferred from code.** The logs keep submitted code and requests but
+  not report output, so results are read from code, docstrings and the next operation's
+  framing.
+- **Where it lands.** Each stage file has a **"Second-Operator Evidence (Swahili)"**
+  section, kept separate from Ron's text so it can be revised when the rest arrives.
+  Language-specific content is in
+  [`reference/swahili-morphophonology.md`](reference/swahili-morphophonology.md).
+- **No native-speaker verification is recorded** in these logs for the Swahili claims.
+  Each carries its own status value.
 
 ### The German shard is a different animal
 
@@ -102,7 +130,7 @@ Then:
 | Provenance | **Complete** -- 179 ids indexed, see [`evidence/directive-index.md`](evidence/directive-index.md) |
 | Malayalam linguistic content | **Unverified by a native speaker.** Hypotheses only |
 | Parse-and-repair stage (11) | Written as it **should** work with in-MCP tooling; the corpus did this partly out-of-band. Tooling gaps listed in [`MERGE-NOTES.md`](MERGE-NOTES.md) |
-| Matthew's process | **Not yet merged.** Seams marked in [`MERGE-NOTES.md`](MERGE-NOTES.md) and in each stage's Provenance section |
+| Matthew's process | **Partially merged** (shards S1-S5, 86 ids, one machine's logs). Seams and remaining work in [`MERGE-NOTES.md`](MERGE-NOTES.md); per-stage "Second-Operator Evidence" sections; conflicts in section 4.9-4.15 |
 | Generality | Stage bodies are language-neutral; all language-specific material is confined to `reference/` |
 
 ---
@@ -243,6 +271,93 @@ shape were allowed into the grammar stages, Stage 11 would disappear and Stage 1
 become a verification step rather than a discovery step. It is not. G1 contributes only
 to Stages 01 and 06 and to the conventions files.
 
+### 4.9 Stage order: features first (S1) vs phonemes first (P1)
+
+- **Ron (P1, D-M1-01):** phonemes first; features deferred; categories and templates
+  before affix entries.
+- **Matthew (S1):** a different order on a greenfield project:
+  1. POS from the catalog;
+  2. the whole phonological-feature catalog;
+  3. phonemes, each created with its features;
+  4. natural classes;
+  5. rules -- before any stem existed;
+  6. lexicon;
+  7. a text;
+  8. templates, attached to the already-populated lexicon.
+- **Assessment.**
+  - P1's *dependency* order still holds: nothing referenced an object that did not
+    exist yet.
+  - The two differ on *when* features arrive. Importing the catalog first makes
+    features cheap, so deferring them buys little.
+  - The cost of Matthew's order showed up elsewhere. Rules written before the lexicon
+    sat unwired for seven hours and one output change was never tested (C-S1-08).
+    Templates attached after population led to slot assignment by gloss keyword
+    (C-S1-06).
+  - **Keep P1 for rules and templates; allow catalog-first features.**
+
+### 4.10 Grammatical conditioning: inflection classes (Malayalam) vs agreement features (Swahili)
+
+Not a conflict but a **language-type difference**, recorded so neither is read as the
+"right" default.
+
+- **Ron** carried lexical conditioning on inflection classes, stem names and variant
+  entries (rows 6-9).
+- **Matthew** carried noun class as agreement features (BantuSG/BantuPl/BantuMany with
+  `NA` fill), unified between stem, class prefix and concord (row 25). He used no
+  inflection classes, environments or stem names for it (D-S1-06).
+- Matthew did use inflection classes, for verb final-vowel behaviour (row 31).
+
+### 4.11 Lexeme form as the elsewhere case (F1) vs most-restricted form in the lexeme (S1)
+
+- **Ron (F1, L-M3-13):** FLEx orders the lexeme form last, so it must be the elsewhere
+  form.
+- **Matthew (L-S1-02, B#152 docstring):** after merging separate prefix entries, he
+  stored the most restricted form in the lexeme form, with an environment, and the
+  default form as an alternate, also with an environment. No elsewhere form remains.
+- No parse in the logs tests this.
+- **Follow F1** (an LCM ordering fact) until a parse shows Matthew's arrangement works.
+  **Open: Q-37.**
+
+### 4.12 Paradigm texts (Stage 10) vs real text from the start
+
+- **Ron:** built constructed paradigm texts as the targeted test suite.
+- **Matthew:** tested mostly against real text -- Genesis, and the narrative "Sungura
+  na Fisi" -- merging Stages 10 and 12, exactly as the merge seam predicted. He built
+  one paradigm text, for noun classes (D-S5-08), late.
+- **Both are kept.** Paradigm texts cover environments deliberately. Real text exposes
+  approval and gloss defects and closed-class gaps that paradigms never reach.
+
+### 4.13 Relax the slot vs separate templates
+
+- **S2 (C-S2-02):** TAM, FV, Subj and concord slots were made optional so that forms
+  would parse.
+- **S5 (L-S5-02):** obligatoriness moved into separate templates per construction, with
+  a cloned required slot (TAM2).
+- **Matthew's late practice agrees with Ron's row 24.** Follow the late form (row 29).
+
+### 4.14 What "correct" means: parses only (Ron) vs approved analyses and glosses (Matthew)
+
+- **Ron's acceptance test:** the parser produces the attested forms.
+- **Matthew's test also covers the analysis layer.** Stored analyses are approved or
+  rejected with reasons, word glosses are repaired, and text tokens are pointed at
+  their analyses (D-S4-02, D-S5-06).
+- **His first approval pass is a lesson in what not to do.** It auto-approved one
+  analysis per word as a *Human* by fewest morphemes, and was reversed (C-S2-01).
+- **This spec adds the approval layer to Stage 11, with a policy:**
+  - no heuristic decision is recorded as a human one;
+  - genuine ambiguity is never disapproved.
+
+### 4.15 Growing a class inventory (Ron) vs deriving it from an existing field (Matthew)
+
+- **Ron's verb classes grew 3 -> 2 -> 4 -> 5 as the corpus forced them** (section 4.7).
+- **Matthew read one binary dimension off the citation form** (`ku`+stem vs
+  `ku`+stem+V) and classified 824 verbs in one pass, with anomalies sent to a human
+  (D-S5-04).
+- **Assessment.**
+  - Where the lexicon already encodes the class, derive it.
+  - Where it does not, Ron's L-M3-11 lesson still applies: factor the dimensions before
+    growing the inventory.
+
 ---
 
 ## 5. Contents
@@ -264,6 +379,7 @@ to Stages 01 and 06 and to the conventions files.
   - [13 -- Cleanup and Consolidation](stages/13-cleanup-and-consolidation.md)
 - `reference/`
   - [malayalam-morphophonology.md](reference/malayalam-morphophonology.md)
+  - [swahili-morphophonology.md](reference/swahili-morphophonology.md) (second operator, provisional)
   - [natural-classes.md](reference/natural-classes.md)
   - [allomorphy-environments.md](reference/allomorphy-environments.md)
   - [flex-modeling-decisions.md](reference/flex-modeling-decisions.md)

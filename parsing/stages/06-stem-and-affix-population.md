@@ -159,6 +159,48 @@ setting, reconciliation, and count verification.
 - An "attaches to" helper for enclitics -- the corpus had to drop to raw LCM (M2 §6).
 - A required-fields lint: report every entry missing a WS form, gloss, sense, or POS.
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **ADDS: an explicit per-entry "parse-ready" standard** (D-S3-03).
+  - For nouns, four fields: bound-stem lexeme form, singular citation form, class
+    features, and a gloss.
+  - Measure the whole lexicon against it before and after every batch.
+  - It is a static check for "will this parse", useful when the parser cannot be run.
+- **ADDS: a write ladder with a fixed pilot batch** (D-S3-04): `validate_only`, then a
+  dry run, then a **5-entry batch**, then the full run, with the backup confirmed on
+  disk. Complete existing entries before adding new ones.
+- **ADDS: a licence policy for outside lexical sources** (D-S3-05).
+  - Use kaikki (CC BY-SA) for facts only, and "write our own glosses".
+  - wold (CC-BY) can be imported with attribution.
+  - Use non-redistributable sources to validate only.
+  - Rank the evidence for a noun's class: the prefix test first ("it is what the parser
+    enforces"), then outside sources, then concord.
+  - "Completeness beats exclusion": when the class cannot be decided, enter the word
+    anyway with a `class-negotiable` flag instead of dropping it.
+- **ADDS: lexicon from a comparative wordlist** (D-S1-07). The CAWL LIFT file was parsed
+  inside the module. The plural was kept as evidence for the stem analysis, and
+  gloss-to-class samples were printed for checking.
+- **REFINES P2** (L-S3-01). A derived word goes in *together with* its base and a
+  derivational affix (From=Verb, To=Noun). Derivation is scoped in, not deferred.
+- **CONFIRMS idempotency, with a sharper guard** (D-S3-07). Update a gloss only if the
+  expected old value still uniquely matches. Never key idempotency on form alone: a
+  form-only check silently skips real homographs (C-S2-06).
+- **Failure modes the second project adds:**
+  - **Schema changes through raw LCM** (C-S1-01). A custom field created that way did
+    not persist. The import crashed, the lexicon was lost and had to be rebuilt. Create
+    custom fields in the FLEx GUI.
+  - **Defaulting the unknown** (C-S1-04). "do NOT default to 9" became "Last resort
+    default: cl.9/10", which cost 17 manual overrides. Hold or flag instead.
+  - **Junk entries** (C-S2-04): placeholders (`ji_stem`), inflected forms (`nililia`),
+    fragments (`ku`). Add an illegal-character lint and an "is this a real morpheme"
+    check.
+  - **One morpheme class modelled two ways** (C-S2-03). Verb roots went in with and
+    without the final vowel, and extensions were listed as stems. Fix the convention
+    before bulk population.
+  - **Writes without `validate_only` left half-built entries** (C-S3-04).
+
 ## Provenance
 
 - M1 ops 5-6, 13 (2026-09-10 16:16-16:18, 19:54); D-M1-01; M1 §5-§6.
@@ -174,8 +216,8 @@ setting, reconciliation, and count verification.
 - M8 ops 5-6 (2026-09-15 14:08-14:09); D-M8-04; L-M8-02, L-M8-03; C-M8-04.
 - G1 §5 steps 1-3, D-G1-04, D-G1-05, L-G1-04, C-G1-03 -- imported as language-independent
   hygiene per G1 §9.
-- **Merge seam:** Matthew's staging format and field conventions; whether he imports
-  from LIFT/CSV rather than authoring a checked data module.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Staging format: data tables inside the module plus JSON plan/manifest files (S3, S5).
+  *(Original seam: Matthew's staging format and field conventions; whether he imports from LIFT/CSV rather than authoring a checked data module.)*
 
 ## Open Questions
 

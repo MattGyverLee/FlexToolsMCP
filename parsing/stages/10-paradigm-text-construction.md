@@ -115,6 +115,26 @@ criterion.
   attested / predicted / absent, and exclude non-attested cells from the text while
   keeping them visible in the table (L-M5-02).
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **CONFIRMS the predicted divergence: real text first** (D-S2-06, D-S4-02;
+  [README 4.12](../README.md)). Most of Matthew's testing used real texts (Genesis, the
+  narrative "Sungura na Fisi"), not constructed paradigms. Stages 10 and 12 merged.
+- **ADDS: free translations on the test text** (D-S4-01). Each segment gets a free
+  translation through the proper Free Translation function, which makes the analyses
+  reviewable by someone who does not read the language.
+- **When a paradigm text was built** (D-S5-08):
+  - The design was one unambiguous singular/plural pair per noun class, with an English
+    class label in an **English-tagged run in the same paragraph** so it is not parsed
+    as vernacular. Mixed-writing-system rows are a new technique.
+  - It broke two of this stage's rules: the forms came from general knowledge rather
+    than attestation (step 2), and the text was not generated from the source table
+    (step 5).
+  - Its post-write check crashed after the commit (C-S5-03). Verify with a separate
+    read-only operation.
+
 ## Provenance
 
 - M1 ops 6, 13, 15 (2026-09-10 16:18, 19:54, 20:42); D-M1-01; M1 §5 "Stems + paradigm
@@ -123,9 +143,8 @@ criterion.
 - M4 op 7 (2026-09-12 17:09) -- 100 paragraphs x 6 forms = 600 words; D-M4-02.
 - M5 ops 18-20, 28, 32, 47-52 (2026-09-14 05:40 .. 10:55); **L-M5-02**; M5 §5 stage 4.
 - M8 op 4 (2026-09-15 14:06) -- build-by-analogy from an existing paradigm/template.
-- **Merge seam:** Matthew may prefer real text from the start rather than constructed
-  paradigms; if so, Stages 10 and 12 merge for him and the coverage guarantee has to
-  come from somewhere else.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Q-21: Matthew's one paradigm text used one representative pair per class.
+  *(Original seam: Matthew may prefer real text from the start rather than constructed paradigms; if so, Stages 10 and 12 merge for him and the coverage guarantee has to come from somewhere else.)*
 
 ## Open Questions
 

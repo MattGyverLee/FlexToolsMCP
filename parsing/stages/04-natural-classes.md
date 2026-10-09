@@ -131,6 +131,22 @@ bundles, referrer counting, and duplicate-membership detection.
 - A writing-system lint on environment `StringRepresentation` (D-M3-05).
 - Duplicate-object detection across classes and environments (D-M7-05).
 
+## Second-Operator Evidence (Swahili)
+
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+
+- **ADDS: surface classes for rule outputs** (D-S1-03). When an archiphoneme exists,
+  define `[-archi]` classes so a rule can state its output.
+- **CONFIRMS feature-based classes, each justified by test words** (D-S2-03). The glide
+  context `[Vnh] = [-high,+syl]` was justified in its docstring by hii, hivyo, mwana and
+  kwenda.
+- **CONFIRMS P8, with a replace-and-repoint recipe** (L-S1-03). Segment-based
+  Vowels/Consonants were replaced by feature-based ones in five steps: list each old
+  class's referrers; build the replacement; repoint every rule context; delete the old
+  class; rename the new one.
+- **ADDS a failure mode** (L-S2-01): removing a class from a context's member list
+  without deleting the context leaves an orphan behind (a case for T-20).
+
 ## Provenance
 
 - M1 op 28 (2026-09-11 11:37) -- feature-based classes created, segment-based retired;
@@ -143,8 +159,8 @@ bundles, referrer counting, and duplicate-membership detection.
   C-M5-05, C-M5-06; L-M5-09.
 - M6 op 32 (2026-09-14 22:02) -- class membership dump during diagnosis; L-M6-01.
 - M7 ops 31-35 (2026-09-15 10:24-10:35); D-M7-05; L-M7-03.
-- **Merge seam:** Matthew's naming convention and threshold may differ; his classes
-  will need reconciling against these by *membership*, not by name.
+- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Membership reconciliation across the two projects does not apply (different languages).
+  *(Original seam: Matthew's naming convention and threshold may differ; his classes will need reconciling against these by *membership*, not by name.)*
 
 ## Open Questions
 

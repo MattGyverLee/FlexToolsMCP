@@ -224,3 +224,38 @@ conflict and both work, record both and note which project uses which -- do not
 silently pick one.
 </content>
 </invoke>
+
+**Partial merge status:** see section 13.
+
+---
+
+## 13. Conventions from the Swahili corpus (Matthew, provisional)
+
+Recorded alongside sections 1-11, not replacing them. Shards S1-S5.
+
+- **Stable identity.** Key every planned write and every verification by GUID, or by
+  name plus catalog id, never by hvo. Hvos shifted within a session (C-S1-05,
+  C-S3-05, D-S4-07). A GUID manifest can still go stale across sessions, so resolve
+  tolerantly and count "already absent" (C-S5-02).
+- **Fully specified agreement features.** Every noun stem and class affix carries all
+  of its agreement features, with `NA` filling the inapplicable ones, so unification
+  is exact (D-S1-06). After any feature refactor, run a pass to restore missing
+  fillers (C-S3-02).
+- **Catalog provenance for inflection features too.** Prefer catalog-sourced features
+  and values (EticGlossList), and record their `CatalogSourceId`. Migrate custom
+  look-alikes by repointing the specs, then delete them (D-S3-01).
+- **Soft delete.** `DoNotUseForParsing` is the reversible first step of any retirement
+  (D-S4-08).
+- **Schema in the GUI.** Create custom fields and writing systems in FLEx, not through
+  raw LCM (C-S1-01).
+- **Staging format.** Data tables inside the module for builds (S1). GUID-keyed JSON
+  plan and manifest files for cleanups and tagging (S5).
+- **Lexeme and citation forms (Swahili).** For nouns, the lexeme form is the bound stem
+  and the citation form is the full singular word. For verbs, the citation is `ku`+stem
+  or `ku`+stem+V, and that difference encodes the inflection class (D-S3-03, D-S5-04).
+  This answers Q-12 for this project: a POS can need a citation form distinct from the
+  lexeme form, and the difference can carry information.
+- **Case.** Upper-case graphemes live in the phoneme inventory. There are no capitalised
+  allomorphs or entries (D-S5-02).
+- **Outside sources.** Facts may be taken from licence-compatible sources. Glosses are
+  re-authored. Restricted sources are used to validate only (D-S3-05).

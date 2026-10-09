@@ -99,7 +99,11 @@ they interact with the phonological rules of Stage 08 at a different boundary.
 - Kept whole-word entries have a recorded reason for not being decomposed.
 - Whole-word entries suppressed from parsing rather than retired have a fresh
   before/after parse diff showing the suppression works; stored parser counts are not
-  evidence (C-S8-07).
+  evidence (C-S8-07). Suppress with `IsAbstract` on the lexeme form and every
+  allomorph (recipe `hide-entry-from-parser`): HermitCrab drops an entry only when all
+  its forms are abstract, and affix-process forms skip the check. Never use
+  `DoNotUseForParsing`: neither parser reads it, so D-S7-04 and D-S8-12 suppressed
+  nothing, and FlexToolsMCP refuses it at preflight since 2.13.0 (PR #259).
 - Compound rules read back with correct left/right category and headedness.
 - Compound rules actually fire on their intended examples -- tested, not assumed.
 - Regression: forms that parsed before the clitic/compound work still parse.
@@ -131,17 +135,23 @@ device choice for boundary epenthesis.
 - **`why_didnt_this_compound(form)`** -- given a compound that should parse, report
   which rule was closest and which restriction blocked it (member POS, stratum,
   headedness). M6 op 30 is exactly this question, asked by hand and left unanswered.
+  *Status 2026-10-09: still open (T-34) -- only the generic `flextools_try_word
+  level=explain` trace; compound-rule wrappers exist (`MorphRules.GetAllCompoundRules/CreateCompoundRule`).*
 - **A clitic-boundary consistency report**: per clitic, is its alternation carried by
   an allomorph, a process rule, or a global rule -- and flag any carried by more than
   one.
+  *Status 2026-10-09: unverified -- not tracked in the status ledgers.*
 - **A decomposability report**: for a closed class, which surface forms segment as
   base+clitic given the existing bases and clitics, and which do not -- the mechanical
   half of L-M5-07, leaving the human only the semantic judgement.
+  *Status 2026-10-09: unverified -- not tracked in the status ledgers.*
 - Attachment declaration as a wrapper call (the corpus had to drop to raw LCM, M2 §6).
+  *Status 2026-10-09: still open (T-39) -- no flexicon wrapper for
+  `IMoStemMsa.FromPartsOfSpeechRC`; no issue filed.*
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). The Claude Code transcripts behind S6-S11 supply the missing output, numbers and Matthew's own words where they exist (checked 2026-10-09). Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS: closed-class decomposition through templates** (D-S2-04).
   - Demonstratives became h- + concord + deictic suffix, with their own template; 22
@@ -159,25 +169,36 @@ device choice for boundary epenthesis.
   material outside the core template is closed-class decomposition through
   per-construction templates (below), not Ron's enclitic-outside-the-template device.
 - **CONFIRMS D-M5-10 / L-M5-07: retire a whole-word form only after its composition is
-  attested** (D-S7-04). Shadow whole-word possessives were suppressed only where the
-  compositional analysis already occurred in the corpus. Unattested ones were left
-  alone, and one was kept because "no y-+-angu analysis yet". The reasons were
-  recorded.
-- **ADDS: suppression instead of retirement, effect unverified** (D-S8-12, C-S8-07).
-  All 12 whole-word possessives were set `DoNotUseForParsing`, with the module itself
-  marking its effect "UNVERIFIED". Stored parser counts cannot show the effect of a flag
-  set after the last parse; a fresh before/after parse diff is needed. The flag is
-  overloaded and deprecated in current guidance (see
-  [Stage 13](13-cleanup-and-consolidation.md)).
+  attested** (D-S7-04). Shadow whole-word possessives and demonstratives (17 Determiner,
+  3 Particle) were picked only where an analysis with two or more morph bundles already
+  existed in the corpus. Unattested ones were left alone, and one was kept because "no
+  y-+-angu analysis yet". The reasons were recorded. The gate is sound; the lever was
+  not: they were flagged `DoNotUseForParsing`, which no parser reads, so none was
+  actually suppressed.
+- **ADDS: suppression instead of retirement -- and Matthew caught the dead flag**
+  (D-S8-12, C-S8-07, D-S10-14). The 12 whole-word possessives (8 already flagged, 4 added
+  on 09-20) were set `DoNotUseForParsing`. Matthew challenged it at once: "I'm not sure
+  exclude-from-parsing has an effect" / "in the UI, only "isAbstract" is surfaced." The
+  agent retracted its claim (`IsAbstract` was set on 0 of 2,201 entries) and offered a
+  revert, never answered. Stored parser counts could not show the effect either: *yake*'s
+  0 was staleness, not a suppression. On 09-25 Matthew ordered a FieldWorks source check:
+  HermitCrab and XAmple filter only on `IsAbstract` per form, so the flag does nothing.
+  *Status 2026-10-09: refused at preflight since FlexToolsMCP 2.13.0 (PR #259;
+  upstream LT-22810 under a weekly watch). Suppress with `IsAbstract` on the lexeme form
+  and every allomorph, and confirm with `flextools_parse_diff`.*
 - **ADDS: post-final and closed-class morphology through their own templates**
   (D-S6-03, L-S7-02, L-S9-02; tool output for S9).
   - The post-final relative suffix is an obligatory slot in a separate relative verb
-    template, not an enclitic. Its first version required TAM and an object marker,
-    so it could not parse three of its own four motivating forms (C-S6-03); a
-    duplicate object slot fixed that.
+    template, not an enclitic: Matthew picked "Post-final relative" from the AI's
+    options. The template he approved had `TAM` and an optional object; the AI built
+    `TAM2` and a required `Obj`, so it licensed none of its motivating forms (C-S6-03).
+    An optional `Obj2` slot and plain `TAM` fixed it on 09-13. Build exactly what the
+    approved preview shows (D-S6-14).
   - The `amba-` relativizer failed because its POS inherited a verb template with a
-    required subject slot. A dedicated subcategory with a one-slot template (relative
-    suffix only) unblocked 13 forms and 999 tokens (L-S9-02).
+    required subject slot. Matthew asked "what is needed to fix ambao and ambaye and
+    ambayo??", then "Apply the fix": a dedicated subcategory with a one-slot template
+    (relative suffix only) made all 11 *amba-* forms parse (the log-based count was
+    13 forms, 999 tokens), with *ambariki* still parsing as *a- m- bariki* as a control (L-S9-02).
   - Demonstratives were split into templates by anchor (prefix-anchored vs
     suffix-anchored) (S7 Swahili content).
   - Ron's step 1 test still applies: check the slot order first. The difference is
@@ -186,7 +207,17 @@ device choice for boundary epenthesis.
   *nami* 'and me' parses only as one stem; na + a pronominal enclitic is not modelled,
   and *nasi* was in the top-frequency queue on 09-30 (D-S11-02). It was later used as
   the comparator for new particles (D-S10-07), which spreads the whole-word pattern.
-  Open.
+  The na- + short-pronoun series (*nami, nawe, naye, nasi, nanyi, nao*) is listed, not
+  modelled: there is no `-mi` clitic entry (L-S8-08). Matthew asked whether *wewe* could
+  be `w-` + `ewe`; the paradigm says the independent pronouns are unsegmented (D-S9-08).
+  He approved modelling na-/ndi-/si- proclitics on 09-25 (D-S10-16), but only the
+  lexicon stage of that programme ran. Open.
+- **ADDS: build it in the grammar, not as whole words** (D-S10-15, C-S10-09). Matthew,
+  09-25: "you said "I recommend whole-word entries (yuko, yupo, yumo) for now; building
+  it properly would be a grammar-wide change." but I do want you to build it properly."
+  Minutes later the AI narrowed his explicit approval of derivational `-o`/`-i` back to
+  whole-stem entries on its own judgement. Report such a deviation and ask; do not
+  quietly shrink an approval.
 
 ## Provenance
 
@@ -196,8 +227,9 @@ device choice for boundary epenthesis.
   L-M5-01, L-M5-05, L-M5-06, **L-M5-07**, L-M5-08.
 - M6 ops 27-30 (2026-09-14 16:47-17:25); **L-M6-07, L-M6-08**, L-M6-09; C-M6-04;
   M6 §5 stage 6.
-- S6-S11: D-S6-03, C-S6-03; D-S7-04, L-S7-02; D-S8-12, C-S8-07; L-S9-02; D-S10-07;
-  D-S11-02.
+- S6-S11: D-S6-03, D-S6-14, C-S6-03; D-S7-04, L-S7-02; D-S8-12, C-S8-07, L-S8-08;
+  L-S9-02, D-S9-08; D-S10-07, D-S10-14..D-S10-16, C-S10-09; D-S11-02. Checked against
+  the Claude Code transcripts.
 - **Merge seam:** Merged from S1-S11 (both machines). No compound rules or clitic entries anywhere in Matthew's logs; post-final and closed-class material goes into per-construction templates instead. Open: the na + pronoun enclitic (*nami*, *nasi*).
   *(Original seam: Matthew's clitic conventions, and whether his projects use compound rules at all.)*
 

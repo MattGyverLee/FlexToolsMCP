@@ -105,6 +105,8 @@ for how the corpus's decisions were recorded.
 - **Look-alike code points** (apostrophe U+0027 vs modifier letter U+02BC) that render
   the same but never match a phoneme code (D-S10-06). Write scratch files as UTF-8: a
   default-codepage write crashed on U+02BC (L-S8-05).
+  *Status 2026-10-09: fixed in FlexToolsMCP 2.15.0 (#320) -- `run_module` scripts run in
+  Python UTF-8 mode; passing `encoding='utf-8'` is still good practice.*
 
 ## Automation Notes
 
@@ -117,15 +119,22 @@ plus direct LCM casts where wrappers misclassify class type.
 **Missing tooling (requirements):**
 - `build_phoneme_inventory(graphemes)` -- one call that deletes stock, creates targets,
   sets codes, and repopulates base classes, with the unhook ordering handled.
+  *Status 2026-10-09: open -- no tool or recipe.*
 - **`verify_inventory_covers(text_or_wordlist)`** -- decompose a corpus and report any
   character that is not a defined phoneme. The corpus did this by hand every time.
+  *Status 2026-10-09: open -- no tool or recipe (`morpheme-character-check` tests
+  disallowed characters, not phoneme coverage).*
 - Natural-class API that dispatches on segment-based vs feature-based instead of
   throwing (fixes C-M1-01 at the wrapper level).
+  *Status 2026-10-09: partial -- flexicon `NaturalClasses` has separate feature-based
+  create and constraint methods, but adding a phoneme to a feature-based class still
+  raises (by design; no dispatch).*
 - A script-aware lint for the dependent/independent vowel-form trap.
+  *Status 2026-10-09: open.*
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30); both machines' Swahili logs are now ingested. Logs before 09-23 keep no tool output, so their results are partly inferred; later logs keep truncated output. Sessions run by other clients (local models, a non-Claude agent, an unidentified weaker client) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30), which ran a pre-2.13.0 FlexToolsMCP main checkout. Those logs keep little or no tool output, so S6-S11 were re-checked (2026-10-09) against the Claude Code transcripts behind them, which hold the parse results, real counts and Matthew's verbatim words (mid-turn messages included) that the logs lost; tooling defects carry their current fix status. Sessions run by other clients (local models, a non-Claude agent, an unidentified non-Claude client on 09-30) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **CONTRADICTS P1 ordering: features before phonemes** (D-S1-02, D-S1-04;
   [README 4.9](../README.md#49-stage-order-features-first-s1-vs-phonemes-first-p1)).
@@ -150,11 +159,15 @@ plus direct LCM casts where wrappers misclassify class type.
   On 09-25 the corpus parsed at 66% overall, but words with gh parsed at 7.0%, th
   17.0%, dh 35.6%, sh 45.6% (ny 68.0%, ch 80.3%). One cause was found: the phoneme ng'
   was coded with U+0027 while the text uses U+02BC (`Ngʼombe`), so ng'ombe parsed only
-  under a restricted hypothesis. Recoding to U+02BC was validated but not written in
-  the log; the gh/th causes were not established. A cheap, automatic Stage 02 re-check
-  once texts exist.
-- **CONFIRMS D-S5-02** (V-S10-09). Phonemes carry case-variant codes (ch/Ch/CH,
-  ng'/Ng'/NG'), and Roho and roho give the same 4 analyses.
+  under a restricted hypothesis. Recoding to U+02BC was validated, and Matthew approved
+  it on 09-25 among eleven grammar changes (D-S10-16), but only the lexicon stage of
+  that programme ran, and no transcript shows the recode applied. The gh/th causes were
+  not established. A cheap, automatic Stage 02 re-check once texts exist.
+- **CONFIRMS D-S5-02, with a leftover** (V-S10-09, V-S10-07). Phonemes carry
+  case-variant codes (ch/Ch/CH, ng'/Ng'/NG'), and Roho and roho give the same 4
+  analyses. But a capitalised `Roho` allomorph from the earlier practice still existed
+  on 09-25 and doubled roho's analyses. Once case lives in the graphemes, delete the
+  case-variant allomorphs.
 
 ## Provenance
 

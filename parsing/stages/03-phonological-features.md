@@ -106,16 +106,23 @@ non-segmental marks sit.
 **Missing tooling (requirements):**
 - `assign_feature_matrix(table)` with the distinctiveness + minimality proof built in
   as a **refusal gate**, not a script the caller has to remember to write.
+  *Status 2026-10-09: open (T-27, T-60).*
 - `diff_feature_matrix(table)` -- the exact thing that diagnosed the GUI-deletion
   incident, promoted to a tool.
+  *Status 2026-10-09: open -- flexicon 4.12.0 can read feature specs back (flexicon#578),
+  but there is no diff tool.*
 - A **referrer report** for features and feature values: "what breaks if this is
   deleted", surfaced *before* the deletion, including from the GUI if possible.
+  *Status 2026-10-09: open -- no referrer API in flexicon (T-10).*
 - A distinguishability report: "these N phonemes are not separable by the current
   feature set" and "these features are never used by any class or rule".
+  *Status 2026-10-09: partial -- the `phoneme-feature-uniqueness` recipe finds duplicate
+  feature bundles and featureless phonemes (and `grammar_health` flags
+  `duplicate-feature-bundle`); there is no unused-feature report.*
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30); both machines' Swahili logs are now ingested. Logs before 09-23 keep no tool output, so their results are partly inferred; later logs keep truncated output. Sessions run by other clients (local models, a non-Claude agent, an unidentified weaker client) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30), which ran a pre-2.13.0 FlexToolsMCP main checkout. Those logs keep little or no tool output, so S6-S11 were re-checked (2026-10-09) against the Claude Code transcripts behind them, which hold the parse results, real counts and Matthew's verbatim words (mid-turn messages included) that the logs lost; tooling defects carry their current fix status. Sessions run by other clients (local models, a non-Claude agent, an unidentified non-Claude client on 09-30) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **Answers Q-06: Matthew uses features** -- feature-based natural classes, alpha-feature
   rules, and a full matrix (S1). Q-06 is not closed: a language may still manage
@@ -134,16 +141,34 @@ non-segmental marks sit.
   *after* Stages 04 and 08, so it belongs in cleanup, not here.
 - **ADDS: catalog provenance applies to inflection features too** (D-S3-01) -- see
   [Stage 05](05-categories-and-templates.md).
+  *Status 2026-10-09: nested EticGlossList features import since flexlibs#192
+  (2026-06-21, `InflectionFeatures.ImportCatalog`); a catalog-provenance audit is still
+  manual (only `POS.GetCatalogSourceId` exists).*
 - **S6-S11 add no phonological-feature work.** The feature evidence in those shards is
   about inflection features ([Stage 05](05-categories-and-templates.md): one sense per
   agreement value, exact-value unification, the dropped `NA` filler) and rule exception
   features (below).
 - **ADDS a third feature kind: lexical exception features** (L-S10-02, C-S10-05). A
   "no glide formation" exception feature, excluded on both RHSs of a rule and set on
-  three stems, blocked the rule for those stems only (miaka, mianzo then parsed).
-  Creating it took raw LCM after four failed attempts; no wrapper exists. Use it when
-  the conditioning is lexical or morphological, not phonological -- see
-  [Stage 08](08-phonological-rules.md).
+  three stems, blocked the rule for those stems only (miaka, mianzo then parsed). It was
+  only spot-checked on seven words, with no corpus reparse, although a 2,139-word
+  sandbox regression the night before had recommended disabling the rule instead
+  (C-S10-08; see [Stage 04](04-natural-classes.md)). The feature sits on stems because,
+  by a source reading of `HCLoader.cs`, HermitCrab treats an affix MSA's
+  `FromProdRestrict` as a *required* feature, so tagging the `mi-` prefix would not carry
+  the exception (L-S10-07, untested). At the time (09-25) creating it took raw LCM
+  after four failed attempts (C-S10-05).
+  Now: create the feature with `project.InflectionFeatures.ExceptionFeatureCreate`
+  (also `Find`/`GetAll`) and tag stem MSAs with `project.MSA.AddExceptionFeature(msa,
+  feat)` (or the `bulk-set-exception-features` recipe). Setting it as a required or
+  excluded rule feature on an RHS still needs raw LCM. Use it when the conditioning is
+  lexical or morphological, not phonological -- see [Stage 08](08-phonological-rules.md).
+  *Status 2026-10-09: `ExceptionFeatureCreate/Find/GetAll` fixed on flexicon main, not
+  yet released (after 4.12.0; flexicon#631). `MSA.AddExceptionFeature` on stem MSAs is in
+  4.12.0 (flexicon#574); on affix MSAs (`side="from"/"to"`) it works only on main
+  (flexicon#630) and silently does nothing in 4.12.0. Writing ReqRuleFeats/ExclRuleFeats
+  on a rule is still open (readers only, `PhonRules.GetRequiredRuleFeatures` /
+  `GetExcludedRuleFeatures`, 4.12.0).*
 
 ## Provenance
 

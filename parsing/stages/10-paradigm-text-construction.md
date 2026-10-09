@@ -112,18 +112,26 @@ criterion.
   environment in the grammar, does any wordform in the test texts exercise it? This is
   D-M2-06's criterion, mechanized, and it is the single most valuable missing tool for
   this stage. It is a *test coverage report for a grammar*.
+  *Status 2026-10-09: still open (T-18).*
 - `generate_paradigm_text(stems, cells)` -- build the text from the same table used to
   build the entries, guaranteeing no drift.
+  *Status 2026-10-09: unverified -- not tracked in the status ledgers; the nearest
+  piece is recipe `create-text-from-lines` (FlexToolsMCP #138).*
 - A **collision report** across all texts and categories (M1 op 13).
+  *Status 2026-10-09: unverified -- not tracked in the status ledgers.*
 - An "unattested cell" marker: let a paradigm table declare a cell as
   attested / predicted / absent, and exclude non-attested cells from the text while
   keeping them visible in the table (L-M5-02).
+  *Status 2026-10-09: unverified -- not tracked in the status ledgers.*
 - A **negative test text** convention: forms that must get zero analyses, run as an
   over-generation check alongside the positive text (D-S7-08; T-22).
+  *Status 2026-10-09: still open (T-22) -- `flextools_parse_text` over a "No Parse"
+  text reports any analyses, but there is no over-generation tool; `parse_diff`'s
+  `changed` bucket shows loosening on attested words only.*
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). The Claude Code transcripts behind S6-S11 supply the missing output, numbers and Matthew's own words where they exist (checked 2026-10-09). Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **CONFIRMS the predicted divergence: real text first** (D-S2-06, D-S4-02;
   [README 4.12](../README.md)). Most of Matthew's testing used real texts (Genesis, the
@@ -140,38 +148,61 @@ criterion.
     (step 5).
   - Its post-write check crashed after the commit (C-S5-03). Verify with a separate
     read-only operation.
+    *Status 2026-10-09: the `get_WritingSystem` crash class is fixed in flexicon
+    4.10.0 (flexicon#351). Still open: no wrapper creates a mixed-WS paragraph or
+    reads a per-run WS (`Paragraphs` reads run 0 only), so that step is raw LCM.*
 
 *S6-S11:*
 
 - **REVISES D-S5-08 ("one paradigm text, late")** (D-S7-07, V-S7-04;
   [README 4.12](../README.md)). On 09-13 paradigm texts were generated for every
   template of every inflecting POS: 8 verb templates (three stems) plus noun,
-  pro-form, adjective, quantifier, numeral, connective and demonstrative. Each header
-  says the forms were "generated mechanically from the template slots".
+  pro-form, adjective, quantifier, numeral, connective and demonstrative -- 16 texts,
+  about 1,100 paragraphs. Each header says the forms were "generated mechanically from
+  the template slots". (The generating session ran in another client; no transcript.)
 - **CONTRADICTS steps 2 and 5** (C-S7-05). The generator concatenated strings over
   the slot cross-product, so it produced non-words (assimilation, suppletion,
-  agreement) and leaked homograph digits. 70 paragraphs had to be corrected by hand.
-  CONFIRMS Ron's L-M5-02 by counterexample; generating through the grammar is the
-  T-22 direction.
-- **ADDS: a negative partner text** (D-S7-08). Forms that are *structurally* invalid
-  (number agreement, a relative marker that does not agree with the subject, object
-  coreferent with subject) went into separate texts under a "No Parse" genre, with the
-  reason in each header. That text is a ready over-generation test set: it should
-  parse to nothing.
-- **ADDS: the text is the source; analyses are derived** (D-S7-09, C-S7-08). When a
-  paradigm surface was wrong (morpheme order in the negative infinitive), Matthew
-  stopped eight attempts to reorder morph bundles: "no, nothing about bundles, these
-  are paragraphs". Fix the paragraph and let the parser regenerate the analyses.
+  agreement) and leaked homograph digits. Matthew asked for a proofread ("Correct any
+  grammatically incorrect forms"); the AI made 69 corrections (*maema* -> *mema*,
+  *nyrefu* -> *ndefu*, *vimbili* -> *viwili*, *majino* -> *meno*, *vikijana* ->
+  *vijana* ...). CONFIRMS Ron's L-M5-02 by counterexample; generating through the
+  grammar is the T-22 direction.
+- **ADDS: a negative partner text -- Matthew's design** (D-S7-08, C-S7-11). Matthew:
+  "move invalid forms to different text with a genre of "No Parse"", then the same for
+  verbs. Forms judged *structurally* invalid (number agreement, a relative marker that
+  does not agree with the subject, object coreferent with subject) went into separate
+  texts with the reason in each header: 537 verb forms in one text, 33 noun and 42
+  numeral forms (9 and 30 kept). The label means "ungrammatical, hand-judged", not
+  "fails to parse": the AI expected most moved forms to parse (wrongly), and the parser
+  was never run on them. That makes the set a ready over-generation test: anything
+  that parses there is over-generation. Name it for what it is (T-22).
+- **ADDS: the text is the source; analyses are derived** (D-S7-09, C-S7-08; log only,
+  no transcript). When a paradigm surface was wrong (morpheme order in the negative
+  infinitive), Matthew stopped eight attempts to reorder morph bundles: "no, nothing
+  about bundles, these are paragraphs". Fix the paragraph and let the parser regenerate
+  the analyses.
+- **ADDS: dry-run every text edit and re-read before writing** (C-S7-12). The evening
+  proofread first read stale paragraphs (`tosema` where another session had just
+  written `kutosema`); its dry run proposed *kukutosema* and caught the double prefix.
+  Two sessions were editing the same texts.
 - **ADDS: labelling partly meets the AI-data concern** (V-S7-07, C-S7-07; Q-42). The
-  generated headers label the forms, and rejected forms carry a stated reason. But all
-  proofreading was AI, and an AI-invented "must parse" probe set contained likely
-  non-words. No native-speaker or attested-corpus check appears.
-- **ADDS: a corpus regression baseline instead of a paradigm text** (D-S10-05,
-  V-S9-08; tool output). From 09-24 on, no paradigm text was used. Before a
-  grammar-wide change the baseline was the top frequent *parsed* words plus every word
-  containing the targeted segments (1,783 words). It ran for hours at this grammar's
-  parse speed, so size it to parse time. This extends README 4.12 ("both kept"): for
-  grammar-wide regression, a frequency-plus-segment corpus set did this stage's job.
+  generated headers label the forms, and rejected forms carry a stated reason. Matthew
+  directed the proofread and ruled on the irregular plurals, but the corrections were
+  AI judgement, and the evening session never ran the parser (its words: "I never
+  consulted FLEx's parser"). The AI-invented "must parse" probe passives (*kuvunjewa*,
+  *kuchaguwa* ...) parse only because the grammar has the `ew` allomorph. No
+  native-speaker or attested-corpus check appears.
+- **ADDS: a corpus regression baseline instead of a paradigm text** (D-S10-05, T-S9-08,
+  T-S10-07; tool output). From 09-24 on, no paradigm text was used. Before a
+  grammar-wide change the baseline was the top frequent words plus every word containing
+  the targeted segments. On 09-24 a 2,139-word set of this kind (top 2,000 plus glide
+  words) finished in the sandbox and decided a rule question (see
+  [Stage 08](08-phonological-rules.md)). On 09-25 the 1,783- and 1,610-word baselines
+  (about 3.2 s/word, 95 minutes each) both died at word 173 when the MCP server
+  restarted, and were never rerun; the agent had written its own baseline and diff
+  scripts instead of using `parse_diff`. Size the set to parse time and run it in
+  chunks. This extends README 4.12 ("both kept"): for grammar-wide regression, a
+  frequency-plus-segment corpus set did this stage's job.
 - **Gloss style affects reviewability** (D-S8-02). An 808-sense gloss cleanup adopted
   dotted lowercase grammatical glosses (`sbj.nc10`) labelled "Leipzig" though they are
   not Leipzig. Record the scheme as project-local if paradigm texts are reviewed by
@@ -185,9 +216,10 @@ criterion.
 - M4 op 7 (2026-09-12 17:09) -- 100 paragraphs x 6 forms = 600 words; D-M4-02.
 - M5 ops 18-20, 28, 32, 47-52 (2026-09-14 05:40 .. 10:55); **L-M5-02**; M5 §5 stage 4.
 - M8 op 4 (2026-09-15 14:06) -- build-by-analogy from an existing paradigm/template.
-- S6-S11: D-S7-07..D-S7-09, C-S7-05, C-S7-07, C-S7-08, V-S7-04, V-S7-07; D-S8-02;
-  V-S9-08; D-S10-05.
-- **Merge seam:** Merged from S1-S11 (both machines). Matthew built exhaustive generated paradigm texts once (09-13), with a "No Parse" negative partner, then relied on real text and corpus regression baselines. Q-21: the generated texts used a few stems per template; the S5 text one pair per class. Q-42 stays open: no attested or native-speaker check of the generated forms.
+- S6-S11: D-S7-07..D-S7-09, C-S7-05, C-S7-07, C-S7-08, C-S7-11, C-S7-12, V-S7-04,
+  V-S7-07; D-S8-02; T-S9-08, V-S9-08; D-S10-05, T-S10-07. Counts and attributions
+  checked against the Claude Code transcripts (09-13 evening, 09-24, 09-25).
+- **Merge seam:** Merged from S1-S11 (both machines). Matthew built exhaustive generated paradigm texts once (09-13), with a "No Parse" negative partner of his own design (never parsed), then relied on real text and corpus regression baselines. Q-21: the generated texts used a few stems per template; the S5 text one pair per class. Q-42 stays open: no attested or native-speaker check of the generated forms.
   *(Original seam: Matthew may prefer real text from the start rather than constructed paradigms; if so, Stages 10 and 12 merge for him and the coverage guarantee has to come from somewhere else.)*
 
 ## Open Questions

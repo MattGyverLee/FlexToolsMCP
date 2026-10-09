@@ -51,10 +51,13 @@ And the modeling order:
    affix MSA naming the POS and the slot(s) it fills -- or a **derivational** MSA with
    from-POS and to-POS if it changes category (C-M6-03).
 6. **Set the citation form explicitly on affix entries** or they display as "-???" in
-   the FLEx lexicon (M7 op 18, M7 §6).
+   the FLEx lexicon (M7 op 18, M7 §6). Use `project.LexEntry.SetCitationForm`;
+   `LexEntry.Create` does not fill it for affixes (T-38, still open).
 7. **Enclitics need attachment declared.** An enclitic attaching to nouns needs both a
    stem MSA with the host POS on its sense **and** an explicit "attaches to" collection
-   populated (M2 §6).
+   populated (M2 §6). *Status 2026-10-09: still open (T-39) -- no flexicon wrapper for
+   "attaches to" (`IMoStemMsa.FromPartsOfSpeechRC`); set it through raw LCM inside
+   `with project.UndoableOperation(...)`.*
 8. **Homographs are separate entries.** When a needed affix is homographic with an
    existing unrelated entry, create it as a homograph rather than reusing the entry
    (L-M6-05). Same for variant forms that collide with unrelated entries: log the
@@ -140,6 +143,10 @@ And the modeling order:
   an add call; in non-undoable write mode the partial mutations stayed in the cache and
   needed a bespoke repair pass (C-M6-02). Guard every add against `None`, and expect a
   repair pass to be needed.
+  *Status 2026-10-09: largely fixed -- since flexicon 4.4.0 and FlexToolsMCP 2.13.0 a
+  failing flexicon call rolls back its own operation, and a `None` argument raises
+  `FP_NullParameterError` before writing; wrap the whole script in
+  `with project.UndoableOperation(...)` to make it all-or-nothing.*
 - **"Skip" mistaken for "complete"** (D-M5-13).
 - **Publish-everywhere leakage** for new objects (C-G1-03).
 - **Unprotected writes** rejected by preflight -- recurring across the whole corpus
@@ -147,13 +154,20 @@ And the modeling order:
 - **Missing flexicon imports** for an operations class used deep in a helper
   (C-M6-01); hallucinated operations-class names (C-M1-03, C-M2-04, C-M3-01).
 - **Wrapper methods that assume a single allomorph subtype** and throw on the other
-  (C-M1-02, C-M2-01).
+  (C-M1-02, C-M2-01). *Status 2026-10-09: fixed -- `Allomorphs.GetForm/SetForm`
+  handle stem and affix allomorphs since flexicon 4.10.0 (#449); don't drop to raw LCM.*
 - **Wrong morph type.** A free word typed as a bound stem (`*yeye`) did not parse as a
   free word; retyping it to stem fixed it (D-S9-03). Audit free vs bound type.
-- **Entries invented from string heuristics.** "Monomorphemic if it fails to parse",
-  or syllable splits created as bare entries (C-S11-04, C-S11-05). A new stem needs a
-  segmentation a linguist would accept, a sense, a gloss and a POS -- and the word must
-  first fail a *live* parse (L-S11-01).
+- **Entries invented from string heuristics or invented tool output.** "Monomorphemic
+  if it fails to parse", or syllable splits created as bare entries (C-S11-04,
+  C-S11-05, C-S11-08). On 09-30 a non-Claude client reported parser splits such as
+  `[el-fu]` and `[is-hara]` that no tool had returned (the surviving traces show
+  `^0+elfu`, `^0+ishara`), then created the "missing morphemes": 9 bare stem entries
+  with one empty sense each (malaka, el, kumu, gizo, is, hara, en, ghadha, bu) were
+  committed and are still in the project. The words themselves already parsed (L-S11-01).
+  A new stem needs a segmentation a linguist would accept, a sense, a gloss and a POS --
+  and the word must first fail a *live* parse. The `ensure-morpheme-entries` recipe
+  (PR #337) was modelled on that run and needs review before use (T-S11-11).
 
 ## Automation Notes
 
@@ -168,17 +182,30 @@ setting, reconciliation, and count verification.
   cannot leave half-built entries. The corpus ran in a mode where "the atomicity unit
   for this whole session is the SESSION, not the operation" (M5 §6, M6 §6, M8 §6) --
   this is the single most dangerous property of the current tooling for this stage.
+  *Status 2026-10-09: shipped (T-08) -- flexicon 4.4.0 runs each operation in its own
+  rollback unit, the MCP runner uses it since FlexToolsMCP 2.13.0 (`undoable: true` in
+  the result), and `with project.UndoableOperation(...)` makes a whole import atomic.
+  The session-atomicity hazard applies only to logs before 2026-09-25.*
 - `reconcile_import(plan)` -- present / missing / present-but-incomplete, where
   "incomplete" is parameterized by the derived data each row should have (D-M5-13).
+  *Status 2026-10-09: open -- `create-entries-idempotent` and `ensure-morpheme-entries`
+  recipes create only what is missing; neither reports "present but incomplete", and
+  `ensure-morpheme-entries` is under review (T-S11-11).*
 - Polymorphic-safe allomorph read/write wrappers so stem-vs-affix subtype does not
   throw (C-M1-02, C-M2-01).
+  *Status 2026-10-09: shipped in flexicon 4.10.0 (T-37).*
 - Automatic citation-form population for affix entries (M7 §6).
+  *Status 2026-10-09: open (T-38) -- manual `LexEntry.SetCitationForm` only.*
 - An "attaches to" helper for enclitics -- the corpus had to drop to raw LCM (M2 §6).
+  *Status 2026-10-09: open (T-39) -- still raw LCM; no flexicon issue filed.*
 - A required-fields lint: report every entry missing a WS form, gloss, sense, or POS.
+  *Status 2026-10-09: partial (T-17) -- the `publication-readiness-check` recipe reports
+  senses with no gloss and no definition, and placeholder POS; no WS-form or per-POS
+  check.*
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30); both machines' Swahili logs are now ingested. Logs before 09-23 keep no tool output, so their results are partly inferred; later logs keep truncated output. Sessions run by other clients (local models, a non-Claude agent, an unidentified weaker client) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30), which ran a pre-2.13.0 FlexToolsMCP main checkout. Those logs keep little or no tool output, so S6-S11 were re-checked (2026-10-09) against the Claude Code transcripts behind them, which hold the parse results, real counts and Matthew's verbatim words (mid-turn messages included) that the logs lost; tooling defects carry their current fix status. Sessions run by other clients (local models, a non-Claude agent, an unidentified non-Claude client on 09-30) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS: an explicit per-entry "parse-ready" standard** (D-S3-03).
   - For nouns, four fields: bound-stem lexeme form, singular citation form, class
@@ -188,6 +215,9 @@ setting, reconciliation, and count verification.
 - **ADDS: a write ladder with a fixed pilot batch** (D-S3-04): `validate_only`, then a
   dry run, then a **5-entry batch**, then the full run, with the backup confirmed on
   disk. Complete existing entries before adding new ones.
+  *Status 2026-10-09: the MCP now takes an automatic project backup on the first write
+  per session (pruned by size and age); with FLEx open it captures only what FLEx has
+  flushed to disk.*
 - **ADDS: a licence policy for outside lexical sources** (D-S3-05).
   - Use kaikki (CC BY-SA) for facts only, and "write our own glosses".
   - wold (CC-BY) can be imported with attribution.
@@ -208,15 +238,23 @@ setting, reconciliation, and count verification.
   - **Schema changes through raw LCM** (C-S1-01). A custom field created that way did
     not persist. The import crashed, the lexicon was lost and had to be rebuilt. Create
     custom fields in the FLEx GUI.
+    *Status 2026-10-09: still GUI-only -- flexicon `CustomFields.CreateField` refuses by
+    policy, and FlexToolsMCP blocks raw `AddCustomField` on write runs. Writing systems
+    can be added with `project.WritingSystems.Create/Ensure` (flexicon 4.12.0), FLEx
+    closed.*
   - **Defaulting the unknown** (C-S1-04). "do NOT default to 9" became "Last resort
     default: cl.9/10", which cost 17 manual overrides. Hold or flag instead.
   - **Junk entries** (C-S2-04): placeholders (`ji_stem`), inflected forms (`nililia`),
     fragments (`ku`). Add an illegal-character lint and an "is this a real morpheme"
-    check.
+    check. *Status 2026-10-09: partial -- the `morpheme-character-check` recipe flags
+    disallowed characters in headwords and affix glosses; no "real morpheme" check.*
   - **One morpheme class modelled two ways** (C-S2-03). Verb roots went in with and
     without the final vowel, and extensions were listed as stems. Fix the convention
     before bulk population.
   - **Writes without `validate_only` left half-built entries** (C-S3-04).
+    *Status 2026-10-09: per-operation rollback (flexicon 4.4.0, FlexToolsMCP 2.13.0)
+    now undoes a failing call; earlier successful calls in the script still commit
+    unless it runs inside `with project.UndoableOperation(...)`.*
 
 *S6-S11 additions:*
 
@@ -226,46 +264,76 @@ setting, reconciliation, and count verification.
 - **CONTRADICTS step 2's idempotency key** (C-S10-04, C-S7-09). A (form, gloss) key
   collides across POS, and glosses are not stable: a later pass rewrote 807 glosses,
   including affix glosses that scripts used as lookup keys. Key on GUID, or on form +
-  morph type + POS.
+  morph type + POS. On 09-20 a hyphen-stripping lookup matched the passive suffix `-w`
+  for the prefix `w-` and would have written eight senses onto the wrong entry; only
+  the dry run caught it (C-S8-08).
 - **ADDS: infer a noun's class from corpus agreement** (D-S10-08). The concord on the
   following word gives the class (mamlaka followed by ya 15, yao 6, yake 5 -> 9/10).
   This extends D-S3-05's evidence ranking with a test that needs only the corpus.
 - **CONFIRMS C-S1-04's cost** (V-S10-06, L-S10-03). Heuristic class defaults were still
   being repaired on 09-25 (roho and fimbo 1/2 -> 9/10, nguo 7/8 -> 9/10, kabila 9/10 ->
   5/6), and 158 noun stems had no class features, some of them plurals entered as stems.
-- **CONFIRMS D-S2-05 (prefix baked into the lexeme form)** (L-S6-06, L-S10-06).
-  *mwanadamu* became lexeme form `anadamu` with citation form `mwanadamu`; wanadamu and
-  mwanadamu then parsed.
+- **CONFIRMS D-S2-05 (prefix baked into the lexeme form)** (L-S6-06, L-S10-06). On
+  09-12, 776 of 1,069 noun stems were stored unsegmented. Of 98 prefix + known-stem
+  candidates, about 60 were genuine and about 38 accidental string matches (*jirani*,
+  *maiti*, *malaika*, *umri*, *vita*, *mahali* ...), so each split needs a linguistic
+  check. On 09-25 *mwanadamu* became lexeme form `anadamu` with citation form
+  `mwanadamu`; wanadamu and mwanadamu then parsed.
 - **ADDS: work the frequency head's closed-class and name gaps first** (L-S8-02,
-  L-S9-04). The top of the queue was proper names (Isa 1,141 tokens, Musa 429),
-  the vocative Ee, and pronouns, not morphology. Names needed the class feature that
-  the noun template's obligatory class-prefix slot checks (`NC 1a`, copied from a
-  parsing name). Some of those class choices (Torati, Yerusalemu) are unchecked AI
-  choices.
-- **ADDS: config-driven, convergent, double-braked write modules** (D-S8-06, D-S8-08).
-  The 09-20 `AddMorpheme` module: specs as data, name-to-GUID resolution inside the
-  module, a `DRY_RUN` flag independent of the runner's write flag, re-runs that
-  complete partial state instead of skipping it, a tested revert path, `UNVERIFIED`
-  notes on any assumption it cannot prove, and an end-of-run unslotted-affix audit.
+  L-S9-04, D-S8-17). The top of the queue was proper names (Isa 1,141 tokens, Musa 429),
+  the vocative Ee, and pronouns, not morphology. Check the lexicon before adding: on
+  09-23, 14 of 15 "monomorphemic" queue words already had entries and only Musa was
+  missing; Matthew then added Musa himself in FLEx, and the agent set its class.
+  Names needed the class feature that the noun template's obligatory class-prefix slot
+  checks (`NC 1a`, copied from a parsing name). Some of those class choices (Torati,
+  Yerusalemu) are unchecked AI choices.
+- **ADDS: config-driven, convergent, double-braked write modules** (D-S8-06, D-S8-08,
+  C-S8-05, T-S8-07). Matthew asked for the reusable-script pipeline (*"Write a script
+  that returns the glosses and features of morphemes that you pass in ... write a script
+  that allows you to pass in details and add it"*). The 09-20 `AddMorpheme` module:
+  specs as data, name-to-GUID resolution inside the module, a `DRY_RUN` flag
+  independent of the runner's write flag, a tested revert path, `UNVERIFIED` notes on
+  any assumption it cannot prove. Two parts came from failures that session: re-runs
+  complete partial state instead of skipping it, because the first write failed partway
+  and a skip-if-gloss-present guard would have skipped the three half-built records; and
+  an end-of-run unslotted-affix audit, added after Matthew's correction (Stage 05).
+  Each write was scoped to what Matthew had named ("apply", then "rename the glosses,
+  fix w-", then "fix them"; D-S8-16).
 - **ADDS: snapshot before a bulk field rewrite** (D-S8-03, C-S8-02, D-S8-01). An
   808-sense gloss rewrite (a local-model session) wrote lossy transforms several times
   without validate_only, and recovered only because every pass re-derived from a
   snapshot file, not the live field. The resulting convention (short gloss, full
   original in Definition) is AI-proposed; no Matthew wording is logged.
+  *Status 2026-10-09: the automatic pre-write backup now covers the whole project; a
+  field-level snapshot file is still the way to re-derive lossy transforms.*
 - **CONFIRMS C-S2-04 (junk entries), from other clients and unidentified sessions**
   (C-S7-04, C-S8-04, C-S11-04, C-S11-05). A heuristic segmenter created entries,
   allomorphs and approved analyses in one pass and left 424 duplicate allomorphs; a
-  local model proposed "497 new stems" by regex (nothing written); on 09-30 syllable
-  fragments (`el`, `is`, `en`, `ghadha` ...) were probably committed as bare entries
-  (inferred; needs a check in FLEx, see [Stage 13](13-cleanup-and-consolidation.md)).
+  local model proposed "497 new stems" by regex (nothing written); on 09-30 nine
+  syllable fragments were committed as bare entries (confirmed in the project file; see
+  Common Failure Modes above and [Stage 13](13-cleanup-and-consolidation.md)). `fu` is
+  not one of them: it is a real adjective root created 09-25.
 - **ADDS a failure mode: decomposition relapses during lexicon additions** (C-S7-06,
   L-S10-04, C-S10-03). After the verb extensions became derivational, *zalia* and
   *zaliwa* were stored as environment-less allomorphs of *zaa*, then split into
-  separate stems. Both lexicalize applicative and passive forms. Run the decomposition
-  audit after every lexicon-addition batch; see Q-40 and
+  separate stems. Both lexicalize applicative and passive forms. The split went in as a
+  "lexicon-only" fix under the fix-up skill's rule; Matthew's approval that run covered
+  only the `a-`/`n` question, and the project's own linguist spec, written the same
+  hour, says *zalia* is `za-li-a` (C-S10-03). Run the decomposition audit after every
+  lexicon-addition batch, and put lexicalization calls to the human; see Q-40 and
   [Stage 07](07-allomorphy-modeling.md).
-- **ADDS: pass affix forms bare** (L-S6-03). Creating `-ye` with the hyphen in the
-  form doubled it; the morph type supplies the marker.
+- **ADDS: build it properly, and report any narrowing** (D-S10-15, C-S10-09). Matthew:
+  *"I do want you to build it properly"* (grammar, not whole-word entries such as
+  *yuko, yupo, yumo*), and he approved all eleven proposed grammar changes. The AI then
+  narrowed the approved derivational `-o`/`-i` work back to whole-word entries "since you
+  left the call to me". A deviation from an approval is reported, not made silently.
+- **ADDS: file or close a lexicon batch** (L-S10-08, V-S11-04). The 09-25 Stage 1 batch
+  added 71 entries and 226 of 227 test words parsed, with regressions (*wazazi* stopped
+  parsing; *vitani* gained a false 'linen' reading). Nothing was filed, and the later
+  stages never ran, so on 09-30 those fixed words headed the "unparsed" queue again.
+- **ADDS: pass affix forms bare** (L-S6-03, C-S6-07). Creating `-ye` with the hyphen in
+  the form doubled it; the morph type supplies the marker. A count check caught it
+  (+5 entries where +4 were expected, and the suffixes missing).
 
 ## Provenance
 

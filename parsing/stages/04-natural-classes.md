@@ -128,18 +128,27 @@ bundles, referrer counting, and duplicate-membership detection.
 - **`natural_class_referrers(name)`** -- "what uses this, and what breaks if I change
   it". This single tool would have prevented C-M5-05. It should be *automatically*
   surfaced whenever a write touches an existing class.
+  *Status 2026-10-09: open (T-10) -- no referrer API in flexicon and no MCP tool.*
 - `propose_natural_classes()` -- scan all allomorph environments and phonological rule
   contexts, cluster identical conditioning sets, and report "this set is used by N
   allomorphs; it is/is not feature-definable" -- i.e. mechanize D-M3-05's threshold
   test.
+  *Status 2026-10-09: open -- no tool or recipe (the `natural-classes` recipe lists
+  classes and members only).*
 - `check_class_distinguishability(members)` -- does the current feature system separate
   these from non-members? (L-M7-03.)
+  *Status 2026-10-09: open -- the `phoneme-feature-uniqueness` recipe checks whole-bundle
+  duplicates only.*
 - A writing-system lint on environment `StringRepresentation` (D-M3-05).
+  *Status 2026-10-09: open.*
 - Duplicate-object detection across classes and environments (D-M7-05).
+  *Status 2026-10-09: partial (T-16) -- `case-duplicate-entries` recipe and the
+  `grammar_health` `duplicate-feature-bundle` check; no duplicate finder for
+  environments or natural classes.*
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30); both machines' Swahili logs are now ingested. Logs before 09-23 keep no tool output, so their results are partly inferred; later logs keep truncated output. Sessions run by other clients (local models, a non-Claude agent, an unidentified weaker client) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30), which ran a pre-2.13.0 FlexToolsMCP main checkout. Those logs keep little or no tool output, so S6-S11 were re-checked (2026-10-09) against the Claude Code transcripts behind them, which hold the parse results, real counts and Matthew's verbatim words (mid-turn messages included) that the logs lost; tooling defects carry their current fix status. Sessions run by other clients (local models, a non-Claude agent, an unidentified non-Claude client on 09-30) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS: surface classes for rule outputs** (D-S1-03). When an archiphoneme exists,
   define `[-archi]` classes so a rule can state its output.
@@ -152,28 +161,44 @@ bundles, referrer counting, and duplicate-membership detection.
   class; rename the new one.
 - **ADDS a failure mode** (L-S2-01): removing a class from a context's member list
   without deleting the context leaves an orphan behind (a case for T-20).
-- **ADDS: environment breadth is a failure source** (L-S9-07, L-S10-06, L-S6-01).
-  Three over-broad `[V]` environments were narrowed to attested vowels (cl.2 `w-`,
-  ma-2 `m`, and the cl.1 object marker `mw` to `/_a /_e /_i /_o`). The first two are
-  parse-verified; the third was not re-tested in the log (C-S6-05).
-- **REVISES D-S2-03** (glide context; "rules fire only across +") (V-S7-05, V-S9-07,
-  L-S9-06, L-S10-02).
-  - On 09-13 the glide and coalescence contexts got a `[Consonants]` left context and a
-    parallel word-initial RHS, so vowel-only prefixes do not glide. The vowel-initial
-    stems that would lose their glide were counted first.
-  - On 09-24 one RHS still had `#` on the left with no POS limit, and turned mi+aka
-    into *myaka (miaka, 214 tokens, unparsed). D-S2-03's "+" anchoring covered one RHS
-    only.
+- **ADDS: environment breadth is a failure source** (L-S9-07, L-S10-06). Two over-broad
+  `[V]` environments were narrowed to attested vowels (cl.2 `w-`, ma-2 `m`), both
+  parse-verified. A related case is not breadth but shadowing (L-S6-01): the cl.1
+  object marker m-3 had an unconditioned `mu` beside `mw / _a,e,i,o`, and `mw` was
+  never selected (0 uses, against 1-8 for `mw` on the other m- entries). Making `mu`
+  the elsewhere lexeme form fixed the setup. No transcript re-checks *akamwita*: the AI
+  had no parse tool on 09-12 and asked Matthew for Try A Word five times (C-S6-05).
+- **REVISES D-S2-03** (glide context; "rules fire only across +") (V-S7-05, L-S7-06,
+  V-S9-07, L-S9-06, T-S9-08, L-S10-02, C-S10-08).
+  - On 09-13 the glide rule turned the root `u` of a-ta-mu-u-a into *atamuwa*, and
+    about 150 verb roots ending in u or i mis-glided. Matthew chose "Add left context to
+    the rule" over "Disable rules, list allomorphs instead" (35 prefix edits), so the
+    glide and coalescence contexts got a `[Consonants]` left context and a parallel
+    word-initial RHS (8 -> 20 contexts; L-S7-06). His FLEx parse confirmed *atamuua*
+    within minutes (V-S7-12). A further right-context fix was dropped after counting the
+    29 stems it would break (C-S7-15). Eight CV roots (ju, tu, ku, chu, vu, li, zi, ti)
+    still mis-glide; FLEx has no per-morpheme exception for a rule short of exception
+    features (L-S7-17).
+  - On 09-24 the rule still turned mi+aka into *myaka (miaka, 214 tokens, unparsed).
+    Which RHS was responsible was not established: narrowing the left context to exclude
+    `m`, on one RHS and then both, left miaka unparsed, and only disabling the whole rule
+    fixed it (V-S9-07, refined by transcript). A 2,139-word sandbox A/B with the rule
+    disabled finished: 1,517 -> 1,568 parsed, 54 fixed, 3 broken (T-S9-08).
   - The real conditioning was morphological (class-4 mi- does not glide, vi- does), so
-    no natural-class context could state it. The 09-25 fix was a lexical exception
-    feature ([Stage 03](03-phonological-features.md)); the 09-24 analysis argued for
-    allomorphs. When the conditioning set is a list of morphemes, a natural class is the
-    wrong device ([Stage 07](07-allomorphy-modeling.md),
-    [Stage 08](08-phonological-rules.md)).
+    no natural-class context could state it. The 09-24 sandbox result argued for
+    disabling the rule and adding allomorphs; the 09-25 fix, made in a fresh chat
+    without that result, was a lexical exception feature
+    ([Stage 03](03-phonological-features.md); C-S10-08). The project's later linguist
+    spec agrees: gliding is "conditioned by the morpheme, not by phonology" (L-S10-09).
+    When the conditioning set is a list of morphemes, a natural class is the wrong
+    device ([Stage 07](07-allomorphy-modeling.md), [Stage 08](08-phonological-rules.md)).
 - **CONFIRMS P8 (count dependents before changing a shared context)** (L-S9-06,
   L-S10-02). Before touching glide formation the agent counted the parsed words that
   depend on each output: 7 of 3,312 analyses on 09-24; ny 572, vy 383, py 11, my 8 on
-  09-25.
+  09-25. The 09-24 count missed affix homographs: it found the class-8 prefix's `vy-`
+  allomorph but not that the subject prefix `vi-2` has none, and the sandbox regression
+  showed disabling the rule breaks vyombo and vyanzo (L-S9-06, L-S9-09). Count by
+  morpheme, not by form.
 
 ## Provenance
 

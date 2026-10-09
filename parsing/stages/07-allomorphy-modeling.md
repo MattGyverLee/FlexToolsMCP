@@ -83,7 +83,10 @@ before starting** -- it is the decision table this stage executes.
     is usable only when the affix realizes features matching one of that stem name's
     regions; an allomorph with no stem name is unrestricted (L-M4-04). And the feature
     objects on the affix must be **the same objects** the already-working affix uses,
-    not newly created look-alikes (L-M6-04).
+    not newly created look-alikes (L-M6-04). Set the stem name with
+    `project.Allomorphs.SetStemName` and the inflection class with
+    `project.MSA.SetInflectionClass` / `project.Allomorphs.AddInflectionClass`
+    (flexicon 4.12.0).
 11. **Factor a class system along its true independent dimensions before growing it.**
     The corpus's three verb classes conflated past-stem shape with causative shape;
     once the causative was split out as its own affix entry, one dimension disappeared
@@ -107,7 +110,11 @@ before starting** -- it is the decision table this stage executes.
     swapped (step 5). Fix it by moving the owned form objects, as FieldWorks'
     `SwapAllomorphWithLexeme` does, not by rewriting form strings; object identity is
     kept, so stored analyses stay valid. Check morph-bundle reference counts before and
-    after (L-S6-02, D-S7-03).
+    after (L-S6-02, D-S7-03): the Swahili normalization kept 3,526 references, identical
+    object set (D-S6-06).
+    *Status 2026-10-09: flexicon still has no lexeme/allomorph swap (open, no issue
+    filed), so the port stays hand-written; per-entry usage counts come from the
+    `form-usage-before-edit` recipe.*
 
 ## Linguistic Decisions Required
 
@@ -173,6 +180,9 @@ for the corpus's allomorph sets and environment strings.
 - **Sibling-interface confusion**: the same object exposes inflection-class membership
   on one interface and phonological environments on another (C-M4-01); and some
   properties exist on neither interface you guessed (C-M8-05).
+  *Status 2026-10-09: inflection-class membership and stem names now have wrappers
+  (`MSA.Get/SetInflectionClass`, `Allomorphs.Get/Add/RemoveInflectionClass`,
+  `Allomorphs.GetStemName/SetStemName`, flexicon 4.12.0); use them instead of casting.*
 - **Half-finished conversions** leaving a mixed population across the lexicon -- track
   which entries were converted, in a log file (M8 wrote `convert_log.txt`).
 - **An environment written as a broad natural class** (`/ _ [V]`) pre-empting the
@@ -196,37 +206,57 @@ listed above.
   surface form, report which allomorph the parser would select and why (which
   environment matched, which class permitted, which was pre-empted). Almost every
   debugging operation in the corpus is a hand-rolled approximation of this.
+  *Status 2026-10-09: partial (T-33) -- `flextools_try_word` `level=restricted` tests a
+  hypothesis by headword/MSA, and `level=explain` writes a trace (summary via
+  `flextools_parse_log section=trace`); no prose "why this allomorph" report.*
 - **An allomorph-representation lint**: flag entries mixing plain and process
   alternates (C-M1-06); flag an unreachable citation form (C-M1-05); flag an allomorph
   identical to its entry's lexeme form (L-M3-05); flag an environment whose string is
   empty (L-M8-04); flag a conditioned lexeme form with an unconditioned alternate
   (L-S6-01, T-S6-06); flag a stem whose alternates carry no environments (L-S10-04).
+  *Status 2026-10-09: partial (T-13, T-20) -- the `overpowered-allomorphs` recipe
+  (2.15.0) flags homophonous duplicates, unconstrained allomorphs and abstract lexeme
+  forms beside non-abstract allomorphs; nothing flags the swapped case or the other
+  checks.*
 - **Per-allomorph usage counts across stored analyses**, hand-rolled six times in one
   session (T-S6-06).
+  *Status 2026-10-09: partial (T-19) -- per entry via the `form-usage-before-edit`
+  recipe; no project-wide report.*
 - **A swap-lexeme-with-allomorph primitive** with a reference-integrity check; it was
-  hand-ported from FieldWorks and applied to 20 entries (T-S6-03).
+  hand-ported from FieldWorks and used on 16 of 20 entries (T-S6-03, D-S6-06).
+  *Status 2026-10-09: still open (T-65) -- no flexicon method, recipe or issue.*
 - **`referrers_of(class | environment | inflection_class | stem_name)`**, surfaced
   automatically on any write that touches a shared object (C-M5-05, C-M5-06).
+  *Status 2026-10-09: open (T-10) -- no referrer API in flexicon.*
 - **`restriction_impact(allomorph, proposed_classes)`** -- which entries currently
   using this allomorph would be excluded.
+  *Status 2026-10-09: open -- `form-usage-before-edit` lists the analyses using an
+  entry's forms, which is the manual input.*
 - **A rule-derivability check**: "this stored allomorph is derivable by phonological
   rule R; delete it?" -- mechanizing the corpus's redundancy pruning.
+  *Status 2026-10-09: open -- no tool or recipe found.*
 - **Affix-process rule construction as a single call** with the factory-seeded-node
   cleanup handled, plus well-formedness validation (M7 ops 19-20, C-M1-06).
+  *Status 2026-10-09: open (T-30) -- no `MoAffixProcess` wrapper in flexicon.*
 - **A variant-vs-allomorph conversion primitive** (both directions), since the corpus
   did this conversion, reverted it, and later bulk-applied it 101 times.
+  *Status 2026-10-09: open (T-31).*
 - **Feature-object identity helper**: attach *the same* feature/value objects an
   existing affix uses, rather than creating equivalents (L-M6-04).
+  *Status 2026-10-09: open -- `MSA.GetFeatures` reads an existing structure, but there
+  is no copy helper (T-58).*
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). Sessions by other clients (local models, an unidentified weaker client) are failure-mode evidence only. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). The Claude Code transcripts behind S6-S11 supply the missing output, numbers and Matthew's own words where they exist (checked 2026-10-09). Sessions by other clients (local models, an unidentified weaker client) are failure-mode evidence only. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS: zero morphs as real entries**
   ([row 26](../reference/flex-modeling-decisions.md); D-S2-01, L-S1-01).
   - A null class prefix is an entry with the form `∅`, `IsAbstract=False` and citation
     `∅`. Empty forms are rejected, and placeholder markers ("Ø9") or a Ø phoneme are
-    dead ends.
+    dead ends. *Status 2026-10-09: by design -- flexicon refuses empty forms on
+    purpose; write `∅` and set `IsAbstract=False` with `project.Allomorphs.SetIsAbstract`
+    rather than raw LCM (L-S1-01).*
   - Give zero morphs feature values **on the same features the stems use**. Disjoint
     features never clash, so the zero morph attaches everywhere (L-S4-01).
   - Zero morphs also stack: an analysis with two zero prefixes is a warning sign
@@ -261,45 +291,83 @@ listed above.
 - **REVISES L-S1-02; CONFIRMS F1** (D-S6-04, V-S6-01, V-S9-04, V-S10-04;
   [README 4.11](../README.md), Q-37). Matthew: "the 'default/everywhere' form of the
   affix should be the lexeme. Many of these are swapped". The S1 arrangement is now his
-  own error, corrected on 20 entries. The trigger was a cl.1 object marker whose
-  conditioned `mw` sat in the lexeme slot beside an unconditioned `mu`, and no analysis
-  ever used `mw` (L-S6-01). By S9-S10 the class prefixes hold the elsewhere form with
-  conditioned alternates (`vi` + `vy / _ [V]`, `ni` + `n / _ a`), and those parse.
+  own error, corrected on 20 entries: of 20 multi-allomorph entries, 1 (`m-3`) had its
+  default among the alternates and 19 had no elsewhere form at all; 16 swaps and 19
+  cleared environments later, every lexeme form was the elsewhere case (D-S6-06,
+  V-S6-01). The trigger was a cl.1 object marker whose conditioned `mw` sat in the
+  lexeme slot beside an unconditioned `mu`: `m` and `mu` had 17 uses each, `mw` none,
+  while every other object marker used its `mw` (L-S6-01). By S9-S10 the class prefixes
+  hold the elsewhere form with conditioned alternates (`vi` + `vy / _ [V]`, `ni` +
+  `n / _ a`), and those parse.
 - **ADDS: swap by moving owned objects, ported from the host application** (D-S6-05,
-  L-S6-02, C-S6-01). The first guess, `ReplaceMoForm`, did something else and broke a
-  later delete in the work project (see [Stage 13](13-cleanup-and-consolidation.md)).
-  The port of FieldWorks' own command was proven on a throwaway entry, then applied
-  with a before/after reference-integrity assertion.
-- **ADDS: where an alternation goes** (D-S6-07, L-S7-08, L-S9-06). Matthew: "phonological
-  rules are for very broad phenomena, but allomorphs and affix process rules are for
-  morphophonemics specific to an affix." Applied: N-place assimilation is a rule;
-  pre-vowel concord shapes are allomorphs; glide formation, which hits `vi-` but not
-  `mi-`, belongs in allomorphs (see [Stage 08](08-phonological-rules.md)). CONFIRMS
-  Ron's generality test (L-M6-07).
+  L-S6-02, C-S6-01). Matthew pointed the AI at the FieldWorks source ("../fieldworks",
+  then "maybe we should clone it locally"). The first guess, `ReplaceMoForm`, expects a
+  freshly created form (FieldWorks calls it only from `OnConvertLexemeForm`); called with
+  an existing alternate it removed both forms and left a null lexeme form in the work
+  project (see [Stage 13](13-cleanup-and-consolidation.md)). The port of FieldWorks' own
+  command was proven on a throwaway entry, then applied with a before/after
+  reference-integrity assertion.
+  *Status 2026-10-09: the orphan survived because that checkout ran write sessions with
+  `undoable=False`; per-operation rollback was restored by FlexToolsMCP #144
+  (2026-09-18, released 2.13.0). `ReplaceMoForm` is still an undocumented LCM member, so
+  probe it in a test project. No swap wrapper exists yet (T-65).*
+- **ADDS: where an alternation goes** (D-S6-07, L-S7-08, L-S9-06). Matthew first said
+  the concord shapes "can more broadly be phonological rules", then narrowed it a minute
+  later: "phonological rules are for very broad phenomena, but allomorphs and affix
+  process rules are for morphophonemics specific to an affix." The AI withdrew its own
+  proposal to promote them (`ki -> ch / _V` would derive *chatu* from *kiatu*).
+  Applied: N-place assimilation is a rule; pre-vowel concord shapes are allomorphs.
+  Glide formation stayed a rule on 09-13 by Matthew's choice (35 prefixes depended on
+  it, L-S7-18); the 09-25 linguist spec judged it morpheme-conditioned, so allomorphs
+  (L-S10-09; see [Stage 08](08-phonological-rules.md)). CONFIRMS Ron's generality test
+  (L-M6-07).
 - **ADDS: narrow environments to attested segments** (L-S9-07, L-S10-06; tool output).
-  cl.2 `w-` at `/ _ [V]` blocked *Waisraeli*; narrowed to `/ _ a`, `/ _ e`, it parsed.
-  The same repair recurred for `ma-2`, `zi-1` and `ni-1`. A suppletive plural stem got a
-  morpheme-specific environment (`mbo / # ma _` for *jambo*) only after a check that no
-  general `m-` before `a` was needed (L-S9-08).
+  cl.2 `w-` at `/ _ [V]` blocked *Waisraeli*; narrowed to `/ _ a`, `/ _ e`, it parsed
+  (plus one spurious *wa-* + *Israeli* reading). The same repair recurred for `ma-2`,
+  `zi-1` and `ni-1`. A suppletive plural stem got a morpheme-specific environment
+  (`mbo / # ma _` for *jambo*) only after a check that no general `m-` before `a` was
+  needed (L-S9-08).
 - **CONTRADICTS P10 (relapse): derived stems as allomorphs or entries** (C-S7-06,
   L-S10-04, C-S10-03). After the verb extensions became derivational (V-S7-01, Q-40),
   `zalia` / `zaliwa` were stored as environment-less allomorphs of *zaa*, then split
-  out as separate stem entries rather than decomposed. A decomposition audit after
-  each lexicon batch would catch both (T-51).
+  out as separate stem entries rather than decomposed. The split was never put to
+  Matthew: it ran as a "lexicon-only fix" under the fix-up skill, and the agents' own
+  linguist spec, written the same hour, says `zalia` is `za-li-a`. A decomposition audit
+  after each lexicon batch would catch both (T-51, open).
 - **ADDS: homophonous agreement values are senses, not allomorphs** (D-S8-07,
-  L-S8-03). One sense carries one feature structure, so a concord form shared by three
-  noun classes needs three senses. A gloss naming several classes over one feature
-  value is a silent agreement gap. Rename before add, so re-runs do not duplicate
-  senses.
+  L-S8-03). Matthew's call ("For the y affix you may need to add it with multiple
+  senses"), upheld by a lex-domain consult. One sense carries one feature structure, so
+  a concord form shared by three noun classes needs three senses. A gloss naming several
+  classes over one feature value is a silent agreement gap. Rename before add, so
+  re-runs do not duplicate senses.
 - **ADDS: inflectional features unify, they do not overwrite** (L-S7-01; documented,
   not parse-tested). A locative suffix that changes the noun's class therefore needs a
   derivational MSA with output features, not an inflectional one.
-- **ADDS: experiment before a structural conversion** (D-S7-05, D-S7-06, C-S7-03).
-  The extension decomposition ran as: throwaway-object experiments on inheritance and
-  From-category enforcement; a prototype on 20 roots, reverted; classification of all
-  647 verb senses outside FLEx; batched writes against a parse baseline and diff.
-  Throwaway forms must not collide with real entries: a find-or-create on nonce `oz` /
-  `uz` overwrote two real roots' MSAs.
+- **ADDS: experiment before a structural conversion** (D-S7-05, D-S7-06, D-S7-11,
+  D-S7-12, C-S7-03; parse-verified in the transcript). The valency design (intransitive
+  as a subcategory, children inherit the parent's morphology, derivational affixes
+  change category) is Matthew's (D-S7-14). The run, each step checked with in-process
+  HermitCrab:
+  1. Throwaway-object experiments: inheritance holds; From-category is enforced during
+     parsing and is subsumption-aware (From=test/Noun/Verb gave 4/3/4 analyses).
+  2. A prototype, reverted on Matthew's choice ("Revert W3, keep W1+W2"): converting
+     one extension alone silently cost all 605 unmarked verbs their passives and
+     flipped all 8 ordering pairs (L-S7-12).
+  3. Classification of all 647 verb senses outside FLEx, by LLM only: transitive by
+     default, intransitive only on positive evidence, an adversarial reviewer
+     overturned 19 of 158 intransitive calls; 508 vt / 139 vi, no human review.
+  4. Batched writes against a parse baseline: 1,054 forms, 1,020 unchanged, 34 lost,
+     0 gained.
+
+  Throwaway objects must not be found by form: `LexEntry.Find` matches fuzzily, so a
+  find-or-create on nonce `oz` / `uz` hit *kuoza* and *kuuza*, and creating the
+  derivational MSA deleted their old MSAs. They were restored from FLEx's own `.bak`,
+  with new MSA GUIDs.
+- **ADDS: Matthew's construct rulings for irregular nouns** (L-S7-14; not implemented).
+  Irregular plurals become inflectional variants; the 9/10 concord gets an `N` form
+  that a phonological rule resolves; *vikijana* -> *vijana* is an affix-process rule.
+  The AI added: store roots (`-uso`, `-jana`) rather than citation forms, and treat
+  *meno* as truly irregular.
 
 ## Provenance
 
@@ -322,8 +390,10 @@ listed above.
   L-M8-04, L-M8-05, L-M8-06; C-M8-05; M8 §5 "Root-cause diagnosis-then-generalize";
   M8 §9.
 - S6-S11: L-S6-01, L-S6-02, D-S6-04..D-S6-07, C-S6-01, T-S6-03, T-S6-06, V-S6-01;
-  D-S7-03, D-S7-05, D-S7-06, L-S7-01, L-S7-08, C-S7-03, C-S7-06, V-S7-01; D-S8-07,
-  L-S8-03; L-S9-06..L-S9-08, V-S9-04; L-S10-04, L-S10-06, C-S10-03, V-S10-04.
+  D-S7-03, D-S7-05, D-S7-06, D-S7-11, D-S7-12, D-S7-14, L-S7-01, L-S7-08, L-S7-12,
+  L-S7-14, L-S7-18, C-S7-03, C-S7-06, V-S7-01; D-S8-07, L-S8-03; L-S9-06..L-S9-08,
+  V-S9-04; L-S10-04, L-S10-06, L-S10-09, C-S10-03, V-S10-04. Numbers and attributions
+  checked against the Claude Code transcripts (S6-S11 transcript checks).
 - **Merge seam:** Merged from S1-S11 (both machines). The F1 conflict (README 4.11, Q-37) is resolved toward F1 by Matthew himself. Still open: derived stems re-entering as allomorphs or entries after decomposition (Q-40 relapse). Matthew's construct preferences are in the "Matthew's choice" table of [flex-modeling-decisions](../reference/flex-modeling-decisions.md).
   *(Original seam: this is the stage where Matthew's process is most likely to diverge. Capture his construct preferences as a second column in [`reference/flex-modeling-decisions.md`](../reference/flex-modeling-decisions.md).)*
 

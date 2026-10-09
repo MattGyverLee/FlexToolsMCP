@@ -72,6 +72,18 @@ agglutination.
   truncated at roughly 1-2 KB, so results there are measured. S6-S11 re-check many S1-S5
   claims that were only inferred (the `V-` rows in the
   [evidence index](evidence/directive-index.md)).
+- **S6-S11 were re-checked against the Claude Code transcripts** behind those sessions
+  (2026-10-09, with Matthew's permission). The transcripts supply the missing output,
+  Matthew's verbatim words (the logs' `User request:` field was often agent-filled) and
+  decisions the logs never saw. Each index row carries a **Transcript check** verdict,
+  and transcript-only ids are marked "(from transcript)". No transcript exists for
+  09-13 14:09-20:05, 09-14, the local-model sessions, the 09-25 second client and late
+  Stage 1/2 sessions, or 09-30.
+- **Version label.** The logs say FlexToolsMCP 2.12.0, but they came from a pre-2.13.0
+  main checkout: the parse tools shipped in 2.13.0 (2026-09-25). Many tool defects the
+  logs show are fixed since; the stage files and
+  [MERGE-NOTES section 4](MERGE-NOTES.md#4-mcp-parsing-tooling-requirements) carry a
+  fix status (commit or issue) for each.
 - **Not every session is Matthew's practice.** Some local sessions were driven by other
   clients: OpenCode with local models (09-13, 09-14, 09-20), a "hermes_tools" agent
   (09-12) and an unidentified weaker client (09-25). Their evidence is used only as
@@ -140,11 +152,11 @@ Then:
 | Aspect | Status |
 |---|---|
 | Stage decomposition | **Derived** from shard section 5 across all nine shards; conflicts resolved toward the late-corpus (M7 §9 / M8 §9) form |
-| Provenance | **Complete** -- 179 ids (Ron) + 315 (Matthew) indexed, see [`evidence/directive-index.md`](evidence/directive-index.md) |
+| Provenance | **Complete** -- 179 ids (Ron) + 407 (Matthew) indexed, see [`evidence/directive-index.md`](evidence/directive-index.md) |
 | Malayalam linguistic content | **Unverified by a native speaker.** Hypotheses only |
-| Parse-and-repair stage (11) | Written as it **should** work with in-MCP tooling; the corpus did this partly out-of-band. Tooling gaps listed in [`MERGE-NOTES.md`](MERGE-NOTES.md) |
-| Matthew's process | **Merged** (shards S1-S11, 315 ids, both machines' logs). Per-stage "Second-Operator Evidence" sections; conflicts in section 4.9-4.20; remaining gaps in [`MERGE-NOTES.md`](MERGE-NOTES.md) |
-| Parse-and-repair with in-MCP tools | **Observed** from 2026-09-23 (S8-S11): `try_word`, `parse_text` with filing, `parse_diff`, `parse_sandbox`. See [Stage 11](stages/11-parse-and-repair-loop.md) and [`MERGE-NOTES.md`](MERGE-NOTES.md) section 4 |
+| Parse-and-repair stage (11) | Written as it **should** work with in-MCP tooling, before that tooling existed; Ron's corpus (09-10..15) parsed out of band. The tools now exist: they landed 09-18..09-24 and first shipped in FlexToolsMCP 2.13.0 (2026-09-25). Remaining gaps, each with a status, are in [`MERGE-NOTES.md`](MERGE-NOTES.md) section 4 |
+| Matthew's process | **Merged** (shards S1-S11, 407 ids, both machines' logs, S6-S11 checked against Claude Code transcripts). Per-stage "Second-Operator Evidence" sections; conflicts in section 4.9-4.20; remaining gaps in [`MERGE-NOTES.md`](MERGE-NOTES.md) |
+| Parse-and-repair with in-MCP tools | **Observed** from 2026-09-23 (S8-S11; tools on main from 2026-09-20): `try_word`, `parse_text` with filing, `parse_diff`, `parse_sandbox`. See [Stage 11](stages/11-parse-and-repair-loop.md) and [`MERGE-NOTES.md`](MERGE-NOTES.md) section 4 |
 | Generality | Stage bodies are language-neutral; all language-specific material is confined to `reference/` |
 
 ---
@@ -350,9 +362,11 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
 - **Both are kept.** Paradigm texts cover environments deliberately. Real text exposes
   approval and gloss defects and closed-class gaps that paradigms never reach.
 - **Update (S7, S10).**
-  - On 09-13 paradigm texts were generated for every template of every inflecting POS,
-    each with a negative **"No Parse"** counterpart holding the forms the grammar must
-    reject (V-S7-04). The generated forms were AI-made and AI-proofread (Q-42).
+  - On 09-13 paradigm texts were generated for every template of every inflecting POS
+    (16 texts, about 1,100 paragraphs), plus a **"No Parse"** genre that Matthew asked
+    for (V-S7-04). "No Parse" holds forms the AI *judged ungrammatical*, not forms the
+    parser fails on; Matthew asked and the AI confirmed it. The generated forms were
+    AI-made and AI-proofread, and the evening proofreading consulted no parser (Q-42).
   - For grammar-wide changes from 09-25 on, the regression suite is a **corpus
     baseline** instead: the top-frequency parsed words plus every word containing the
     segment being changed, 1,783 words (D-S10-05).
@@ -374,10 +388,18 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
     be two slot objects (L-S6-04, L-S7-02).
   - The same MSA in two slots is therefore an idiom when the slots never co-occur in one
     template (Obj/Obj2), and a bug when they do (L-S5-01; V-S7-09).
-- **Reopened once (S7, 20:56).** TAM2 was made optional so that habitual and
-  negative-present forms (husema, sisemi) with no TAM filler would parse (V-S7-03). Under
-  this section that should have been a separate template. **Open:** record which
-  constructions lack a TAM filler and give them their own template (Q-45).
+- **Reopened twice on 09-13 (C-S7-02, transcript-checked).**
+  - 01:36, at Matthew's direction ("make it so"): Subj2 made required, and `Verb
+    inflection` moved from TAM to TAM2 because "TAM must not be made obligatory
+    globally" (tenseless relatives such as *asomaye*). A singular-imperative template
+    built in the same pass produced a wrong parse in Matthew's next FLEx screenshot, and
+    the AI withdrew it.
+  - 20:56, in an evening session that ran no parser: TAM2 was made optional so that
+    habitual and negative-present forms (husema, sisemi) with no TAM filler would parse
+    (V-S7-03). That session also questioned the documented "ANCHOR: RelSuf is
+    obligatory" without reading the template Description.
+  - Under this section the 20:56 change should have been a separate template. **Open:**
+    record which constructions lack a TAM filler and give them their own template (Q-45).
 
 ### 4.14 What "correct" means: parses only (Ron) vs approved analyses and glosses (Matthew)
 
@@ -396,12 +418,19 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   - By 09-24 the project held **zero** human-approved analyses (V-S9-01). Analyses
     were filed by the parser only, through `parse_text` with filing. Whether that was a
     deliberate reset for a fresh baseline is not recorded (Q-41).
-  - Filing replaces stored parser analyses in bulk. On 09-25 the AI confirmed a
-    26,725-word filing 21 seconds after its preview. By that evening Matthew's brief
-    read "Filing NOT authorized" for the grammar-wide stage (C-S10-02).
+  - Filing replaces stored parser analyses in bulk. On 09-25 Matthew asked for it
+    ("file the parses"). The AI confirmed the project-wide plan 21 seconds after its
+    preview without showing him its upper bound (24,259 deletable analyses). The real
+    result was 25,127 words filed, 322 analyses deleted and 271 parse errors
+    (C-S10-02, corrected by transcript). "Filing NOT authorized" that evening was the
+    orchestrating session's prompt to a subagent, not Matthew's words (V-S10-10
+    refuted).
   - **Policy, extended:** a whole-corpus filing is a write that needs the operator's
-    decision, not the AI's. File only the wordforms a fix touches (including their
+    decision, made on the preview's numbers, not the AI's. File only the wordforms a fix touches (including their
     capitalised variants) unless the operator asks for more.
+    *Status 2026-10-09: partial -- filing still needs only `confirmed=true` plus the
+    preview's `plan_id`, which an agent can supply itself; the tool does not enforce a
+    human gate, so this policy stays a convention (T-73).*
 
 ### 4.15 Growing a class inventory (Ron) vs deriving it from an existing field (Matthew)
 
@@ -427,23 +456,36 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   - 09-25: 9 of the top 10 parsed. One whole-corpus refile with **no grammar change**
     cut unparsed from 14,096 to 9,260, so 4,836 wordforms parsed but had no filed
     analyses (L-S10-01).
+  - 09-24: of each queue the agent built, many words already parsed and were only
+    unfiled -- 5 of 20, then 9 of 10, then 4 of 5 (T-S9-14).
   - 09-30: about four hours of `run_module` work went into a queue whose top ten all
-    parse. `try_word` showed that in two minutes (V-S11-02).
+    parse. `try_word` showed that in two minutes (V-S11-02). They were exactly the 09-25
+    Stage 1 fixes, never filed because the later stages never ran (V-S11-04).
 - **Rule.** A stored zero-analysis count means "not parsed since the parser last
   ran", not "the grammar fails". **Refile, or `try_word` the candidates, before
   triage**, and build the frequency queue from a fresh parse run. This is Ron's
   acceptance test (live parser output) applied to Matthew's real-text queue: evidence
   for both, a conflict with neither. See [Stage 11](stages/11-parse-and-repair-loop.md)
   and [Stage 12](stages/12-real-corpus-stress-test.md).
+  *Status 2026-10-09: partial -- for a live count, run `flextools_parse_text` over all
+  texts and read `NumZeroParses`; its scope is occurrence-ordered. The shipped
+  `parser-coverage` recipe still reads stored `ParserCount`, so it inherits the
+  staleness. No token-weighted figure exists (T-24).*
 
 ### 4.17 Verb extensions: inflectional slots (S1) -> derivation (S7) -> lexicalized stems (S7, S10)
 
 - **S1 (C-S1-06):** the extensions sat in inflectional template slots. **S2-S5:** some
   extended forms were stored as stems (Q-40).
 - **S7 (V-S7-01), 09-13 12:05:**
+  - the design was Matthew's (01:44-01:49): intransitive as a subcategory,
+    subcategories inherit the parent's morphology, derivational affixes move words
+    between categories (S6 transcript);
   - all six extensions became `MoDerivAffMsa` with From/To POS;
   - Verb gained Transitive/Intransitive/Detransitive subcategories, and 647 verb MSAs
-    were reclassified in five batches against a baseline;
+    were reclassified in five batches against a baseline. The 508/139 transitive/
+    intransitive split came from AI agents reading glosses, with no human review;
+  - every step was checked with in-process HermitCrab: the 1,054-form check gave 1,020
+    unchanged, 34 lost, 0 gained (S7 transcript);
   - the empty extension slots were removed from every verb template;
   - RDP became derivational.
 
@@ -462,20 +504,45 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
 
 ### 4.18 Blocking a rule: lexical exception feature vs morphological conditioning
 
-- **S9 (L-S9-06, V-S9-07):** the S1 glide rule `i -> y` had a second right-hand side with a
-  word-boundary left context and no POS limit. It glided class-4 `mi-`, so *miaka*
-  (214 tokens) failed. Disabling the rule never persisted (C-S9-02). D-S2-03's "rules fire only across +" held for one RHS only.
+- **S9 (L-S9-06, V-S9-07):** the S1 glide rule `i -> y` glided class-4 `mi-`, so
+  *miaka* (214 tokens) failed. Its second right-hand side has a word-boundary left
+  context and no POS limit, but the transcript shows that narrowing either RHS did not
+  fix *miaka*; only removing the whole rule did, and why was never found. Disabling the
+  rule never persisted (C-S9-02).
+- **S9 sandbox regression (session D, transcript):** with the rule disabled, 2,139
+  glide-relevant words went from 1,517 to 1,568 parsed -- 54 fixed, 3 broken (vyombo,
+  vyanzo: subject `vi-2` has no `vy` allomorph, unlike `vi-1`). The dependency count
+  made earlier that day had missed that affix homograph.
 - **S10 (L-S10-02):**
   - Fix: an excluded exception feature "no glide formation" on both RHSs, set on three
     stems (*aka, *ea, *anzo).
   - Before the change the blast radius was measured (ny 572, vy 383, py 11 and my 8
     parsed words depend on the rule).
-  - After it, miaka parses and the counted dependents still do.
+  - After it, miaka parses and the counted dependents still do -- but only a spot check
+    was run ("I only spot-checked; I didn't reparse the whole corpus"), although the
+    previous night's regression-tested alternative was on record (C-S10-08).
+  - The feature sits on stems because HermitCrab treats an exception feature on an
+    affix's from-side as a requirement (L-S10-07, from reading the source, not
+    tested).
 - **Assessment.** The measurement is exemplary (Stage 08). The mechanism is debatable.
   The conditioning is morphological (the cl.4 prefix), so the restriction arguably
   belongs on the prefix or in the rule's required/excluded morpheme set, not on each
-  stem, which has to be remembered for every new cl.3/4 vowel-initial stem. **Open: Q-44**;
+  stem, which has to be remembered for every new cl.3/4 vowel-initial stem. **Open: Q-44**; eight CV verb roots (*jua* -> *jwa*) still mis-glide (Q-50);
   see [Stage 08](stages/08-phonological-rules.md).
+- **Tooling status (2026-10-09).** The S9/S10 work had no wrappers; most now exist.
+  - Disabling a rule: `project.PhonRules.SetDisabled(rule, True)`, fixed in flexicon
+    4.12.0 (flexicon#572). The S9 non-persistence (C-S9-02) was never diagnosed, so
+    still verify a disable by reopening.
+  - Tagging stems with an exception feature: `project.MSA.AddExceptionFeature(msa,
+    feat)`, fixed in flexicon 4.12.0 (flexicon#574).
+  - Creating the exception feature (`InflectionFeatures.ExceptionFeatureCreate`,
+    flexicon#631) and putting it on an affix MSA (`side="from"|"to"`, flexicon#630):
+    fixed on flexicon main, not yet released (after 4.12.0). In 4.12.0 the affix-MSA
+    calls silently do nothing. The prefix-side option this section argues for needs
+    that release.
+  - Writing rule features (required/excluded on an RHS, or creating one): still open.
+    flexicon 4.12.0 can only read them (`PhonRules.GetRequiredRuleFeatures` /
+    `GetExcludedRuleFeatures`), so that step is still raw LCM.
 
 ### 4.19 Suppressing objects from the parser: `DoNotUseForParsing` (S4-S8) vs current guidance
 
@@ -483,12 +550,22 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   used it to suppress the class-16 null prefix (V-S7-02), a duplicate quantifier stem
   and about 20 shadow possessives. **S8 (D-S8-12)** used it to keep 12 whole-word
   possessives *listed but not parsed*; its own module marks the effect "UNVERIFIED".
-- **Two jobs on one flag** (soft delete; listed-but-not-parsed), and no reparse diff in
-  any log shows what it changes in HermitCrab.
-- **Current tooling guidance treats `DoNotUseForParsing` as deprecated:** do not use it
-  in recipes or fix-ups, or as a model for new API. Record that these suppressions exist
-  and migrate them. Until then, prove any suppression with a `parse_diff` before relying
-  on it. What replaces the flag is Q-43.
+- **Two jobs on one flag** (soft delete; listed-but-not-parsed), and **it changes
+  nothing.** On 09-20 Matthew doubted it ("I'm not sure exclude-from-parsing has an
+  effect ... in the UI, only isAbstract is surfaced") and the agent retracted its claim
+  (D-S8-12). On 09-25 a source investigation settled it: HermitCrab's loader and
+  XAmple's transforms filter only on `IsAbstract`, per form (S10 transcript). Matthew
+  ruled "treat it as deprecated" and filed LT-22810 (D-S10-14). So the class-16
+  "suppression" (V-S7-02) and every S4-S8 suppression were no-ops. The 4 flags set on
+  09-20 were never reverted.
+- **`DoNotUseForParsing` is deprecated and refused.** Since FlexToolsMCP 2.13.0,
+  `run_module` rejects it at preflight (`deprecated_member`) in read and write runs.
+  Do not
+  use it, either as a soft-delete step (D-S4-08) or to keep an entry listed but not
+  parsed (D-S8-12).
+- **Use `IsAbstract` instead:** set it on the lexeme form and on every allomorph. Migrate
+  the flagged entries (33 by 09-20) and prove each change with a `parse_diff`. This
+  answers Q-43 for the mechanism; the migration is still to do.
 
 ### 4.20 Blanket mandates ("use your deep knowledge") vs P3/P6 one-variable proof
 
@@ -498,11 +575,18 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   reparse experiment, D-S4-09).
 - **S8-S11 show what happens without it:**
   - seven 808-row gloss writes with no `validate_only` and FLEx open; the last failed with
-    a conflicting-save error (C-S8-02);
+    a conflicting-save error (C-S8-02); *Status 2026-10-09: partial -- the conflict
+    now fails loudly (`FP_ConflictingSaveError`, flexicon 4.6.0), and schema changes
+    are refused while FLEx holds the project (FlexToolsMCP 2.15.0). Value writes are not
+    gated, so close FLEx for bulk writes.*
   - a 12-change operation under "resolve ... using your deep knowledge of Swahili" that
     failed half-way and could not be attributed per change (C-S9-04);
   - entries guessed as monomorphemic, and syllables entered as morphemes (C-S11-04,
-    C-S11-05).
+    C-S11-05). On 09-30 an unidentified client (not Claude Code) invented morpheme
+    splits that the parse tools never returned. Its write run crashed, but **9 bare
+    entries were committed anyway** (malaka, el, kumu, gizo, is, hara, en, ghadha, bu),
+    because the runner saves the project in `finally` (C-S11-08, T-S11-10; still open).
+    A recipe modelled on that run (`ensure-morpheme-entries`, PR #337) needs review.
 - **Also in tension with H6 / Q-42:** entries and glosses the AI writes on such a
   mandate are not marked as AI-sourced in the project.
 - **Rule.** A broad mandate authorizes the *goal*, not batching. Keep one change per

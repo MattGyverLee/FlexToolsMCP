@@ -76,7 +76,7 @@ Ron sequenced this first and explicitly deferred features:
 - **The suffix-shape convention** (dependent vs independent vowel forms) -- L-M4-05.
 
 All of the above are **modeling hypotheses**, not facts about the language. Record them
-as such. See [`reference/malayalam-morphophonology.md`](../reference/malayalam-morphophonology.md)
+as such. See [`reference/example-agglutinative-suffixing.md`](../reference/example-agglutinative-suffixing.md)
 for how the corpus's decisions were recorded.
 
 ## QC / Exit Criteria

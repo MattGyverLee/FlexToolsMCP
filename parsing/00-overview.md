@@ -145,10 +145,10 @@ C-M2-06).
 
 ## 4. What is deliberately *not* in the stage bodies
 
-Per the "multiple projects, one process" constraint, no stage body contains Malayalam
+Per the "multiple projects, one process" constraint, no stage body contains language-A
 facts. Phenomena, classes, and environment strings live in:
 
-- [`reference/malayalam-morphophonology.md`](reference/malayalam-morphophonology.md)
+- [`reference/example-agglutinative-suffixing.md`](reference/example-agglutinative-suffixing.md)
 - [`reference/natural-classes.md`](reference/natural-classes.md)
 - [`reference/allomorphy-environments.md`](reference/allomorphy-environments.md)
 

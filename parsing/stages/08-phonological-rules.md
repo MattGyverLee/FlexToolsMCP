@@ -119,7 +119,7 @@ and do it without destroying parse performance.
   never states an ordering policy for phonological rules.
 
 The corpus's four-plus rules and their conditioning are in
-[`reference/malayalam-morphophonology.md`](../reference/malayalam-morphophonology.md).
+[`reference/example-agglutinative-suffixing.md`](../reference/example-agglutinative-suffixing.md).
 All are hypotheses; none is native-speaker verified.
 
 ## QC / Exit Criteria

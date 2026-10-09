@@ -9,7 +9,7 @@ the stage files.
 |---|---|
 | **Ron** | a process/modeling decision only the original operator can explain |
 | **Matthew** | likely answered by the second process, to be resolved at merge |
-| **Native speaker** | a claim about Malayalam that no one in the corpus could verify |
+| **Native speaker** | a claim about a target language that no one in the corpus could verify |
 | **Tooling** | resolved by building something, see [MERGE-NOTES](MERGE-NOTES.md) |
 
 ---
@@ -118,7 +118,7 @@ a single phoneme?** Decided case by case (M1 op 4).
 
 ---
 
-## Malayalam -- for a native speaker
+## Language A -- for a native speaker
 
 **Q-13. Is the "Human" noun inflection class needed for parsing, and is it real?**
 Created in M1 (D-M1-08, L-M1-05), investigated in a dedicated read-only session on

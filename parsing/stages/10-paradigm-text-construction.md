@@ -63,7 +63,7 @@ form was supposed to be.
 - **Which cells the paradigm has** -- the shape of the paradigm itself is a linguistic
   claim. The corpus's noun/pronoun case inventory and its verb TAM inventory are
   hypotheses; see
-  [`reference/malayalam-morphophonology.md`](../reference/malayalam-morphophonology.md).
+  [`reference/example-agglutinative-suffixing.md`](../reference/example-agglutinative-suffixing.md).
 - **Which cells are attested** (and therefore included) versus merely predicted
   (L-M5-02).
 - **What counts as a distinct allomorph-triggering environment**, for the sampling

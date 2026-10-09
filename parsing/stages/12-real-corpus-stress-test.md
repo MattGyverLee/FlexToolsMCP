@@ -10,7 +10,7 @@ constructed paradigms only test what you already thought of.
 > "Create a text of 100 real sentences from the public-domain Aesop fables on
 > [Wikisource]." (D-M5-11)
 
-> "delete the Aesop text and normalize and import Matthew chapter 2. Add new
+> "delete the Aesop text and normalize and import [a second text]. Add new
 > vocabulary, Create compound rules as needed. add the complementizer enclitic.
 > iterate to see how good you can get it." (D-M6-01)
 
@@ -27,7 +27,7 @@ modeled), and **frequency-weighted** priorities (what actually matters).
 ## Inputs
 
 - A **public-domain** real text of meaningful size. The corpus used two: 100 Aesop
-  fable sentences from Wikisource, and Matthew chapter 2 from a public-domain
+  fable sentences from Wikisource, and a second public-domain text (one chapter) from a public-domain
   translation.
 - A normalization step producing one unit (verse / sentence) per line.
 
@@ -55,8 +55,8 @@ modeled), and **frequency-weighted** priorities (what actually matters).
    staleness. Today a reparse of just the zero-count queue takes two calls
    (`parser-coverage`, then `parse_text` on its words; D-S11-06, T-S11-06).
 5. **Treat the failure list as the vocabulary work queue.**
-   > "Create a Numeral part of speech with a case template, add the Malayalam
-   > cardinals, and add the missing lexical items found in the Matthew 2 failures."
+   > "Create a Numeral part of speech with a case template, add the [language A]
+   > cardinals, and add the missing lexical items found in the [second text] failures."
    > (D-M8-04)
    Lexical gaps should be **discovered from real-text failures, not guessed**. Round
    after round: the corpus ran "round 1 of new lexicon entries driven by the Aesop
@@ -67,7 +67,7 @@ modeled), and **frequency-weighted** priorities (what actually matters).
    A parse failure on an unrecognized word may mean the paradigm is incomplete rather
    than that this one word is missing -- check the whole category before adding, to
    avoid near-duplicate entries.
-7. **Expect real text to demand new machinery, not just new words.** Matthew 2 forced
+7. **Expect real text to demand new machinery, not just new words.** The second text forced
    compound rules, the complementizer enclitic, derivational nominalizers, and a whole
    new POS with its template (M6, M8). Route these back to
    [Stage 05](05-categories-and-templates.md) and
@@ -76,7 +76,7 @@ modeled), and **frequency-weighted** priorities (what actually matters).
    entries and leaves them without their derived data (D-M5-13). Run the
    "exists but incomplete" pass.
 9. **Retire the stress corpus when you move to the next one**, or keep both -- but be
-   deliberate. The corpus deleted Aesop when Matthew 2 came in (D-M6-01), losing that
+   deliberate. The corpus deleted Aesop when the second text came in (D-M6-01), losing that
    regression surface.
 10. **Regression-check against the constructed paradigm texts** after every round of
     real-corpus-driven changes. New vocabulary and new machinery can break the core
@@ -305,5 +305,5 @@ S8-S11 used them from a pre-2.13.0 main checkout (the logs say 2.12.0).*
 - No coverage threshold was ever set for a real corpus. Q-23.
 - Whether deleting the Aesop text (D-M6-01) cost a regression surface that was later
   missed is not recorded. Q-26.
-- Whether the Matthew 2 parse ever converged is not visible in the corpus; M8 ends
+- Whether the second text's parse ever converged is not visible in the corpus; M8 ends
   mid-repair. Q-24.

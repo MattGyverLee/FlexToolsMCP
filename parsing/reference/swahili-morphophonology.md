@@ -1,7 +1,7 @@
 # Swahili -- the Analysis the Claude-Swahili Project Arrived At
 
 [Back to README](../README.md) | Companion to
-[malayalam-morphophonology.md](malayalam-morphophonology.md)
+[example-agglutinative-suffixing.md](example-agglutinative-suffixing.md)
 
 **Status of everything here.** This is **what Matthew's FLEx project modelled, and how it
 got there.** It is not an authoritative grammar of Swahili. The logs record no
@@ -576,7 +576,7 @@ unanswered (Q-43). Hiding forms this way also overlaps the soft-delete conventio
 
 ## 8. Merge seam
 
-This file **does not merge** with the Malayalam file; it sits alongside it. Content
+This file **does not merge** with worked example A; it sits alongside it. Content
 that turns out to be language-neutral has been promoted to
 [flex-modeling-decisions](flex-modeling-decisions.md) (rows 25-31 from S1-S5, and the
 rows added from S6-S11) and to the stage files' "Second-Operator Evidence" sections.

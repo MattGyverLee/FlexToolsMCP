@@ -277,7 +277,7 @@ the language works."** Several distinct analyses produce identical surface forms
 silently deciding them. See [`../open-questions.md`](../open-questions.md).
 
 *(J1-J3 are not derived from a specific correction in the shards -- they follow from
-the framing that Ron does not speak Malayalam, and they are the guardrail whose absence
+the framing that Ron does not speak his target language, and they are the guardrail whose absence
 is most visible across the corpus. Marked (inferred).)*
 
 ---

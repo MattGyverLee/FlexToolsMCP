@@ -6,8 +6,8 @@ The allomorph inventories this project arrived at, and the environment strings u
 condition them, as written in FLEx.
 
 **Unverified.** These are the analyses the project converged on because they produced
-the intended parses. Ron does not speak Malayalam; see the framing in
-[`malayalam-morphophonology.md`](malayalam-morphophonology.md). Status values are as
+the intended parses. Ron does not speak the language; see the framing in
+[`example-agglutinative-suffixing.md`](example-agglutinative-suffixing.md). Status values are as
 defined there.
 
 Many surface strings are not recoverable from the logs (the log format persists source

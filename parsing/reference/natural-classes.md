@@ -3,9 +3,9 @@
 [Back to README](../README.md) | Used by [Stage 04](../stages/04-natural-classes.md)
 
 Two halves: a **language-neutral decision procedure** (section 1), and the **classes
-this project actually built** (section 2), which are Malayalam hypotheses and are
+this project actually built** (section 2), which are language-A hypotheses and are
 unverified by a native speaker -- see the framing in
-[`malayalam-morphophonology.md`](malayalam-morphophonology.md).
+[`example-agglutinative-suffixing.md`](example-agglutinative-suffixing.md).
 
 ---
 
@@ -99,7 +99,7 @@ naming should not disguise that.
 
 ## 2. The classes this project built
 
-**Unverified Malayalam hypotheses.** Members are given as the shards give them.
+**Unverified language-A hypotheses.** Members are given as the shards give them.
 
 ### 2.1 Broad, feature-based classes
 

@@ -1,13 +1,13 @@
-# Malayalam Morphophonology -- The Analysis This Project Arrived At
+# Worked Example A (agglutinative, suffixing) -- The Analysis One Project Arrived At
 
 [Back to README](../README.md)
 
 ## Read this first
 
-**This is not a description of Malayalam. It is a record of the analysis one project
+**This is not a description of the language. It is a record of the analysis one project
 arrived at, and how it got there.**
 
-- **Ron does not speak Malayalam.** He is an expert computational linguist working from
+- **Ron does not speak the language.** He is an expert computational linguist working from
   analytic intuition, reference materials, and what made the parser behave.
 - Every claim below is either a hypothesis Ron asserted and steered, or one the AI
   proposed and Ron accepted because it produced correct parses.
@@ -124,7 +124,7 @@ subrules, each stating its trigger class, whether the trigger segment is **kept 
 replaced**, and the inserted string (L-M2-01..L-M2-05). See
 [`allomorphy-environments.md`](allomorphy-environments.md) for the table.
 
-Two points of method rather than of Malayalam:
+Two points of method rather than of the language:
 - Whether the trigger segment is kept or replaced must be decided **per subrule and
   tested against a concrete surface form** -- the genitive's virama subrule was
   initially "keep" and had to be corrected to "replace" (C-M2-05, L-M2-03).
@@ -180,7 +180,7 @@ Specific oblique patterns recorded:
 |---|---|
 | Many pronouns have **suppletive** oblique stems not derivable from the nominative (L-M5-03) | `AI-proposed-accepted` |
 | Two forms are **whole-word irregular inflected forms** (a genitive and a dative) filling the Case slot, distinct from suppletive stems (L-M5-04) | `AI-proposed-accepted` |
-| Five pronouns have **no attested instrumental**; the cells were deliberately omitted rather than invented (L-M5-02) | `asserted-by-Ron` -- a methodological rule, not a Malayalam claim |
+| Five pronouns have **no attested instrumental**; the cells were deliberately omitted rather than invented (L-M5-02) | `asserted-by-Ron` -- a methodological rule, not a language claim |
 | The original eleven-pronoun set is honorific/formal-register-heavy and under-covers colloquial third-person forms (L-M5-11) | `unresolved` coverage gap |
 | Only **three interrogatives decline**; they were split into their own subcategory (D-M5-08) | `asserted-by-Ron` |
 | Most indefinite pronouns decompose as base + clitic; **five do not** and were kept as whole-word entries (L-M5-07) | `asserted-by-Ron` -- "the single richest piece of morphological reasoning in the log" |
@@ -221,7 +221,7 @@ Named by their past-stem shape. The inventory grew with corpus coverage:
 | Final | Five: "Past -i", "Past -ttu", "Past -nnu", "Past -ccu", "Past -nnyu" | L-M8-01 |
 
 `asserted-by-Ron` throughout. L-M3-11 is the important one and it is a **method**
-lesson, not a Malayalam one: factor a class system along its true independent
+lesson, not a language-specific one: factor a class system along its true independent
 dimensions before growing it.
 
 Illustrative class members (transliterated as the shard gives them): "Past -ccu"

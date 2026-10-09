@@ -12,7 +12,7 @@ Two things live here:
 
 ## 1. What this spec currently is
 
-- **One operator** (Ron), **one language** (Malayalam), **one project**, six days of
+- **One operator** (Ron), **one language** (language A), **one project**, six days of
   logs (2026-09-10 to 09-15), plus one earlier deck project in another language
   (German, 09-04 to 09-05) contributing process hygiene only.
 - **No native speaker of the target language was involved.** Every linguistic claim is
@@ -113,7 +113,7 @@ Each stage file ends its Provenance section with a `**Merge seam:**` line. Conso
 | [13 Cleanup](stages/13-cleanup-and-consolidation.md) | cadence and redundancy tolerance | -- |
 | [reference/flex-modeling-decisions](reference/flex-modeling-decisions.md) | **add a "Matthew's choice" column** | see section 3 |
 | [reference/natural-classes](reference/natural-classes.md) | section 1 is shared; section 2 splits per language | -- |
-| [reference/malayalam-morphophonology](reference/malayalam-morphophonology.md) | **does not merge** -- becomes one of several `reference/<language>-*.md` | promote leaked language-neutral content out of it first |
+| [reference/example-agglutinative-suffixing](reference/example-agglutinative-suffixing.md) | **does not merge** -- becomes one of several `reference/<language>-*.md` | promote leaked language-neutral content out of it first |
 | [reference/allomorphy-environments](reference/allomorphy-environments.md) | **does not merge**; promote the syntax table (section 1) if a second project confirms it | -- |
 | [conventions/flex-data-conventions](conventions/flex-data-conventions.md) | his conventions alongside, with provenance | where two conflict and both work, **record both** and note which project uses which |
 | [conventions/ai-collaboration-guardrails](conventions/ai-collaboration-guardrails.md) | merge **by rule, not by source**: confirming evidence joins the existing rule; contradicting evidence keeps both and marks the divergence | -- |
@@ -535,7 +535,7 @@ were fixed within a day of the event; do not cite them as open.
 4. Re-open [README section 4](README.md#4-conflicts-and-divergences) for any conflict
    his practice touches.
 5. Split `reference/` per language; promote anything language-neutral that has leaked
-   into the Malayalam files.
+   into the language-A files.
 6. Merge the guardrails by rule.
 7. Close every open question marked *Audience: Matthew*.
 8. Re-derive the tooling backlog in section 4 -- his process will add requirements and

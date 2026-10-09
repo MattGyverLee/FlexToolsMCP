@@ -6,7 +6,7 @@ This is the **most generalizable content in the corpus**: the recurring question
 "which FLEx construct models this linguistic situation?", answered from what the
 project actually tried, including what it tried and abandoned.
 
-Nothing here is Malayalam-specific. The examples are Malayalam, the logic is not.
+Nothing here is language-specific. The examples come from the worked-example projects; the logic does not.
 
 ---
 

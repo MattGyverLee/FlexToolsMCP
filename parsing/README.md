@@ -9,45 +9,51 @@ It is derived from a real corpus of work, not invented. Everything here is
 traceable to a directive, linguistic finding, or correction recorded in the
 extraction shards (see [`evidence/directive-index.md`](evidence/directive-index.md)).
 
+**The process is language-neutral.** Its evidence comes from several FLEx projects in
+different languages and language types. No single language or project is the subject of
+this spec. Language-specific material appears only as **worked examples** in
+`reference/`, labelled by type rather than as the focus of the work, and the stage
+bodies contain none of it.
+
 ---
 
 ## 1. Where this came from
 
 | Shard | Dates | Project | Content |
 |---|---|---|---|
-| M1 | 2026-09-10 .. 09-11 | Malayalam AI (parsing) | phoneme inventory, templates, stems/affixes, features, first phonological rules, first affix-process rules |
-| M2 | 2026-09-10 .. 09-11 | Malayalam AI | postposition/enclitic text, demonstrative paradigm, first parse-failure diagnosis loop |
-| M3 | 2026-09-11 .. 09-12 | Malayalam AI | parse-speed regression, duplicate-parse triage, natural-class convention, verb inflection classes |
-| M4 | 2026-09-12, 09-14 | Malayalam AI | new conjugation classes, 100-verb bulk build, stem-name/inflection-feature refactor |
-| M5 | 2026-09-13 .. 09-14 | Malayalam AI | largest session (78 ops): POS catalog bootstrap, variant/inflection-variant modeling, HermitCrab parse loop, clitic decomposition, Aesop corpus |
-| M6 | 2026-09-14 .. 09-15 | Malayalam AI | Matthew 2 import, compound rules, derivation-vs-inflection correction |
-| M7 | 2026-09-15 | Malayalam AI | oblique augment, bulk delete + restore, anusvara phonological rule. **Its section 9 is the converged-process view.** |
-| M8 | 2026-09-15 | Malayalam AI | final sessions: Numeral POS by analogy, past-variant-entry architecture. **Its section 9 is the end state.** |
+| M1 | 2026-09-10 .. 09-11 | Project A (parsing) | phoneme inventory, templates, stems/affixes, features, first phonological rules, first affix-process rules |
+| M2 | 2026-09-10 .. 09-11 | Project A | postposition/enclitic text, demonstrative paradigm, first parse-failure diagnosis loop |
+| M3 | 2026-09-11 .. 09-12 | Project A | parse-speed regression, duplicate-parse triage, natural-class convention, verb inflection classes |
+| M4 | 2026-09-12, 09-14 | Project A | new conjugation classes, 100-verb bulk build, stem-name/inflection-feature refactor |
+| M5 | 2026-09-13 .. 09-14 | Project A | largest session (78 ops): POS catalog bootstrap, variant/inflection-variant modeling, HermitCrab parse loop, clitic decomposition, Aesop corpus |
+| M6 | 2026-09-14 .. 09-15 | Project A | second real-text import, compound rules, derivation-vs-inflection correction |
+| M7 | 2026-09-15 | Project A | oblique augment, bulk delete + restore, anusvara phonological rule. **Its section 9 is the converged-process view.** |
+| M8 | 2026-09-15 | Project A | final sessions: Numeral POS by analogy, past-variant-entry architecture. **Its section 9 is the end state.** |
 | G1 | 2026-09-04 .. 09-05 | German VOCABULARY deck | a *different kind of project*; contributes process hygiene only |
 
 **The operator throughout was Ron.** The AI assistant was FlexToolsMCP-driven.
 
-### Critical framing: Ron does not know Malayalam
+### Critical framing: the operators do not speak the target languages
 
 Ron is an expert computational linguist with strong analytical intuition. He does
-**not** speak Malayalam. Therefore:
+**not** speak the target language of his project. Therefore:
 
 - **His transferable contribution is METHOD** -- how to model, how to decompose a
   problem, how to debug a parse failure, how to verify a fix, and when to distrust
   a result.
-- **Every Malayalam claim in this spec is a hypothesis**, either asserted by Ron on
+- **Every claim about language A in this spec is a hypothesis**, either asserted by Ron on
   analytic grounds or proposed by the AI and accepted by Ron. It may not be native-speaker verified.
 - The `reference/` files therefore document **"the analysis this project arrived at,
   and how it was arrived at"** -- carrying each item's `status`
   (`asserted-by-Ron` / `AI-proposed-accepted` / `unresolved`) -- and must **not** be
-  read as authoritative Malayalam grammar.
+  read as authoritative grammar of that language.
 
 ### Second operator: Matthew, Swahili
 
 A second, independent corpus has been merged: Matthew's work on the FLEx project
 **Claude-Swahili**, taken from the FlexToolsMCP runtime logs on two machines (S1-S5 from
 one, S6-S11 from the other). The practitioner and the language are different, and so is
-the language type: Bantu noun class agreement and verb templates instead of Dravidian
+the language type: Bantu noun class agreement and verb templates instead of suffixing
 agglutination.
 
 | Shard | Dates | Content |
@@ -124,7 +130,7 @@ Then:
     **highest-value generalizable file in this directory**: which FLEx construct to
     reach for in which linguistic situation, as a decision table. Read it before
     Stage 07.
-  - [`malayalam-morphophonology.md`](reference/malayalam-morphophonology.md),
+  - [`example-agglutinative-suffixing.md`](reference/example-agglutinative-suffixing.md),
     [`natural-classes.md`](reference/natural-classes.md), and
     [`allomorphy-environments.md`](reference/allomorphy-environments.md) are
     **language-specific worked examples** -- illustrative, unverified.
@@ -153,7 +159,7 @@ Then:
 |---|---|
 | Stage decomposition | **Derived** from shard section 5 across all nine shards; conflicts resolved toward the late-corpus (M7 §9 / M8 §9) form |
 | Provenance | **Complete** -- 179 ids (Ron) + 407 (Matthew) indexed, see [`evidence/directive-index.md`](evidence/directive-index.md) |
-| Malayalam linguistic content | **Unverified by a native speaker.** Hypotheses only |
+| Language-A linguistic content | **Unverified by a native speaker.** Hypotheses only |
 | Parse-and-repair stage (11) | Written as it **should** work with in-MCP tooling, before that tooling existed; Ron's corpus (09-10..15) parsed out of band. The tools now exist: they landed 09-18..09-24 and first shipped in FlexToolsMCP 2.13.0 (2026-09-25). Remaining gaps, each with a status, are in [`MERGE-NOTES.md`](MERGE-NOTES.md) section 4 |
 | Matthew's process | **Merged** (shards S1-S11, 407 ids, both machines' logs, S6-S11 checked against Claude Code transcripts). Per-stage "Second-Operator Evidence" sections; conflicts in section 4.9-4.20; remaining gaps in [`MERGE-NOTES.md`](MERGE-NOTES.md) |
 | Parse-and-repair with in-MCP tools | **Observed** from 2026-09-23 (S8-S11; tools on main from 2026-09-20): `try_word`, `parse_text` with filing, `parse_diff`, `parse_sandbox`. See [Stage 11](stages/11-parse-and-repair-loop.md) and [`MERGE-NOTES.md`](MERGE-NOTES.md) section 4 |
@@ -321,7 +327,7 @@ to Stages 01 and 06 and to the conventions files.
     (C-S1-06).
   - **Keep P1 for rules and templates; allow catalog-first features.**
 
-### 4.10 Grammatical conditioning: inflection classes (Malayalam) vs agreement features (Swahili)
+### 4.10 Grammatical conditioning: inflection classes (language A) vs agreement features (Swahili)
 
 Not a conflict but a **language-type difference**, recorded so neither is read as the
 "right" default.
@@ -613,8 +619,8 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   - [12 -- Real-Corpus Stress Test](stages/12-real-corpus-stress-test.md)
   - [13 -- Cleanup and Consolidation](stages/13-cleanup-and-consolidation.md)
 - `reference/`
-  - [malayalam-morphophonology.md](reference/malayalam-morphophonology.md)
-  - [swahili-morphophonology.md](reference/swahili-morphophonology.md) (second operator)
+  - [example-agglutinative-suffixing.md](reference/example-agglutinative-suffixing.md) (worked example A: agglutinative, suffixing)
+  - [swahili-morphophonology.md](reference/swahili-morphophonology.md) (worked example B: noun-class agreement)
   - [natural-classes.md](reference/natural-classes.md)
   - [allomorphy-environments.md](reference/allomorphy-environments.md)
   - [flex-modeling-decisions.md](reference/flex-modeling-decisions.md)

@@ -45,8 +45,8 @@ the bulk-import codegen guidance, or entity-discovery/`VariantOperations`).
 
 Updated dup notes for the Summary Table below: ISSUE-02 dup/likely-fixed against flexicon#268 (not just #260); ISSUE-08 confirmed NOT a regression of flexicon#211 (narrower original fix scope, per #211's own text); ISSUE-11 confirmed already implemented (issue #93), no filing needed.
 
-Source: triage shards T1 (2026-09-04/05, German-vocabulary session), T2 (2026-09-10/11, Malayalam AI),
-T3 (2026-09-12..14, Malayalam AI), T4 (2026-09-14/15, Malayalam AI). Cross-checked against
+Source: triage shards T1 (2026-09-04/05, German-vocabulary session), T2 (2026-09-10/11, Project A),
+T3 (2026-09-12..14, Project A), T4 (2026-09-14/15, Project A). Cross-checked against
 `gh issue list --repo MattGyverLee/FlexToolsMCP --state all` and `--repo MattGyverLee/flexicon --state all`,
 and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
 
@@ -147,7 +147,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   2026-09-10 16:18:54 | DEBUG   |       return IMoStemAllomorph(obj)
   2026-09-10 16:18:54 | DEBUG   |   TypeError: object does not implement IMoStemAllomorph
   ```
-  From `session_161330_auto-Malayalam_AI.log:713-725` and 4 further occurrences (see Occurrences).
+  From `session_161330_auto-Project_A.log:713-725` and 4 further occurrences (see Occurrences).
 
   ## User impact
   Recurred 5 times over ~3.5 hours across unrelated scripts inspecting/creating allomorphs for affix
@@ -156,8 +156,8 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
 
   ## Occurrences
   5 occurrences, first seen 2026-09-10 16:18:54, last seen 2026-09-10 19:50:58 (IMoStemAllomorph x2,
-  IMoForm x2, IMoAffixAllomorph x1). Sessions: `session_161330_auto-Malayalam_AI.log`,
-  `session_194358_auto-Malayalam_AI.log`.
+  IMoForm x2, IMoAffixAllomorph x1). Sessions: `session_161330_auto-Project_A.log`,
+  `session_194358_auto-Project_A.log`.
 
   ## Suspected cause
   flexicon#260 ("`AllomorphOperations.__GetAllomorphObject` never casts to IMoForm -- GetForm/Delete
@@ -196,11 +196,11 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   ## Reproduction / evidence
   ```
   2026-09-10 15:36:29 | ERROR   | [FAIL] Operation failed
-  2026-09-10 15:36:29 | ERROR   | Error:           Failed to open project 'Malayalam AI': FLExProject.OpenProject() got an unexpected keyword argument 'ui'
+  2026-09-10 15:36:29 | ERROR   | Error:           Failed to open project 'Project A': FLExProject.OpenProject() got an unexpected keyword argument 'ui'
   2026-09-10 15:36:29 | DEBUG   | Report messages:
   2026-09-10 15:36:29 | WARNING |   report.Warning: flexicon.code.headless_ui.HeadlessLcmUI is not available in this flexicon build; falling back to the WinForms FwLcmUI.
   ```
-  From `session_153525_auto-Malayalam_AI.log:118-121`.
+  From `session_153525_auto-Project_A.log:118-121`.
 
   ## User impact
   Whole operation aborted before any project access; blocked Ron's very first read-only survey of the
@@ -246,7 +246,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   2026-09-11 09:39:57 | ERROR   | Error:           Execution error: cannot import name 'PhonFeatureOperations' from 'flexicon' (...\flexicon\__init__.py)
   2026-09-11 09:39:57 | DEBUG   |   ImportError: cannot import name 'PhonFeatureOperations' from 'flexicon' (...). Did you mean: 'PhonemeOperations'?
   ```
-  From `session_141110_auto-Malayalam_AI.log:730-733`; also `session_161330...log:392-398,2330-2336` and
+  From `session_141110_auto-Project_A.log:730-733`; also `session_161330...log:392-398,2330-2336` and
   `session_145940...log:508-511`.
 
   ## User impact
@@ -300,11 +300,11 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   2026-09-10 16:14:15 | DEBUG   |       raise FP_ParameterError("Cannot add phoneme to feature-based natural class")
   2026-09-10 16:14:15 | DEBUG   |   flexicon.code.exceptions.FP_ParameterError: Cannot add phoneme to feature-based natural class
   ```
-  From `session_161330_auto-Malayalam_AI.log:176-191`.
+  From `session_161330_auto-Project_A.log:176-191`.
 
   ## User impact
   Blocked Ron's whole phoneme-repopulation script (replacing the stock phoneme inventory with
-  Malayalam graphemes) at the first natural class that happened to be feature-based; he had to
+  target-language graphemes) at the first natural class that happened to be feature-based; he had to
   inspect and branch around it manually with no documented signal for which classes were which kind.
 
   ## Occurrences
@@ -395,7 +395,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   2026-09-14 12:08:37 | DEBUG   |     File "<string>", line 18, in <module>
   2026-09-14 12:08:37 | DEBUG   |   AttributeError: 'LexSenseOperations' object has no attribute 'GetMSA'
   ```
-  From `session_223712_auto-Malayalam_AI.log:237-262` and `:3311-3382`.
+  From `session_223712_auto-Project_A.log:237-262` and `:3311-3382`.
 
   ## User impact
   Both blocked read-only diagnostic reads (a phoneme-inventory dump to validate new graphemes, and an
@@ -444,7 +444,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   2026-09-13 22:39:24 | ERROR   | Error:           Execution error: Object of type CoreWritingSystemDefinition is not JSON serializable
   2026-09-13 22:39:24 | DEBUG   |   TypeError: Object of type CoreWritingSystemDefinition is not JSON serializable
   ```
-  From `session_223712_auto-Malayalam_AI.log:92-113,157-182`.
+  From `session_223712_auto-Project_A.log:92-113,157-182`.
 
   ## User impact
   Two wasted round-trips (~19s combined) before Ron manually added `.Handle` / `.Name.BestAnalysisAlternative.Text`
@@ -494,11 +494,11 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   2026-09-13 23:07:55 | ERROR   | [FAIL] Operation failed
   2026-09-13 23:07:55 | ERROR   | Error type:      ReportedError
   2026-09-13 23:07:55 | ERROR   | Error:           Operation reported 69 error(s) via report.Error(); see messages for details.
-  2026-09-13 23:07:55 | ERROR   |   report.Error: FAILED ഞാൻ (1SG): POS not found: Personal pronoun
-  2026-09-13 23:07:55 | ERROR   |   report.Error: FAILED നീ (2SG): POS not found: Personal pronoun
+  2026-09-13 23:07:55 | ERROR   |   report.Error: FAILED <1SG form> (1SG): POS not found: Personal pronoun
+  2026-09-13 23:07:55 | ERROR   |   report.Error: FAILED <2SG form> (2SG): POS not found: Personal pronoun
   2026-09-13 23:07:55 | DEBUG   |   report.Info: batch=closed planned=69 created=0 skipped_existing=0 failed=69
   ```
-  From `session_223712_auto-Malayalam_AI.log:475-691`.
+  From `session_223712_auto-Project_A.log:475-691`.
 
   ## User impact
   100% of the closed-class import batch (69/69 rows) produced zero entries, stalling a large fraction
@@ -541,7 +541,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   2026-09-14 10:52:04 | WARNING | Reason code:     undiscovered_entity
   2026-09-14 10:52:04 | WARNING |   undiscovered=['VariantOperations']
   ```
-  From `session_223712_auto-Malayalam_AI.log:2907-2909`.
+  From `session_223712_auto-Project_A.log:2907-2909`.
 
   ## User impact
   Blocked an oblique-case variant lexeme entry creation step; the underlying flexicon class is real
@@ -587,9 +587,9 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   2026-09-14 05:40:56 | WARNING | Reason code:     project_locked
   2026-09-14 05:40:56 | WARNING |   verdict=held_by_other sharing_enabled=True holder_pid=8452 holder_process=python
   ...
-  2026-09-14 05:43:07 | WARNING | [SHARED] 'Malayalam AI' stale_lock (dead PID 8452); proceeding with the write.
+  2026-09-14 05:43:07 | WARNING | [SHARED] 'Project A' stale_lock (dead PID 8452); proceeding with the write.
   ```
-  From `session_223712_auto-Malayalam_AI.log:1091-1140`.
+  From `session_223712_auto-Project_A.log:1091-1140`.
 
   ## User impact
   ~2 minute stall/blocked retry; no data loss, self-resolved on resubmit.
@@ -626,7 +626,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
 | F-T4-03 (`AllomorphEnvironments` returns `None`, not empty, breaking a list comprehension) | related to ISSUE-02/#260's allomorph-subtype-handling family; fold into ISSUE-02 as an additional symptom rather than filing separately |
 | F-T1-02 (`api_discovery_required` preflight rejects a repair pass reusing prior session's APIs) | possible dup of FlexToolsMCP#80 ("Graceful discovery redirect + provenance-sensitive preflight") -- the log itself cross-references "issue #80" for a related discovery-gate path |
 | F-T2-02 (`HeadlessLcmUI` not available, falls back to WinForms `FwLcmUI`, `ConflictingSave` hang hazard) | matches FlexToolsMCP#148 ("HeadlessLcmUI ImportError probe rests on a premise flexicon #285 reversed") -- #285 (closed 2026-09-08) was supposed to make HeadlessLcmUI the default before this 2026-09-10 occurrence; flag as regression evidence on #148, not a new issue |
-| F-T2-07 (`Project 'Malayalam AI' is currently locked by another process`, 5x) | pre-fix evidence for FlexToolsMCP#145 (closed 2026-09-18, "flextools_health replays a startup snapshot ... instead of re-scanning") -- these logs (2026-09-10/11) predate the fix; confirms the bug was real, nothing further to file |
+| F-T2-07 (`Project 'Project A' is currently locked by another process`, 5x) | pre-fix evidence for FlexToolsMCP#145 (closed 2026-09-18, "flextools_health replays a startup snapshot ... instead of re-scanning") -- these logs (2026-09-10/11) predate the fix; confirms the bug was real, nothing further to file |
 | F-T2-08 (`OpenProject(undoable=False)` legacy-mode partial-write hazard, co-occurring with several other failures) | pre-fix evidence for FlexToolsMCP#144 (closed 2026-09-18) and live evidence for the still-open #153 ("Non-undoable degradation is still silent on flexicon <=4.3.0") -- add as a field-evidence comment on #153, not a new issue |
 | F-T3-10 (`ITsString.set_String` AttributeError -- user miscast; but the co-occurring `undoable=False` stderr warning shows a real partial-write leak, confirmed by the next operation's own "clean up the empty environment left by the previous failed run") | the AttributeError itself is a user-code bug (not filed); the partial-write leak is the same #144/#153 pattern as F-T2-08 above -- add as further field evidence on #153, not a new issue |
 | F-T4-04 (`ArgumentNullException: Parameter name: newby` from pushing `None` into `LcmList.Add`, with the same `undoable=False` stderr) | root cause is a user-script bug (missing `assert obl_type is not None`); the `undoable=False` partial-write angle is again #144/#153 field evidence, not new |

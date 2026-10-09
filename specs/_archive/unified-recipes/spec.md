@@ -554,7 +554,7 @@ needs human editing.
 Sources scanned 2026-09-25/26: developer MCP logs (19 date folders, ~18 MB,
 ~700 successful `run_module` ops), `skeletons.jsonl` (309 entries),
 MCPlayground `flex-parse-fixup` scripts (23 `lib/` scripts plus run records),
-and a second user's logs (22 sessions, German and Malayalam projects,
+and a second user's logs (22 sessions, a German project and one other language project,
 381 ops).
 
 - Recurring tasks across sources (sources in brackets): parser coverage [all

@@ -70,6 +70,11 @@ attempt.
 10. **Re-inspect the tree periodically.** The human may restructure categories in the
     FLEx GUI mid-session -- in the corpus, the Pronoun category was moved under Nominal
     by hand so it would share the Case slot (D-M5-02).
+11. **An invariant category must also inherit no template** (L-S9-01, L-S9-03). A
+    subcategory inherits its parent's templates, so a template-less subcategory under a
+    parent with obligatory slots still fails on its free words. In the Swahili project,
+    moving Pronoun out from under Pro-form fixed 3 words and broke none (`parse_diff`).
+    The step 7 rule reads: owns zero templates **and inherits none**.
 
 ## Linguistic Decisions Required
 
@@ -99,6 +104,12 @@ attempt.
   Stage 06.
 - POS names used by downstream scripts are **derived from the created objects**, not
   re-typed (see Failure Modes).
+- No inflectional affix sense belongs to no slot. An unslotted inflectional MSA is not
+  inert: the parser tries it in every position. Run the audit at the end of every
+  write that adds affix senses (D-S8-08: 14 found in one dry run).
+- Once texts parse, whole-word stems parse at similar rates across POS. A POS with a
+  much lower rate points at its template (own or inherited), not at the lexicon
+  (S9 13:43: Noun 274 parsed / 165 not, Numeral 3 / 17; L-S9-01).
 
 ## Common Failure Modes
 
@@ -115,6 +126,10 @@ attempt.
 - **Polymorphic casting rejections** when walking templates and slots (C-M8-02,
   C-M8-03: `StemNameRA` does not exist on an affix template; C-M6-04).
 - **Not noticing a human restructured the tree** (D-M5-02).
+- **Treating validate_only as a grammar check.** It proves a write is mechanically
+  sound, not that it is grammatically right: a slot merge passed validation, was
+  written, and was reverted by the operator a minute later (C-S6-02, T-S6-09). Pair
+  template and optionality edits with an over-generation check or explicit sign-off.
 
 ## Automation Notes
 
@@ -137,7 +152,7 @@ inflection/derivation call.
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30); both machines' Swahili logs are now ingested. Logs before 09-23 keep no tool output, so their results are partly inferred; later logs keep truncated output. Sessions run by other clients (local models, a non-Claude agent, an unidentified weaker client) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **POS first, from the catalog, idempotently** (D-S1-01) -- CONFIRMS the catalog rule.
   **ADDS:** check every catalog id exists *before* the loop (`GOLD:Conjunction` did not,
@@ -179,6 +194,79 @@ inflection/derivation call.
   session. Always follow a structural write with a "what did it actually leave behind"
   read.
 
+*S6-S11 additions:*
+
+- **CONFIRMS row 29 / L-S5-02, now with Matthew's rationale** (D-S6-08, L-S6-04,
+  V-S6-02, L-S7-02). *"the duplication is to allow subject with or without object, but
+  not a bare object."* The AI had merged Subj2/TAM2 into Subj/TAM in all four verb
+  templates after validate_only passed; Matthew had it reverted a minute later
+  (C-S6-02). The idiom was reused for a second object slot (Obj2). It was also broken
+  twice the next day, by sessions that did not read the design record: Subj2 made
+  required, then TAM2 made optional for habitual hu- and negative-present forms
+  (C-S7-02, V-S7-03). Whether TAM2-optional should have been a separate template is
+  open ([README 4.13](../README.md)).
+- **ADDS: the template Description is the design record** (D-S6-09, D-S7-02, C-S7-01,
+  C-S7-02).
+  - Write the reasons into the project, with fixed headings: ANCHOR, REASONING,
+    DELIBERATELY NOT BUILT, KNOWN GAP, VERIFY-WITH.
+  - Read it before editing a template. Merge into it; never overwrite it (a parallel
+    agent overwrote one).
+- **ADDS: every template needs an anchor** (L-S7-03, L-S7-04). If all slots are
+  optional, or the only anchor is a null morpheme, the template matches every stem,
+  because HermitCrab inserts null morphemes freely. Anchor with an obligatory overt
+  slot or with a bound-stem morph type. The singular imperative was declined for lack
+  of an anchor and then built by another session the same night: unresolved.
+- **ADDS a lint: a template's filler MSAs must have the template's POS or an ancestor**
+  (L-S7-04). A Quantifier template was inert because its fillers' POS was Connective.
+- **ADDS: build templates per construction, and make each parse its own examples**
+  (D-S6-10, C-S6-03). *"Usually the templates are derived grammatically. For example,
+  an infinitive will likely have no subject or object."* A new relative template that
+  could not parse three of its four motivating forms was shipped with the gap in its
+  description; record that as an open task, not as documentation.
+- **ADDS: unblock a category by changing the tree, not by relaxing slots** (L-S9-01,
+  L-S9-02, L-S9-03, V-S9-06). On 09-24 three tree edits unblocked about 3,000 tokens
+  with no new entries: Pronoun moved to the top level; `*amba` moved to a new
+  Verb > Relativizer with a RelSuf-only template; 14 invariant Arabic-origin numerals
+  moved to a template-less top-level POS. Unparsed wordforms went 14,038 -> 14,006.
+  Extends [row 23](../reference/flex-modeling-decisions.md) (see step 11).
+- **REVISES C-S1-06 and V-S6-03: verb extensions are now derivational** (V-S7-01,
+  L-S7-05, D-S7-05, D-S7-06). On 09-13 the six extensions became derivational MSAs
+  between POS subcategories (Verb > Underived > {Transitive, Intransitive}; Verb >
+  Detransitive). All 647 verb stems were classified, the empty extension slots were
+  removed, and reduplication became derivational. The rollout was staged:
+  1. experiments on throwaway objects (subcategory inheritance, From-category
+     enforcement, subsumption), cleaned up and checked;
+  2. a 20-root prototype, reverted when the partial state hurt unmarked roots;
+  3. classification of all stems outside FLEx;
+  4. batched repointing against a 24-form parse baseline;
+  5. an atomic conversion with a 30-form probe list and an 858-wordform before/after.
+
+  S7 keeps no tool output, so the parse results are not in the log. The throwaway
+  nonces collided with real roots (oz, uz) and corrupted them (C-S7-03): collect the
+  existing forms first. Relapses at the lexicon level are in
+  [Stage 06](06-stem-and-affix-population.md). See Q-40.
+- **REVISES the `NA` filler above** (D-S1-06, C-S3-02 -> V-S10-02). By 09-25 the
+  agreement features had no `NA` value, and each null class prefix carried a single
+  value, so 9/10 nouns get two analyses by construction. See Q-38.
+- **ADDS: one sense per agreement value** (D-S8-07, L-S8-03). FLEx gives a sense one
+  feature structure, so a concord homophonous across three classes needs three senses.
+  A gloss `conn.conc.nc4/6/9` sat on features for class 4 only, and the other classes
+  silently failed to unify. Lint: a gloss naming N values needs N senses. Rename the old
+  sense before adding, or re-runs duplicate it.
+- **ADDS: exact-value unification and legacy values** (D-S8-11, D-S8-10, D-S8-09,
+  V-S8-03). 40 nouns tagged class 1a failed against a class-1 concord until 1a concord
+  senses were added. Census each value's users before adding an affix keyed to it. To
+  fix a misfiled value, add the correct one alongside the old (class 13 under both
+  plural and singular features) instead of migrating. Reasoned in the module, not
+  parse-tested.
+- **ADDS (unverified): affix inflection features unify; they do not overwrite**
+  (L-S7-01). So a suffix that changes a noun's class (locative -ni) has to be a
+  derivational MSA with To-features. Documented, never implemented or parsed.
+- **CONFIRMS L-S4-04** (L-S8-04, V-S8-05). 12 of 21 POS had no template on 09-20.
+- **ADDS: wastebasket POS review** (D-S6-11). Matthew questioned *mbali* as Particle;
+  the next day Particle members were redistributed to Adverb and new Interrogative and
+  Copula categories (S7, AI-applied).
+
 ## Provenance
 
 - M1 ops 5, 10, 15 (2026-09-10 16:16, 19:52, 20:42); D-M1-02, D-M1-03; M1 §5
@@ -189,14 +277,14 @@ inflection/derivation call.
 - M6 ops 17-18, 25 (2026-09-14 16:26-16:39); **C-M6-03**, L-M6-03, L-M6-06.
 - M7 op 8-9 (2026-09-15 08:18) -- augment built as a Number-slot affix; L-M7-01.
 - M8 ops 2, 4-6 (2026-09-15 14:04-14:09); D-M8-03, D-M8-04; L-M8-02; C-M8-03.
-- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Matthew used no shared parent-category slots in these logs.
+- S9 09-24 133553 13:43-14:30 (L-S9-01, L-S9-03) -- step 11 and the stem-parse-rate QC item; S8 09-20 161814 #44-45 (D-S8-08) -- unslotted-affix QC item; S6 09-12 215450 #40-44 (C-S6-02) -- validate_only failure mode.
+- **Merge seam:** Merged from S1-S11 (both machines) -- see Second-Operator Evidence above. Matthew used no shared parent-category slots; he used POS subcategories for template inheritance (relativizer) and for derivational From/To categories (verb valency). Open: singular imperative; TAM2 optionality vs a separate template.
   *(Original seam: Matthew's category inventory and slot conventions; in particular whether he uses shared parent-category slots at all.)*
 
 ## Open Questions
 
 - The corpus never states a rule for *when* to introduce a shared parent category
-  (Nominal) versus duplicating slots per child. Q-09.
+  (Nominal) versus duplicating slots per child. Q-09. Swahili evidence on the cost side:
+  inherited templates blocked free words in a subcategory (L-S9-01).
 - Whether a Noun+Verb compound rule was ever actually created, and why the expected
   compound did not fire (M6 §7). Q-10.
-</content>
-</invoke>

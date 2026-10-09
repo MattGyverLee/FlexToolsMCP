@@ -78,6 +78,17 @@ times across six days.
 15. **A rollback is a legitimate outcome.** Trying a modeling technique, verifying it
     live, and then fully reverting it with the same plan-then-mutate discipline is
     normal practice, not failure (D-M7-07).
+16. **Snapshot the original values to a file before any bulk field rewrite, and
+    re-derive every pass from the snapshot** (second operator, D-S8-03). A lossy
+    808-row transform went wrong four times and still converged, because no pass read
+    the already-mutated field.
+17. **After any failed write run, check the database, not the error message**
+    (C-S6-01, C-S11-05). In non-undoable mode a failed run may have written already:
+    sweep for entries created today, entries with a null or empty lexeme form, and
+    entries with no senses.
+18. **Prove a duplicate guard with an idempotency rerun that expects zero writes**
+    (D-S10-09), and key the guard on form plus POS, not form plus gloss alone: a too-broad
+    key silently skipped a noun because a verb shared its form and gloss (C-S10-04).
 
 ## Linguistic Decisions Required
 
@@ -121,6 +132,13 @@ times across six days.
   only by comparing against a known-good sibling (M7 ops 19-20).
 - **Leaving both conventions in place** because the reconciliation was deferred
   (L-M6-01 -- still open).
+- **"Consolidating" objects that are duplicated on purpose** (C-S6-02, L-S6-04). An AI
+  pass merged two slot objects that existed to give one slot different optionality in
+  different templates; it passed validation and was reverted a minute later on the
+  operator's word. Read the object's recorded design reason before merging; write the
+  reason into the object's Description so the next pass finds it (D-S6-09).
+- **A write script that writes first and verifies after**, so a bug in the
+  verification makes a committed run look failed (C-S11-05).
 
 ## Automation Notes
 
@@ -149,7 +167,7 @@ verification.
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). Sessions by other clients (local models, an unidentified weaker client) are failure-mode evidence only. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS: disable before delete** (D-S4-08, C-S4-01).
   1. Set `DoNotUseForParsing`.
@@ -187,6 +205,56 @@ verification.
   information (`ku`+stem(+V), D-S5-04), so do not apply it to verbs blindly.
 - **Failure mode: unguarded whole-lexicon delete for a "clean rebuild"** (C-S1-02).
 
+*S6-S11:*
+
+- **CONFIRMS the session-atomicity hazard, with an orphan** (C-S6-01, T-S6-04). An API
+  probe in the work project failed mid-transaction with no rollback, leaving an entry
+  with a null lexeme form. It was found by a date-created plus null-lexeme sweep and
+  deleted (Procedure 17). Probe API semantics in a test project, never the work
+  project.
+- **ADDS: reference integrity as the cleanup QC** (L-S6-02, D-S7-03). Before and after
+  each structural write: count morph bundles, non-null morph references and distinct
+  referenced GUIDs; fail on any loss. Swapping lexeme and allomorph by moving owned
+  objects passed this check on 20 entries (see [Stage 07](07-allomorphy-modeling.md)).
+- **ADDS: a native merge exists** (T-S7-05). `ILexEntry.MergeObject` merged two
+  duplicate object-marker entries, collapsing senses and dropping unreferenced MSAs.
+  Whether it repoints analyses (the C-S4-03 gap) is not shown in the log; check before
+  relying on it.
+- **ADDS: clean up after structural conversions** (V-S7-01). Once the verb extensions
+  became derivational, their now-empty template slots were removed from every verb
+  template.
+- **ADDS: bulk-run debris** (C-S7-04, C-S11-05).
+  - A heuristic write run that created entries, allomorphs and approvals in one pass
+    crashed on a wrapper type error and left 424 duplicate allomorphs, which a
+    follow-up op deleted.
+  - On 09-30 a run created bare entries for syllable fragments (`el`, `is`, `en`,
+    `ghadha`, `malaka` ...) before crashing; probably about 10 junk entries remain
+    (inferred). Stage 13 candidate: verify read-only, then delete with a GUID guard.
+- **ADDS: guarded single deletes** (C-S10-01). A duplicate bound stem was deleted only
+  after a reference check (0 analyses) and a GUID plus headword guard that aborts on
+  mismatch.
+- **ADDS: keep the analysis layer apart from the lexicon** (D-S8-14, C-S8-06, D-S9-04,
+  L-S8-06; tool output). Before deleting stored analyses, split human from parser
+  analyses and count text references, then stop for the operator. "Bundle without a
+  sense" is normal for parser output (88% of it), so that completeness test applies
+  only to human analyses. A bad analysis is deleted as an analysis; the entry it
+  points to is not junk by implication. One 18-analysis delete was queued with no
+  recorded go-ahead (blocked by a lock).
+- **ADDS: `DoNotUseForParsing` as a suppression lever, unverified** (D-S7-04, V-S7-02,
+  D-S8-12, C-S8-07). Set on 33 entries by 09-20: the cl.16 null prefix, a duplicate
+  quantifier stem, shadow whole-word possessives and losing homographs. This overloads
+  the flag that D-S4-08 uses as the soft-delete step, no fresh parse diff shows it
+  changes the parser's behaviour, and current repo guidance treats the flag as
+  deprecated. Record these suppressions as a migration list.
+- **ADDS: wastebasket POS review** (D-S6-11; S7 Swahili content). Particle, determiner
+  and similar catch-all categories were reviewed and recategorised (new interrogative
+  and copula POS), a recurring cleanup item.
+- **Open: glide formation modelled twice** (S6 Conflicts 4): a global rule and stored
+  glide allomorphs on each prefix. By S9-S10 the rule, not the allomorphs, was the
+  defect (see [Stage 08](08-phonological-rules.md)). "Delete what the rules derive"
+  can run in the other direction: delete or restrict the rule that the allomorphs
+  already cover.
+
 ## Provenance
 
 - M1 op 35 (2026-09-11 12:10) -- 25 rule-derivable allomorphs pruned; op 41
@@ -203,7 +271,10 @@ verification.
   D-M8-07; M8 §6, M8 §9.
 - G1 §5 "Verify (step 5)" -- cross-theme regression check, language-independent per
   G1 §9.
-- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Cadence (Q-27): still opportunistic, but each cleanup ran as a planned, tiered batch.
+- S6-S11: C-S6-01, C-S6-02, L-S6-02, L-S6-04, D-S6-09, D-S6-11, T-S6-04; D-S7-03,
+  D-S7-04, C-S7-04, T-S7-05, V-S7-01, V-S7-02; D-S8-03, D-S8-12, D-S8-14, C-S8-06,
+  C-S8-07, L-S8-06; D-S9-04; C-S10-01, C-S10-04, D-S10-09; C-S11-05.
+- **Merge seam:** Merged from S1-S11 (both machines). Cadence (Q-27): still opportunistic; in S6-S11 cleanup is triggered by failed writes and structural conversions rather than scheduled. Open: the `DoNotUseForParsing` suppressions and the probable 09-30 junk entries.
   *(Original seam: Matthew's cleanup cadence and his tolerance for redundancy.)*
 
 ## Open Questions
@@ -215,5 +286,3 @@ verification.
 - Whether the abandoned "Enclitic onset" class was deleted or merely orphaned
   (M7 §7). Q-08.
 - No cadence is stated for when cleanup should run. Q-27.
-</content>
-</invoke>

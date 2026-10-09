@@ -169,5 +169,3 @@ When Matthew's classes are merged:
   segment lists, [Stage 03](../stages/03-phonological-features.md) becomes optional and
   section 1.2's decision tree needs a second branch.
 - Section 2 splits per language; section 1 stays shared.
-</content>
-</invoke>

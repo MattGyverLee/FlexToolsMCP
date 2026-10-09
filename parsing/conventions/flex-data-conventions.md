@@ -20,6 +20,9 @@ existence check and dictionary key must normalize **both sides**.
   phoneme code representations (M3 §6). The corpus aliased both as one-letter helpers
   at the top of nearly every snippet.
 - Normalize the imported text file itself, not only the comparison code.
+- **Normalization does not unify look-alike characters.** The phoneme `ng'` was coded
+  with U+0027 while the corpus used U+02BC; words with it parsed only under a forced
+  hypothesis. A per-grapheme parse-rate table exposes this (D-S10-06, L-S8-05).
 
 **Failure mode this prevents:** three duplicate allomorphs were created because an NFC
 literal was compared against NFD-stored text, so the "already have this form" guard
@@ -124,15 +127,26 @@ convention in this section is partly a mitigation for that. Design bulk scripts 
 that a crash at any point leaves a state you can detect and repair (C-M6-02's repair
 pass is the model).
 
+The Swahili logs add three instances: a failed delete left an orphan entry with a NULL
+lexeme form (C-S6-01); a 12-change op failed half-way, partly applied (C-S9-04); a
+script committed its writes and then crashed in its verify step, and was read as
+"nothing happened" (C-S11-05). After any failed write run, inspect the database.
+
 ---
 
 ## 7. Concurrency
 
 - `[SHARED]` mode: the project may be open in another process; writes proceed as a
   "non-master peer". The corpus always proceeded. Whether that is safe is
-  [open](../open-questions.md) (Q-02).
+  [open](../open-questions.md) (Q-02). **Swahili evidence that it is not:** peer writes
+  while FLEx or a sibling agent held the project lost commits to
+  `FP_ConflictingSaveError` (C-S7-01, C-S8-03), and teardowns failed with
+  `AbandonedMutexException`, leaving some writes committed and one not (T-S9-06).
+  Close FLEx before bulk writes and run one writer at a time.
 - `project_locked` rejections are **environmental flakes**, not logic bugs; retry
-  (C-M3-05, C-M5-02). Distinguish them in triage.
+  (C-M3-05, C-M5-02). Distinguish them in triage. **Refined (S8-S9):** right after a
+  parse, the holder is usually the MCP's own idle parse worker (a python PID); call
+  `flextools_parse_release` rather than retrying (T-S8-04, T-S9-05).
 - **A human GUI edit is a legitimate external state change.** Restores (D-M3-03),
   category restructuring (D-M5-02), and independently-created possibility items
   (D-M5-05) all happened. Re-derive state rather than assuming your writes are the
@@ -222,16 +236,17 @@ divergence in: staging format (data module vs JSON vs LIFT), transliteration pra
 whether publications are used at all, and snippet style. Where two conventions
 conflict and both work, record both and note which project uses which -- do not
 silently pick one.
-</content>
-</invoke>
 
-**Partial merge status:** see section 13.
+**Merge status:** Matthew's conventions are in section 13 (shards S1-S11; S1-S5 and
+S6-S11 come from two machines, so both machines' logs are now covered).
 
 ---
 
-## 13. Conventions from the Swahili corpus (Matthew, provisional)
+## 13. Conventions from the Swahili corpus (Matthew)
 
-Recorded alongside sections 1-11, not replacing them. Shards S1-S5.
+Recorded alongside sections 1-11, not replacing them. Shards S1-S5 first, then S6-S11
+(13a-13e). S6-S7 logs keep no tool output; several S7-S10 sessions were other clients
+(local models, a weaker client), so their practice is cited only as failure evidence.
 
 - **Stable identity.** Key every planned write and every verification by GUID, or by
   name plus catalog id, never by hvo. Hvos shifted within a session (C-S1-05,
@@ -240,12 +255,20 @@ Recorded alongside sections 1-11, not replacing them. Shards S1-S5.
 - **Fully specified agreement features.** Every noun stem and class affix carries all
   of its agreement features, with `NA` filling the inapplicable ones, so unification
   is exact (D-S1-06). After any feature refactor, run a pass to restore missing
-  fillers (C-S3-02).
+  fillers (C-S3-02). **REVISES (V-S10-02 vs D-S1-06):** by 09-25 the feature system
+  has no `NA` value; each noun stem and null prefix carries only its class value.
+  Unification needs an exact value match, so a legacy value variant (stems on `1a`,
+  concords on `1`) needs its own agreement sense (D-S8-11).
 - **Catalog provenance for inflection features too.** Prefer catalog-sourced features
   and values (EticGlossList), and record their `CatalogSourceId`. Migrate custom
   look-alikes by repointing the specs, then delete them (D-S3-01).
 - **Soft delete.** `DoNotUseForParsing` is the reversible first step of any retirement
-  (D-S4-08).
+  (D-S4-08). **Divergence (S7-S8):** the same flag was also used to keep live,
+  dictionary-worthy whole-word possessives out of the parser (D-S7-04, D-S8-12), and its
+  effect on HermitCrab was never parse-tested ("UNVERIFIED"; stored ParserCount cannot
+  show it, C-S8-07). Current FlexToolsMCP guidance treats the flag as deprecated for
+  recipes and new API. Before relying on it either way, diff a fresh parse; "listed but
+  not parsed" needs its own convention.
 - **Schema in the GUI.** Create custom fields and writing systems in FLEx, not through
   raw LCM (C-S1-01).
 - **Staging format.** Data tables inside the module for builds (S1). GUID-keyed JSON
@@ -259,3 +282,101 @@ Recorded alongside sections 1-11, not replacing them. Shards S1-S5.
   allomorphs or entries (D-S5-02).
 - **Outside sources.** Facts may be taken from licence-compatible sources. Glosses are
   re-authored. Restricted sources are used to validate only (D-S3-05).
+
+### 13a. Entries and forms (S6-S11)
+
+- **The lexeme form is the elsewhere form.** It carries no environment; every
+  alternate is conditioned. Matthew stated it ("the 'default/everywhere' form of the
+  affix should be the lexeme") and had 20 entries corrected (D-S6-04, V-S6-01). Later
+  prefix entries follow it and parse (V-S9-04, V-S10-04). **REVISES** the S1
+  arrangement with the most-restricted form in the lexeme (L-S1-02); see README 4.11
+  and Q-37.
+- **Swap lexeme and allomorph by moving owned objects, not by rewriting forms.**
+  FieldWorks' `SwapAllomorphWithLexeme`: insert the old lexeme into the alternate forms
+  at the allomorph's index, then assign the allomorph as the lexeme form. Object
+  identity survives, so stored analyses stay valid; verify with morph-bundle reference
+  counts before and after (D-S6-05, L-S6-02).
+- **Pass affix forms bare.** The morph type supplies the hyphen; `Create("-ye",
+  "suffix")` produced a doubled marker (L-S6-03).
+- **Morph type is part of parseability.** A free word typed as bound stem (`*yeye`)
+  fails or mis-parses; retyping it to `stem` fixed it (D-S9-03).
+- **Prefix out of the lexeme form.** A noun entered with its class prefix baked in gets
+  lexeme form = bare stem and citation form = full word (`anadamu` / `mwanadamu`,
+  L-S10-06). Consistent with the lexeme/citation bullet above.
+- **Model a new entry on a parsing comparator.** Read a *parsing* entry of the same kind
+  first (a proper noun, a noun, an adjective) and copy its POS, feature names and
+  inflection class verbatim (D-S10-07). Proper nouns carry a class feature so a null
+  class prefix can fill an obligatory slot (L-S9-04).
+- **Duplicate guards key on form + POS (+ gloss).** A (form, gloss) key skipped a noun
+  because a verb shared both (C-S10-04). Deletes are guarded by GUID **and** expected
+  headword, after a zero-reference check (C-S10-01).
+- **Derived stems are not allomorphs.** An allomorph list with no environments
+  (*zalia*, *zaliwa* under *zaa*) signals derivation stored as allomorphy (L-S10-04).
+
+### 13b. Senses, glosses and agreement (S7-S8)
+
+- **Short gloss, full original in Definition.** A bulk cleanup gave each of 808 senses a
+  short gloss and moved the full original gloss verbatim into the Definition (D-S8-01).
+  Moving "(v)", "(tr)" qualifiers out of the gloss may drop category hints on senses
+  without a POS; check before such a pass.
+- **Grammatical-morpheme glosses use a project-local dotted scheme** (`sbj.nc10`,
+  `conn.conc.nc4`, `neg.3sg.nc1`). The agent called it Leipzig; it is not (lowercase,
+  `nc` prefix, words such as `conc`, `pref`). Record it as a project convention
+  (D-S8-02). The 09-14 pass was run by a local-model client.
+- **Never key a script on a gloss.** Gloss passes change them wholesale (C-S7-09). Key
+  by GUID, or by form + morph type.
+- **One feature structure per sense, so one sense per agreement value.** A concord form
+  homophonous across classes needs one sense per class, each with its own feature value
+  and slot. A gloss must not claim more values than its features encode
+  (`conn.conc.nc4/6/9` carried class 4 only). Rename first, then add, so re-runs do not
+  duplicate senses (D-S8-07, L-S8-03).
+- **Slot every new inflectional affix sense in the same write.** An unslotted
+  inflectional MSA is tried in every position; an end-of-module audit found 14 (D-S8-08).
+- **Add a correct feature value beside a wrong legacy one** when other data may point at
+  the old one (NC 13 under both BantuSG and BantuPl), instead of migrating at once
+  (D-S8-10). Count the stems using each value first (D-S8-11).
+
+### 13c. The project as its own design record (S6-S7)
+
+- **Template Descriptions hold the design reasons**, under fixed headings: ANCHOR,
+  REASONING, DELIBERATELY NOT BUILT, KNOWN GAP, VERIFY-WITH (D-S6-09, D-S7-02). "DO NOT
+  merge X with Y" protects against the next agent's clean-up pass (C-S6-02).
+- **Shared text fields are append-merge.** One agent's Description was overwritten by a
+  sibling and had to be restored (C-S7-01).
+- **The text is the source; analyses are derived.** When a paradigm surface is wrong,
+  fix the paragraph and let the parser regenerate the analyses -- "no, nothing about
+  bundles, these are paragraphs" (D-S7-09, C-S7-08).
+- **Generated texts are labelled.** Mechanically generated paradigm texts say so in
+  their header; invalid cross-product forms go into a "No Parse" genre text with the
+  reason (D-S7-07, D-S7-08).
+
+### 13d. Bulk writes and scripts (S8-S11)
+
+- **Snapshot before a bulk field rewrite** and re-derive every pass from the snapshot
+  (D-S8-03). It made seven lossy passes recoverable.
+- **Config-driven, convergent write modules**: specs as data tables, name-to-GUID
+  resolution inside the module, a `DRY_RUN` flag independent of the runner's write
+  flag, "re-running converges" semantics, a tested revert path, and an explicit
+  `UNVERIFIED` note on any assumption the module cannot prove (D-S8-06).
+- **Write ladder:** validate_only -> write -> read-back of GUIDs -> idempotency rerun
+  that expects no writes (D-S10-09).
+- **Output through `report.*`, never `print()`** -- printed output is not returned or
+  logged (C-S11-01).
+- **Write files as UTF-8.** A default-codepage write crashed on U+02BC in the wordform
+  inventory (L-S8-05).
+
+### 13e. Analyses and approvals (S8-S11)
+
+- **Stored analyses are not the grammar's verdict.** `ParserCount` and the stored
+  analyses reflect the last parse run; refile before counting failures (L-S8-01,
+  L-S10-01, L-S11-01).
+- **"Unparsed" needs one fixed definition**: occurring in a text, and no
+  parser-approved analysis from a current run. Three ad hoc definitions gave 14,096,
+  9,066 and 0 on the same day (T-S10-09, T-S9-11).
+- **Count approvals by agent identity** (human flag + agent), never by display name; a
+  `ShortName` count reported 25,627 "human" approvals where there were 0 (C-S9-03).
+- **Approval state on this project (09-24 on):** Matthew removed all user approvals;
+  analyses are parser-filed only, through `parse_text` apply with a preview and confirm
+  (V-S9-01, V-S10-10). See README 4.14 and Q-41.
+- **"Bundle without sense" is normal for parser analyses** (21,834 of 24,796), so a
+  completeness check applies to human analyses only (L-S8-06).

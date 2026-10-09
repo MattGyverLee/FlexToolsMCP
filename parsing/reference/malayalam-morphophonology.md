@@ -329,5 +329,3 @@ language-neutral content that has leaked in here (parse-time facts, FLEx archite
 facts, the "omit unattested cells" principle) should be promoted to
 [`flex-modeling-decisions.md`](flex-modeling-decisions.md) or the stage bodies rather
 than duplicated per language.
-</content>
-</invoke>

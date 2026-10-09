@@ -101,6 +101,13 @@ before starting** -- it is the decision table this stage executes.
 15. **Check for factory-seeded default children** after creating a process rule --
     factories pre-seed elements, and the corpus found duplicate variable/copy nodes only
     by comparing a new rule side-by-side against a known-good sibling (M7 op 19-20).
+16. **Count allomorph usage across stored analyses, and read a never-selected
+    allomorph as a defect signal** (second operator, L-S6-01). An entry whose lexeme
+    form carries an environment while an alternate carries none has its elsewhere case
+    swapped (step 5). Fix it by moving the owned form objects, as FieldWorks'
+    `SwapAllomorphWithLexeme` does, not by rewriting form strings; object identity is
+    kept, so stored analyses stay valid. Check morph-bundle reference counts before and
+    after (L-S6-02, D-S7-03).
 
 ## Linguistic Decisions Required
 
@@ -142,6 +149,10 @@ for the corpus's allomorph sets and environment strings.
   "malformed rules: 0".
 - The change was proven on one exemplar before being scaled.
 - A regression check confirms previously-parsing forms still parse (D-M3-01).
+- No entry has a conditioned lexeme form alongside an unconditioned alternate
+  (L-S6-01).
+- No stem entry holds environment-less alternates that are really derived stems
+  (L-S10-04).
 
 ## Common Failure Modes
 
@@ -164,6 +175,12 @@ for the corpus's allomorph sets and environment strings.
   properties exist on neither interface you guessed (C-M8-05).
 - **Half-finished conversions** leaving a mixed population across the lexicon -- track
   which entries were converted, in a log file (M8 wrote `convert_log.txt`).
+- **An environment written as a broad natural class** (`/ _ [V]`) pre-empting the
+  lexeme form where the language keeps it. List the analyses that use the allomorph
+  and the following segments involved, then narrow to the attested segments
+  (L-S9-07, L-S10-06). The mirror image of C-M5-06.
+- **Derived stems stored as environment-less allomorphs of their root**, so the
+  derivation is hidden and the decomposition silently undone (C-S7-06, L-S10-04).
 
 ## Automation Notes
 
@@ -182,7 +199,12 @@ listed above.
 - **An allomorph-representation lint**: flag entries mixing plain and process
   alternates (C-M1-06); flag an unreachable citation form (C-M1-05); flag an allomorph
   identical to its entry's lexeme form (L-M3-05); flag an environment whose string is
-  empty (L-M8-04).
+  empty (L-M8-04); flag a conditioned lexeme form with an unconditioned alternate
+  (L-S6-01, T-S6-06); flag a stem whose alternates carry no environments (L-S10-04).
+- **Per-allomorph usage counts across stored analyses**, hand-rolled six times in one
+  session (T-S6-06).
+- **A swap-lexeme-with-allomorph primitive** with a reference-integrity check; it was
+  hand-ported from FieldWorks and applied to 20 entries (T-S6-03).
 - **`referrers_of(class | environment | inflection_class | stem_name)`**, surfaced
   automatically on any write that touches a shared object (C-M5-05, C-M5-06).
 - **`restriction_impact(allomorph, proposed_classes)`** -- which entries currently
@@ -198,7 +220,7 @@ listed above.
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). Sessions by other clients (local models, an unidentified weaker client) are failure-mode evidence only. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS: zero morphs as real entries**
   ([row 26](../reference/flex-modeling-decisions.md); D-S2-01, L-S1-01).
@@ -225,15 +247,59 @@ listed above.
     duplicate and is retired.
   - A long form that adds an extension (applicative etc.) is a separate entry and is
     held.
-- **CONTRADICTS F1 (unresolved)** (L-S1-02; [README 4.11](../README.md)). After merging,
-  the lexeme form held the *most restricted* form with an environment, so no elsewhere
-  form was left. F1 is an LCM ordering fact, so follow F1 until a parse shows otherwise
-  (Q-37).
+- **CONTRADICTS F1 (S1 only; superseded, see REVISES below)** (L-S1-02;
+  [README 4.11](../README.md)). After merging, the lexeme form held the *most
+  restricted* form with an environment, so no elsewhere form was left.
 - **CONFIRMS P10/L-M3-15 via a detour** (C-S1-03). Allomorphs entered first as
   separate entries glossed "(before V)" were later merged into one entry each. A lint
   then searched glosses for leftover "(before X)" notes.
 - **ADDS: split a homograph by function** (L-S5-03). `ku-` became two entries: an
   infinitive/augment in TAM/TAM2, and a negative past.
+
+*S6-S11:*
+
+- **REVISES L-S1-02; CONFIRMS F1** (D-S6-04, V-S6-01, V-S9-04, V-S10-04;
+  [README 4.11](../README.md), Q-37). Matthew: "the 'default/everywhere' form of the
+  affix should be the lexeme. Many of these are swapped". The S1 arrangement is now his
+  own error, corrected on 20 entries. The trigger was a cl.1 object marker whose
+  conditioned `mw` sat in the lexeme slot beside an unconditioned `mu`, and no analysis
+  ever used `mw` (L-S6-01). By S9-S10 the class prefixes hold the elsewhere form with
+  conditioned alternates (`vi` + `vy / _ [V]`, `ni` + `n / _ a`), and those parse.
+- **ADDS: swap by moving owned objects, ported from the host application** (D-S6-05,
+  L-S6-02, C-S6-01). The first guess, `ReplaceMoForm`, did something else and broke a
+  later delete in the work project (see [Stage 13](13-cleanup-and-consolidation.md)).
+  The port of FieldWorks' own command was proven on a throwaway entry, then applied
+  with a before/after reference-integrity assertion.
+- **ADDS: where an alternation goes** (D-S6-07, L-S7-08, L-S9-06). Matthew: "phonological
+  rules are for very broad phenomena, but allomorphs and affix process rules are for
+  morphophonemics specific to an affix." Applied: N-place assimilation is a rule;
+  pre-vowel concord shapes are allomorphs; glide formation, which hits `vi-` but not
+  `mi-`, belongs in allomorphs (see [Stage 08](08-phonological-rules.md)). CONFIRMS
+  Ron's generality test (L-M6-07).
+- **ADDS: narrow environments to attested segments** (L-S9-07, L-S10-06; tool output).
+  cl.2 `w-` at `/ _ [V]` blocked *Waisraeli*; narrowed to `/ _ a`, `/ _ e`, it parsed.
+  The same repair recurred for `ma-2`, `zi-1` and `ni-1`. A suppletive plural stem got a
+  morpheme-specific environment (`mbo / # ma _` for *jambo*) only after a check that no
+  general `m-` before `a` was needed (L-S9-08).
+- **CONTRADICTS P10 (relapse): derived stems as allomorphs or entries** (C-S7-06,
+  L-S10-04, C-S10-03). After the verb extensions became derivational (V-S7-01, Q-40),
+  `zalia` / `zaliwa` were stored as environment-less allomorphs of *zaa*, then split
+  out as separate stem entries rather than decomposed. A decomposition audit after
+  each lexicon batch would catch both (T-51).
+- **ADDS: homophonous agreement values are senses, not allomorphs** (D-S8-07,
+  L-S8-03). One sense carries one feature structure, so a concord form shared by three
+  noun classes needs three senses. A gloss naming several classes over one feature
+  value is a silent agreement gap. Rename before add, so re-runs do not duplicate
+  senses.
+- **ADDS: inflectional features unify, they do not overwrite** (L-S7-01; documented,
+  not parse-tested). A locative suffix that changes the noun's class therefore needs a
+  derivational MSA with output features, not an inflectional one.
+- **ADDS: experiment before a structural conversion** (D-S7-05, D-S7-06, C-S7-03).
+  The extension decomposition ran as: throwaway-object experiments on inheritance and
+  From-category enforcement; a prototype on 20 roots, reverted; classification of all
+  647 verb senses outside FLEx; batched writes against a parse baseline and diff.
+  Throwaway forms must not collide with real entries: a find-or-create on nonce `oz` /
+  `uz` overwrote two real roots' MSAs.
 
 ## Provenance
 
@@ -255,7 +321,10 @@ listed above.
 - M8 ops 7-25 (2026-09-15 16:40-17:08); **D-M8-05, D-M8-06, D-M8-07**; L-M8-01,
   L-M8-04, L-M8-05, L-M8-06; C-M8-05; M8 §5 "Root-cause diagnosis-then-generalize";
   M8 §9.
-- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Matthew's construct preferences are in the "Matthew's choice" table of [flex-modeling-decisions](../reference/flex-modeling-decisions.md).
+- S6-S11: L-S6-01, L-S6-02, D-S6-04..D-S6-07, C-S6-01, T-S6-03, T-S6-06, V-S6-01;
+  D-S7-03, D-S7-05, D-S7-06, L-S7-01, L-S7-08, C-S7-03, C-S7-06, V-S7-01; D-S8-07,
+  L-S8-03; L-S9-06..L-S9-08, V-S9-04; L-S10-04, L-S10-06, C-S10-03, V-S10-04.
+- **Merge seam:** Merged from S1-S11 (both machines). The F1 conflict (README 4.11, Q-37) is resolved toward F1 by Matthew himself. Still open: derived stems re-entering as allomorphs or entries after decomposition (Q-40 relapse). Matthew's construct preferences are in the "Matthew's choice" table of [flex-modeling-decisions](../reference/flex-modeling-decisions.md).
   *(Original seam: this is the stage where Matthew's process is most likely to diverge. Capture his construct preferences as a second column in [`reference/flex-modeling-decisions.md`](../reference/flex-modeling-decisions.md).)*
 
 ## Open Questions
@@ -268,5 +337,3 @@ listed above.
   Q-14.
 - The conditioning of the long imperative allomorph was never specified (L-M5-10).
   Q-15.
-</content>
-</invoke>

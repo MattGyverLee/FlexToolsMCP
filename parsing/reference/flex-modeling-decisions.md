@@ -39,34 +39,44 @@ root of both of the corpus's largest rework cycles.
 | 20 | A recurring bound morpheme across a closed class of whole-word entries | morphological | **Decompose**: base entry + productive clitic, and retire the whole-word entries -- but only the transparent ones, and only after the derivation is verified to parse | retiring an opaque form | **D-M5-09, D-M5-10, L-M5-07** |
 | 21 | A spelling variant of the same morpheme | orthographic | Two **allomorphs on the same entry** | two entries | L-M8-03 |
 | 22 | A form homographic with an unrelated existing entry | -- | A **separate homograph entry**; log the collision | reusing the unrelated entry | L-M6-05, D-M5-03 |
-| 23 | A category whose members never inflect | -- | The POS owns **zero** templates and slots | an empty template | L-M2-10 |
+| 23 | A category whose members never inflect | -- | The POS owns **zero** templates and slots, **and inherits none**: a subcategory of a POS that owns a template with an obligatory slot fails as a free word, so make it top-level (or give it its own minimal template). Check the morph type too: a free word typed as bound stem fails | an empty template; a templateless subcategory under a templated parent | L-M2-10; **L-S9-01, L-S9-03, D-S9-03** -- *Swahili, parse-verified* |
 | 24 | A bare stem that cannot surface as a word | morphotactic | Mark the relevant slot **non-optional** | optional (it will over-generate bare stems) | **D-M1-02** |
-| 25 | **Noun class / gender that affixes and concord must agree with** (Bantu noun classes) | grammatical, agreement | **Closed inflection features** on the stem's MSA: the singular class plus the paired plural class, and `NA` in every inapplicable feature. Prefixes carry matching values in an obligatory ClassPrefix slot. Catalog-sourced features, nested under one complex feature (`noun agreement`) | an inflection class (it carries no agreement value for concord to match); leaving features unspecified (unification then cannot block anything) | **D-S1-06, D-S3-01, D-S4-05** -- *Swahili, provisional* |
-| 26 | A **zero morph** filling an obligatory slot (null class prefix) | morphological | An affix entry with form `∅`, `IsAbstract=False`, carrying feature values **on the same features the stems carry** | an empty form (rejected); a placeholder grapheme; features disjoint from the stems' (it then matches everything) | **D-S2-01, L-S1-01, L-S4-01, L-S2-02** -- *Swahili* |
-| 27 | **Full reduplication** | morphological | Affix with form `[...]`, `IsAbstract=True`, in its own slot | listing reduplicated words | D-S2-02 -- *Swahili, never parse-verified* |
+| 25 | **Noun class / gender that affixes and concord must agree with** (Bantu noun classes) | grammatical, agreement | **Closed inflection features** on the stem's MSA: the singular class plus the paired plural class, and `NA` in every inapplicable feature. Prefixes carry matching values in an obligatory ClassPrefix slot. Catalog-sourced features, nested under one complex feature (`noun agreement`) | an inflection class (it carries no agreement value for concord to match); leaving features unspecified (unification then cannot block anything) | **D-S1-06, D-S3-01, D-S4-05, V-S8-04** -- *Swahili*. By 09-25 the `NA` fill was gone; unification is by exact value (D-S8-11, V-S10-02) |
+| 26 | A **zero morph** filling an obligatory slot (null class prefix) | morphological | An affix entry with form `∅`, `IsAbstract=False`, carrying feature values **on the same features the stems carry**. Give every stem that must take it (proper nouns too) a value it can unify with. Count the analyses it produces: null morphs are inserted freely and stack | an empty form (rejected); a placeholder grapheme; features disjoint from the stems' (it then matches everything); a null morph as a template's only anchor | **D-S2-01, L-S1-01, L-S4-01, L-S2-02, L-S9-04**; over-generation measured: V-S10-07 (*mwana* 13, *Misri* 10 analyses) -- *Swahili* |
+| 27 | **Full reduplication** | morphological | Affix with form `[...]`, `IsAbstract=True`; as a **derivational** MSA (V -> V) once the derivational extensions left the template | listing reduplicated words | D-S2-02, V-S6-04 (Matthew: `[...]` is the correct syntax), S7 (made derivational) -- *Swahili, never parse-verified* |
 | 28 | A **neutralized segment** whose surface value depends on context (a placeless nasal) | phonological | An **archiphoneme**: a phoneme marked by a custom `[+archi]` feature, `[-archi]` surface natural classes, and an alpha-feature rule that fills in the value | storing every assimilated allomorph | D-S1-03 -- *Swahili* |
-| 29 | A slot is **obligatory in one construction and absent or optional in another** (TAM required with an object marker; no TAM in the subjunctive) | morphotactic | **Separate templates per construction.** Where only the optionality differs, **clone the slot** (TAM2) -- optionality lives on the shared slot object | making the shared slot optional (over-generates everywhere) | **L-S5-02**, contrast C-S2-02 -- *Swahili* |
-| 30 | One affix appears in **more than one slot** | morphotactic | Reuse the MSA across slots **only if those slots never co-occur in any template** | putting it in co-occurring slots (one form fills both: the two-subject parse) | **L-S5-01, D-S5-01** -- *Swahili* |
-| 31 | A verb class predictable from an **existing lexical field** (citation `ku`+stem vs `ku`+stem+V marks final-vowel behaviour) | lexical | Inflection classes (row 6), **assigned by a rule over the lexicon's own field**, anomalies to a human. Roots stored without the fused final vowel. Root+FV entries are duplicates; root+extension entries are separate (derived) entries | growing the class inventory one corpus failure at a time; listing root+FV stems | **D-S5-04, L-S4-02** -- *Swahili* |
+| 29 | A slot is **obligatory in one construction and absent or optional in another** (TAM required with an object marker; no TAM in the subjunctive) | morphotactic | **Separate templates per construction.** Where only the optionality differs, **clone the slot** (TAM2) -- optionality lives on the shared slot object | making the shared slot optional (over-generates everywhere); "consolidating duplicate slots" without reading why they exist | **L-S5-02, L-S6-04, D-S6-08, L-S7-02**, contrast C-S2-02, C-S6-02, C-S7-02 -- *Swahili*. Optionality is a property of the **slot object**, not of its use in a template, which is why the clone is the only way |
+| 30 | One affix appears in **more than one slot** | morphotactic | Reuse the MSA across slots **only if those slots never co-occur in any template** (Obj and its clone Obj2 share all 14 object-marker MSAs) | putting it in co-occurring slots (one form fills both: the two-subject parse) | **L-S5-01, D-S5-01, L-S7-02, V-S7-09** -- *Swahili* |
+| 31 | A verb class predictable from an **existing lexical field** (citation `ku`+stem vs `ku`+stem+V marks final-vowel behaviour) | lexical | Inflection classes (row 6), **assigned by a rule over the lexicon's own field**, anomalies to a human. Roots stored without the fused final vowel. Root+FV entries are duplicates. Root+extension forms are decomposed (row 35) unless judged lexicalized | growing the class inventory one corpus failure at a time; listing root+FV stems; derived stems as environment-less allomorphs of the root (*zaa*: *zalia, zaliwa*) | **D-S5-04, L-S4-02, L-S10-04** -- *Swahili* |
+| 32 | An affix form **homophonous across several agreement values** (one concord prefix serving classes 4, 6 and 9) | grammatical, agreement | **One sense per agreement value**, each with its own feature structure and slot. A gloss must not name more values than its features encode | one sense with a multi-value gloss over a one-value feature structure (the other values silently fail to unify); allomorphs or separate entries (this is feature variation, not form variation) | **D-S8-07, D-S8-08, L-S8-03** -- *Swahili* |
+| 33 | Every template needs an **anchor** | morphotactic | At least one obligatory **overt** slot, or a bound-stem morph type on the stems that the template cannot match bare | a template whose slots are all optional, or whose only anchor is a null morpheme (it matches every stem) | **L-S7-03, L-S7-04** -- *Swahili* |
+| 34 | A template's **slot fillers** | morphotactic | Filler MSAs whose POS is the template's POS **or an ancestor of it** | reusing MSAs owned by a sibling POS (the template is inert and never fires) | **L-S7-04** -- *Swahili* |
+| 35 | **Valency-changing derivation** (causative, applicative, passive, stative, reciprocal) | derivational | `MoDerivAffMsa` between **POS subcategories** that encode valency (Verb > Underived > {Transitive, Intransitive}; Verb > Detransitive). Classify every stem first; prototype on a subset; convert atomically against a parse baseline. A subcategory inherits the parent's templates | inflectional template slots (row 16); stems that bake the extension in | **V-S7-01, L-S7-05, D-S7-05, D-S7-06**; relapses C-S7-06, C-S10-03 -- *Swahili, parse outcome not logged* |
+| 36 | An affix that **changes an agreement value** already on the word (a locative suffix re-classing a noun) | derivational | `MoDerivAffMsa` Noun -> Noun with **ToInflFeats** | an inflectional MSA with the new value (inflectional features unify, they do not overwrite, so it fails against the stem's own class) | **L-S7-01** -- *Swahili, reasoned only, not implemented* |
+| 37 | A **general** rule that must not apply to a lexical subset | phonological, lexically gated | An **exception feature** in the rule's excluded rule features, set on the exempt items (compare row 14). Count the parsed words that depend on the rule's output first. If the real conditioning is one morpheme (a prefix), put the restriction there, or move the alternation into that morpheme's allomorphs | disabling the rule (in S9 the disable never persisted); tagging every affected stem when one prefix is the trigger | **L-S10-02**, L-S9-06, V-S9-07 -- *Swahili, parse-verified* |
 
-### 1b. Matthew's choice (Swahili, provisional)
+### 1b. Matthew's choice (Swahili)
 
 Section 7's merge instruction asked for a "Matthew's choice" column. To keep the table
-above readable it is given here, keyed by row number. Rows 25-31 above are new and
+above readable it is given here, keyed by row number. Rows 25-37 above are new and
 come from Matthew's project only. **Both rows are kept wherever the two practices
-differ.** Source shards S1-S5; more Swahili logs are not yet ingested.
+differ.** Source shards S1-S11, covering both machines' Swahili logs (to 2026-09-30).
+Where a choice changed, the late state is given with the early one.
 
 | Row | Matthew's choice | Agrees? | Evidence |
 |---|---|---|---|
-| 2 | After merging allomorphs, the **lexeme form held the most-restricted form** with an environment, and no elsewhere form remained | **No** -- conflicts with F1; never parse-verified. See [README 4.11](../README.md), Q-37 | L-S1-02 |
+| 2 | S1: after merging allomorphs, the **lexeme form held the most-restricted form** with an environment, and no elsewhere form remained. **Retracted 09-12:** "the default/everywhere form of the affix should be the lexeme" -- 20 entries swapped by porting FieldWorks' `SwapAllomorphWithLexeme` (move owned objects, so stored analyses keep their references). Late prefix entries follow F1 and parse | **Yes (late).** The S1 arrangement is superseded, not a convention. [README 4.11](../README.md), Q-37 | L-S1-02 -> **D-S6-04, D-S6-05, L-S6-02, V-S6-01, V-S9-04, V-S10-04** |
+| 2 (breadth) | An environment written as a natural class (`/ _ [V]`) blocked regular forms; narrowed to the attested segments (`/ _ a`, `/ _ e`) after listing the analyses that use the allomorph | Yes -- refines row 2 | L-S9-07, L-S10-06 |
 | 3-4 | Feature-based classes; rebuilt segment-based Vowels/Consonants as feature-based through a referrer repoint | Yes | L-S1-03, D-S2-03 |
 | 6-7 | Not used for noun class (row 25 instead). Used for verb final-vowel classes, assigned from the citation form (row 31) | Partly -- different language type | D-S5-04 |
-| 13 | Started unanchored (and in one case context-free), then anchored every rule on "+" | Yes (arrived at independently) | C-S1-07, D-S2-03 |
-| 16 | Same mistake as Ron's M6: verb extensions (causative, applicative, passive...) in inflectional slots; later plan R4 puts derivation in with derivational MSAs | Yes, by repeating the error | C-S1-06, C-S2-03, L-S3-01 |
-| 20 | Decomposed demonstratives and the connective through templates; kept suppletive pronouns whole: "No parsing benefit." | Yes | D-S2-04 |
-| 21 | Case variants: **upper-case graphemes** in the phoneme inventory, not capitalised allomorphs or entries | Adds a case Ron did not meet | D-S5-02 |
-| 22 | Homographs split **by function** (`ku-` infinitive vs negative past, in different slots) | Yes, extended | L-S5-03 |
-| 24 | First relaxed slots so forms would parse; later replaced by per-construction templates (row 29) | Late practice agrees | C-S2-02, L-S5-02 |
+| 13 | Started unanchored (and in one case context-free), then anchored every rule on "+". **Matthew's converse, 09-12:** "phonological rules are for very broad phenomena, but allomorphs and affix process rules are for morphophonemics specific to an affix." The glide rule kept one word-initial RHS with no POS limit and broke class-4 nouns until 09-25 | Yes (arrived at independently), plus the converse Ron never stated | C-S1-07, D-S2-03, **D-S6-07, L-S7-08, V-S9-07** |
+| 14 | Lexical gating by an **exception feature** on the exempt stems, not by an inflection class + rule feature (row 37) | Partly -- different device for the same job; the real trigger (one prefix) arguably wants the restriction on the prefix | L-S10-02 |
+| 16 | S1-S5: same mistake as Ron's M6, verb extensions in inflectional slots. **Fixed 09-13:** all six extensions became `MoDerivAffMsa` between valency subcategories (row 35); the empty slots were removed. Relapsed twice for one root (*zaa*) | **Yes (late)**, by repeating then correcting Ron's error | C-S1-06, C-S2-03, L-S3-01 -> **V-S7-01, L-S7-05**; C-S7-06, C-S10-03 |
+| 20 | Decomposed demonstratives and the connective through templates; kept suppletive pronouns whole: "No parsing benefit." Whole-word possessives suppressed (not retired) only after the compositional parse was attested in the corpus -- with the deprecated `DoNotUseForParsing` flag (section 7) | Yes | D-S2-04, D-S7-04, D-S8-12 |
+| 21 | Case variants: **upper-case graphemes** in the phoneme inventory, not capitalised allomorphs or entries | Adds a case Ron did not meet; confirmed 09-25 | D-S5-02, V-S10-09 |
+| 22 | Homographs split **by function** (`ku-` infinitive vs negative past, in different slots). Later the infinitive became a second, verbal MSA on the cl.15 noun prefix | Yes, extended | L-S5-03, S7 |
+| 23 | Free words failed because their POS **inherited** a template: Pronoun moved to top level, `amba-` given its own `Verb > Relativizer` POS + minimal template, invariant numerals a templateless top-level POS. About 3,000 tokens unblocked with no new entry | Yes, and refines the row ("inherits none") | L-S9-01, L-S9-02, L-S9-03 |
+| 24 | First relaxed slots so forms would parse; later replaced by per-construction templates (row 29). Relapsed 09-13: TAM2 made optional for habitual / negative-present forms | Late practice agrees, with one relapse (open) | C-S2-02, L-S5-02, C-S7-02 |
 
 ---
 
@@ -215,6 +225,9 @@ Summarized here; argued in full in
 | Conditioning set | factor into a natural class (M3) | **also**: never extend a shared class for a local problem; sometimes use exact per-segment environments (M5, M7) | both (#3 vs #4) |
 | Nominalizers | inflectional slot (M6 early) | **derivational MSA** (M6 late) | late (#16) |
 | Obliques | variant entries **or** stem allomorphs (M6) | inflectional augment affix for the regular case, variant entries for the categories outside its scope (M7) -- **but the general question is unresolved** | see [open-questions.md](../open-questions.md) Q-04 |
+| Which form is the lexeme form (Swahili) | most-restricted form (S1, L-S1-02) | **elsewhere form**, as F1 (S6, D-S6-04) | late (F1) |
+| Verb extensions (Swahili) | inflectional slots (S1-S6) | **derivational MSAs between valency subcategories** (S7, V-S7-01) | late (#16, #35) |
+| Optionality that differs by construction (Swahili) | relax the slot (S2) | **clone the slot / separate template** (S5-S7), with one unresolved relapse (TAM2, C-S7-02) | late (#29) |
 
 ---
 
@@ -225,9 +238,13 @@ choice"**, with its own evidence. Where the two differ, keep both rows and recor
 reason rather than picking a winner -- a difference here is likely to be a real
 difference in language type or in project goal, not an error.
 
-**Status (partial merge, shards S1-S5):** done as section 1b plus rows 25-31. Re-check
-both when the remaining Swahili logs are ingested. The largest open item is row 2
-versus L-S1-02 (Q-37).
+**Status (merged, shards S1-S11, both machines):** done as section 1b plus rows 25-37.
+Rows 25-31 came from S1-S5; rows 32-37 and the late entries in 1b from S6-S11. The
+former largest open item, row 2 versus L-S1-02 (Q-37), was settled toward F1 by Matthew
+himself (D-S6-04). The largest open items now are glide formation (row 13 / 37: rule,
+allomorphs or exception feature) and lexicalized derived stems (row 31 / 35, *zalia*,
+*zaliwa*). Rows marked "parse outcome not logged" rest on S6-S7 logs, which kept no
+tool output.
 
 ### Cross-cutting rules added from the Swahili corpus
 
@@ -237,5 +254,36 @@ versus L-S1-02 (Q-37).
     Features with no overlap cannot clash, so nothing blocks them (L-S4-01).
 12. **Clone, do not mutate, a shared slot** when one construction needs different
     optionality (L-S5-02).
-</content>
-</invoke>
+13. **Swap a lexeme form and an allomorph by moving the owned objects**, as FieldWorks'
+    own `SwapAllomorphWithLexeme` does (insert the old lexeme into the alternate forms,
+    then assign the allomorph as the lexeme form). Object identity survives, so stored
+    analyses stay valid; check morph-bundle reference counts before and after. Never
+    rewrite form strings or guess a method by name: `ReplaceMoForm` left an orphan entry
+    in the work project (D-S6-05, L-S6-02, C-S6-01).
+14. **Write the design reasons into the project.** A template's Description records its
+    anchor, its reasoning, what was deliberately not built, and known gaps ("DO NOT
+    merge Subj with Subj2"). Read it before editing the template: the 09-13
+    contradictions came from sessions that did not (D-S6-09, D-S7-02, C-S7-02).
+15. **Model by analogy to a parsing comparator.** Before creating an entry, read a
+    *parsing* entry of the same kind and copy its POS, feature names and inflection
+    class verbatim (D-S10-07).
+16. **Count the users of a feature value before keying anything to it.** Unification is
+    by exact value: concords keyed to class 1 miss the 40 stems tagged 1a. This is rule
+    1 applied to feature values (D-S8-11).
+17. **An allomorph no analysis ever selects is a defect signal.** Count usage per stored
+    allomorph; a conditioned lexeme form beside an unconditioned alternate is swapped
+    (L-S6-01). An alternate list with no environments at all usually hides derivation
+    stored as allomorphy (L-S10-04).
+18. **"Parsed" is not "correct".** More than about three analyses on a short noun is an
+    over-generation signal to inspect, not a success (L-S10-05, L-S11-02).
+
+### Suppressing an entry from the parser (recorded, not recommended)
+
+The Swahili project kept whole-word possessives, a duplicate stem and the class-16 null
+prefix listed but unparsed with `DoNotUseForParsing=True` (D-S7-04, V-S7-02, D-S8-12; 33
+entries by 09-20). **That flag is deprecated in this repo's tooling**: do not use it in
+recipes or fix-ups, or as a model for new API. Its effect on HermitCrab was never shown
+(C-S8-07), and on 09-24 stored analyses still used the flagged null prefix (V-S9-03).
+Prefer retiring a redundant entry once its compositional analysis parses (row 20); a
+separate "listed but not parsed" convention is an open question
+([open-questions](../open-questions.md), Swahili section).

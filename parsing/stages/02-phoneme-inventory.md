@@ -56,6 +56,12 @@ Ron sequenced this first and explicitly deferred features:
    is stored in its post-consonantal shape and therefore always opens with a dependent
    vowel sign (L-M4-05). Establish the analogous convention for your script **now**,
    not after 100 affixes are wrong.
+9. **Once real text parses, audit the inventory by parse rate per grapheme**
+   (D-S10-06). Group wordforms by each multigraph or special character and compare
+   their parse rate with the corpus mean. A far lower rate points at a coding defect
+   (a look-alike code point, a missing multigraph) before any morphology. Check
+   look-alike code points explicitly: the Swahili text used U+02BC where the phoneme
+   code used U+0027.
 
 ## Linguistic Decisions Required
 
@@ -96,6 +102,9 @@ for how the corpus's decisions were recorded.
   `modifyAllowed` guard (M1 op 1).
 - **Independent vowel where a dependent sign belongs**, producing a wrong surface form
   that still "writes successfully" (L-M4-05).
+- **Look-alike code points** (apostrophe U+0027 vs modifier letter U+02BC) that render
+  the same but never match a phoneme code (D-S10-06). Write scratch files as UTF-8: a
+  default-codepage write crashed on U+02BC (L-S8-05).
 
 ## Automation Notes
 
@@ -116,7 +125,7 @@ plus direct LCM casts where wrappers misclassify class type.
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30); both machines' Swahili logs are now ingested. Logs before 09-23 keep no tool output, so their results are partly inferred; later logs keep truncated output. Sessions run by other clients (local models, a non-Claude agent, an unidentified weaker client) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **CONTRADICTS P1 ordering: features before phonemes** (D-S1-02, D-S1-04;
   [README 4.9](../README.md#49-stage-order-features-first-s1-vs-phonemes-first-p1)).
@@ -137,6 +146,15 @@ plus direct LCM casts where wrappers misclassify class type.
   need the caps allomorphs if caps exist as graphemes."* Give each phoneme its
   upper-case grapheme so sentence-initial capitals parse. The earlier alternative --
   capitalised allomorphs or whole capitalised entries (C-S2-07) -- was deleted.
+- **ADDS: parse rate per grapheme as an orthography diagnostic** (D-S10-06, L-S8-05).
+  On 09-25 the corpus parsed at 66% overall, but words with gh parsed at 7.0%, th
+  17.0%, dh 35.6%, sh 45.6% (ny 68.0%, ch 80.3%). One cause was found: the phoneme ng'
+  was coded with U+0027 while the text uses U+02BC (`Ngʼombe`), so ng'ombe parsed only
+  under a restricted hypothesis. Recoding to U+02BC was validated but not written in
+  the log; the gh/th causes were not established. A cheap, automatic Stage 02 re-check
+  once texts exist.
+- **CONFIRMS D-S5-02** (V-S10-09). Phonemes carry case-variant codes (ch/Ch/CH,
+  ng'/Ng'/NG'), and Roho and roho give the same 4 analyses.
 
 ## Provenance
 
@@ -148,7 +166,8 @@ plus direct LCM casts where wrappers misclassify class type.
 - M5 ops 5-7 (2026-09-13 22:42-22:43).
 - M7 op 33 (2026-09-15 10:32) -- phoneme lookup rebuilt from code, not short name.
 - M8 D-M8-02 (2026-09-15 14:06).
-- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Matthew authored the inventory as a table rather than deriving it from a writing system.
+- S10 09-25 164208 B3 #18, #22 (D-S10-06) -- step 9.
+- **Merge seam:** Merged from S1-S11 (both machines) -- see Second-Operator Evidence above. Matthew authored the inventory as a table rather than deriving it from a writing system, and later audited it against the corpus by parse rate.
   *(Original seam: Matthew may derive the inventory from an existing writing-system definition or LIFT import rather than authoring it; record his source.)*
 
 ## Open Questions
@@ -157,5 +176,3 @@ plus direct LCM casts where wrappers misclassify class type.
   phoneme? The corpus decided case by case. Q-03.
 - The exact content of the feature-assignment source files was never captured in the
   logs (M1 §7), so the inventory is reproducible only from the live project.
-</content>
-</invoke>

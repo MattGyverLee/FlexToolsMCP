@@ -89,6 +89,17 @@ And the modeling order:
 16. **Consolidate bookkeeping into one atomic pass** rather than several sequential
     scripts -- it closes the drift window (D-G1-05).
 
+### Process hygiene from the Swahili project (S10, language-independent)
+
+17. **Copy a parsing comparator.** Before creating an entry, read a *parsing* entry of
+    the same kind and copy its POS, inflection class and feature names verbatim
+    (D-S10-07). This is D-M8-03's build-by-analogy at the entry level; it keeps new
+    entries from introducing POS or feature variants the grammar does not license.
+18. **Prove the duplicate guard with an idempotency rerun** (D-S10-09, C-S10-04).
+    validate_only -> write -> read-back -> rerun expecting no writes. The rerun also
+    catches a guard that is too broad: a (form, gloss) key skipped the noun *tumaini*
+    'hope' because the verb *tumaini* 'hope' existed. Include the POS in the key.
+
 ## Linguistic Decisions Required
 
 - **Citation/lexeme form shape.** The corpus stored verb stems "with their inherent
@@ -137,6 +148,12 @@ And the modeling order:
   (C-M6-01); hallucinated operations-class names (C-M1-03, C-M2-04, C-M3-01).
 - **Wrapper methods that assume a single allomorph subtype** and throw on the other
   (C-M1-02, C-M2-01).
+- **Wrong morph type.** A free word typed as a bound stem (`*yeye`) did not parse as a
+  free word; retyping it to stem fixed it (D-S9-03). Audit free vs bound type.
+- **Entries invented from string heuristics.** "Monomorphemic if it fails to parse",
+  or syllable splits created as bare entries (C-S11-04, C-S11-05). A new stem needs a
+  segmentation a linguist would accept, a sense, a gloss and a POS -- and the word must
+  first fail a *live* parse (L-S11-01).
 
 ## Automation Notes
 
@@ -161,7 +178,7 @@ setting, reconciliation, and count verification.
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30); both machines' Swahili logs are now ingested. Logs before 09-23 keep no tool output, so their results are partly inferred; later logs keep truncated output. Sessions run by other clients (local models, a non-Claude agent, an unidentified weaker client) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS: an explicit per-entry "parse-ready" standard** (D-S3-03).
   - For nouns, four fields: bound-stem lexeme form, singular citation form, class
@@ -201,6 +218,55 @@ setting, reconciliation, and count verification.
     before bulk population.
   - **Writes without `validate_only` left half-built entries** (C-S3-04).
 
+*S6-S11 additions:*
+
+- **ADDS: copy a parsing comparator; prove the guard by rerunning** (D-S10-07,
+  D-S10-09, C-S10-04) -- now steps 17-18. Every 09-25 creation op printed its
+  comparator first (proper noun = Musa, noun = *dhambi, adjective = safi, adverb = sana).
+- **CONTRADICTS step 2's idempotency key** (C-S10-04, C-S7-09). A (form, gloss) key
+  collides across POS, and glosses are not stable: a later pass rewrote 807 glosses,
+  including affix glosses that scripts used as lookup keys. Key on GUID, or on form +
+  morph type + POS.
+- **ADDS: infer a noun's class from corpus agreement** (D-S10-08). The concord on the
+  following word gives the class (mamlaka followed by ya 15, yao 6, yake 5 -> 9/10).
+  This extends D-S3-05's evidence ranking with a test that needs only the corpus.
+- **CONFIRMS C-S1-04's cost** (V-S10-06, L-S10-03). Heuristic class defaults were still
+  being repaired on 09-25 (roho and fimbo 1/2 -> 9/10, nguo 7/8 -> 9/10, kabila 9/10 ->
+  5/6), and 158 noun stems had no class features, some of them plurals entered as stems.
+- **CONFIRMS D-S2-05 (prefix baked into the lexeme form)** (L-S6-06, L-S10-06).
+  *mwanadamu* became lexeme form `anadamu` with citation form `mwanadamu`; wanadamu and
+  mwanadamu then parsed.
+- **ADDS: work the frequency head's closed-class and name gaps first** (L-S8-02,
+  L-S9-04). The top of the queue was proper names (Isa 1,141 tokens, Musa 429),
+  the vocative Ee, and pronouns, not morphology. Names needed the class feature that
+  the noun template's obligatory class-prefix slot checks (`NC 1a`, copied from a
+  parsing name). Some of those class choices (Torati, Yerusalemu) are unchecked AI
+  choices.
+- **ADDS: config-driven, convergent, double-braked write modules** (D-S8-06, D-S8-08).
+  The 09-20 `AddMorpheme` module: specs as data, name-to-GUID resolution inside the
+  module, a `DRY_RUN` flag independent of the runner's write flag, re-runs that
+  complete partial state instead of skipping it, a tested revert path, `UNVERIFIED`
+  notes on any assumption it cannot prove, and an end-of-run unslotted-affix audit.
+- **ADDS: snapshot before a bulk field rewrite** (D-S8-03, C-S8-02, D-S8-01). An
+  808-sense gloss rewrite (a local-model session) wrote lossy transforms several times
+  without validate_only, and recovered only because every pass re-derived from a
+  snapshot file, not the live field. The resulting convention (short gloss, full
+  original in Definition) is AI-proposed; no Matthew wording is logged.
+- **CONFIRMS C-S2-04 (junk entries), from other clients and unidentified sessions**
+  (C-S7-04, C-S8-04, C-S11-04, C-S11-05). A heuristic segmenter created entries,
+  allomorphs and approved analyses in one pass and left 424 duplicate allomorphs; a
+  local model proposed "497 new stems" by regex (nothing written); on 09-30 syllable
+  fragments (`el`, `is`, `en`, `ghadha` ...) were probably committed as bare entries
+  (inferred; needs a check in FLEx, see [Stage 13](13-cleanup-and-consolidation.md)).
+- **ADDS a failure mode: decomposition relapses during lexicon additions** (C-S7-06,
+  L-S10-04, C-S10-03). After the verb extensions became derivational, *zalia* and
+  *zaliwa* were stored as environment-less allomorphs of *zaa*, then split into
+  separate stems. Both lexicalize applicative and passive forms. Run the decomposition
+  audit after every lexicon-addition batch; see Q-40 and
+  [Stage 07](07-allomorphy-modeling.md).
+- **ADDS: pass affix forms bare** (L-S6-03). Creating `-ye` with the hyphen in the
+  form doubled it; the morph type supplies the marker.
+
 ## Provenance
 
 - M1 ops 5-6, 13 (2026-09-10 16:16-16:18, 19:54); D-M1-01; M1 §5-§6.
@@ -216,7 +282,8 @@ setting, reconciliation, and count verification.
 - M8 ops 5-6 (2026-09-15 14:08-14:09); D-M8-04; L-M8-02, L-M8-03; C-M8-04.
 - G1 §5 steps 1-3, D-G1-04, D-G1-05, L-G1-04, C-G1-03 -- imported as language-independent
   hygiene per G1 §9.
-- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Staging format: data tables inside the module plus JSON plan/manifest files (S3, S5).
+- S10 09-25 155037, 165926 (D-S10-07, D-S10-09, C-S10-04) -- steps 17-18.
+- **Merge seam:** Merged from S1-S11 (both machines) -- see Second-Operator Evidence above. Staging format: data tables inside the module plus JSON plan/manifest files (S3, S5), later config-driven write modules (S8).
   *(Original seam: Matthew's staging format and field conventions; whether he imports from LIFT/CSV rather than authoring a checked data module.)*
 
 ## Open Questions
@@ -226,5 +293,3 @@ setting, reconciliation, and count verification.
   Q-11.
 - Whether the citation form for a given POS should differ from the bare lexeme form
   (raised in G1 L-G1-03, never resolved). Q-12.
-</content>
-</invoke>

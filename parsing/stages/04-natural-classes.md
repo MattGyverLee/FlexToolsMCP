@@ -110,6 +110,12 @@ subsequent operations:
   feature-based class throws (C-M1-01); a hallucinated operations-class import
   (C-M2-04).
 - **Deleting a class still referenced** by an allomorph or rule.
+- **A class in an environment broader than the attested conditioning.** `/ _ [V]`
+  claims every vowel conditions the allomorph. In the Swahili project such environments
+  blocked regular forms until narrowed to the attested vowels: cl.2 `w-` to `/ _ a`,
+  `/ _ e`, after which Waisraeli parsed (L-S9-07); ma-2 `m` to `/ _ e` for maovu
+  (L-S10-06). Before writing a class into an environment, list the analyses that use
+  the allomorph and the segments that actually follow it.
 
 ## Automation Notes
 
@@ -133,7 +139,7 @@ bundles, referrer counting, and duplicate-membership detection.
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30); both machines' Swahili logs are now ingested. Logs before 09-23 keep no tool output, so their results are partly inferred; later logs keep truncated output. Sessions run by other clients (local models, a non-Claude agent, an unidentified weaker client) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS: surface classes for rule outputs** (D-S1-03). When an archiphoneme exists,
   define `[-archi]` classes so a rule can state its output.
@@ -146,6 +152,28 @@ bundles, referrer counting, and duplicate-membership detection.
   class; rename the new one.
 - **ADDS a failure mode** (L-S2-01): removing a class from a context's member list
   without deleting the context leaves an orphan behind (a case for T-20).
+- **ADDS: environment breadth is a failure source** (L-S9-07, L-S10-06, L-S6-01).
+  Three over-broad `[V]` environments were narrowed to attested vowels (cl.2 `w-`,
+  ma-2 `m`, and the cl.1 object marker `mw` to `/_a /_e /_i /_o`). The first two are
+  parse-verified; the third was not re-tested in the log (C-S6-05).
+- **REVISES D-S2-03** (glide context; "rules fire only across +") (V-S7-05, V-S9-07,
+  L-S9-06, L-S10-02).
+  - On 09-13 the glide and coalescence contexts got a `[Consonants]` left context and a
+    parallel word-initial RHS, so vowel-only prefixes do not glide. The vowel-initial
+    stems that would lose their glide were counted first.
+  - On 09-24 one RHS still had `#` on the left with no POS limit, and turned mi+aka
+    into *myaka (miaka, 214 tokens, unparsed). D-S2-03's "+" anchoring covered one RHS
+    only.
+  - The real conditioning was morphological (class-4 mi- does not glide, vi- does), so
+    no natural-class context could state it. The 09-25 fix was a lexical exception
+    feature ([Stage 03](03-phonological-features.md)); the 09-24 analysis argued for
+    allomorphs. When the conditioning set is a list of morphemes, a natural class is the
+    wrong device ([Stage 07](07-allomorphy-modeling.md),
+    [Stage 08](08-phonological-rules.md)).
+- **CONFIRMS P8 (count dependents before changing a shared context)** (L-S9-06,
+  L-S10-02). Before touching glide formation the agent counted the parsed words that
+  depend on each output: 7 of 3,312 analyses on 09-24; ny 572, vy 383, py 11, my 8 on
+  09-25.
 
 ## Provenance
 
@@ -159,7 +187,7 @@ bundles, referrer counting, and duplicate-membership detection.
   C-M5-05, C-M5-06; L-M5-09.
 - M6 op 32 (2026-09-14 22:02) -- class membership dump during diagnosis; L-M6-01.
 - M7 ops 31-35 (2026-09-15 10:24-10:35); D-M7-05; L-M7-03.
-- **Merge seam:** Partially merged -- see Second-Operator Evidence above. Membership reconciliation across the two projects does not apply (different languages).
+- **Merge seam:** Merged from S1-S11 (both machines) -- see Second-Operator Evidence above. Membership reconciliation across the two projects does not apply (different languages).
   *(Original seam: Matthew's naming convention and threshold may differ; his classes will need reconciling against these by *membership*, not by name.)*
 
 ## Open Questions
@@ -168,5 +196,3 @@ bundles, referrer counting, and duplicate-membership detection.
   (D-M3-05 says "each set of 4" about a specific situation.) Q-07.
 - Whether the "Enclitic onset" class was actually deleted after being abandoned, or
   merely left unused (M7 §7). Q-08.
-</content>
-</invoke>

@@ -192,5 +192,3 @@ it when Matthew's material arrives:
 - The **keep-vs-replace-per-subrule** discipline and the **elsewhere-form** fact are
   already in the decision table; this file only illustrates them.
 - Matthew's environments become `reference/<language>-allomorphy-environments.md`.
-</content>
-</invoke>

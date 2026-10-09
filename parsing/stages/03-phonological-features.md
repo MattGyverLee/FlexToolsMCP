@@ -115,7 +115,7 @@ non-segmental marks sit.
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 come from one machine's logs (2026-05-21..09-11) and S6-S11 from the other's (09-12..09-30); both machines' Swahili logs are now ingested. Logs before 09-23 keep no tool output, so their results are partly inferred; later logs keep truncated output. Sessions run by other clients (local models, a non-Claude agent, an unidentified weaker client) count only as failure-mode evidence. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **Answers Q-06: Matthew uses features** -- feature-based natural classes, alpha-feature
   rules, and a full matrix (S1). Q-06 is not closed: a language may still manage
@@ -134,6 +134,16 @@ non-segmental marks sit.
   *after* Stages 04 and 08, so it belongs in cleanup, not here.
 - **ADDS: catalog provenance applies to inflection features too** (D-S3-01) -- see
   [Stage 05](05-categories-and-templates.md).
+- **S6-S11 add no phonological-feature work.** The feature evidence in those shards is
+  about inflection features ([Stage 05](05-categories-and-templates.md): one sense per
+  agreement value, exact-value unification, the dropped `NA` filler) and rule exception
+  features (below).
+- **ADDS a third feature kind: lexical exception features** (L-S10-02, C-S10-05). A
+  "no glide formation" exception feature, excluded on both RHSs of a rule and set on
+  three stems, blocked the rule for those stems only (miaka, mianzo then parsed).
+  Creating it took raw LCM after four failed attempts; no wrapper exists. Use it when
+  the conditioning is lexical or morphological, not phonological -- see
+  [Stage 08](08-phonological-rules.md).
 
 ## Provenance
 
@@ -142,7 +152,7 @@ non-segmental marks sit.
 - M2 op 8 (2026-09-11 14:29); L-M2-06; C-M2-04.
 - M3 L-M3-01 (feature-bundle definition of a class), C-M3-01.
 - M7 op 34 (2026-09-15 10:33), L-M7-03.
-- **Merge seam:** Partially merged -- see Second-Operator Evidence above (Q-06 answered for this project: features used).
+- **Merge seam:** Merged from S1-S11 (both machines) -- see Second-Operator Evidence above (Q-06 answered for this project: features used). S6-S11 contain no further phonological-feature construction.
   *(Original seam: Matthew may skip features entirely and use segment-list classes only. If so, record the trade-off explicitly -- it changes Stage 04 and Stage 08.)*
 
 ## Open Questions
@@ -152,5 +162,3 @@ non-segmental marks sit.
   measured effect. Q-05.
 - Whether a project can skip Stage 03 entirely and build only segment-list natural
   classes. The corpus used both kinds throughout. Q-06.
-</content>
-</invoke>

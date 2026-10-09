@@ -97,6 +97,9 @@ they interact with the phonological rules of Stage 08 at a different boundary.
 - Retired whole-word entries were backed up, their bases exist, and the composed forms
   parse.
 - Kept whole-word entries have a recorded reason for not being decomposed.
+- Whole-word entries suppressed from parsing rather than retired have a fresh
+  before/after parse diff showing the suppression works; stored parser counts are not
+  evidence (C-S8-07).
 - Compound rules read back with correct left/right category and headedness.
 - Compound rules actually fire on their intended examples -- tested, not assumed.
 - Regression: forms that parsed before the clitic/compound work still parse.
@@ -138,7 +141,7 @@ device choice for boundary epenthesis.
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS: closed-class decomposition through templates** (D-S2-04).
   - Demonstratives became h- + concord + deictic suffix, with their own template; 22
@@ -148,7 +151,42 @@ device choice for boundary epenthesis.
   - Compound entries were deleted only after their parts existed.
 - **CONFIRMS P10's transparency limit** (D-S2-04). Suppletive pronouns were kept whole:
   "No parsing benefit."
-- No compound rules and no clitic entries appear in these logs.
+- No compound rules and no clitic entries appear in S1-S5.
+
+*S6-S11:*
+
+- **Still no compound rules and no clitic entries** in S6-S11. Matthew's practice for
+  material outside the core template is closed-class decomposition through
+  per-construction templates (below), not Ron's enclitic-outside-the-template device.
+- **CONFIRMS D-M5-10 / L-M5-07: retire a whole-word form only after its composition is
+  attested** (D-S7-04). Shadow whole-word possessives were suppressed only where the
+  compositional analysis already occurred in the corpus. Unattested ones were left
+  alone, and one was kept because "no y-+-angu analysis yet". The reasons were
+  recorded.
+- **ADDS: suppression instead of retirement, effect unverified** (D-S8-12, C-S8-07).
+  All 12 whole-word possessives were set `DoNotUseForParsing`, with the module itself
+  marking its effect "UNVERIFIED". Stored parser counts cannot show the effect of a flag
+  set after the last parse; a fresh before/after parse diff is needed. The flag is
+  overloaded and deprecated in current guidance (see
+  [Stage 13](13-cleanup-and-consolidation.md)).
+- **ADDS: post-final and closed-class morphology through their own templates**
+  (D-S6-03, L-S7-02, L-S9-02; tool output for S9).
+  - The post-final relative suffix is an obligatory slot in a separate relative verb
+    template, not an enclitic. Its first version required TAM and an object marker,
+    so it could not parse three of its own four motivating forms (C-S6-03); a
+    duplicate object slot fixed that.
+  - The `amba-` relativizer failed because its POS inherited a verb template with a
+    required subject slot. A dedicated subcategory with a one-slot template (relative
+    suffix only) unblocked 13 forms and 999 tokens (L-S9-02).
+  - Demonstratives were split into templates by anchor (prefix-anchored vs
+    suffix-anchored) (S7 Swahili content).
+  - Ron's step 1 test still applies: check the slot order first. The difference is
+    the device chosen once a form attaches after the final vowel.
+- **ADDS: an unmodelled clitic shows up as a whole-word stem** (S8 Swahili content).
+  *nami* 'and me' parses only as one stem; na + a pronominal enclitic is not modelled,
+  and *nasi* was in the top-frequency queue on 09-30 (D-S11-02). It was later used as
+  the comparator for new particles (D-S10-07), which spreads the whole-word pattern.
+  Open.
 
 ## Provenance
 
@@ -158,7 +196,9 @@ device choice for boundary epenthesis.
   L-M5-01, L-M5-05, L-M5-06, **L-M5-07**, L-M5-08.
 - M6 ops 27-30 (2026-09-14 16:47-17:25); **L-M6-07, L-M6-08**, L-M6-09; C-M6-04;
   M6 §5 stage 6.
-- **Merge seam:** Partially merged -- see Second-Operator Evidence above. No compound rules or clitics in the Swahili logs seen so far.
+- S6-S11: D-S6-03, C-S6-03; D-S7-04, L-S7-02; D-S8-12, C-S8-07; L-S9-02; D-S10-07;
+  D-S11-02.
+- **Merge seam:** Merged from S1-S11 (both machines). No compound rules or clitic entries anywhere in Matthew's logs; post-final and closed-class material goes into per-construction templates instead. Open: the na + pronoun enclitic (*nami*, *nasi*).
   *(Original seam: Matthew's clitic conventions, and whether his projects use compound rules at all.)*
 
 ## Open Questions
@@ -169,5 +209,3 @@ device choice for boundary epenthesis.
   comparison ran, the diagnosis was never recorded (M6 §7). Q-19.
 - The gloss/definition content of the complementizer enclitic is not recoverable from
   the logs (L-M6-09). Q-20.
-</content>
-</invoke>

@@ -65,6 +65,16 @@ and do it without destroying parse performance.
     clitics is a FLEx setting outside the data -- Ron restored the project specifically
     to flip it (D-M3-03). A rule that looks correct and does not fire may be gated
     there.
+13. **Measure a rule's blast radius before changing it** (second operator, L-S9-06,
+    L-S10-02). Count the stored analyses that depend on each of the rule's outputs
+    (7 of 3,312; ny 572, vy 383), and the words in the rule's context, before
+    disabling, narrowing or excepting it. This is P8 applied to rules.
+14. **Test a rule change off-project first** (T-S9-08): parse a baseline set (a regex
+    over wordforms for the rule's context, plus top-N frequent words), edit, re-parse,
+    diff. A `no_change` diff on the targeted set means the edit missed.
+15. **Verify a rule edit by reopening the project, not by an in-op read-back**
+    (C-S9-02). A rule disable read back as done inside the op never persisted; after
+    two failed retries, stop and escalate.
 
 ## Linguistic Decisions Required
 
@@ -94,6 +104,8 @@ All are hypotheses; none is native-speaker verified.
 - Every allomorph the rules now derive has been deleted.
 - Regression check: previously-parsing forms still parse (D-M3-01).
 - No rule has had its only right-hand side removed.
+- Every rule edit confirmed by a fresh project open, and its targeted-set diff
+  finished and recorded (C-S9-02, T-S9-08).
 
 ## Common Failure Modes
 
@@ -109,6 +121,11 @@ All are hypotheses; none is native-speaker verified.
   problem (D-M3-03).
 - **Assuming a feature-based class is a usable environment** when its members are not
   feature-separable (L-M7-03).
+- **A "general" rule that is really morpheme-specific**: one right-hand side with no
+  category or morpheme restriction applied to a prefix the language exempts, and
+  blocked a frequent noun for months (V-S9-07, L-S10-02). Anchoring one right-hand
+  side is not enough; check every one.
+- **A rule edit that does not persist** although the op reported success (C-S9-02).
 
 ## Automation Notes
 
@@ -133,10 +150,15 @@ ordering.
   caller to get wrong).
 - Surfacing the FLEx "apply rules to clitics" setting through the MCP so a data-level
   diagnosis is not chasing an application-level cause (D-M3-03).
+- Wrappers to disable or narrow a rule and to create rule / exception features; the
+  second operator needed raw LCM, failed casts and several retries for each
+  (T-S9-07, C-S10-05).
+- A working rule sandbox: `parse_sandbox` crashed on a missing packaged script while
+  health reported it ready (T-S10-05). See the tooling list in MERGE-NOTES section 4.
 
 ## Second-Operator Evidence (Swahili)
 
-*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S5 in the [evidence index](../evidence/directive-index.md). **Provisional:** more of this work is in logs on another machine. Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above.*
+*Matthew's Swahili practice (project Claude-Swahili), from shards S1-S11 in the [evidence index](../evidence/directive-index.md). S1-S5 and S6-S11 cover the logs of both machines. S6-S7 logs keep no tool output; S8 from 09-23 and S9-S11 do (truncated). Labels: **CONFIRMS** / **ADDS** / **CONTRADICTS** Ron's practice above; **REVISES** marks an S6-S11 finding that corrects an S1-S5 claim.*
 
 - **ADDS an LCM fact** (L-S2-01): each member of a `PhSequenceContext` is a reference,
   so it must first be **owned by `PhPhonData.ContextsOS`**. Otherwise you get "Object
@@ -155,6 +177,38 @@ ordering.
 - **ADDS: test words in the docstring** (D-S2-03). Every narrowed context names the
   words it was narrowed for.
 
+*S6-S11:*
+
+- **ADDS: the rule-vs-allomorph sentence** (D-S6-07, L-S7-08). Matthew: "phonological
+  rules are for very broad phenomena, but allomorphs and affix process rules are for
+  morphophonemics specific to an affix." Language-wide N-place assimilation stays a
+  rule; affix-specific shapes are allomorphs. CONFIRMS Ron's generality test (L-M6-07).
+- **REVISES D-S2-03** ("rules fire only across +") (L-S9-06, V-S9-07; tool output).
+  One glide right-hand side was anchored on `#` with no POS limit, so `#mi+aka` glided
+  to *myaka*, and *miaka* (214 tokens) failed to parse until 09-25. A consonant left
+  context added on 09-13 (V-S7-05) did not stop it. Glide formation turned out to be
+  morpheme-specific (`vi-` -> `vy`, `mi-` stays), so by Matthew's own rule it belongs in
+  allomorphs.
+- **ADDS: lexical exception feature to block a rule** (L-S10-02). The fix that landed
+  was an exception feature excluded on both right-hand sides and set on three stems;
+  *miaka*, *mianzo*, *myema*, *vyakula* then parsed. Open: the conditioning is the
+  cl.4 prefix, not the stems, so tagging stems does not scale. The exception arguably
+  belongs on the prefix or in the rule's morpheme restriction.
+- **ADDS: blast radius, sandbox, reopen** (Procedure 13-15 above; L-S9-06, T-S9-08,
+  C-S9-02). The sandbox run never finished in-session, and the rule disable never
+  persisted. Both point to the same lesson: a rule change is not done until a fresh
+  open and a finished diff say so.
+- **CONFIRMS P1 / [README 4.9](../README.md) the hard way.** The S1 glide rule, written
+  before any stem existed (C-S1-08), was still breaking class-4 nouns four months later
+  (V-S9-07). Rules must be built and tested against stems.
+- **CONFIRMS parse time as a first-class cost** (D-S10-05, T-S10-02). At about 6 s per
+  word, a 1,783-word regression baseline takes hours; `grammar_health` reports a
+  phoneme representation-variant product of 1.8e10. Size baselines to parse time.
+- **Open: glide modelled twice** (S6 Conflicts 4). The prefixes also carry stored
+  glide allomorphs. Whether the rule is then redundant is a
+  [Stage 13](13-cleanup-and-consolidation.md) "delete what the rules derive" question,
+  this time in the opposite direction (delete the rule).
+
 ## Provenance
 
 - M1 ops 28-32 (2026-09-11 11:37-11:41); D-M1-07; L-M1-01, L-M1-02, L-M1-03; M1 §5
@@ -165,7 +219,9 @@ ordering.
   C-M3-03.
 - M6 ops 29, 34 (2026-09-14 16:49, 09-15 06:54); L-M6-10.
 - M7 ops 21-35 (2026-09-15 09:52-10:35); D-M7-06; L-M7-02, L-M7-03; C-M7-03.
-- **Merge seam:** Partially merged -- see Second-Operator Evidence above. No rule-ordering policy appears in these logs either (Q-16 stays open).
+- S6-S11: D-S6-07; L-S7-08, V-S7-05; L-S9-06, C-S9-02, T-S9-07, T-S9-08, V-S9-07;
+  L-S10-02, D-S10-05, C-S10-05, T-S10-02, T-S10-05.
+- **Merge seam:** Merged from S1-S11 (both machines). No rule-ordering policy appears in Matthew's logs either (Q-16 stays open). Open: exception feature on stems vs restriction on the triggering prefix for glide formation.
   *(Original seam: Matthew may use metathesis or other rule types the corpus only enumerated (M6 L-M6-10 lists the available rule and context types).)*
 
 ## Open Questions
@@ -175,5 +231,3 @@ ordering.
   recoverable from the logs (L-M6-10, M6 §7). Q-17.
 - What the acceptable parse-time budget actually is. Ron reacted to 9.6s/word and
   4min/438 words as unacceptable, but no target was set. Q-18.
-</content>
-</invoke>

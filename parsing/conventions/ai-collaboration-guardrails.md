@@ -4,7 +4,9 @@
 
 Derived from every "Corrections To The AI" section across all nine shards
 (C-M1-01..06, C-M2-01..06, C-M3-01..05, C-M4-01..03, C-M5-01..06, C-M6-01..04,
-C-M7-01..03, C-M8-01..05, C-G1-01..03 -- 41 corrections in total).
+C-M7-01..03, C-M8-01..05, C-G1-01..03 -- 41 corrections in total). Matthew's
+Swahili shards S1-S11 are merged by rule at the end: confirmations in the table
+below the Merge seam, new rules in sections K and L.
 
 These are **always / never** rules for an AI assistant building a FLEx parsing
 lexicon. They are written as instructions to the assistant.
@@ -264,30 +266,52 @@ is most visible across the corpus. Marked (inferred).)*
 Matthew's corrections-to-the-AI will produce a second set. Merge by **rule**, not by
 source: where his corrections confirm one of these, add his evidence to the existing
 rule; where they contradict one, keep both and mark the divergence.
-</content>
-</invoke>
 
-**Partial merge (shards S1-S5, Swahili).** New rules are in section K below.
+**Swahili merge (shards S1-S11; S1-S5 from one machine, S6-S11 from the other, so
+both machines' logs are now in).** New rules are in sections K (S1-S5) and L (S6-S11).
 Confirmations of existing rules:
+
+*Evidence caveats.* S6-S7 logs keep no tool output, so their results are read from
+code, intents and Matthew's replies. Several S6-S11 sessions were **not** Matthew with
+Claude: a `hermes_tools` agent (S6), OpenCode with local models (S7, S8 09-14 and
+09-20 afternoon) and an unidentified weaker client (S10 155542). Their failures are
+cited below as failure-mode evidence, marked *(other client)*, not as Matthew's
+practice.
 
 | Existing rule | Swahili evidence | Note |
 |---|---|---|
-| C2 validate_only first | D-S3-04, D-S4-11; violated in C-S3-04 | extended into a ladder: validate_only -> dry run -> 5-entry batch -> full |
-| C3 plan first | D-S5-05 | GUID-keyed manifest with ordered tiers |
-| C6 backup before delete | C-S1-02 (violated: whole-lexicon delete, no backup) | |
-| C9 referrers before delete | C-S5-01 | extend to the entry's **owned** objects -- see K5 |
-| D1 shape + category | C-S1-04 | a default for "unknown" acts like an unfiltered shape rule |
-| E1 no shared-object edits for local fixes | L-S5-02 | the same holds for slot optionality: clone the slot |
-| G4 no derivation in templates | C-S1-06 | Matthew repeated Ron's mistake independently |
-| G7 proof of recipe | D-S1-04, L-S2-03 | |
-| H2 post-write verification | D-S4-07; C-S5-03 | verify in a **separate** op -- an in-op check can crash after the commit |
-| H5 ambiguity is not a bug | C-S2-01 | applies to approvals too |
-| H6 no invented forms | D-S5-08 (paradigm text from general knowledge) | |
-| I1 external changes | C-S5-02, C-S5-05 | stale manifest; project held open elsewhere |
+| A1 never guess an API | C-S6-01 (`ReplaceMoForm` guessed by name, broke a later delete); T-S6-08, C-S8-04 *(other client: invented `WordformsOC`, `LexEntriesOC`, ...)* | when no wrapper exists, port the host application's own command -- see L6 |
+| A5 cheap version first | violated in C-S9-04 (one 127-line op, ~12 heterogeneous changes, failed half-way) | one variable per write; batch by kind and parse-check between batches |
+| C2 validate_only first | D-S3-04, D-S4-11, D-S10-09; violated in C-S3-04, C-S8-02 *(other client: seven 808-row writes, no validate_only)* | extended into a ladder: validate_only -> dry run -> 5-entry batch -> full -> **idempotency rerun ("expect no writes")** (D-S10-09). **Limit:** validate_only is mechanical; it passed a grammatically wrong slot merge (C-S6-02, T-S6-09) -- see L2 |
+| C3 plan first | D-S5-05, D-S7-06, D-S10-03 | GUID-keyed manifest with ordered tiers; read-only diagnosis phase before any write phase |
+| C5 crash leaves a repairable state | C-S6-01 (orphan entry with NULL lexeme form after a failed delete under `undoable=False`); C-S11-05 (writes committed, then the verify code crashed and the run was read as "nothing happened") | after any failed write run, inspect the database; never assume nothing landed. Put writes last, or report what was written before anything else can raise |
+| C6 backup before delete | C-S1-02 (violated: whole-lexicon delete, no backup); D-S8-03 | before a bulk field rewrite, **snapshot the originals to a file and re-derive every pass from the snapshot**, never from the already-mutated field. Seven lossy 808-row passes stayed recoverable only because of this |
+| C9 referrers before delete | C-S5-01; C-S10-01 (GUID + headword guard, 0 references) | extend to the entry's **owned** objects -- see K5 |
+| D1 shape + category | C-S1-04; C-S10-04 | a default for "unknown" acts like an unfiltered shape rule. The converse also bites: a duplicate guard keyed on (form, gloss) skipped a noun because a verb shared both -- include POS in the key |
+| D6 large output to a file | T-S7-02, T-S8-05 (100-message cap; a list re-dumped three times) | also: use `report.*`, never `print()` -- printed output is invisible and unlogged (C-S11-01) |
+| E1 no shared-object edits for local fixes | L-S5-02; L-S9-06, L-S10-02 | the same holds for slot optionality: clone the slot. For a shared rule, count the stored analyses that depend on each output before changing it (7 of 3,312; ny 572 / vy 383) |
+| E3 check for an existing object | C-S7-03 | find-or-create on a short nonce form reused and corrupted real entries (*oz*, *uz*). Collect every existing surface form before choosing throwaway names |
+| G4 no derivation in templates | C-S1-06; resolved 09-13 (L-S7-05, V-S7-01); relapses C-S7-06, C-S10-03 | Matthew repeated Ron's mistake independently, then fixed it by a staged conversion. "Add missing morphemes" passes re-baked derived shapes (*zalia*, *zaliwa*) as allomorphs or stems afterwards -- re-run the decomposition audit after every lexicon batch |
+| G7 proof of recipe | D-S1-04, L-S2-03, D-S7-06 | prototype on 20 hand-marked roots, revert, classify all 647 from evidence, batch with a parse baseline, then convert atomically |
+| H1 regression check | D-S7-06, T-S9-03, D-S10-05 | `parse_diff` against a fixed baseline (fixed 3, broken 0). Size the baseline to parse time |
+| H2 post-write verification | D-S4-07; C-S5-03; C-S9-02 | verify in a **separate** op -- an in-op check can crash after the commit, and an in-op read-back can report a change that never persists (rule `Disabled` read back True in-op, False on every reopen) |
+| H5 ambiguity is not a bug | C-S2-01; L-S10-05, L-S11-02 | applies to approvals too. The converse: `parsed=True` is not "correct" -- inspect words with many analyses (Misri 10, mwana 13) before closing them |
+| H6 no invented forms | D-S5-08 (paradigm text from general knowledge); C-S7-05, C-S7-07, C-S11-01 | see L8 |
+| I1 external changes | C-S5-02, C-S5-05; C-S7-01, C-S10-06 | stale manifest; project held open elsewhere; a sibling agent overwrote a template Description -- see L1 |
+| I2 terse instruction authorizes the fix set | D-S9-05 ("Apply the fix", "yes, fix the invariant numerals", "add the proper noun roots, return for the others") | Matthew authorizes **one class of fix at a time**. A blanket mandate ("using your deep knowledge of Swahili", D-S9-01) produced the 12-change op of C-S9-04 |
+| I3 a stated constraint persists | D-S9-02 ("don't run the full set"); D-S10-04 ("Filing NOT authorized") | scope and filing limits persist like read-only limits -- see L4 |
+| I4 a repeated standing request is not a new instruction | T-S8-06, T-S9-09 | the logged `User request` was frozen at the session's first message or agent-filled; only the latest operator turn counts |
+| I7 a lock is not a code error | T-S8-04, T-S9-05, T-S11-08 | **refined:** after a parse, the lock holder is usually the MCP's own idle parse worker. Call `flextools_parse_release`; `parse_cancel` on a finished run does nothing. Retrying blind does not clear it |
+| J1 status of every claim | D-S9-01, D-S10-03 | Matthew explicitly asked for the AI's "deep knowledge of Swahili". The resulting entries, glosses and class choices are still AI-sourced and must be labelled so (see Q-42) |
+| K1 heuristic is not a Human approval | relapse C-S7-04, V-S7-06 | see L9 |
+| K3 GUID keys | C-S7-09 | **extended:** never key a script on a gloss either. An 807-gloss normalisation pass silently broke scripts that looked affixes up by gloss text |
+| K4 disable before delete | D-S7-04, D-S8-12; C-S8-07 | **divergence:** S7-S8 also use `DoNotUseForParsing` to keep live whole-word entries out of the parser, and that effect was never parse-tested ("UNVERIFIED", D-S8-12). Current FlexToolsMCP guidance treats the flag as deprecated for recipes and new API. Keep the soft-before-hard order; the mechanism is open |
+| K7 verify the reviewer | D-S10-03 | parallel lex-linguist batches diagnosed read-only; their class choices were checked against corpus agreement before the Stage 1 writes (D-S10-08) |
+| K10 stale analyses | V-S7-08; L-S8-01, L-S10-01, L-S11-01, C-S11-06 | **strongly confirmed from tool output** -- see L5 |
 
 ---
 
-## K. Added from the Swahili corpus (provisional)
+## K. Added from the Swahili corpus (S1-S5)
 
 **K1. NEVER record a heuristic judgement as a Human approval.** A "fewest morphemes
 wins" pass approved one analysis per word as the Human agent and disapproved genuine
@@ -324,4 +348,126 @@ returning None produced a plausible noun count of 0 (C-S3-03).
 
 **K10. NEVER conclude the parser ignores something from analyses older than the last
 reparse.** Re-check stored analyses against the current grammar first (C-S2-05,
-D-S5-03).
+D-S5-03). Strengthened by L5.
+
+---
+
+## L. Added from the Swahili corpus (S6-S11)
+
+Most S6-S11 corrections are AI-behaviour failures rather than API failures. Rules
+backed by tool output (S8 09-23 onward, S9-S11) are stated firmly; S6-S7 evidence
+has no tool output and is read from code and intents.
+
+**L1. ONE writer per project at a time.** Parallel agents are fine for read-only work:
+per-POS "PROPOSAL only" subagents ran 41 ops in 6 minutes safely (D-S6-12), and
+read-only diagnosis batches fed a later write stage (D-S10-03). Parallel *writers* lost
+commits to `FP_ConflictingSaveError`, one agent overwrote another's template
+Description, and two sessions made contradictory design decisions the same day
+(C-S7-01, C-S7-02, T-S7-03). A second client writing to the same project concurrently
+looped on the gates (C-S10-06 *(other client)*). Close FieldWorks before a bulk write;
+treat a "non-master peer" write as provisional until a read after FLEx closes
+confirms it (C-S8-03, D-S8-04). Until the tooling has a write lease, the operator
+or orchestrator must serialize writers.
+
+**L2. ALWAYS read an object's design record before changing it, and NEVER
+"consolidate" a duplicate without asking why it exists.** The AI merged deliberately
+cloned slots (Subj2, TAM2) after a clean validate_only; Matthew reverted it a minute
+later (C-S6-02). Later sessions reversed decisions written in template Descriptions
+without reading them (C-S7-02). Write the reasons into the project (D-S6-09, D-S7-02),
+and append to a shared Description field rather than replacing it (C-S7-01).
+
+**L3. NEVER write grammar you cannot parse-check, and ALWAYS reparse after a grammar
+write.** Agents without the parser declined correct-looking changes "because the change
+cannot be verified" (D-S7-02, L-S7-01, T-S7-01); others made about eight grammar writes
+with no logged re-test of the word they started from (C-S6-05). Either the writer has
+`try_word` / `parse_text` / `parse_diff`, or the change is recorded as "proposed,
+unverified" and not written. A new template must parse the forms that motivated it
+(C-S6-03).
+
+**L4. NEVER start a corpus-wide parse or filing unasked, and NEVER self-confirm a
+filing.** An unrequested `parse_text` over all 26,725 words preceded 14 teardown
+failures, and Matthew's next request added "(don't run the full set)" (C-S9-01,
+D-S9-02). A project-wide filing preview ("may delete up to 24259 analyses ... cannot be
+undone") was confirmed by the agent 21 s later with no human decision visible
+(C-S10-02). Filing is a separate gate from write mode: in a later brief Matthew granted
+writes and withheld filing (D-S10-04). Inside a repair loop, parse the top-N queue plus
+a fixed regression set; a corpus-wide run is its own, requested step.
+
+**L5. ALWAYS confirm a failure live before repairing it.** A wordform with no
+parser-approved analysis in the database is not a failing word. Stored analyses record
+the last FLEx parse, not the current grammar. The top three "unparsed" words parsed
+(L-S8-01); 9 of the top 10 parsed (D-S10-01); a refile alone moved 14,096 -> 9,260
+unparsed with no grammar change (L-S10-01); all 10 targets of a 4-hour repair session
+parsed in 2 minutes once the parse tools were used (L-S11-01, C-S11-06). Step 0 of any
+repair: `try_word` the candidate, or refile, and drop it if it parses. Never infer a
+lexicon change's effect from stored counts either (C-S8-07).
+
+**L6. Parsing questions go to the parse tools; `run_module` is for lexicon reads and
+writes.** In S11 the agent hand-built a frequency queue four times in `run_module` and
+got it wrong three times: invented words, object counts (all 1), alphabetical order
+(C-S11-01, C-S11-02, C-S11-03); calling the parser inside a script was blocked or
+returned nothing readable (T-S11-02). The dedicated tools answered correctly on the
+first try (T-S11-01). The failure queue is a defined query -- token occurrences,
+descending, no current parser analysis -- not something to improvise (D-S11-02).
+Resolve exact headwords (homograph number, bound-stem `*`) before a restricted
+`try_word` (T-S8-02, T-S9-02).
+
+**L7. NEVER probe API semantics in the work project.** A by-name guess
+(`ReplaceMoForm`) on a throwaway entry, under `undoable=False`, left an orphan with a
+NULL lexeme form in the work project; there was no rollback (C-S6-01, T-S6-04). Run
+experiments in a test project or a parse sandbox (T-S9-08), or on throwaway objects
+with collision-proof names (D-S7-05, C-S7-03), clean up, and verify the cleanup
+independently. When a wrapper is missing, port the host application's own command
+(FieldWorks `SwapAllomorphWithLexeme`) and prove it on a throwaway first (D-S6-05).
+After any failed write, sweep for orphans (entries created today, NULL or empty lexeme
+forms, no senses).
+
+**L8. NEVER treat AI-generated forms as data.** Observed in S7-S11:
+- a diagnostic script that "simulated" the corpus with a made-up word list (C-S11-01);
+- "must survive" probe sets containing likely non-words (C-S7-07);
+- string-concatenation paradigm generators producing non-words wherever phonology,
+  suppletion or agreement applies (C-S7-05);
+- syllable splits (`el`, `is`, `en`, `ghadha`) created as bare entries, probably
+  committed (C-S11-05);
+- "monomorphemic" verdicts from a string match on a result object, or from a parse
+  failure (C-S11-04);
+- regex affix stripping reported as "497 new stems requiring injection" (C-S8-04
+  *(other client)*).
+
+Data under study comes from the project. Probe and paradigm forms are attested, or
+labelled generated and proofread, with structurally invalid forms moved to a negative
+"No Parse" set (D-S7-08). A new stem needs a segmentation a linguist would accept,
+plus a sense, gloss and POS -- never a bare `LexEntry.Create(form)`. No agent may
+propose stems from unanalysed wordforms before it has parsed at least one and read the
+result.
+
+**L9. NEVER let one heuristic pass create lexicon, analyses and approvals together.**
+The S2 lesson (K1) recurred in a write-mode session that segmented generated wordforms
+heuristically, created entries and allomorphs, approved the analyses, and left 424
+duplicate allomorphs after a type error (C-S7-04, V-S7-06). Approval is a human act;
+heuristic output is at most a parser-agent filing.
+
+**L10. NEVER delete human-approved analyses, or anything a human made, without an
+explicit operator go-ahead for that deletion.** A survey of 18 incomplete human
+analyses was followed one op later by a delete with no recorded authorization; only
+the project lock stopped it (C-S8-06). Survey first (human vs parser, completeness,
+text references), then stop (D-S8-14). Keep the layers apart: when Matthew called
+"the human analyses" junk, he meant the analysis, not the definition it pointed to
+(D-S9-04).
+
+**L11. STOP after two identical failures.** Change approach or report to the operator.
+S11 had three loops: 16x the same caller error, 5x following false cast advice, 6x the
+same pre-flight rejection (C-S11-07, T-S11-04, T-S11-09). A rule disable was retried
+four times without ever persisting (C-S9-02); eight bundle-reorder attempts were
+blocked before Matthew redirected the fix to the text (C-S7-08).
+
+**L12. ALWAYS verify persistence by reopening.** "now disabled=True" inside the op
+meant nothing; every reopen showed False (C-S9-02). After a teardown, commit or
+`AbandonedMutexException` warning, the next action is a separate read-only check, and
+two failed checks mean stop (T-S9-06).
+
+**L13. Match the agent to the job.** Weaker clients looped on the gates, guessed APIs,
+and in one case wrote nothing in 4 hours (T-S6-08, C-S8-04, C-S10-06 *(other
+clients)*; also S11, client unrecorded). The same task on the same day went nowhere
+with a local model and was productive with Claude Code (S8). Do not run a weaker
+client in write mode on the work project, and never alongside another writer (L1).

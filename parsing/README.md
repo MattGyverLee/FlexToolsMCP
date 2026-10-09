@@ -42,12 +42,13 @@ Ron is an expert computational linguist with strong analytical intuition. He doe
   (`asserted-by-Ron` / `AI-proposed-accepted` / `unresolved`) -- and must **not** be
   read as authoritative Malayalam grammar.
 
-### Second operator: Matthew, Swahili (partial merge)
+### Second operator: Matthew, Swahili
 
-A second, independent corpus has been partly merged: Matthew's work on the FLEx project
-**Claude-Swahili**, taken from the FlexToolsMCP runtime logs on one machine. The
-practitioner and the language are different, and so is the language type: Bantu noun
-class agreement and verb templates instead of Dravidian agglutination.
+A second, independent corpus has been merged: Matthew's work on the FLEx project
+**Claude-Swahili**, taken from the FlexToolsMCP runtime logs on two machines (S1-S5 from
+one, S6-S11 from the other). The practitioner and the language are different, and so is
+the language type: Bantu noun class agreement and verb templates instead of Dravidian
+agglutination.
 
 | Shard | Dates | Content |
 |---|---|---|
@@ -56,16 +57,28 @@ class agreement and verb templates instead of Dravidian agglutination.
 | S3 | 2026-06-17 .. 08-13, 09-20 | catalog-sourced noun-class features, frequency queue, per-entry parse-ready standard, Phase 0 baseline, licence policy, feature-matrix pruning |
 | S4 | 2026-09-06 .. 09-07 | real interlinear text as test fixture, analysis rejection, over-generation diagnosis, concord cloning, disable-then-delete |
 | S5 | 2026-09-07 .. 09-11 | template blocking, final-vowel verb classes, staleness scan, tiered manifest cleanup, interlinear gloss repair, domain rulings |
+| S6 | 2026-09-12 | single-word triage (*akamwita*), lexeme form fixed as the elsewhere form, twin-slot idiom defended, template descriptions as design records |
+| S7 | 2026-09-13 | parallel per-POS agents, verb extensions made derivational, Verb subcategories, HermitCrab driven by hand inside `run_module`, paradigm and "No Parse" texts |
+| S8 | 2026-09-14 .. 09-23 | 808-sense gloss cleanup, concord senses per class, a local-model run that never parsed, the stale "unparsed" queue |
+| S9 | 2026-09-24 | in-MCP parse loop: POS templates blocking free words, `amba-` relativizer, glide over-application, `parse_diff`, lock failures |
+| S10 | 2026-09-25 | refile before triage, grapheme parse rates, exception-feature rule blocking, regression baseline, staged multi-agent fix-up |
+| S11 | 2026-09-30 | a four-hour `run_module` loop on wrong queues; the top "unparsed" words already parse; probable junk entries |
 
 **Read this first:**
 
-- **Partial.** More of Matthew's Swahili work is in logs on another machine that have
-  not been ingested. A stage that looks thin in S1-S5 may simply be in those logs.
-- **Results are inferred from code.** The logs keep submitted code and requests but
-  not report output, so results are read from code, docstrings and the next operation's
-  framing.
+- **Two kinds of log.** S1-S7 keep submitted code, requests and errors but **not**
+  report output, so their results are read from code, docstrings and the next
+  operation's framing. From 2026-09-23 on (late S8, S9-S11) the logs keep tool output,
+  truncated at roughly 1-2 KB, so results there are measured. S6-S11 re-check many S1-S5
+  claims that were only inferred (the `V-` rows in the
+  [evidence index](evidence/directive-index.md)).
+- **Not every session is Matthew's practice.** Some local sessions were driven by other
+  clients: OpenCode with local models (09-13, 09-14, 09-20), a "hermes_tools" agent
+  (09-12) and an unidentified weaker client (09-25). Their evidence is used only as
+  failure modes. On the S6-S11 machine the `User request:` field is often agent-filled;
+  `(request*)` marks probable but unverified Matthew wording.
 - **Where it lands.** Each stage file has a **"Second-Operator Evidence (Swahili)"**
-  section, kept separate from Ron's text so it can be revised when the rest arrives.
+  section, kept separate from Ron's text.
   Language-specific content is in
   [`reference/swahili-morphophonology.md`](reference/swahili-morphophonology.md).
 - **No native-speaker verification is recorded** in these logs for the Swahili claims.
@@ -106,8 +119,8 @@ Then:
 - **`conventions/`** -- the non-negotiables:
   [data conventions](conventions/flex-data-conventions.md) and
   [AI collaboration guardrails](conventions/ai-collaboration-guardrails.md).
-- **`evidence/directive-index.md`** -- every D-/L-/C- id from all nine shards, one
-  row each, with where it landed. Use it to audit a claim.
+- **`evidence/directive-index.md`** -- every D-/L-/C- id from all shards (plus the T-/V- rows
+  of S6-S11), one row each, with where it landed. Use it to audit a claim.
 - **[`open-questions.md`](open-questions.md)** -- what is still unresolved and who
   can resolve it.
 - **[`MERGE-NOTES.md`](MERGE-NOTES.md)** -- explicit seams for merging Matthew's
@@ -127,10 +140,11 @@ Then:
 | Aspect | Status |
 |---|---|
 | Stage decomposition | **Derived** from shard section 5 across all nine shards; conflicts resolved toward the late-corpus (M7 §9 / M8 §9) form |
-| Provenance | **Complete** -- 179 ids indexed, see [`evidence/directive-index.md`](evidence/directive-index.md) |
+| Provenance | **Complete** -- 179 ids (Ron) + 315 (Matthew) indexed, see [`evidence/directive-index.md`](evidence/directive-index.md) |
 | Malayalam linguistic content | **Unverified by a native speaker.** Hypotheses only |
 | Parse-and-repair stage (11) | Written as it **should** work with in-MCP tooling; the corpus did this partly out-of-band. Tooling gaps listed in [`MERGE-NOTES.md`](MERGE-NOTES.md) |
-| Matthew's process | **Partially merged** (shards S1-S5, 86 ids, one machine's logs). Seams and remaining work in [`MERGE-NOTES.md`](MERGE-NOTES.md); per-stage "Second-Operator Evidence" sections; conflicts in section 4.9-4.15 |
+| Matthew's process | **Merged** (shards S1-S11, 315 ids, both machines' logs). Per-stage "Second-Operator Evidence" sections; conflicts in section 4.9-4.20; remaining gaps in [`MERGE-NOTES.md`](MERGE-NOTES.md) |
+| Parse-and-repair with in-MCP tools | **Observed** from 2026-09-23 (S8-S11): `try_word`, `parse_text` with filing, `parse_diff`, `parse_sandbox`. See [Stage 11](stages/11-parse-and-repair-loop.md) and [`MERGE-NOTES.md`](MERGE-NOTES.md) section 4 |
 | Generality | Stage bodies are language-neutral; all language-specific material is confined to `reference/` |
 
 ---
@@ -306,6 +320,11 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   `NA` fill), unified between stem, class prefix and concord (row 25). He used no
   inflection classes, environments or stem names for it (D-S1-06).
 - Matthew did use inflection classes, for verb final-vowel behaviour (row 31).
+- **Update (S10, V-S10-02):** by 09-25 the feature system held no `NA` values, so the
+  S1 fill-every-feature convention is superseded. Noun class 13 was added under
+  BantuPl and class-1a concord got its own senses (S8). Homophonous agreement values
+  are modelled as **one sense per class** on the concord entry, not as allomorphs or
+  separate entries (D-S8-07).
 
 ### 4.11 Lexeme form as the elsewhere case (F1) vs most-restricted form in the lexeme (S1)
 
@@ -314,9 +333,13 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
 - **Matthew (L-S1-02, B#152 docstring):** after merging separate prefix entries, he
   stored the most restricted form in the lexeme form, with an environment, and the
   default form as an alternate, also with an environment. No elsewhere form remains.
-- No parse in the logs tests this.
-- **Follow F1** (an LCM ordering fact) until a parse shows Matthew's arrangement works.
-  **Open: Q-37.**
+- No parse in the S1 logs tests this.
+- **Resolved toward F1 by Matthew himself (2026-09-12, D-S6-04, V-S6-01):** *"the
+  'default/everywhere' form of the affix should be the lexeme. Many of these are swapped."*
+  Twenty entries were corrected with a port of FieldWorks' own `SwapAllomorphWithLexeme`,
+  with reference counts checked before and after. The 09-24 and 09-25 prefix entries follow
+  F1 and parse (V-S9-04, V-S10-04). The S1 arrangement is a superseded error, not a
+  convention. **Follow F1. Q-37 closed.**
 
 ### 4.12 Paradigm texts (Stage 10) vs real text from the start
 
@@ -326,6 +349,15 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   one paradigm text, for noun classes (D-S5-08), late.
 - **Both are kept.** Paradigm texts cover environments deliberately. Real text exposes
   approval and gloss defects and closed-class gaps that paradigms never reach.
+- **Update (S7, S10).**
+  - On 09-13 paradigm texts were generated for every template of every inflecting POS,
+    each with a negative **"No Parse"** counterpart holding the forms the grammar must
+    reject (V-S7-04). The generated forms were AI-made and AI-proofread (Q-42).
+  - For grammar-wide changes from 09-25 on, the regression suite is a **corpus
+    baseline** instead: the top-frequency parsed words plus every word containing the
+    segment being changed, 1,783 words (D-S10-05).
+  - Use a paradigm text to cover cells deliberately. Use a corpus baseline as the guard
+    before a change that can break words already parsing.
 
 ### 4.13 Relax the slot vs separate templates
 
@@ -334,6 +366,18 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
 - **S5 (L-S5-02):** obligatoriness moved into separate templates per construction, with
   a cloned required slot (TAM2).
 - **Matthew's late practice agrees with Ron's row 24.** Follow the late form (row 29).
+- **Explained and defended (S6, S7).**
+  - On 09-12 the AI merged the twin Subj/Subj2 and TAM/TAM2 slots. It passed
+    `validate_only` and was written. Matthew reverted it a minute later (C-S6-02).
+  - The reason is a FLEx fact: `Optional` lives on the **slot object**, not on its use
+    in a template. A slot that is optional in one template and required in another must
+    be two slot objects (L-S6-04, L-S7-02).
+  - The same MSA in two slots is therefore an idiom when the slots never co-occur in one
+    template (Obj/Obj2), and a bug when they do (L-S5-01; V-S7-09).
+- **Reopened once (S7, 20:56).** TAM2 was made optional so that habitual and
+  negative-present forms (husema, sisemi) with no TAM filler would parse (V-S7-03). Under
+  this section that should have been a separate template. **Open:** record which
+  constructions lack a TAM filler and give them their own template (Q-45).
 
 ### 4.14 What "correct" means: parses only (Ron) vs approved analyses and glosses (Matthew)
 
@@ -346,6 +390,18 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
 - **This spec adds the approval layer to Stage 11, with a policy:**
   - no heuristic decision is recorded as a human one;
   - genuine ambiguity is never disapproved.
+- **Later practice (S7-S10) complicates this.**
+  - The heuristic auto-approval came back on 09-13: a curated-prefix segmenter approved
+    analyses and left 424 duplicate allomorphs to clean up (C-S7-04).
+  - By 09-24 the project held **zero** human-approved analyses (V-S9-01). Analyses
+    were filed by the parser only, through `parse_text` with filing. Whether that was a
+    deliberate reset for a fresh baseline is not recorded (Q-41).
+  - Filing replaces stored parser analyses in bulk. On 09-25 the AI confirmed a
+    26,725-word filing 21 seconds after its preview. By that evening Matthew's brief
+    read "Filing NOT authorized" for the grammar-wide stage (C-S10-02).
+  - **Policy, extended:** a whole-corpus filing is a write that needs the operator's
+    decision, not the AI's. File only the wordforms a fix touches (including their
+    capitalised variants) unless the operator asks for more.
 
 ### 4.15 Growing a class inventory (Ron) vs deriving it from an existing field (Matthew)
 
@@ -357,6 +413,101 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   - Where the lexicon already encodes the class, derive it.
   - Where it does not, Ron's L-M3-11 lesson still applies: factor the dimensions before
     growing the inventory.
+
+### 4.16 What "unparsed" means: a stored count (S2-S3) vs a live parse
+
+**The most consequential finding of S8-S11.**
+
+- **S1-S5:** Matthew's real-text loop and frequency queue (D-S2-06, D-S3-02) ranked
+  wordforms with **zero stored parser analyses**. S2 already suspected those counts were
+  stale (C-S2-05), but the logs had no output to confirm it.
+- **S8-S11 confirm it from tool output.**
+  - 09-23: the top three "unparsed" words (yake, kama, nami) all parse under
+    `try_word` (L-S8-01).
+  - 09-25: 9 of the top 10 parsed. One whole-corpus refile with **no grammar change**
+    cut unparsed from 14,096 to 9,260, so 4,836 wordforms parsed but had no filed
+    analyses (L-S10-01).
+  - 09-30: about four hours of `run_module` work went into a queue whose top ten all
+    parse. `try_word` showed that in two minutes (V-S11-02).
+- **Rule.** A stored zero-analysis count means "not parsed since the parser last
+  ran", not "the grammar fails". **Refile, or `try_word` the candidates, before
+  triage**, and build the frequency queue from a fresh parse run. This is Ron's
+  acceptance test (live parser output) applied to Matthew's real-text queue: evidence
+  for both, a conflict with neither. See [Stage 11](stages/11-parse-and-repair-loop.md)
+  and [Stage 12](stages/12-real-corpus-stress-test.md).
+
+### 4.17 Verb extensions: inflectional slots (S1) -> derivation (S7) -> lexicalized stems (S7, S10)
+
+- **S1 (C-S1-06):** the extensions sat in inflectional template slots. **S2-S5:** some
+  extended forms were stored as stems (Q-40).
+- **S7 (V-S7-01), 09-13 12:05:**
+  - all six extensions became `MoDerivAffMsa` with From/To POS;
+  - Verb gained Transitive/Intransitive/Detransitive subcategories, and 647 verb MSAs
+    were reclassified in five batches against a baseline;
+  - the empty extension slots were removed from every verb template;
+  - RDP became derivational.
+
+  This is P10 (derivation is not inflection), matching Ron's 4.6.
+- **Relapses.**
+  - *zalia* and *zaliwa* were stored as stem allomorphs of *zaa* 3.5 hours later
+    (C-S7-06).
+  - On 09-25 they became separate stems (C-S10-03), although passive `-ew-` and stative
+    `-k-` already parsed as affixes (V-S10-05).
+  - The verbs that still fail on 09-30 (walifanywa, amekikalia, wanaojiwekea ...) all
+    carry extensions (S11).
+- **Rule.** Follow S7. Lexicalizing a derived stem to make one word parse is a fix
+  against P10. It needs a recorded reason (genuinely idiosyncratic meaning), not "it
+  parses now". Q-40 is answered *yes* for the model and stays open for the extension
+  allomorphy that drives the relapses; lexicalized derived stems are Q-46.
+
+### 4.18 Blocking a rule: lexical exception feature vs morphological conditioning
+
+- **S9 (L-S9-06, V-S9-07):** the S1 glide rule `i -> y` had a second right-hand side with a
+  word-boundary left context and no POS limit. It glided class-4 `mi-`, so *miaka*
+  (214 tokens) failed. Disabling the rule never persisted (C-S9-02). D-S2-03's "rules fire only across +" held for one RHS only.
+- **S10 (L-S10-02):**
+  - Fix: an excluded exception feature "no glide formation" on both RHSs, set on three
+    stems (*aka, *ea, *anzo).
+  - Before the change the blast radius was measured (ny 572, vy 383, py 11 and my 8
+    parsed words depend on the rule).
+  - After it, miaka parses and the counted dependents still do.
+- **Assessment.** The measurement is exemplary (Stage 08). The mechanism is debatable.
+  The conditioning is morphological (the cl.4 prefix), so the restriction arguably
+  belongs on the prefix or in the rule's required/excluded morpheme set, not on each
+  stem, which has to be remembered for every new cl.3/4 vowel-initial stem. **Open: Q-44**;
+  see [Stage 08](stages/08-phonological-rules.md).
+
+### 4.19 Suppressing objects from the parser: `DoNotUseForParsing` (S4-S8) vs current guidance
+
+- **S4 (D-S4-08)** used the flag as the soft-delete step of disable-then-delete. **S7**
+  used it to suppress the class-16 null prefix (V-S7-02), a duplicate quantifier stem
+  and about 20 shadow possessives. **S8 (D-S8-12)** used it to keep 12 whole-word
+  possessives *listed but not parsed*; its own module marks the effect "UNVERIFIED".
+- **Two jobs on one flag** (soft delete; listed-but-not-parsed), and no reparse diff in
+  any log shows what it changes in HermitCrab.
+- **Current tooling guidance treats `DoNotUseForParsing` as deprecated:** do not use it
+  in recipes or fix-ups, or as a model for new API. Record that these suppressions exist
+  and migrate them. Until then, prove any suppression with a `parse_diff` before relying
+  on it. What replaces the flag is Q-43.
+
+### 4.20 Blanket mandates ("use your deep knowledge") vs P3/P6 one-variable proof
+
+- **Ron (P3, P6):** cheapest change first, one variable at a time, prove a recipe on one
+  item before scaling.
+- **Matthew's S4/S5 practice agreed** (manifests, dry runs, tiers, a one-variable
+  reparse experiment, D-S4-09).
+- **S8-S11 show what happens without it:**
+  - seven 808-row gloss writes with no `validate_only` and FLEx open; the last failed with
+    a conflicting-save error (C-S8-02);
+  - a 12-change operation under "resolve ... using your deep knowledge of Swahili" that
+    failed half-way and could not be attributed per change (C-S9-04);
+  - entries guessed as monomorphemic, and syllables entered as morphemes (C-S11-04,
+    C-S11-05).
+- **Also in tension with H6 / Q-42:** entries and glosses the AI writes on such a
+  mandate are not marked as AI-sourced in the project.
+- **Rule.** A broad mandate authorizes the *goal*, not batching. Keep one change per
+  operation, each re-tested with `try_word` before the next. Mark AI-sourced lexical
+  content; the forms awaiting a speaker are Q-47. See [guardrails](conventions/ai-collaboration-guardrails.md).
 
 ---
 
@@ -379,7 +530,7 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   - [13 -- Cleanup and Consolidation](stages/13-cleanup-and-consolidation.md)
 - `reference/`
   - [malayalam-morphophonology.md](reference/malayalam-morphophonology.md)
-  - [swahili-morphophonology.md](reference/swahili-morphophonology.md) (second operator, provisional)
+  - [swahili-morphophonology.md](reference/swahili-morphophonology.md) (second operator)
   - [natural-classes.md](reference/natural-classes.md)
   - [allomorphy-environments.md](reference/allomorphy-environments.md)
   - [flex-modeling-decisions.md](reference/flex-modeling-decisions.md)
@@ -390,5 +541,3 @@ Not a conflict but a **language-type difference**, recorded so neither is read a
   - [directive-index.md](evidence/directive-index.md)
 - [open-questions.md](open-questions.md)
 - [MERGE-NOTES.md](MERGE-NOTES.md)
-</content>
-</invoke>

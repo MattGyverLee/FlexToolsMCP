@@ -44,6 +44,16 @@ try:
         KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
         KEY_DIAGNOSTIC_REPORT,
         KEY_DISCOVERY_REDIRECT, KEY_CAPABILITY_SUGGESTIONS, KEY_EXECUTED,
+        # Phase 2 (#369): keys traced from real get_object_api /
+        # search_by_capability handler payloads (handlers/api.py).
+        KEY_OBJECT_TYPE, KEY_FOUND, KEY_API_MODE, KEY_FLEXICON, KEY_LIBLCM,
+        KEY_FLEXLIBS_STABLE, KEY_FLEXICON_MATCHES, KEY_LIBLCM_MATCHES,
+        KEY_FLEXLIBS_STABLE_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY,
+        KEY_API_MODE_DESCRIPTION, KEY_SEARCH_METHOD, KEY_SOURCES_SEARCHED,
+        KEY_FALLBACK_USED, KEY_SEMANTIC_AVAILABLE, KEY_RESULTS_COUNT,
+        KEY_SESSION_CONTEXT, KEY_RECIPES, KEY_RECIPES_COUNT,
+        KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT, KEY_RECOMMENDED_RECIPE,
+        KEY_MCP_TOOLS, KEY_ZERO_RESULT_FALLBACK, KEY_DEPRECATION_REDIRECTS,
     )
 except ImportError:
     from server.response_keys import (
@@ -52,6 +62,14 @@ except ImportError:
         KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
         KEY_DIAGNOSTIC_REPORT,
         KEY_DISCOVERY_REDIRECT, KEY_CAPABILITY_SUGGESTIONS, KEY_EXECUTED,
+        KEY_OBJECT_TYPE, KEY_FOUND, KEY_API_MODE, KEY_FLEXICON, KEY_LIBLCM,
+        KEY_FLEXLIBS_STABLE, KEY_FLEXICON_MATCHES, KEY_LIBLCM_MATCHES,
+        KEY_FLEXLIBS_STABLE_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY,
+        KEY_API_MODE_DESCRIPTION, KEY_SEARCH_METHOD, KEY_SOURCES_SEARCHED,
+        KEY_FALLBACK_USED, KEY_SEMANTIC_AVAILABLE, KEY_RESULTS_COUNT,
+        KEY_SESSION_CONTEXT, KEY_RECIPES, KEY_RECIPES_COUNT,
+        KEY_RECIPES_AMBIGUOUS, KEY_RECIPES_HINT, KEY_RECOMMENDED_RECIPE,
+        KEY_MCP_TOOLS, KEY_ZERO_RESULT_FALLBACK, KEY_DEPRECATION_REDIRECTS,
     )
 
 try:
@@ -145,15 +163,106 @@ class RunModuleSuccess(BaseEnvelope):
 
 
 class GetObjectApiSuccess(BaseEnvelope):
-    """Successful get_object_api response envelope."""
+    """Successful get_object_api response envelope.
+
+    Phase 2 (#369, ruling R2): tightened from a shell (zero fields over
+    BaseEnvelope) with the always-present keys traced from real
+    ``handle_get_object_api`` payloads in handlers/api.py:
+
+    - every return path builds ``{object_type, found, api_mode, status}``
+      and passes it through the canonical ``build_response_with_context``
+      (which stamps ``_contract`` and, when the session is initialized,
+      ``session_context``);
+    - an exact hit adds the source key (``flexicon`` / ``liblcm`` /
+      ``flexlibs_stable``) holding the paginated entity dict;
+    - a substring hit adds the per-source ``*_matches`` lists (and maybe
+      ``disambiguation``); a miss adds ``message`` instead.
+
+    ``status``/``_contract`` carry no defaults here so they are REQUIRED
+    in the advertised outputSchema: a payload missing them is not a
+    success envelope (that was the pre-Phase-2 shadowing bug). ``status``
+    is narrowed to ``"ok"`` -- error payloads never attach
+    structuredContent in Phase 2, so the Success schema must not admit
+    ``"error"``.
+    """
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
-    status: Literal["ok", "error"] = Field(alias=KEY_STATUS, default="ok")
+    status: Literal["ok"] = Field(alias=KEY_STATUS)
+    contract: str = Field(alias=KEY_CONTRACT)
+
+    object_type: str = Field(alias=KEY_OBJECT_TYPE)
+    found: bool = Field(alias=KEY_FOUND)
+    api_mode: str = Field(alias=KEY_API_MODE)
+
+    # Exactly one source key on an exact hit (none on a miss).
+    flexicon: Optional[Dict[str, Any]] = Field(alias=KEY_FLEXICON, default=None)
+    liblcm: Optional[Dict[str, Any]] = Field(alias=KEY_LIBLCM, default=None)
+    flexlibs_stable: Optional[Dict[str, Any]] = Field(
+        alias=KEY_FLEXLIBS_STABLE, default=None)
+    # Substring-hit match lists (per searched source).
+    flexicon_matches: Optional[List[Dict[str, Any]]] = Field(
+        alias=KEY_FLEXICON_MATCHES, default=None)
+    liblcm_matches: Optional[List[Dict[str, Any]]] = Field(
+        alias=KEY_LIBLCM_MATCHES, default=None)
+    flexlibs_stable_matches: Optional[List[Dict[str, Any]]] = Field(
+        alias=KEY_FLEXLIBS_STABLE_MATCHES, default=None)
+    disambiguation: Optional[Dict[str, Any]] = Field(
+        alias=KEY_DISAMBIGUATION, default=None)
+    # Present exactly when found is False.
+    message: Optional[str] = Field(alias=KEY_MESSAGE, default=None)
+    session_context: Optional[Dict[str, Any]] = Field(
+        alias=KEY_SESSION_CONTEXT, default=None)
 
 
 class SearchByCapabilitySuccess(BaseEnvelope):
-    """Successful search_by_capability response envelope."""
+    """Successful search_by_capability response envelope.
+
+    Phase 2 (#369, ruling R2): tightened from a shell with the
+    always-present keys traced from the real ``handle_search_by_capability``
+    payload in handlers/api.py. The handler's final ``result.update({...})``
+    unconditionally sets ``api_mode``, ``api_mode_description``,
+    ``search_method``, ``sources_searched``, ``fallback_used``,
+    ``semantic_available``, ``results_count``, ``canonical_matches``,
+    ``results``, ``worked_examples``, ``worked_examples_count``,
+    ``recipes``, ``recipes_count`` and ``recipes_ambiguous`` on top of the
+    initial ``{query, status}``; the canonical
+    ``build_response_with_context`` then stamps ``_contract`` (and
+    ``session_context`` when initialized). The remaining fields below are
+    conditional in the handler (a clear recipe winner, a recipes hint,
+    deprecation redirects, MCP-tool hits, the zero-result fallback) and
+    stay optional. ``status``/``_contract`` are required, and ``status``
+    is narrowed to ``"ok"``, for the same reason as GetObjectApiSuccess.
+    """
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
-    status: Literal["ok", "error"] = Field(alias=KEY_STATUS, default="ok")
+    status: Literal["ok"] = Field(alias=KEY_STATUS)
+    contract: str = Field(alias=KEY_CONTRACT)
+
+    query: str = Field(alias=KEY_QUERY)
+    api_mode: str = Field(alias=KEY_API_MODE)
+    api_mode_description: str = Field(alias=KEY_API_MODE_DESCRIPTION)
+    search_method: str = Field(alias=KEY_SEARCH_METHOD)
+    sources_searched: List[str] = Field(alias=KEY_SOURCES_SEARCHED)
+    fallback_used: bool = Field(alias=KEY_FALLBACK_USED)
+    semantic_available: bool = Field(alias=KEY_SEMANTIC_AVAILABLE)
+    results_count: int = Field(alias=KEY_RESULTS_COUNT)
+    # Literal keys in the handler (no KEY_* constants exist for these).
+    canonical_matches: int
+    results: List[Dict[str, Any]]
+    worked_examples: List[Any]
+    worked_examples_count: int
+    recipes: List[Any] = Field(alias=KEY_RECIPES)
+    recipes_count: int = Field(alias=KEY_RECIPES_COUNT)
+    recipes_ambiguous: bool = Field(alias=KEY_RECIPES_AMBIGUOUS)
+
+    recommended_recipe: Optional[Dict[str, Any]] = Field(
+        alias=KEY_RECOMMENDED_RECIPE, default=None)
+    recipes_hint: Optional[str] = Field(alias=KEY_RECIPES_HINT, default=None)
+    deprecation_redirects: Optional[List[Any]] = Field(
+        alias=KEY_DEPRECATION_REDIRECTS, default=None)
+    mcp_tools: Optional[List[Any]] = Field(alias=KEY_MCP_TOOLS, default=None)
+    zero_result_fallback: Optional[Dict[str, Any]] = Field(
+        alias=KEY_ZERO_RESULT_FALLBACK, default=None)
+    session_context: Optional[Dict[str, Any]] = Field(
+        alias=KEY_SESSION_CONTEXT, default=None)
 
 
 # ---------------------------------------------------------------------------

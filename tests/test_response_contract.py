@@ -643,12 +643,33 @@ class TestSuccessModels:
         assert m.contract == CONTRACT_VERSION
 
     def test_get_object_api_success_tolerates_extra(self):
-        data = {"status": "ok", "_contract": CONTRACT_VERSION, "entity": "ILexEntry", "methods": []}
+        # Phase 2 (#369): the base payload carries the keys traced from the
+        # real handler (the old {"entity"/"methods"} fixture was invented --
+        # the handler never emits those keys); tolerance of EXTRA keys is
+        # what this test is about.
+        data = {
+            "status": "ok", "_contract": CONTRACT_VERSION,
+            "object_type": "ILexEntry", "found": False, "api_mode": "flexicon",
+            "message": "No API documentation found for 'ILexEntry'.",
+            "extra_future_key": True,
+        }
         m = GetObjectApiSuccess.model_validate(data, by_alias=True)
         assert m.status == "ok"
 
     def test_search_by_capability_success_tolerates_extra(self):
-        data = {"status": "ok", "_contract": CONTRACT_VERSION, "query": "gloss", "matches": []}
+        # Phase 2 (#369): traced always-present keys (the old fixture's
+        # "matches" key is never emitted by the handler) + an extra key.
+        data = {
+            "status": "ok", "_contract": CONTRACT_VERSION, "query": "gloss",
+            "api_mode": "flexicon",
+            "api_mode_description": "Flexicon (recommended)",
+            "search_method": "keyword", "sources_searched": ["flexicon"],
+            "fallback_used": False, "semantic_available": False,
+            "results_count": 0, "canonical_matches": 0, "results": [],
+            "worked_examples": [], "worked_examples_count": 0,
+            "recipes": [], "recipes_count": 0, "recipes_ambiguous": False,
+            "extra_future_key": True,
+        }
         m = SearchByCapabilitySuccess.model_validate(data, by_alias=True)
         assert m.status == "ok"
 
@@ -714,16 +735,24 @@ class TestWrongLibraryAffectedSymbols:
 # ---------------------------------------------------------------------------
 
 class TestOutputSchema:
-    """outputSchema advertisement is DISABLED (issue #54 follow-up).
+    """outputSchema advertisement: batch-1 ONLY (issue #369 Phase 2, R2).
 
     Per MCP spec 2025-06-18, a tool advertising outputSchema MUST return
-    structuredContent matching it. call_tool() currently returns text-only, so
-    advertising the schema makes spec-compliant clients reject the response. Until
-    the structured-content response path lands (Option B), list_tools() must NOT
-    emit outputSchema for any tool. These tests guard that invariant so we do not
-    accidentally re-break clients. The output_model METADATA is retained on ToolDef
-    (checked below) so Option B has a live target to wire up.
+    structuredContent matching it. Before Phase 2, call_tool() returned
+    text-only, so NO tool could advertise. Phase 2 landed the structured-
+    content response path for exactly the batch-1 tools
+    (run_module / search_by_capability / get_object_api): list_tools()
+    must advertise outputSchema for those three and NO others -- any
+    other tool advertising without returning structuredContent would
+    re-break spec-compliant clients. The structuredContent conformance
+    itself is proven in tests/test_structured_output.py.
     """
+
+    _BATCH_1 = {
+        "flextools_run_module",
+        "flextools_get_object_api",
+        "flextools_search_by_capability",
+    }
 
     def _get_tools(self):
         """Load list_tools() output via the server module."""
@@ -743,18 +772,18 @@ class TestOutputSchema:
         finally:
             loop.close()
 
-    def test_no_tool_advertises_output_schema(self):
-        # Guard: advertising outputSchema without returning structuredContent
-        # breaks MCP-spec-compliant clients (issue #54 follow-up). Must stay empty
-        # until call_tool() returns structured content.
+    def test_only_batch1_tools_advertise_output_schema(self):
+        # Guard: exactly the batch-1 set advertises. (mcp 2.x exposes the
+        # field as `output_schema`; the old test's `outputSchema` getattr
+        # never matched anything, so it passed vacuously.)
         tools = self._get_tools()
-        tools_with_schema = [
+        tools_with_schema = {
             t.name for t in tools
-            if getattr(t, "outputSchema", None) is not None
-        ]
-        assert tools_with_schema == [], (
-            "No tool may advertise outputSchema until call_tool() returns "
-            f"structuredContent; found: {tools_with_schema}"
+            if getattr(t, "output_schema", None) is not None
+        }
+        assert tools_with_schema == self._BATCH_1, (
+            "outputSchema must be advertised for exactly the batch-1 "
+            f"structured-output tools; found: {sorted(tools_with_schema)}"
         )
 
     def test_output_model_metadata_retained_for_followup(self):

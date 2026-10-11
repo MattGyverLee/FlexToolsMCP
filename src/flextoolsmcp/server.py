@@ -847,6 +847,50 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         _log_warning(f"Could not auto-refresh {library_name}: {e}")
         return False
 
+# Phase 2 (#369, ruling R2): the batch-1 structured-output tools. ONLY
+# these tools advertise outputSchema and return structuredContent. The
+# gate is this explicit set AND output_model presence -- never
+# output_model presence alone -- so a future tool that gains a model does
+# not silently start advertising (a spec-compliant client hard-fails any
+# response whose structuredContent is missing or off-schema).
+STRUCTURED_OUTPUT_TOOLS = frozenset({
+    "flextools_run_module",
+    "flextools_search_by_capability",
+    "flextools_get_object_api",
+})
+
+
+def derive_structured_content(name: str, content: Any) -> Optional[Dict[str, Any]]:
+    """Derive the structuredContent dict for a batch-1 tool result.
+
+    Parses the FINAL text payload (the content list ``call_tool`` returns,
+    i.e. after the ``_session_note`` rewrite) -- never ``model_dump()`` of
+    an envelope (the Success models are ``extra="ignore"``, so a dump
+    would drop the real payload keys). The text content itself is never
+    modified here; it stays byte-identical.
+
+    Returns None (attach nothing) for non-batch-1 tools, non-JSON or
+    non-dict payloads, and error payloads (``status == "error"`` or an
+    ``error_code`` key): the advertised Success schemas describe success
+    payloads only, and an error payload validated against one is the
+    Phase-2 trap ruling R2 calls out.
+    """
+    if name not in STRUCTURED_OUTPUT_TOOLS or not content:
+        return None
+    text = getattr(content[0], "text", None)
+    if not isinstance(text, str):
+        return None
+    try:
+        parsed = json.loads(text)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    if parsed.get("status") == "error" or "error_code" in parsed:
+        return None
+    return parsed
+
+
 # Registered on the MCP server via the inlined adapters below (issue #369)
 # -- NOT decorated.
 async def list_tools() -> list[Tool]:
@@ -865,18 +909,22 @@ async def list_tools() -> list[Tool]:
             "annotations": tool_def.annotations,
             "inputSchema": schema,
         }
-        # NOTE (issue #54 follow-up): outputSchema advertisement is intentionally
-        # DISABLED. Per MCP spec 2025-06-18, a tool that advertises outputSchema MUST
-        # return structuredContent matching it, and clients validate accordingly. This
-        # server's call_tool() currently returns text-only (json_response -> [TextContent]),
-        # so advertising the schema causes spec-compliant clients (e.g. Claude Code) to
-        # reject every response from run_module / get_object_api / search_by_capability.
-        # Re-enable ONLY together with returning structuredContent from call_tool() (the
-        # low-level mcp API supports returning (list[ContentBlock], dict)) AND after
-        # confirming the handler dicts validate against the *Success models
-        # (see flextoolsmcp.tool_output_validation and validate_integrity success_models).
-        # if tool_def.output_model is not None:
-        #     kwargs["outputSchema"] = tool_def.output_model.model_json_schema(by_alias=True)
+        # Phase 2 (#369, ruling R2): advertise outputSchema ONLY for the
+        # batch-1 set (STRUCTURED_OUTPUT_TOOLS) that also carries an
+        # output_model, and only together with returning structuredContent
+        # (see derive_structured_content + the call adapter below) --
+        # per MCP spec, a tool that advertises outputSchema MUST return
+        # matching structuredContent, and spec-compliant clients validate
+        # it (mcp 2.x's client hard-fails on mismatch). Handler dicts for
+        # these tools validate against the *Success models via real-payload
+        # fixtures (see flextoolsmcp.tool_output_validation).
+        if (
+            tool_def.name in STRUCTURED_OUTPUT_TOOLS
+            and tool_def.output_model is not None
+        ):
+            kwargs["outputSchema"] = tool_def.output_model.model_json_schema(
+                by_alias=True
+            )
         tools.append(Tool(**kwargs))
 
     return tools
@@ -1292,6 +1340,16 @@ def make_call_tool_handler(
             return CallToolResult(
                 content=[TextContent(type="text", text=f"Error: {exc}")],
                 is_error=True,
+            )
+        # Phase 2 (#369, ruling R2): attach structuredContent for batch-1
+        # tools, derived by parsing the final text payload (post
+        # _session_note rewrite inside call_tool). The content list is
+        # passed through untouched -- text bytes are byte-identical to the
+        # pre-Phase-2 wire shape. Error payloads attach nothing.
+        structured = derive_structured_content(name, content)
+        if structured is not None:
+            return CallToolResult(
+                content=list(content), structuredContent=structured
             )
         return CallToolResult(content=list(content))
 

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "description": "Search LibLCM and Flexicon APIs, write and run FLExTools scripts against FieldWorks projects.",
+  "name": "io.github.mattgyverlee/flextoolsmcp",
+  "packages": [
+    {
+      "environmentVariables": [
+        {
+          "default": "0",
+          "description": "Set to 1 for short-lived MCP clients that restart the server every turn; skips API-discovery gates only.",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false,
+          "name": "FLEXTOOLS_STATELESS"
+        },
+        {
+          "description": "Override the FieldWorks projects directory used to discover projects.",
+          "format": "filepath",
+          "isRequired": false,
+          "isSecret": false,
+          "name": "FW_PROJECTS_DIR"
+        },
+        {
+          "description": "Override the log directory (default: ~/.flextoolsmcp/logs).",
+          "format": "filepath",
+          "isRequired": false,
+          "isSecret": false,
+          "name": "FLEXTOOLSMCP_LOG_DIR"
+        },
+        {
+          "description": "Override where saved recipes are stored.",
+          "format": "filepath",
+          "isRequired": false,
+          "isSecret": false,
+          "name": "FLEXTOOLSMCP_RECIPE_DIR"
+        },
+        {
+          "default": "0",
+          "description": "Set to 1 to disable the server's PyPI update checks.",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false,
+          "name": "FLEXTOOLSMCP_NO_UPDATE_CHECK"
+        },
+        {
+          "default": "0",
+          "description": "Set to 1 to silence the workspace notice when working inside a source checkout.",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false,
+          "name": "FLEXTOOLSMCP_NO_WORKSPACE_CHECK"
+        }
+      ],
+      "identifier": "flextools-mcp",
+      "registryBaseUrl": "https://pypi.org",
+      "registryType": "pypi",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "version": "2.15.0"
+    }
+  ],
+  "repository": {
+    "source": "github",
+    "url": "https://github.com/MattGyverLee/FlexToolsMCP"
+  },
+  "title": "FLExTools MCP",
+  "version": "2.15.0",
+  "websiteUrl": "https://github.com/MattGyverLee/FlexToolsMCP"
+}

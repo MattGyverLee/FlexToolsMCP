@@ -278,9 +278,9 @@ for msa in entry.MorphoSyntaxAnalysesOC:
 ## Data Safety
 
 - **Always backup your FieldWorks project before running write operations**
-- The MCP defaults to read-only (dry-run) mode for safety
-- Set `write_enabled=True` only after testing thoroughly
-- There are no guard-rails - you can delete important data
+- The MCP defaults to read-only (dry-run) mode for safety: writes happen only
+  when `write_enabled=True` is set explicitly, after testing
+- Once writes are enabled there is no undo - a write run can delete important data
 
 ## Automatic Index Refreshing
 

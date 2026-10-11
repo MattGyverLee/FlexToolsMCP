@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.mattgyverlee/flextoolsmcp -->
 # FLExTools MCP
 
 An MCP server that enables AI assistants to write FLExTools scripts and directly manipulate FieldWorks lexicon data using natural language.
@@ -31,7 +32,9 @@ This presentation, given to an audience of programmers, discusses the background
 
 **Example:** "Delete any sense with 'q' in the gloss" → AI generates, tests, and runs the operation automatically.
 
-⚠️ **Warning:** Backup your project first - there are no guard-rails.
+⚠️ **Warning:** Backup your project first. Runs are dry-run by default (see
+[Safety](#safety)), but once you enable writes the changes go straight into
+your live project and there is no undo.
 
 ## Why MCP? Why AI?
 
@@ -43,8 +46,12 @@ This presentation, given to an audience of programmers, discusses the background
 ### 1. Installation
 
 FLExToolsMCP is published on PyPI. The indexed API documentation ships inside
-the package, so there is nothing to clone or build. The one prerequisite is
-FieldWorks/FLExTools, which means **Windows + .NET**.
+the package, so there is nothing to clone or build. The package itself installs
+anywhere, but actually working on FieldWorks projects — running scripts
+against a project, the features this server exists for — requires
+**Windows with FieldWorks 9.x installed** (FLExTools automation needs the
+FieldWorks/.NET runtime). On macOS or Linux the server installs and starts,
+but no FieldWorks work is possible there.
 
 > **Where do I type these commands?** In a **Windows terminal** (PowerShell or
 > Command Prompt) — **not** into the Claude chat box. `claude` is the Claude Code
@@ -124,7 +131,18 @@ Full details, including other AI tools, are in
 > server won't start.
 
 Prefer a persistent install over on-demand `uvx`? `uv tool install flextools-mcp`
-or `pip install flextools-mcp` also work.
+or `pip install flextools-mcp` also work. After a persistent install, run the
+warmup step once:
+
+```powershell
+flextools-mcp-refresh
+```
+
+That regenerates the API indexes for your installed FieldWorks/library
+versions up front, so the server's first run doesn't pay the lazy index-refresh
+delay. (Indexes also refresh automatically when versions change — the warmup
+just moves that cost to install time. The Step 2 pre-warm above does the same
+job for the `uvx` path.)
 
 **Manual MCP config** (Claude Desktop, Cursor, and other tools):
 
@@ -283,9 +301,11 @@ Tool responses follow a versioned envelope contract. See [docs/TOOL-CONTRACT.md]
 ## Safety & Limitations
 
 ### Safety
-- **Always backup before write operations** - the MCP defaults to dry-run mode
+- **Dry-run by default** - code runs with `write_enabled=False` and changes
+  nothing until you explicitly enable writes for the session or the run
 - Dry run shows what would happen before writing
-- Requires explicit user permission for write operations
+- **Always backup before enabling writes** - once writes are enabled,
+  operations run against your live project and there is no undo
 
 ### Limitations
 - Cannot control the FLEx GUI (filters, display, etc.)

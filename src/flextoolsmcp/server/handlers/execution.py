@@ -40,6 +40,13 @@ try:
 except ImportError:
     from server.subprocess_helpers import run_script_async
 
+# Issue #369 Phase 3: elapsed-time progress heartbeat for long subprocess
+# waits (no-op unless the request supplied a progressToken).
+try:
+    from ..progress import progress_heartbeat
+except ImportError:
+    from server.progress import progress_heartbeat
+
 # Issue #302: teardown AbandonedMutexException recovery. The same source is
 # embedded into the generated runner scripts, so it is stdlib-only.
 from .teardown_recovery import (
@@ -6360,16 +6367,18 @@ MODULE_CODE = {code}
             # Serialize CUD operations on same project to prevent database corruption
             write_lock = get_project_write_lock(project_name)
             async with write_lock:
+                async with progress_heartbeat("run_module"):
+                    result = await run_script_async(
+                        temp_script_path,
+                        timeout_seconds=timeout_seconds
+                    )
+        else:
+            # No lock needed: read-only or metadata-only operations
+            async with progress_heartbeat("run_module"):
                 result = await run_script_async(
                     temp_script_path,
                     timeout_seconds=timeout_seconds
                 )
-        else:
-            # No lock needed: read-only or metadata-only operations
-            result = await run_script_async(
-                temp_script_path,
-                timeout_seconds=timeout_seconds
-            )
 
         stdout = result["stdout"]
         stderr = result["stderr"]
@@ -7302,7 +7311,10 @@ async def run_scan_module(
         }
 
     try:
-        proc_result = await run_script_async(temp_script_path, timeout_seconds=timeout_seconds)
+        # Issue #369 Phase 3: same heartbeat wrapper as run_module -- the
+        # scan is the identical opaque-subprocess await shape.
+        async with progress_heartbeat("grammar scan"):
+            proc_result = await run_script_async(temp_script_path, timeout_seconds=timeout_seconds)
     finally:
         try:
             os.unlink(temp_script_path)

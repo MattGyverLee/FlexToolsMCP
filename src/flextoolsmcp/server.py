@@ -76,6 +76,12 @@ if __package__:
         get_operations_logger,
         session_state,
     )
+    from .server.progress import (
+        build_progress_reporter,
+        get_progress_reporter,
+        reset_progress_reporter,
+        set_progress_reporter,
+    )
     from .server.tool_definitions import TOOLS as TOOL_DEFINITIONS
     from .server.tool_definitions import SERVER_INSTRUCTIONS
     from .server.dispatch import get_tool_handler
@@ -92,6 +98,12 @@ else:
     from server.kernel import (
         get_operations_logger,
         session_state,
+    )
+    from server.progress import (
+        build_progress_reporter,
+        get_progress_reporter,
+        reset_progress_reporter,
+        set_progress_reporter,
     )
     from server.tool_definitions import TOOLS as TOOL_DEFINITIONS
     from server.tool_definitions import SERVER_INSTRUCTIONS
@@ -212,12 +224,21 @@ class SemanticSearch:
 
             # Load FAISS index
             _log_info("Loading semantic search index...")
+            # Issue #369 Phase 3: progress milestones mirror the _log_info
+            # narration on a 0..3 ladder (total=3). No-op outside a request
+            # that supplied a progressToken.
+            get_progress_reporter().report_nowait(
+                0, total=3, message="Loading semantic search index..."
+            )
             search.index = faiss.read_index(str(faiss_path))
 
             # Store model name for lazy loading (model loads on first search, not at startup)
             search.model_name = metadata.get("_model", "all-MiniLM-L6-v2")
             search.enabled = True
             _log_info("Semantic search ready (model loads on first search)")
+            get_progress_reporter().report_nowait(
+                1, total=3, message="Semantic search ready (model loads on first search)"
+            )
         except ImportError:
             _log_warning("faiss not installed, semantic search disabled")
         except Exception as e:
@@ -241,15 +262,25 @@ class SemanticSearch:
                 model_cache = cache_dir / 'hub' / f'models--sentence-transformers--{self.model_name.replace("/", "--")}'
 
                 if model_cache.exists():
-                    _log_info(f"Loading embedding model '{self.model_name}' from cache...")
+                    _model_msg = f"Loading embedding model '{self.model_name}' from cache..."
                 else:
-                    _log_info(f"Downloading embedding model '{self.model_name}' (~50MB, cached for future runs)...")
+                    _model_msg = f"Downloading embedding model '{self.model_name}' (~50MB, cached for future runs)..."
+                _log_info(_model_msg)
+                # Issue #369 Phase 3: the load below blocks the event
+                # loop, so these are boundary notifications -- queued via
+                # report_nowait and flushed when the loop next turns.
+                get_progress_reporter().report_nowait(
+                    2, total=3, message=_model_msg
+                )
 
                 with warnings.catch_warnings(), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                     warnings.filterwarnings('ignore')
                     self.model = SentenceTransformer(self.model_name)
 
                 _log_info("Model ready, search in progress...")
+                get_progress_reporter().report_nowait(
+                    3, total=3, message="Model ready, search in progress..."
+                )
             except Exception as e:
                 _log_error(f"Failed to load embedding model: {e}")
                 return []
@@ -1097,6 +1128,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         # can inherit prior session state (e.g. write_enabled) on re-init.
         # Pydantic v2's `model_fields_set` is exactly this set, no re-dump needed.
         dumped["_user_provided_keys"] = validated_args.model_fields_set
+    # Issue #369 Phase 3: bracket dispatch with the progress reporter's
+    # ContextVar. The on_call_tool adapter installs the request's reporter
+    # (bound to the session when a progressToken was supplied) before
+    # delegating here; re-setting the current value and resetting in
+    # `finally` keeps the reporter scoped to this dispatch even for direct
+    # callers, so it can never leak into a later call's context.
+    _progress_token = set_progress_reporter(get_progress_reporter())
     try:
         result = await handler(dumped)
     except Exception as exc:
@@ -1112,6 +1150,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             traceback=tb,
             tool=name,
         )
+    finally:
+        reset_progress_reporter(_progress_token)
 
     # Issue #53: attach the cold-start auto-init note to the response body
     # (rather than returning it as a separate signal) so it survives whatever
@@ -1334,6 +1374,14 @@ def make_call_tool_handler(
                         ],
                         is_error=True,
                     )
+        # Issue #369 Phase 3: install this request's ProgressReporter for
+        # the duration of the call. Built from ctx + params meta: bound to
+        # ctx.session.report_progress when a progressToken was supplied,
+        # the no-op reporter otherwise (no token => byte-identical
+        # behavior for every handler and direct-call test).
+        _reporter_token = set_progress_reporter(
+            build_progress_reporter(ctx, params)
+        )
         try:
             content = await call_tool_fn(name, arguments)
         except Exception as exc:
@@ -1341,6 +1389,8 @@ def make_call_tool_handler(
                 content=[TextContent(type="text", text=f"Error: {exc}")],
                 is_error=True,
             )
+        finally:
+            reset_progress_reporter(_reporter_token)
         # Phase 2 (#369, ruling R2): attach structuredContent for batch-1
         # tools, derived by parsing the final text payload (post
         # _session_note rewrite inside call_tool). The content list is

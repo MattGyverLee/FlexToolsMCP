@@ -122,14 +122,16 @@ first-party guidance). In scope for this branch:
 ## Acceptance (from #369, as corrected by R1)
 - [ ] `mcp>=2,<3` in pyproject + requirements; `mcp_compat.py` deleted;
       no 1.x code path remains (CI matrix floor cell becomes 2.0.0).
-- [ ] New-era (server/discover) and legacy-era (initialize) clients both
+      Note: branch state — the `mcp>=2,<3` floor, the mcp_compat.py deletion, and the removal of every 1.x code path have landed; only the CI matrix floor cell (2.0.0) is outstanding, held in ~/workspace/ftmcp-369-workflows.patch pending a workflow-scoped push.
+- [x] New-era (server/discover) and legacy-era (initialize) clients both
       connect and list/call tools — stdio smoke evidence in the PR.
-- [ ] Structured output advertised on batch-1 tools; text payloads
+- [x] Structured output advertised on batch-1 tools; text payloads
       byte-identical; error payloads carry no structuredContent.
-- [ ] Progress notifications emitted for C/B/E/H ops when a client
+- [x] Progress notifications emitted for C/B/E/H ops when a client
       supplies a progressToken; byte-identical behavior without one.
 - [ ] `server.json` valid + README accurate; publish step handed to
       Matthew with exact instructions (not done by the agent).
-- [ ] Security: P0 fixed, annotation truth table reconciled, T1–T12
+      Note: branch state — server.json is valid and the README is accurate; the publish handoff to Matthew rides the pending PR, and registry publication is Matthew-gated (not done by the agent).
+- [x] Security: P0 fixed, annotation truth table reconciled, T1–T12
       regression tests in CI.
-- [ ] Full suite green in the /tmp/ftmcp-venv (mcp 2.3.0) and ruff clean.
+- [x] Full suite green in the /tmp/ftmcp-venv (mcp 2.3.0) and ruff clean.

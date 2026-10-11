@@ -94,6 +94,45 @@ READ_ONLY_SAFE = ToolAnnotations(
     openWorldHint=False,
 )
 
+# Issue #53 cold-start eligibility: the tools server.py's session gate may
+# auto-initialize a read-only session for when called before
+# flextools_start(). Membership is EXACTLY the pre-#369-Phase-5
+# READ_ONLY_SAFE set (git 722422a) and is deliberately DECOUPLED from the
+# annotations above (Cycle-2 QC P1): annotations are host-facing UX hints,
+# not the server's security/policy boundary, so an honesty fix to an
+# annotation (Phase 5 reclassified flextools_parse_sandbox to
+# readOnlyHint=False -- it copies projects, writes under
+# ~/.flextoolsmcp/parse/, and spawns external tools) must not silently
+# change cold-start behaviour. Change this set only deliberately, with a
+# test_issue53_cold_start.py-style test pinning the change.
+COLD_START_SAFE_TOOLS = frozenset({
+    "flextools_start",
+    "flextools_get_object_api",
+    "flextools_search_by_capability",
+    "flextools_get_navigation_path",
+    "flextools_find_examples",
+    "flextools_list_categories",
+    "flextools_list_entities_in_category",
+    "flextools_list_projects",
+    "flextools_get_module_template",
+    "flextools_start_module",
+    "flextools_get_operation_logs",
+    "flextools_resolve_property",
+    "flextools_get_session_history",
+    "flextools_health",
+    "flextools_grammar_health",
+    "flextools_try_word",
+    "flextools_parse_status",
+    "flextools_parse_log",
+    "flextools_parse_diff",
+    "flextools_parse_sandbox",
+    "flextools_get_wrapper_dependencies",
+    "flextools_resolve_type",
+    "flextools_list_skeletons",
+    "flextools_list_recipes",
+    "flextools_find_wrappers_for_lcm",
+})
+
 # Server instructions (unified-recipes FR-027, research R11). Passed as
 # `instructions=` to the MCP Server; the same four points, shortened, also
 # live in the search/find_examples/run_module descriptions for clients that

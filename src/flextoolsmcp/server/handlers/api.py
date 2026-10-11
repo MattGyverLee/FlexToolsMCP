@@ -1390,6 +1390,18 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         api_index.ensure_liblcm_loaded()
     if api_mode in ["all", "flexlibs_stable"]:
         api_index.ensure_flexlibs_stable_loaded()
+    if use_semantic:
+        # Cycle-2 QC P2 (#369): wire the semantic-search lazy load at its
+        # one live consumption point (below). ensure_semantic_search_loaded
+        # previously had NO caller, so SemanticSearch.load -- and its
+        # Phase 3 progress rungs -- could never run in production.
+        # getattr-guarded: duck-typed index doubles in tests need not
+        # implement it.
+        _ensure_semantic = getattr(
+            api_index, "ensure_semantic_search_loaded", None
+        )
+        if callable(_ensure_semantic):
+            _ensure_semantic()
 
     query_lower = query.lower()
     expanded_query = query

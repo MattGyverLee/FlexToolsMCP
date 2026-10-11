@@ -93,10 +93,19 @@ class ProgressReporter:
         except RuntimeError:
             return
         try:
-            loop.create_task(self.report(progress, total, message))
+            task = loop.create_task(self.report(progress, total, message))
         except Exception:
-            pass
+            return
+        # Cycle-2 QC P2: hold a strong reference until completion -- a
+        # bare create_task result can be GC'd mid-flight, silently losing
+        # the notification.
+        _NOWAIT_TASKS.add(task)
+        task.add_done_callback(_NOWAIT_TASKS.discard)
 
+
+#: Strong references to fire-and-forget notification tasks scheduled by
+#: ``ProgressReporter.report_nowait`` (see there). Discarded on completion.
+_NOWAIT_TASKS: set = set()
 
 #: The shared no-op reporter (also the ContextVar default).
 NO_OP_REPORTER = ProgressReporter()

@@ -335,6 +335,14 @@ def test_t1_lint_catches_a_poisoned_description_mutation():
 
 
 def test_t2_schemas_do_not_depend_on_index_content(monkeypatch):
+    """Honest scope (Cycle-2 QC P2): input schemas are generated from the
+    static Pydantic input models, which never consult the API index, so
+    byte-equality alone could not fail. What this test CAN and does prove:
+    (1) the poison fixture is genuinely live (its marker strings are the
+    payload the T1 lint flags), (2) the monkeypatched index really is the
+    one the api handlers would read, and (3) no poison marker string leaks
+    into ANY tool's input schema bytes -- the assertion that fails if a
+    future change ever builds schema content from index data."""
     from flextoolsmcp.server.handlers import api as api_mod
     from flextoolsmcp.server.tool_definitions import TOOLS
 
@@ -347,6 +355,10 @@ def test_t2_schemas_do_not_depend_on_index_content(monkeypatch):
     baseline = _schema_bytes()
 
     poisoned_index = json.loads((_FIXTURES / "poisoned_index.json").read_text(encoding="utf-8"))
+    poison_markers = ["attacker@example.com", "PoisonThing", "ignore previous instructions"]
+    poison_blob = json.dumps(poisoned_index)
+    for marker in poison_markers:
+        assert marker in poison_blob, f"fixture lost its poison marker {marker!r}"
 
     class _PoisonIndex:
         flexicon = poisoned_index
@@ -365,7 +377,15 @@ def test_t2_schemas_do_not_depend_on_index_content(monkeypatch):
             pass
 
     monkeypatch.setattr(api_mod, "get_api_index", lambda: _PoisonIndex())
-    assert _schema_bytes() == baseline, "an input schema changed with index content"
+    # The handlers' index really is the poisoned one now -- without this,
+    # the leak assertions below would be checking a fixture never served.
+    assert api_mod.get_api_index().flexicon is poisoned_index
+
+    after = _schema_bytes()
+    assert after == baseline, "an input schema changed with index content"
+    for name, blob in after.items():
+        for marker in poison_markers:
+            assert marker not in blob, f"poison marker {marker!r} leaked into {name}'s schema"
 
 
 # ---------------------------------------------------------------------------

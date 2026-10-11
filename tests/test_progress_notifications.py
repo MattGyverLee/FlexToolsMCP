@@ -305,8 +305,14 @@ async def test_heartbeat_emits_elapsed_progress():
 
 
 async def test_heartbeat_noop_reporter_spawns_nothing():
+    # Cycle-2 QC P2: this previously had no assertion (it failed only if
+    # the wrapper raised). Pin the actual invariant: with the default
+    # no-op reporter the wrapper spawns NO background task at all.
+    before = asyncio.all_tasks()
     async with progress_heartbeat("test-op", interval=0.01):
         await asyncio.sleep(0.05)  # default reporter: disabled, bare await
+        assert asyncio.all_tasks() == before
+    assert asyncio.all_tasks() == before
 
 
 async def test_heartbeat_raising_sink_does_not_affect_run():
@@ -424,3 +430,118 @@ def test_sandbox_seed_emits_step_milestones(capturing, monkeypatch):
         (0, 1, "Seeding corpus from the completed parse run..."),
         (1, 1, "Corpus seeded."),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Cycle-2 QC P2: run_module heartbeat + sandbox CREATE milestones.
+# Both were shipped untested in Phase 3; these drive the real call sites
+# with the same fake pattern as the grammar-scan / seed tests above.
+# ---------------------------------------------------------------------------
+
+
+def test_run_module_heartbeats_while_script_runs(capturing, monkeypatch, tmp_path):
+    """execution.py's two progress_heartbeat("run_module") wrappers around
+    run_script_async: a slow script must produce elapsed heartbeats."""
+    import json as _json
+
+    from test_issue49_validate_only import _stub_agreement_env
+
+    from flextoolsmcp.server.handlers import execution
+
+    _stub_agreement_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        progress_mod, "DEFAULT_HEARTBEAT_INTERVAL_SECONDS", 0.05
+    )
+
+    async def _slow_run_script(path, timeout_seconds=None):
+        await asyncio.sleep(0.16)
+        return {
+            "stdout": "===FLEXTOOLS_RESULT_JSON===\n"
+            + _json.dumps({"success": True, "messages": []}),
+            "stderr": "",
+            "timeout": False,
+            "returncode": 0,
+        }
+
+    monkeypatch.setattr(execution, "run_script_async", _slow_run_script)
+
+    args = {
+        "code": "def f(ana):\n    return ana.CategoryRA\n",
+        "project_name": "TestProj",
+        "write_enabled": False,
+        "skip_api_check": True,
+        "skip_module_check": True,
+    }
+    result = asyncio.run(execution.handle_run_module(args))
+    data = _json.loads(result[0].text)
+    assert data.get("success") is True, data
+    assert len(capturing) >= 2
+    assert all(t is None for (_p, t, _m) in capturing)
+    assert all(
+        m.startswith("run_module: still running")
+        for (_p, _t, m) in capturing
+    )
+
+
+def test_sandbox_create_emits_step_milestones(capturing, monkeypatch):
+    """sandbox.py _sandbox_create: milestones 0/1/2 of total=2 around the
+    cache export and store create, with fake cache/workdir/store."""
+    from pathlib import Path as _Path
+
+    from flextoolsmcp.server.handlers.parse import sandbox as sandbox_mod
+    from flextoolsmcp.server.models import ParseSandboxInput
+    from flextoolsmcp.server.sandbox import cache as sandbox_cache
+    from flextoolsmcp.server.sandbox import workdir as sandbox_workdir
+
+    monkeypatch.setattr(
+        sandbox_mod.sandbox_checks,
+        "_sandbox_fwdata_path",
+        lambda name: _Path("/tmp/Proj.fwdata"),
+    )
+    monkeypatch.setattr(
+        sandbox_workdir, "create", lambda op_id, source_fwdata=None: object()
+    )
+    monkeypatch.setattr(sandbox_workdir, "delete", lambda work: None)
+
+    async def _fake_ensure_entry(*args, **kwargs):
+        return SimpleNamespace(built=True, load_error_count=0)
+
+    monkeypatch.setattr(sandbox_cache, "ensure_entry", _fake_ensure_entry)
+
+    class _FakeStore:
+        def create_sandbox(self, project_name, name, entry):
+            return {"name": name, "path": "/tmp/sb", "origin": {}}
+
+    monkeypatch.setattr(sandbox_mod, "_sandbox_store", lambda: _FakeStore())
+
+    request = ParseSandboxInput(
+        action="create_sandbox", project_name="Proj", sandbox="sb1"
+    )
+    plan = sandbox_mod._SandboxPlan(request=request, project_name="Proj")
+    result = asyncio.run(sandbox_mod._sandbox_create(plan))
+    import json as _json2
+    data = _json2.loads(result[0].text)
+    assert data["status"] == "ok", data
+    assert capturing == [
+        (0, 2, "Exporting project grammar for the sandbox..."),
+        (1, 2, "Creating sandbox from the exported grammar..."),
+        (2, 2, "Sandbox created."),
+    ]
+
+
+async def test_report_nowait_task_is_referenced_until_done():
+    """Cycle-2 QC P2: report_nowait must hold a strong reference to its
+    task (a bare create_task can be GC'd mid-flight)."""
+    records = []
+    reporter = _capturing_reporter(records)
+
+    async def _drive():
+        reporter.report_nowait(1, total=2, message="m")
+        # In flight: the task is tracked, not orphaned.
+        assert progress_mod._NOWAIT_TASKS, "report_nowait task unreferenced"
+        await asyncio.sleep(0.05)
+
+    await _drive()
+    assert records == [(1, 2, "m")]
+    # Completed: the reference is released again.
+    assert not progress_mod._NOWAIT_TASKS

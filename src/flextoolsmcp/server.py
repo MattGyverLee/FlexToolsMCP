@@ -83,7 +83,7 @@ if __package__:
         set_progress_reporter,
     )
     from .server.tool_definitions import TOOLS as TOOL_DEFINITIONS
-    from .server.tool_definitions import SERVER_INSTRUCTIONS
+    from .server.tool_definitions import COLD_START_SAFE_TOOLS, SERVER_INSTRUCTIONS
     from .server.dispatch import get_tool_handler
     from .server.versioning import (
         detect_installed_library_version,
@@ -106,7 +106,7 @@ else:
         set_progress_reporter,
     )
     from server.tool_definitions import TOOLS as TOOL_DEFINITIONS
-    from server.tool_definitions import SERVER_INSTRUCTIONS
+    from server.tool_definitions import COLD_START_SAFE_TOOLS, SERVER_INSTRUCTIONS
     from server.dispatch import get_tool_handler
     from server.versioning import (
         detect_installed_library_version,
@@ -905,21 +905,54 @@ def derive_structured_content(name: str, content: Any) -> Optional[Dict[str, Any
     ``error_code`` key): the advertised Success schemas describe success
     payloads only, and an error payload validated against one is the
     Phase-2 trap ruling R2 calls out.
+
+    Cycle-2 QC P0 (#369): the derived dict is validated against the tool's
+    advertised outputSchema (the output_model's ``model_json_schema``, the
+    same schema ``list_tools`` advertises) before it is attached, using
+    the same validator construction a spec-compliant client uses
+    (``ClientSession.validate_tool_result``). A payload that fails --
+    e.g. run_module's validate_only mode, whose status is ``"validated"``
+    / ``"validation_failed"`` rather than the schema's ``"ok"``/``"error"``
+    -- attaches NOTHING: off-schema structuredContent hard-fails an
+    otherwise successful call on such clients, while a text-only result
+    is the pre-Phase-2 wire shape every client already handles.
+
+    Fully exception-safe: derivation must never fail a tool call, so any
+    surprise (malformed content objects, schema/validator errors) returns
+    None instead of propagating.
     """
-    if name not in STRUCTURED_OUTPUT_TOOLS or not content:
-        return None
-    text = getattr(content[0], "text", None)
-    if not isinstance(text, str):
-        return None
     try:
-        parsed = json.loads(text)
-    except (ValueError, TypeError):
+        if name not in STRUCTURED_OUTPUT_TOOLS or not content:
+            return None
+        text = getattr(content[0], "text", None)
+        if not isinstance(text, str):
+            return None
+        try:
+            parsed = json.loads(text)
+        except (ValueError, TypeError):
+            return None
+        if not isinstance(parsed, dict):
+            return None
+        if parsed.get("status") == "error" or "error_code" in parsed:
+            return None
+        tool_def = TOOL_DEFINITIONS.get(name)
+        if tool_def is None or tool_def.output_model is None:
+            return None
+        schema = tool_def.output_model.model_json_schema(by_alias=True)
+        try:
+            from jsonschema.validators import validator_for
+            from referencing import Registry
+
+            validator_cls = validator_for(schema)
+            validator_cls.check_schema(schema)
+            validator = validator_cls(schema, registry=Registry())
+            if next(validator.iter_errors(parsed), None) is not None:
+                return None
+        except Exception:
+            return None
+        return parsed
+    except Exception:
         return None
-    if not isinstance(parsed, dict):
-        return None
-    if parsed.get("status") == "error" or "error_code" in parsed:
-        return None
-    return parsed
 
 
 # Registered on the MCP server via the inlined adapters below (issue #369)
@@ -1001,8 +1034,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # (and API discovery) ahead of it is backwards. The discovery gate that
     # matters -- api_discovery_required in run_module -- is unaffected.
     #
-    # Issue #53 (cold-start tolerance): a READ_ONLY_SAFE-annotated tool (see
-    # tool_definitions.READ_ONLY_SAFE) never touches a project, so a missing
+    # Issue #53 (cold-start tolerance): a cold-start-safe tool (see
+    # tool_definitions.COLD_START_SAFE_TOOLS) never touches a project, so a missing
     # session is pure ceremony -- auto-initialize read-only instead of
     # rejecting. flextools_run_module is a special case: it genuinely needs a
     # project, but if the caller already named one in this very call there's
@@ -1017,13 +1050,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # write_enabled=True unless the caller passed it explicitly in THIS call.
     _pending_session_note: Optional[str] = None
     if name not in _SESSION_INDEPENDENT_TOOLS and not session_state.initialized:
-        tool_def = TOOL_DEFINITIONS.get(name)
-        # Read-only check reads the mcp 2.x annotation spelling
-        # (read_only_hint) -- see annotation_is_read_only below.
-        is_read_only_safe = bool(
-            tool_def is not None
-            and annotation_is_read_only(tool_def.annotations)
-        )
+        # Cycle-2 QC P1 (#369): eligibility comes from the explicit
+        # COLD_START_SAFE_TOOLS set, NOT from the tool's annotations.
+        # Annotations are client-facing UX hints, not this server's
+        # security/policy boundary -- Phase 5's honest reclassification of
+        # flextools_parse_sandbox (readOnlyHint=False) must not change its
+        # cold-start behaviour.
+        is_read_only_safe = name in COLD_START_SAFE_TOOLS
         is_run_module = (name == "flextools_run_module")
 
         if is_read_only_safe or is_run_module:

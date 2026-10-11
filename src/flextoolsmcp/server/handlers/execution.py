@@ -6191,8 +6191,7 @@ MODULE_CODE = {code}
             # `require_write_confirmation` config key is never read here:
             # a value set through flextools_manage_config must not be able
             # to lower this rung.
-            _require_confirmation = True
-            if _require_confirmation and not args.get("confirmed", False):
+            if not args.get("confirmed", False):
                 _writeability = build_writeability_payload(
                     code, api_idx, code_tree, cud_info=cud_info, cert=cert
                 )

@@ -234,3 +234,97 @@ class TestClientConformance:
             "status", "_contract", "query", "api_mode", "results",
             "results_count", "recipes",
         } <= search_required
+
+
+# ---------------------------------------------------------------------------
+# Cycle-2 QC P0: off-schema SUCCESS payloads must attach NOTHING.
+#
+# run_module's validate_only mode (issue #49) returns status "validated" /
+# "validation_failed" with no error_code -- a success-shaped payload the
+# advertised RunModuleSuccess schema rejects (status is Literal["ok",
+# "error"]). Before the fix, derive_structured_content attached it anyway
+# and a spec-compliant client hard-failed an otherwise successful call.
+# The fix validates the derived dict against the advertised outputSchema
+# inside derive_structured_content and attaches nothing on mismatch; the
+# derivation is also fully exception-safe (it must never fail a call).
+# ---------------------------------------------------------------------------
+
+
+def _real_validate_only_content(monkeypatch, tmp_path, code):
+    """Drive the REAL handle_run_module(validate_only=True) path and return
+    its TextContent list -- the exact shape _handle_validate_only emits
+    (payload capture pattern: tests/test_issue49_validate_only.py)."""
+    from test_issue49_validate_only import _stub_agreement_env
+
+    from flextoolsmcp.server.handlers import execution as execution_mod
+
+    _stub_agreement_env(monkeypatch, tmp_path)
+    args = {
+        "code": code,
+        "project_name": "TestProj",
+        "write_enabled": False,
+        "skip_api_check": True,
+        "skip_module_check": True,
+        "validate_only": True,
+    }
+    return asyncio.run(execution_mod.handle_run_module(args))
+
+
+class TestOffSchemaSuccessPayloadsAttachNothing:
+    @pytest.mark.parametrize(
+        "code,expected_status",
+        [
+            # All gates pass -> "validated" (test_issue49 agreement fixture).
+            ("def f(ana):\n    return ana.CategoryRA\n", "validated"),
+            # A genuine typo gate failure -> "validation_failed".
+            ("d = ILexDb(project)\nx = d.EntriesOC\n", "validation_failed"),
+        ],
+    )
+    def test_real_validate_only_payload_attaches_no_structured_content(
+        self, monkeypatch, tmp_path, code, expected_status
+    ):
+        content = _real_validate_only_content(monkeypatch, tmp_path, code)
+        payload = json.loads(content[0].text)
+        # The fixture really is the P0 shape: a non-error status the
+        # advertised schema does not admit, and no error_code key.
+        assert payload["status"] == expected_status
+        assert "error_code" not in payload
+
+        srv = _get_srv()
+        tools = {t.name: t for t in asyncio.run(srv.list_tools())}
+        schema = tools["flextools_run_module"].output_schema
+        # ...and it genuinely fails the advertised schema (the client trap).
+        from jsonschema.validators import validator_for
+        from referencing import Registry
+
+        validator = validator_for(schema)(schema, registry=Registry())
+        assert list(validator.iter_errors(payload)), (
+            "fixture no longer off-schema -- this test has gone vacuous"
+        )
+
+        result = _run_adapter("flextools_run_module", content)
+        assert result.structured_content is None
+        # Text payload untouched, byte for byte.
+        assert result.content[0].text == content[0].text
+
+    def test_payload_failing_advertised_schema_attaches_nothing(self):
+        # A batch-1 success payload mutated off-schema (here: a required
+        # key's value no longer matches the advertised model) must degrade
+        # to text-only, never attach off-schema structuredContent.
+        payload = dict(_success_payloads()["flextools_get_object_api"])
+        payload["found"] = "not-a-bool"
+        content = json_response(payload)
+        result = _run_adapter("flextools_get_object_api", content)
+        assert result.structured_content is None
+        assert result.content[0].text == content[0].text
+
+    def test_derive_never_raises_on_malformed_content(self):
+        # Cycle-2 QC P2: content[0] was indexed before any type check, so
+        # dict/int content raised out of the derivation seam. Derivation
+        # must return None for ANY malformed input instead of propagating.
+        srv = _get_srv()
+        assert srv.derive_structured_content("flextools_run_module", {"0": "x"}) is None
+        assert srv.derive_structured_content("flextools_run_module", [123]) is None
+        assert srv.derive_structured_content("flextools_run_module", "text") is None
+        assert srv.derive_structured_content("flextools_run_module", []) is None
+        assert srv.derive_structured_content("flextools_run_module", None) is None

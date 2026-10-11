@@ -5,8 +5,8 @@ Tests for Phase 3 US1 server instructions (FR-027).
 
 SERVER_INSTRUCTIONS must tell the assistant to check recipes first and how
 to use PARAMS (edit values only; run with source="existing" when only PARAMS
-changed). The instructions must round-trip through build_server under the
-installed mcp.
+changed). The instructions must round-trip through the real Server
+construction under the installed mcp (2.x).
 """
 
 from flextoolsmcp.server.tool_definitions import SERVER_INSTRUCTIONS
@@ -28,18 +28,10 @@ class TestServerInstructions:
         assert "user_intent" in SERVER_INSTRUCTIONS
 
     def test_instructions_round_trip_under_installed_mcp(self):
-        from flextoolsmcp.mcp_compat import build_server
+        from mcp.server import Server
 
-        async def _list_tools():
-            return []
-
-        async def _call_tool(name, arguments):
-            return []
-
-        server = build_server(
+        server = Server(
             "test-instructions",
-            _list_tools,
-            _call_tool,
             instructions=SERVER_INSTRUCTIONS,
         )
         assert getattr(server, "instructions", None) == SERVER_INSTRUCTIONS

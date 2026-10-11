@@ -44,15 +44,15 @@ def pytest_configure(config):
 
 
 # Issue #285: fail fast when the test interpreter's mcp is outside the
-# supported range. requirements.txt/pyproject.toml pin mcp>=1.27.0,<3 (1.x
-# and 2.x via the #83 compat shim), but nothing enforced that pin at test
+# supported range. requirements.txt/pyproject.toml pin mcp>=2,<3 (2.x-only
+# via the inlined adapters in server.py, issue #369), but nothing enforced that pin at test
 # time -- collection then failed deep inside server.py with
 # "AttributeError: 'Server' object has no attribute 'list_tools'", which
 # points at the wrong layer. Stop at session start with one clear message
-# instead. If the supported range ever widens (e.g. mcp 3.x gets a shim),
+# instead. If the supported range ever widens (e.g. mcp 3.x is adopted),
 # update _SUPPORTED_MCP_MAJOR_RANGE and the floor below in step.
-_SUPPORTED_MCP_FLOOR = (1, 27, 0)
-_SUPPORTED_MCP_MAJORS = (1, 2)
+_SUPPORTED_MCP_FLOOR = (2, 0, 0)
+_SUPPORTED_MCP_MAJORS = (2,)
 
 
 def _parse_mcp_version(version_str: str):
@@ -90,10 +90,10 @@ def _fail_fast_on_unsupported_mcp() -> None:
         return
     pytest.exit(
         f"mcp {installed} is installed, but this repo supports "
-        f"mcp>=1.27.0,<3 (1.x and 2.x via the #83 compat shim; see #285). "
+        f"mcp>=2,<3 (2.x-only via the inlined adapters in server.py; see #369/#285). "
         "Run the tests with "
         r".venv\Scripts\python -m pytest, or pip install "
-        '"mcp>=1.27.0,<3" (pip install -r requirements.txt) in this '
+        '"mcp>=2,<3" (pip install -r requirements.txt) in this '
         "interpreter.",
         returncode=2,
     )

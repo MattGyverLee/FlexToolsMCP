@@ -17,7 +17,7 @@ import os
 import traceback
 import warnings
 from pathlib import Path
-from typing import Any, Optional, List, Dict, TYPE_CHECKING
+from typing import Any, Awaitable, Callable, Optional, List, Dict, TYPE_CHECKING
 from dataclasses import dataclass, field
 import io
 from contextlib import redirect_stdout, redirect_stderr
@@ -67,7 +67,7 @@ if __package__ is None:
 _mcp_import_begin = _time_module.time()
 from mcp.server import Server  # noqa: F401 -- re-exported via the server package
 # lazy loader (`from flextoolsmcp.server import Server`); handler registration
-# itself moved to .mcp_compat.build_server() (issue #83).
+# is inlined at the bottom of this module (issue #369: mcp 2.x-only).
 _mcp_import_done = _time_module.time()
 
 _local_imports_begin = _time_module.time()
@@ -88,7 +88,6 @@ if __package__:
     from .server.startup_notices import record_index_refresh_failure
     from .response_utils import error_response
     from . import curated_deprecations
-    from .mcp_compat import annotation_is_read_only, build_server
 else:
     from server.kernel import (
         get_operations_logger,
@@ -106,7 +105,6 @@ else:
     from server.startup_notices import record_index_refresh_failure
     from response_utils import error_response
     import curated_deprecations
-    from mcp_compat import annotation_is_read_only, build_server
 _local_imports_done = _time_module.time()
 
 # Safe logging helper that works even before initialization
@@ -725,10 +723,9 @@ class APIIndex:
         )
 
 # The MCP server itself is constructed AFTER the list_tools()/call_tool()
-# definitions below via mcp_compat.build_server() (issue #83: dual mcp 1.x/2.x
-# support). Registration takes the plain functions -- they are NOT decorated --
-# so this module imports cleanly on both majors. `server` is assigned there;
-# main() uses it at run time.
+# definitions below, via the inlined mcp 2.x adapters in this module
+# (issue #369). Registration takes the plain functions -- they are NOT
+# decorated. `server` is assigned there; main() uses it at run time.
 
 # Global index (loaded on startup)
 api_index: Optional[APIIndex] = None
@@ -850,8 +847,8 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         _log_warning(f"Could not auto-refresh {library_name}: {e}")
         return False
 
-# Registered on the MCP server via build_server() below (issue #83) -- NOT
-# decorated, so this module imports on both mcp 1.x and 2.x.
+# Registered on the MCP server via the inlined adapters below (issue #369)
+# -- NOT decorated.
 async def list_tools() -> list[Tool]:
     """List all MCP tools, generated from Pydantic models in tool_definitions.py.
 
@@ -898,8 +895,8 @@ _SESSION_INDEPENDENT_TOOLS = frozenset({
 })
 
 
-# Registered on the MCP server via build_server() below (issue #83) -- NOT
-# decorated, so this module imports on both mcp 1.x and 2.x.
+# Registered on the MCP server via the inlined adapters below (issue #369)
+# -- NOT decorated.
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
     # Issue #167 (parser-check CP6): wall-clock timer for the parse-path
@@ -942,9 +939,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     _pending_session_note: Optional[str] = None
     if name not in _SESSION_INDEPENDENT_TOOLS and not session_state.initialized:
         tool_def = TOOL_DEFINITIONS.get(name)
-        # Read-only check must accept both MCP majors' annotation spellings
-        # (readOnlyHint on 1.x, read_only_hint on 2.x) -- see
-        # mcp_compat.annotation_is_read_only.
+        # Read-only check reads the mcp 2.x annotation spelling
+        # (read_only_hint) -- see annotation_is_read_only below.
         is_read_only_safe = bool(
             tool_def is not None
             and annotation_is_read_only(tool_def.annotations)
@@ -1125,14 +1121,196 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
     return result
 
-# Initialize the MCP server (issue #83: dual mcp 1.x/2.x support via
-# mcp_compat.build_server -- decorators on 1.x, constructor-injected
-# on_list_tools=/on_call_tool= on 2.x). Must follow the definitions above;
-# version= is passed explicitly for serverInfo parity (2.x defaults it to "").
-# instructions= carries the unified-recipes server instructions (FR-027).
+
+# ============================================================
+# MCP 2.x server wiring (issue #369 -- inlined from the retired
+# compat shim, whose 2.x branch this is verbatim in substance)
+# ============================================================
+# list_tools() and call_tool(name, arguments) above keep their signatures;
+# the adapters below bridge them to the low-level Server's constructor-
+# injected on_list_tools=/on_call_tool= handlers. dispatch.py and
+# handlers/*.py keep returning bare list[TextContent]; the call adapter
+# wraps them in CallToolResult at this single seam.
+#
+# Deliberately preserved: input pre-validation. A raw 2.x on_call_tool
+# handler does not validate arguments against the tool's inputSchema
+# (2.3.0's get_tool_input_schema= is HTTP-transport-only; the stdio runner
+# never validates per-tool inputSchema). The adapter closes that gap with
+# jsonschema (a hard mcp 2.x dependency) because the divergence is
+# behavioral, not cosmetic: the cold-session gate in call_tool() above
+# configures session state *before* its own Pydantic re-validation, so
+# without pre-validation a rejected first call would initialize the
+# session. Pre-validation therefore runs BEFORE call_tool_fn is invoked.
+
+
+def resolve_server_version() -> str:
+    """Best-effort flextools-mcp version string for ``serverInfo.version``.
+
+    Prefers installed package metadata, falls back to a ``VERSION`` file found
+    by walking up from this module (covers source checkouts), then to the dev
+    placeholder. Mirrors the logic in ``server/kernel.py``'s session header.
+    Passed explicitly at Server construction because mcp 2.x defaults
+    ``version`` to ``""``.
+    """
+    try:
+        from importlib.metadata import version as _pkg_version
+
+        return _pkg_version("flextools-mcp")
+    except Exception:
+        pass
+    try:
+        here = Path(__file__).resolve()
+        for parent in here.parents:
+            version_file = parent / "VERSION"
+            if version_file.exists():
+                text = version_file.read_text(encoding="utf-8").strip()
+                if text:
+                    return text
+                break
+    except Exception:
+        pass
+    return "0.0.0.dev0"
+
+
+def annotation_is_read_only(annotations: Any) -> bool:
+    """True when a tool annotations object marks the tool read-only-safe.
+
+    mcp 2.x spells the field ``read_only_hint`` (construction accepts the
+    camelCase alias, but attribute reads expose only the snake_case name).
+    A dict-shaped fallback covers dict annotations.
+    """
+    if annotations is None:
+        return False
+    if isinstance(annotations, dict):
+        return bool(annotations.get("read_only_hint", False))
+    return bool(getattr(annotations, "read_only_hint", False))
+
+
+def make_list_tools_handler(
+    list_tools_fn: Callable[[], Awaitable[list]],
+) -> Callable[[Any, Any], Awaitable[Any]]:
+    """Adapt ``async () -> list[Tool]`` to mcp 2.x's ``on_list_tools`` handler.
+
+    Factored to module level so tests can drive it directly with a stub
+    ``params`` object.
+    """
+    from mcp.types import ListToolsResult
+
+    async def _on_list_tools(ctx: Any, params: Any) -> Any:
+        return ListToolsResult(tools=await list_tools_fn())
+
+    return _on_list_tools
+
+
+def _tool_input_schema(tool: Any) -> Any:
+    """A Tool's input schema (mcp 2.x field spelling: ``input_schema``)."""
+    try:
+        return getattr(tool, "input_schema", None) or None
+    except Exception:
+        return None
+
+
+def make_schema_provider(
+    list_tools_fn: Callable[[], Awaitable[list]],
+) -> Callable[[], Awaitable[dict]]:
+    """Build the ``{tool_name: inputSchema}`` provider for pre-validation.
+
+    Factored out so tests can wire the real tool list to the real adapter
+    and prove rejected calls never reach the dispatcher. Tools without a
+    readable schema are skipped (fail-open per tool).
+    """
+
+    async def _provider() -> dict:
+        schemas: dict = {}
+        for tool in await list_tools_fn():
+            schema = _tool_input_schema(tool)
+            if schema:
+                schemas[tool.name] = schema
+        return schemas
+
+    return _provider
+
+
+def make_call_tool_handler(
+    call_tool_fn: Callable[[str, dict], Awaitable[list]],
+    schema_provider: Optional[Callable[[], Awaitable[dict]]] = None,
+) -> Callable[[Any, Any], Awaitable[Any]]:
+    """Adapt ``async (name, arguments) -> list[TextContent]`` to ``on_call_tool``.
+
+    Wraps the bare content list in ``CallToolResult`` and maps a raising
+    handler to an ``isError`` result.
+
+    When ``schema_provider`` is given (``async () -> {tool_name: inputSchema}``,
+    wired below from the same tool list), arguments are pre-validated with
+    ``jsonschema`` before delegating -- without this a rejected first call
+    would initialize the cold session. A validation failure returns the
+    ``isError`` shape ``Input validation error: ...``. Unknown tools (no
+    schema), a failing provider, or a missing ``jsonschema`` all fail open
+    to plain delegation.
+    """
+    from mcp.types import CallToolResult, TextContent
+
+    try:
+        from jsonschema import ValidationError as _ValidationError
+        from jsonschema import validate as _validate_jsonschema
+    except Exception:  # jsonschema absent -- pre-validation skipped (fail-open)
+        _ValidationError = None  # type: ignore[assignment]
+        _validate_jsonschema = None  # type: ignore[assignment]
+
+    _schema_cache: Optional[dict] = None
+
+    async def _schemas() -> dict:
+        nonlocal _schema_cache
+        if _schema_cache is None and schema_provider is not None:
+            try:
+                _schema_cache = await schema_provider()
+            except Exception:
+                _schema_cache = {}
+        return _schema_cache or {}
+
+    async def _on_call_tool(ctx: Any, params: Any) -> Any:
+        name = params.name
+        arguments = params.arguments or {}
+        if _validate_jsonschema is not None and schema_provider is not None:
+            schema = (await _schemas()).get(name)
+            if schema:
+                try:
+                    _validate_jsonschema(instance=arguments, schema=schema)
+                except _ValidationError as exc:
+                    return CallToolResult(
+                        content=[
+                            TextContent(
+                                type="text",
+                                text=f"Input validation error: {exc.message}",
+                            )
+                        ],
+                        is_error=True,
+                    )
+        try:
+            content = await call_tool_fn(name, arguments)
+        except Exception as exc:
+            return CallToolResult(
+                content=[TextContent(type="text", text=f"Error: {exc}")],
+                is_error=True,
+            )
+        return CallToolResult(content=list(content))
+
+    return _on_call_tool
+
+
+# Initialize the MCP server (issue #369: mcp 2.x-only, low-level Server
+# with constructor-injected on_list_tools=/on_call_tool= adapters above).
+# Must follow the definitions above; version= is passed explicitly for
+# serverInfo parity (2.x defaults it to ""). instructions= carries the
+# unified-recipes server instructions (FR-027).
 _server_init_begin = _time_module.time()
-server = build_server("flextools-mcp", list_tools, call_tool,
-                      instructions=SERVER_INSTRUCTIONS)
+server = Server(
+    "flextools-mcp",
+    version=resolve_server_version(),
+    instructions=SERVER_INSTRUCTIONS,
+    on_list_tools=make_list_tools_handler(list_tools),
+    on_call_tool=make_call_tool_handler(call_tool, make_schema_provider(list_tools)),
+)
 _server_init_done = _time_module.time()
 
 async def main():

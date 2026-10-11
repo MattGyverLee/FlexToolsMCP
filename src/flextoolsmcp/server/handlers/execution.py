@@ -262,16 +262,27 @@ try:
 except (ImportError, ValueError):
     from config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
 
-# Issue #55: write-path safety ladder config knob (confirmation). The backup
-# knob is read by write_ladder.backup_intent (CP4, R-07).
-try:
-    from ...config import (
-        REQUIRE_WRITE_CONFIRMATION_KEY, REQUIRE_WRITE_CONFIRMATION_DEFAULT,
-    )
-except (ImportError, ValueError):
-    from config import (
-        REQUIRE_WRITE_CONFIRMATION_KEY, REQUIRE_WRITE_CONFIRMATION_DEFAULT,
-    )
+# Issue #55 / #369 Phase 5 (S-P0-1): the write-path safety ladder's
+# confirmation and backup rungs are NOT config-controlled for run_module.
+# A value persisted through flextools_manage_config (an ungated tool call)
+# must never weaken them -- the filing path established this pattern as
+# R-08 (require_write_confirmation is disclosed in the filing plan, never
+# honoured), and run_module now applies the same ignore-at-read rule:
+# confirmation is unconditional, and the backup rung resolves to ON
+# unless THIS call explicitly passes backup_before_write=False.
+# (config_get itself is still imported above for the issue #46 auto-fix
+# knob, which touches no write rung: auto-fix never runs on write runs.)
+
+
+def _ladder_backup_before_write(args: dict) -> bool:
+    """Resolve Rung 2 for a run_module call, S-P0-1-safe.
+
+    The per-call ``backup_before_write`` argument is session-explicit and
+    keeps its documented effect; when it is absent the backup is ON and
+    the persisted config key is not consulted.
+    """
+    per_call = args.get("backup_before_write")
+    return True if per_call is None else bool(per_call)
 
 # Issue #50: structured JSONL telemetry (one line per op, alongside prose .log)
 try:
@@ -6175,9 +6186,12 @@ MODULE_CODE = {code}
         # subprocess spawned. Reuses the SAME writeability builder as #49's
         # validate_only so the two payloads can never drift apart.
         if needs_lock:
-            _require_confirmation = bool(
-                config_get(REQUIRE_WRITE_CONFIRMATION_KEY, REQUIRE_WRITE_CONFIRMATION_DEFAULT)
-            )
+            # S-P0-1 (#369 Phase 5): confirmation is UNCONDITIONAL for
+            # run_module, exactly as for filing (R-08). The persisted
+            # `require_write_confirmation` config key is never read here:
+            # a value set through flextools_manage_config must not be able
+            # to lower this rung.
+            _require_confirmation = True
             if _require_confirmation and not args.get("confirmed", False):
                 _writeability = build_writeability_payload(
                     code, api_idx, code_tree, cud_info=cud_info, cert=cert
@@ -6185,7 +6199,9 @@ MODULE_CODE = {code}
                 _backup_would_run = write_ladder.backup_intent(
                     project_name,
                     session_state=session_state,
-                    backup_before_write=args.get("backup_before_write"),
+                    # S-P0-1: resolved per-call/ON, never from persisted
+                    # config (see _ladder_backup_before_write).
+                    backup_before_write=_ladder_backup_before_write(args),
                     config_get=config_get,
                 ).would_run
                 _mutation_count = len(_writeability["mutations_detected"])
@@ -6345,7 +6361,9 @@ MODULE_CODE = {code}
             _backup_result = write_ladder.take_backup(
                 project_name,
                 session_state=session_state,
-                backup_before_write=args.get("backup_before_write"),
+                # S-P0-1: resolved per-call/ON, never from persisted
+                # config (see _ladder_backup_before_write).
+                backup_before_write=_ladder_backup_before_write(args),
                 live_peer=_live_fw_peer,
                 perform=perform_pre_write_backup,
             )

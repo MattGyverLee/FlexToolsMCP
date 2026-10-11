@@ -62,6 +62,13 @@ REPORT_EMAIL_DEFAULT = "matthew_lee@sil.org"
 # backup_before_write        -- automatic pre-write backup kill switch (Rung 2).
 #                                Default ON. Per-call override:
 #                                RunModuleInput.backup_before_write=True/False.
+#                                S-P0-1 (#369 Phase 5): run_module does NOT
+#                                honour a persisted False here -- its backup
+#                                rung resolves per-call, defaulting ON, so a
+#                                value set via flextools_manage_config cannot
+#                                suppress a run_module backup. Filing still
+#                                honours the key, disclosed in its plan
+#                                before confirmation (FR-007).
 # backup_retention           -- how many timestamped backups to keep per
 #                                project before pruning the oldest. Default 5.
 # backup_max_total_mb          -- total size cap (megabytes) across ALL
@@ -78,9 +85,16 @@ REPORT_EMAIL_DEFAULT = "matthew_lee@sil.org"
 #                                backup, and nothing outside
 #                                ~/.flextoolsmcp/backups is ever touched.
 # require_write_confirmation -- enforce RunModuleInput.confirmed on mutating
-#                                writes (Rung 3). Default ON. Set False for
-#                                power users who accept the risk of unconfirmed
-#                                mutating runs.
+#                                writes (Rung 3). Default ON.
+#                                S-P0-1 (#369 Phase 5): this key is honoured
+#                                NOWHERE as a gate control. Filing reads it
+#                                only to disclose it in the plan (R-08), and
+#                                run_module no longer reads it at all --
+#                                confirmation is unconditional for both, so a
+#                                value persisted via flextools_manage_config
+#                                cannot lower the confirmation rung. The key
+#                                is retained for that disclosure and for
+#                                back-compat of existing config files.
 # ---------------------------------------------------------------------------
 BACKUP_BEFORE_WRITE_KEY = "backup_before_write"
 BACKUP_BEFORE_WRITE_DEFAULT = True

@@ -103,9 +103,12 @@ EXPECTED_TOOL_NAMES = [
     # parser-check CP4. Stops a run; writes nothing to the project, so it is
     # neither READ_ONLY (it changes a run's state) nor DESTRUCTIVE (M-3).
     "flextools_parse_cancel",
-    # parser-check CP5. READ_ONLY_SAFE with respect to the live database
-    # (contracts/tools.md section 1): it parses a copy with the stand-alone
-    # hc tool and writes only under ~/.flextoolsmcp/parse/ and the run record.
+    # parser-check CP5. Never writes the live database (contracts/tools.md
+    # section 1): it parses a copy with the stand-alone hc tool and writes
+    # only under ~/.flextoolsmcp/parse/ and the run record. Since #369
+    # Phase 5 (S-P1-6) it is NOT annotated read-only: copying projects,
+    # writing sandboxes/corpora and spawning external tools are real side
+    # effects a host must see.
     "flextools_parse_sandbox",
     # issue #223. Releases this server's own idle parse worker(s); writes
     # nothing to the project, so it is neither READ_ONLY (it ends a worker
@@ -116,8 +119,11 @@ EXPECTED_TOOL_NAMES = [
 EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)
 
 # Tools that should be marked readOnlyHint=True
+# (#369 Phase 5: flextools_start is no longer here -- it mutates session
+# state incl. write_enabled, S-P2-5; flextools_parse_sandbox neither --
+# it copies projects and spawns external tools, S-P1-6. The frozen full
+# table lives in tests/test_tool_poisoning_regression.py T8.)
 READ_ONLY_TOOLS = [
-    "flextools_start",
     "flextools_get_object_api",
     "flextools_search_by_capability",
     "flextools_get_navigation_path",
@@ -141,7 +147,6 @@ READ_ONLY_TOOLS = [
     "flextools_parse_status",
     "flextools_parse_log",
     "flextools_parse_diff",
-    "flextools_parse_sandbox",
 ]
 
 # Tools that should be marked destructiveHint=True

@@ -67017,6 +67017,10 @@
             "methods": []
           },
           {
+            "class": "InflectionFeatureOperations",
+            "methods": []
+          },
+          {
             "class": "MSAOperations",
             "methods": []
           },
@@ -67223,6 +67227,10 @@
           },
           {
             "class": "ConstChartMarkerOperations",
+            "methods": []
+          },
+          {
+            "class": "InflectionFeatureOperations",
             "methods": []
           },
           {
@@ -68502,6 +68510,10 @@
           },
           {
             "class": "ConstChartMarkerOperations",
+            "methods": []
+          },
+          {
+            "class": "InflectionFeatureOperations",
             "methods": []
           },
           {

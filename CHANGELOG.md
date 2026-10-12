@@ -23,6 +23,15 @@ sorted position, not the top). Changes without an issue go under Other.
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*
 
+- **Reindexed against Flexicon 4.13.0** (bundled index 4.12.0 -> 4.13.0:
+  125 entities unchanged, 1657 -> 1660 methods -- `InflectionFeatureOperations`
+  gains `ExceptionFeatureCreate` / `ExceptionFeatureFind` /
+  `ExceptionFeatureGetAll`, the wrappers flexicon#631 fixed on main after
+  4.12.0). The `pyflexicon` floor in `pyproject.toml` / `requirements.txt`
+  rises to `>=4.13.0` to match; main's CI had gone red on the floor/index
+  agreement tests once 4.13.0 published. LibLCM v11.0.0 and flexlibs 1.2.8
+  unchanged; `FLEXICON_VERIFIED_VERSION` follows to 4.13.0.
+
 ## [2.15.0] - 2026-10-04
 
 ### Headline: recipe library, exclusive-access gate, Flexicon 4.12.0 index

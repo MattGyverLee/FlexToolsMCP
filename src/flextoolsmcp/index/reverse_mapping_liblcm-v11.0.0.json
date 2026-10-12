@@ -494,9 +494,12 @@
     },
     "InflectionFeatureOperations": {
       "category": "grammar",
-      "method_count": 32,
+      "method_count": 35,
       "methods": {},
       "wraps_interfaces": [
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsClosedFeature",
         "IFsClosedFeatureFactory",
         "IFsClosedValue",
@@ -1924,6 +1927,10 @@
           "methods": []
         },
         {
+          "class": "InflectionFeatureOperations",
+          "methods": []
+        },
+        {
           "class": "MSAOperations",
           "methods": []
         },
@@ -1962,6 +1969,10 @@
         },
         {
           "class": "ConstChartMarkerOperations",
+          "methods": []
+        },
+        {
+          "class": "InflectionFeatureOperations",
           "methods": []
         },
         {
@@ -2095,6 +2106,10 @@
         },
         {
           "class": "ConstChartMarkerOperations",
+          "methods": []
+        },
+        {
+          "class": "InflectionFeatureOperations",
           "methods": []
         },
         {

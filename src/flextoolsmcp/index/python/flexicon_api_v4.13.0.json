@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.12.0"
+    "version": "4.13.0"
   },
   "categories": {
     "discourse": {
@@ -33807,10 +33807,13 @@
         "CatalogBackedMixin"
       ],
       "category": "grammar",
-      "description": "This class provides operations for managing inflection classes, feature\nstructures, and features in a FieldWorks project.\n\nInflection classes group lexical items that inflect similarly (e.g., Latin\nnoun declensions, Spanish verb conjugations). Feature structures and features\nrepresent grammatical properties like person, number, gender, tense, aspect,\nmood, etc.\n\nUsage::\n\nfrom flexicon import FLExProject, InflectionFeatureOperations\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\ninflOps = InflectionFeatureOperations(project)\n\n# Get all inflection classes\nfor ic in inflOps.InflectionClassGetAll():\nname = inflOps.InflectionClassGetName(ic)\nprint(f\"Inflection Class: {name}\")\n\n# Create a new inflection class\nfirst_decl = inflOps.InflectionClassCreate(\"First Declension\")\n\n# Work with features\nfor feature in inflOps.FeatureGetAll():\nprint(f\"Feature: {feature}\")\n\nproject.CloseProject()",
+      "description": "This class provides operations for managing inflection classes, feature\nstructures, and features in a FieldWorks project.\n\nInflection classes group lexical items that inflect similarly (e.g., Latin\nnoun declensions, Spanish verb conjugations). Feature structures and features\nrepresent grammatical properties like person, number, gender, tense, aspect,\nmood, etc.\n\nUsage::\n\nfrom flexicon import FLExProject, InflectionFeatureOperations\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\ninflOps = InflectionFeatureOperations(project)\n\n# Get all inflection classes\nfor ic in inflOps.InflectionClassGetAll():\nname = inflOps.InflectionClassGetName(ic)\nprint(f\"Inflection Class: {name}\")\n\n# Create a new inflection class\nnoun = project.POS.Find(\"Noun\")\nfirst_decl = inflOps.InflectionClassCreate(\"First Declension\", pos=noun)\n\n# Work with features\nfor feature in inflOps.FeatureGetAll():\nprint(f\"Feature: {feature}\")\n\nproject.CloseProject()",
       "example": "",
       "id": "InflectionFeatureOperations",
       "lcm_dependencies": [
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsClosedFeature",
         "IFsClosedFeatureFactory",
         "IFsClosedValue",
@@ -34159,6 +34162,142 @@
           "signature": "DescribeFeatStruc(fs_or_spec, slot=None)",
           "summary": "Render a feature structure as a short human-readable string\n(READ-ONLY, display only).",
           "usage_hint": null
+        },
+        {
+          "description": "Create an exception feature in ``MorphologicalDataOA.ProdRestrictOA``.\n\nIf the project has no production-restrictions list yet, it is\ncreated first.\n",
+          "example": "            >>> ef = project.InflectionFeatures.ExceptionFeatureCreate(\"Irregular\", \"irr\")\n\n        See Also:\n            ExceptionFeatureGetAll, ExceptionFeatureFind",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ExceptionFeatureCreate",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If name is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If name is empty, the project has no"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "ICmPossibility: The new exception feature.",
+              "type": "ICmPossibility"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The feature name.",
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Abbreviation; defaults to ``name``.",
+              "name": "abbreviation",
+              "type": "str, optional"
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not write enabled.",
+            "FP_NullParameterError: If name is None.",
+            "FP_ParameterError: If name is empty, the project has no",
+            "morphological data, or the feature already exists."
+          ],
+          "return_type": "ICmPossibility",
+          "returns": "ICmPossibility: The new exception feature. ",
+          "signature": "ExceptionFeatureCreate(name, abbreviation=None)",
+          "summary": "Create an exception feature in ``MorphologicalDataOA.",
+          "usage_hint": null
+        },
+        {
+          "description": "Find an exception feature by name (case-insensitive).\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ExceptionFeatureFind",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If name is None."
+              },
+              {
+                "exception": "See",
+                "when": "Also:"
+              },
+              {
+                "exception": "ExceptionFeatureGetAll",
+                "when": ", ExceptionFeatureCreate"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "ICmPossibility or None: The match, or None if not found.",
+              "type": "ICmPossibility or None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The feature name.",
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If name is None.",
+            "See Also:",
+            "ExceptionFeatureGetAll, ExceptionFeatureCreate"
+          ],
+          "return_type": "ICmPossibility or None",
+          "returns": "ICmPossibility or None: The match, or None if not found. ",
+          "signature": "ExceptionFeatureFind(name, wsHandle=None)",
+          "summary": "Find an exception feature by name (case-insensitive).",
+          "usage_hint": null
+        },
+        {
+          "description": "Get all exception features (\"production restrictions\").\n\nException features are ICmPossibility items in the\n``MorphologicalDataOA.ProdRestrictOA`` list. They are not inflection\nclasses.\n",
+          "example": "            >>> for ef in project.InflectionFeatures.ExceptionFeatureGetAll():\n            ...     print(ef.Name.BestAnalysisAlternative.Text)\n\n        See Also:\n            ExceptionFeatureCreate, ExceptionFeatureFind",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ExceptionFeatureGetAll",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "ICmPossibility: Each top-level exception feature. Nothing is yielded if the list does not exist.",
+              "type": "ICmPossibility"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "ICmPossibility",
+          "returns": "ICmPossibility: Each top-level exception feature. Nothing is yielded if the list does not exist. ",
+          "signature": "ExceptionFeatureGetAll()",
+          "summary": "Get all exception features (\"production restrictions\").",
+          "usage_hint": "enumeration"
         },
         {
           "description": "Check whether an inflection feature with the given name exists.\n",
@@ -34765,8 +34904,8 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Create a new inflection class.\n",
-          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> first_decl = inflOps.InflectionClassCreate(\"First Declension\")\n            >>> print(inflOps.InflectionClassGetName(first_decl))\n            First Declension\n\n            >>> # Create Spanish verb conjugation classes\n            >>> ar_verbs = inflOps.InflectionClassCreate(\"AR Verbs\")\n            >>> er_verbs = inflOps.InflectionClassCreate(\"ER Verbs\")\n            >>> ir_verbs = inflOps.InflectionClassCreate(\"IR Verbs\")\n",
+          "description": "Create a new inflection class under a part of speech or under a\nparent inflection class.\n",
+          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> noun = project.POS.Find(\"Noun\")\n            >>> first_decl = inflOps.InflectionClassCreate(\"First Declension\", pos=noun)\n            >>> sub = inflOps.InflectionClassCreate(\"Irregular\", parent=first_decl)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -34785,7 +34924,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If name is empty or if a class with this name"
+                "when": "_ParameterError: If name is empty, neither pos nor parent was"
               }
             ],
             "notes": [],
@@ -34800,23 +34939,35 @@
               "description": "The name of the inflection class (e.g., \"First Declension\").",
               "name": "name",
               "type": "str"
+            },
+            {
+              "default": null,
+              "description": "The IPartOfSpeech object or HVO that will own the class (added to ``pos.InflectionClassesOC``).",
+              "name": "pos",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "An existing IMoInflClass object or HVO; the new class becomes its subclass (added to ``parent.SubclassesOC``). When both are given, ``parent`` wins and ``pos`` is ignored; a warning naming both is logged if the parent is not owned by that ``pos``. At least one of ``pos`` or ``parent`` is required.",
+              "name": "parent",
+              "type": ""
             }
           ],
           "raises": [
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If name is None.",
-            "FP_ParameterError: If name is empty or if a class with this name",
-            "already exists."
+            "FP_ParameterError: If name is empty, neither pos nor parent was",
+            "given, or a sibling class with this name already exists."
           ],
           "return_type": "IMoInflClass",
           "returns": "IMoInflClass: The newly created inflection class object. ",
-          "signature": "InflectionClassCreate(name)",
-          "summary": "Create a new inflection class.",
+          "signature": "InflectionClassCreate(name, pos=None, parent=None)",
+          "summary": "Create a new inflection class under a part of speech or under a\nparent inflection class.",
           "usage_hint": null
         },
         {
-          "description": "Delete an inflection class.\n",
-          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Find and delete an obsolete class\n            >>> for ic in inflOps.InflectionClassGetAll():\n            ...     if inflOps.InflectionClassGetName(ic) == \"Obsolete\":\n            ...         inflOps.InflectionClassDelete(ic)\n            ...         break\n\n        Warning:\n            - Deleting a class that is in use may raise an error from FLEx\n            - Entries using this class should be updated first\n            - Deletion is permanent and cannot be undone\n            - Check for references before deletion\n\n        See Also:\n            InflectionClassCreate, InflectionClassGetAll",
+          "description": "Delete an inflection class from its real owner (the POS's\n``InflectionClassesOC`` or the parent class's ``SubclassesOC``).\n",
+          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> for ic in inflOps.InflectionClassGetAll():\n            ...     if inflOps.InflectionClassGetName(ic) == \"Obsolete\":\n            ...         inflOps.InflectionClassDelete(ic)\n            ...         break\n\n        Warning:\n            - Deleting a class also deletes its subclasses\n            - Entries using this class should be updated first\n            - Deletion is permanent\n\n        See Also:\n            InflectionClassCreate, InflectionClassGetAll",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -34835,7 +34986,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If the class is in use and cannot be deleted."
+                "when": "_ParameterError: If the class has no recognised owner."
               }
             ],
             "notes": [],
@@ -34852,12 +35003,12 @@
           "raises": [
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If ic_or_hvo is None.",
-            "FP_ParameterError: If the class is in use and cannot be deleted."
+            "FP_ParameterError: If the class has no recognised owner."
           ],
           "return_type": "",
           "returns": "",
           "signature": "InflectionClassDelete(ic_or_hvo)",
-          "summary": "Delete an inflection class.",
+          "summary": "Delete an inflection class from its real owner (the POS's\n``InflectionClassesOC`` or the parent class's ``SubclassesOC``).",
           "usage_hint": null
         },
         {
@@ -34911,8 +35062,8 @@
           "usage_hint": null
         },
         {
-          "description": "Get all inflection classes in the project.\n",
-          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> for ic in inflOps.InflectionClassGetAll():\n            ...     name = inflOps.InflectionClassGetName(ic)\n            ...     print(f\"Class: {name}\")\n            Class: First Declension\n            Class: Second Declension\n            Class: Irregular Verb\n            Class: Regular Verb\n",
+          "description": "Get all inflection classes in the project.\n\nInflection classes (IMoInflClass) are owned by parts of speech\n(``IPartOfSpeech.InflectionClassesOC``) and nest through\n``IMoInflClass.SubclassesOC``. This walks every POS (including\nsub-categories) and every class subclass, depth-first, parents\nbefore children. It delegates to\n``POSOperations.GetInflectionClasses(recursive=True)``.\n",
+          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> for ic in inflOps.InflectionClassGetAll():\n            ...     name = inflOps.InflectionClassGetName(ic)\n            ...     print(f\"Class: {name}\")\n            Class: First Declension\n            Class: Second Declension\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -34987,7 +35138,7 @@
         },
         {
           "description": "Set the abbreviation of an inflection class.\n",
-          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> ic = inflOps.InflectionClassCreate(\"1st Decl\")\n            >>> inflOps.InflectionClassSetAbbreviation(ic, \"1D\")\n            >>> print(inflOps.InflectionClassGetAbbreviation(ic))\n            1D\n\n        See Also:\n            InflectionClassGetAbbreviation, InflectionClassGetName",
+          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> ic = inflOps.InflectionClassCreate(\"1st Decl\", pos=noun)\n            >>> inflOps.InflectionClassSetAbbreviation(ic, \"1D\")\n            >>> print(inflOps.InflectionClassGetAbbreviation(ic))\n            1D\n\n        See Also:\n            InflectionClassGetAbbreviation, InflectionClassGetName",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -35047,7 +35198,7 @@
         },
         {
           "description": "Set the name of an inflection class.\n",
-          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> ic = inflOps.InflectionClassCreate(\"1st Decl\")\n            >>> inflOps.InflectionClassSetName(ic, \"First Declension\")\n            >>> print(inflOps.InflectionClassGetName(ic))\n            First Declension\n\n        See Also:\n            InflectionClassGetName, InflectionClassCreate",
+          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> ic = inflOps.InflectionClassCreate(\"1st Decl\", pos=noun)\n            >>> inflOps.InflectionClassSetName(ic, \"First Declension\")\n            >>> print(inflOps.InflectionClassGetName(ic))\n            First Declension\n\n        See Also:\n            InflectionClassGetName, InflectionClassCreate",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -45939,8 +46090,8 @@
       ],
       "methods": [
         {
-          "description": "Add an exception feature to an MSA.\n\nAppends one ``ICmPossibility`` (in practice, an inflection class\nfrom the project's \"Production Restrictions\" list) to the MSA's\n``ProdRestrictRC`` (\"Exception features\" in FLEx).\n",
-          "example": "            >>> classes = list(\n            ...     project.InflectionFeatures.InflectionClassGetAll()\n            ... )\n            >>> if classes:\n            ...     project.MSA.AddExceptionFeature(msa, classes[0])\n\n            >>> # ... or by HVO\n            >>> project.MSA.AddExceptionFeature(msa_hvo, class_hvo)\n",
+          "description": "Add an exception feature to an MSA.\n\nAppends one ``ICmPossibility`` from\n``MorphologicalDataOA.ProdRestrictOA`` to the MSA's exception\nfeatures. The field written depends on the MSA type:\n\n- ``MoStemMsa``: ``ProdRestrictRC`` (``side`` is ignored)\n- ``MoInflAffMsa``: ``FromProdRestrictRC`` (only ``side=\"from\"``)\n- ``MoDerivAffMsa``: ``FromProdRestrictRC`` (``side=\"from\"``) or\n``ToProdRestrictRC`` (``side=\"to\"``)\n",
+          "example": "            >>> ef = project.InflectionFeatures.ExceptionFeatureFind(\"pl\")\n            >>> project.MSA.AddExceptionFeature(infl_msa, ef)\n            >>> project.MSA.AddExceptionFeature(deriv_msa, ef, side=\"to\")\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -45959,7 +46110,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If the MSA type does not carry"
+                "when": "_ParameterError: If ``side`` is not \"from\"/\"to\"; the MSA"
               }
             ],
             "notes": [
@@ -45978,8 +46129,14 @@
             },
             {
               "default": null,
-              "description": "An ``ICmPossibility`` object (or subclass instance such as ``IMoInflClass``), HVO, or GUID.",
+              "description": "An ``ICmPossibility`` object, HVO, or GUID.",
               "name": "feature_or_hvo",
+              "type": ""
+            },
+            {
+              "default": "from",
+              "description": "``\"from\"`` (default) or ``\"to\"``; see above.",
+              "name": "side",
               "type": ""
             }
           ],
@@ -45987,13 +46144,15 @@
             "FP_ReadOnlyError: If the project is not opened with write",
             "enabled.",
             "FP_NullParameterError: If either parameter is null.",
-            "FP_ParameterError: If the MSA type does not carry",
-            "``ProdRestrictRC`` (``MoUnclassifiedAffixMsa``), or the",
-            "feature is not an ``ICmPossibility``."
+            "FP_ParameterError: If ``side`` is not \"from\"/\"to\"; the MSA",
+            "type carries no exception features",
+            "(``MoUnclassifiedAffixMsa``); ``side=\"to\"`` is requested",
+            "on a ``MoInflAffMsa`` (it has no ``ToProdRestrictRC``);",
+            "or the feature is not an ``ICmPossibility``."
           ],
           "return_type": "None",
           "returns": "",
-          "signature": "AddExceptionFeature(msa_or_hvo, feature_or_hvo)",
+          "signature": "AddExceptionFeature(msa_or_hvo, feature_or_hvo, side='from')",
           "summary": "Add an exception feature to an MSA.",
           "usage_hint": "creation"
         },
@@ -46434,9 +46593,9 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Get an MSA's exception features (\"Exception features\" in FLEx).\n\nReads the ``ProdRestrictRC`` reference collection on a stem,\ninflectional-affix, or derivational-affix MSA. HermitCrab uses\nthese features to block rules/affixes. In practice the items are\ninflection classes drawn from the project's \"Production\nRestrictions\" list (see\n``InflectionFeatureOperations.InflectionClassGetAll``).\n",
+          "description": "Get an MSA's exception features (\"Exception features\" in FLEx).\n\nReads the per-type reference collection (HermitCrab uses these\nfeatures to block rules/affixes):\n\n- ``MoStemMsa``: ``ProdRestrictRC`` (``side`` is ignored)\n- ``MoInflAffMsa``: ``FromProdRestrictRC`` (only ``side=\"from\"``)\n- ``MoDerivAffMsa``: ``FromProdRestrictRC`` (``side=\"from\"``) or\n``ToProdRestrictRC`` (``side=\"to\"``)\n\nThe items are ``ICmPossibility`` entries from\n``MorphologicalDataOA.ProdRestrictOA`` (see\n``InflectionFeatureOperations.ExceptionFeatureGetAll``); they are\nnot inflection classes.\n",
           "element_type": "ICmPossibility",
-          "example": "            >>> feats = project.MSA.GetExceptionFeatures(msa)\n            >>> for feat in feats:\n            ...     name = project.PossibilityLists.GetItemName(feat)\n            ...     print(f\"blocked unless: {name}\")\n\n            >>> # Unclassified-affix MSAs carry no exception features\n            >>> project.MSA.GetExceptionFeatures(unclassified_msa)\n            []\n",
+          "example": "            >>> feats = project.MSA.GetExceptionFeatures(msa)\n            >>> for feat in feats:\n            ...     name = project.PossibilityLists.GetItemName(feat)\n            ...     print(f\"blocked unless: {name}\")\n\n            >>> # Derivational affix: the \"to\" side is a separate field\n            >>> project.MSA.GetExceptionFeatures(deriv_msa, side=\"to\")\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -46451,11 +46610,15 @@
               {
                 "exception": "FP",
                 "when": "_NullParameterError: If ``msa_or_hvo`` is null."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If ``side`` is not \"from\"/\"to\", or the MSA"
               }
             ],
             "notes": [],
             "success": {
-              "description": "list[ICmPossibility]: The exception-feature possibility objects, so callers can read names/abbreviations via the existing possibility-list wrappers (e.g. ``PossibilityListOperations.GetItemName``). ``[]`` when the MSA type does not carry ``ProdRestrictRC`` (``MoUnclassifiedAffixMsa``) or when none are set -- never raises on a wrong-type MSA.",
+              "description": "list[ICmPossibility]: The exception-feature possibility objects, so callers can read names/abbreviations via the existing possibility-list wrappers (e.g. ``PossibilityListOperations.GetItemName``). ``[]`` when none are set, and also (with a logged warning) for ``MoUnclassifiedAffixMsa`` and for ``MoInflAffMsa`` with ``side=\"to\"``, which have no such field.",
               "type": "list[ICmPossibility]"
             }
           },
@@ -46465,15 +46628,27 @@
               "description": "An MSA object, HVO, or GUID (resolved via the internal ``__GetMsaObject``).",
               "name": "msa_or_hvo",
               "type": ""
+            },
+            {
+              "default": "from",
+              "description": "``\"from\"`` (default) or ``\"to\"``. Only meaningful for ``MoDerivAffMsa``; stem MSAs (``MoStemMsa``) ignore ``side`` entirely.",
+              "name": "side",
+              "type": ""
             }
           ],
           "polymorphic": true,
           "raises": [
-            "FP_NullParameterError: If ``msa_or_hvo`` is null."
+            "FP_NullParameterError: If ``msa_or_hvo`` is null.",
+            "FP_ParameterError: If ``side`` is not \"from\"/\"to\", or the MSA",
+            "is not an MSA type known to this class. The read path is",
+            "lenient (warn and return ``[]``) for unclassified affixes",
+            "and inflectional ``side=\"to\"``;",
+            "``AddExceptionFeature`` / ``RemoveExceptionFeature`` still",
+            "raise for those."
           ],
           "return_type": "list[ICmPossibility]",
-          "returns": "list[ICmPossibility]: The exception-feature possibility objects, so callers can read names/abbreviations via the existing possibility-list wrappers (e.g. ``PossibilityListOperations.GetItemName``). ``[]`` when the MSA type does not carry ``ProdRestrictRC`` (``MoUnclassifiedAffixMsa``) or when none are set -- never raises on a wrong-type MSA. ",
-          "signature": "GetExceptionFeatures(msa_or_hvo)",
+          "returns": "list[ICmPossibility]: The exception-feature possibility objects, so callers can read names/abbreviations via the existing possibility-list wrappers (e.g. ``PossibilityListOperations.GetItemName``). ``[]`` when none are set, and also (with a logged warning) for ``MoUnclassifiedAffixMsa`` and for ``MoInflAffMsa`` with ``side=\"to\"``, which have no such field. ",
+          "signature": "GetExceptionFeatures(msa_or_hvo, side='from')",
           "summary": "Get an MSA's exception features (\"Exception features\" in FLEx).",
           "usage_hint": "retrieval"
         },
@@ -46855,7 +47030,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Remove an exception feature from an MSA.\n\nRemoves one ``ICmPossibility`` from the MSA's ``ProdRestrictRC``\n(\"Exception features\" in FLEx).\n",
+          "description": "Remove an exception feature from an MSA.\n\nRemoves one ``ICmPossibility`` from the MSA's exception features.\nThe field touched depends on the MSA type:\n\n- ``MoStemMsa``: ``ProdRestrictRC`` (``side`` is ignored)\n- ``MoInflAffMsa``: ``FromProdRestrictRC`` (only ``side=\"from\"``)\n- ``MoDerivAffMsa``: ``FromProdRestrictRC`` (``side=\"from\"``) or\n``ToProdRestrictRC`` (``side=\"to\"``)\n",
           "example": "            >>> feats = project.MSA.GetExceptionFeatures(msa)\n            >>> if feats:\n            ...     project.MSA.RemoveExceptionFeature(msa, feats[0])\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -46875,7 +47050,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If the MSA type does not carry"
+                "when": "_ParameterError: If ``side`` is not \"from\"/\"to\"; the MSA"
               }
             ],
             "notes": [
@@ -46894,8 +47069,14 @@
             },
             {
               "default": null,
-              "description": "An ``ICmPossibility`` object (or subclass instance such as ``IMoInflClass``), HVO, or GUID.",
+              "description": "An ``ICmPossibility`` object, HVO, or GUID.",
               "name": "feature_or_hvo",
+              "type": ""
+            },
+            {
+              "default": "from",
+              "description": "``\"from\"`` (default) or ``\"to\"``; see above.",
+              "name": "side",
               "type": ""
             }
           ],
@@ -46903,13 +47084,15 @@
             "FP_ReadOnlyError: If the project is not opened with write",
             "enabled.",
             "FP_NullParameterError: If either parameter is null.",
-            "FP_ParameterError: If the MSA type does not carry",
-            "``ProdRestrictRC`` (``MoUnclassifiedAffixMsa``), or the",
-            "feature is not an ``ICmPossibility``."
+            "FP_ParameterError: If ``side`` is not \"from\"/\"to\"; the MSA",
+            "type carries no exception features",
+            "(``MoUnclassifiedAffixMsa``); ``side=\"to\"`` is requested",
+            "on a ``MoInflAffMsa``; or the feature is not an",
+            "``ICmPossibility``."
           ],
           "return_type": "None",
           "returns": "",
-          "signature": "RemoveExceptionFeature(msa_or_hvo, feature_or_hvo)",
+          "signature": "RemoveExceptionFeature(msa_or_hvo, feature_or_hvo, side='from')",
           "summary": "Remove an exception feature from an MSA.",
           "usage_hint": "deletion"
         },
@@ -86731,12 +86914,12 @@
       "YesNoCancel"
     ],
     "mapping_types": {
-      "composite": 102,
-      "convenience": 211,
-      "direct": 599,
+      "composite": 103,
+      "convenience": 210,
+      "direct": 602,
       "pure_python": 745
     },
-    "methods_with_return_type": 1064,
+    "methods_with_return_type": 1067,
     "top_level_exports": [
       "APIHelpFile",
       "AgentOperations",
@@ -86841,7 +87024,7 @@
       "wrap"
     ],
     "total_classes": 125,
-    "total_methods": 1657,
+    "total_methods": 1660,
     "total_properties": 183
   }
 }

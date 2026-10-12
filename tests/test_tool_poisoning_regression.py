@@ -305,9 +305,9 @@ def test_t1_tool_count_and_description_lint():
     from flextoolsmcp.server.dispatch import ALL_TOOL_NAMES
     from flextoolsmcp.server.tool_definitions import SERVER_INSTRUCTIONS, TOOLS
 
-    assert len(TOOLS) == 31
+    assert len(TOOLS) == 32
     assert set(TOOLS) == set(ALL_TOOL_NAMES)
-    assert len(ALL_TOOL_NAMES) == 31
+    assert len(ALL_TOOL_NAMES) == 32
 
     for name, tool in TOOLS.items():
         assert _description_blocklist_hits(name, tool.description) == [], name
@@ -480,7 +480,7 @@ def test_t3c_index_provenance_confers_no_preflight_exemption(poisoned_api):
 
 
 # ---------------------------------------------------------------------------
-# T8 (security §4): frozen annotation truth table for all 31 tools.
+# T8 (security §4): frozen annotation truth table for all 32 tools.
 # (readOnly, destructive, idempotent, openWorld)
 # ---------------------------------------------------------------------------
 
@@ -502,6 +502,7 @@ _EXPECTED_ANNOTATIONS = {
     "flextools_get_operation_logs": _READ_ONLY_SAFE_TUPLE,
     "flextools_resolve_property": _READ_ONLY_SAFE_TUPLE,
     "flextools_manage_config": (False, True, True, False),  # S-P0-1: persistent config write/delete
+    "flextools_refresh_indexes": (False, True, True, False),  # rewrites generated index files + archives superseded versions; re-runs converge
     "flextools_get_session_history": _READ_ONLY_SAFE_TUPLE,
     "flextools_health": _READ_ONLY_SAFE_TUPLE,
     "flextools_grammar_health": _READ_ONLY_SAFE_TUPLE,
@@ -533,7 +534,7 @@ def test_t8_annotation_truth_table():
         actual = (a.read_only_hint, a.destructive_hint, a.idempotent_hint, a.open_world_hint)
         assert actual == expected, f"{name}: annotations {actual} != truth table {expected}"
     destructive = {n for n, t in TOOLS.items() if t.annotations.destructive_hint}
-    assert destructive == {"flextools_run_module", "flextools_parse_text", "flextools_manage_config"}
+    assert destructive == {"flextools_run_module", "flextools_parse_text", "flextools_manage_config", "flextools_refresh_indexes"}
 
 
 # ---------------------------------------------------------------------------

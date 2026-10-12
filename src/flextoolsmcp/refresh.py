@@ -520,6 +520,184 @@ def run_archive_old_versions() -> bool:
     return run_command(cmd, "Archiving old API versions")
 
 
+def run_refresh(
+    flexicon_path: str | None = None,
+    flexlibs_path: str | None = None,
+    dll_path: str | None = None,
+    skip_categorization: bool = False,
+    skip_postprocess: bool = False,
+    on_step=None,
+) -> dict:
+    """Run the full refresh pipeline (the same sequence as the CLI).
+
+    This is the programmatic entry point behind main(); the
+    flextools_refresh_indexes MCP tool calls it too, so the step order and
+    success accounting live in exactly one place.
+
+    Returns a structured result instead of an exit code::
+
+        {"success": bool,               # every attempted step succeeded
+         "any_refresh_succeeded": bool, # at least one library scan worked
+         "steps": [{"step": <key>, "description": <str>,
+                    "status": "ok" | "failed" | "skipped",
+                    "detail": <str | None>}, ...]}
+
+    ``on_step(completed, total, description)``, when given, is called
+    immediately before each planned step; ``completed`` counts the steps
+    already recorded, so the first call is (0, total, ...). The plan is
+    fixed up front -- LibLCM scannability is a cheap probe, probed once
+    here -- so ``total`` never changes mid-run, and skipped steps are
+    announced and recorded just like executed ones. Callback exceptions
+    are swallowed: progress reporting must never fail a refresh.
+    """
+    steps: list[dict] = []
+
+    def begin(step: str, description: str) -> None:
+        if on_step is not None:
+            try:
+                on_step(len(steps), _REFRESH_STEP_TOTAL, description)
+            except Exception:
+                pass
+
+    def record(step: str, description: str, status: str, detail=None) -> bool:
+        steps.append({
+            "step": step,
+            "description": description,
+            "status": status,
+            "detail": detail,
+        })
+        return status == "ok"
+
+    success = True
+    any_refresh_succeeded = False
+
+    # Every run scans ALL available APIs -- there is no per-library filter.
+    # The scans are cross-linked (post-processing annotates LibLCM entities
+    # with their FlexLibs/Flexicon wrappers and Flexicon with shared patterns),
+    # so scanning one library in isolation would leave the others stale.
+
+    # Refresh FlexLibs stable
+    begin("flexlibs", "Refreshing FlexLibs index")
+    if refresh_flexlibs_stable(flexlibs_path):
+        any_refresh_succeeded = True
+        record("flexlibs", "Refreshing FlexLibs index", "ok")
+    else:
+        success = False
+        record("flexlibs", "Refreshing FlexLibs index", "failed")
+
+    # Refresh Flexicon
+    begin("flexicon", "Refreshing Flexicon index")
+    if refresh_flexicon(flexicon_path):
+        any_refresh_succeeded = True
+        record("flexicon", "Refreshing Flexicon index", "ok")
+    else:
+        success = False
+        record("flexicon", "Refreshing Flexicon index", "failed")
+
+    # Refresh LibLCM (best-effort). Reflection extraction needs pythonnet +
+    # FieldWorks DLLs; on machines without them (e.g. runtime/wheel installs)
+    # we skip the scan and keep the existing index rather than failing.
+    liblcm_refreshed = False
+    if liblcm_scannable(dll_path):
+        begin("liblcm", "Refreshing LibLCM index")
+        if refresh_liblcm(dll_path):
+            any_refresh_succeeded = True
+            liblcm_refreshed = True
+            record("liblcm", "Refreshing LibLCM index", "ok")
+        else:
+            success = False
+            record("liblcm", "Refreshing LibLCM index", "failed")
+    else:
+        print("\n[WARN] Skipping LibLCM scan: FieldWorks DLLs / pythonnet not "
+              "available on this machine.")
+        print("       Keeping the existing LibLCM index; enrichment still "
+              "annotates it.")
+        begin("liblcm", "Refreshing LibLCM index")
+        record("liblcm", "Refreshing LibLCM index", "skipped",
+               "FieldWorks DLLs / pythonnet not available on this machine; "
+               "existing LibLCM index kept")
+
+    # Semantic categorization -- part of the LibLCM scan's own sequence in
+    # the CLI (it annotates the file the scan just wrote), so it only runs
+    # when that scan succeeded.
+    begin("categorization", "Applying semantic categorization to LibLCM")
+    if not liblcm_refreshed:
+        record("categorization", "Applying semantic categorization to LibLCM",
+               "skipped", "LibLCM index was not refreshed")
+    elif skip_categorization:
+        record("categorization", "Applying semantic categorization to LibLCM",
+               "skipped", "Skipped via skip_categorization")
+    elif apply_categorization():
+        record("categorization", "Applying semantic categorization to LibLCM", "ok")
+    else:
+        success = False
+        record("categorization", "Applying semantic categorization to LibLCM", "failed")
+
+    # Post-processing steps - reverse mapping, navigation graph, and pattern
+    # extraction. These cross-link the just-scanned libraries: the reverse
+    # mapping writes python_wrappers onto LibLCM entities and pattern extraction
+    # writes common_patterns onto Flexicon entities. They always run after the
+    # scans (only --skip-postprocess suppresses them) so the raw extraction
+    # output never ships without its cross-references.
+    postprocess_steps = [
+        ("reverse_mapping", "Building reverse mapping (LibLCM -> FlexLibs)",
+         run_postprocess_reverse_mapping),
+        ("navigation_graph", "Building navigation graph",
+         run_postprocess_navigation_graph),
+        ("patterns", "Extracting common patterns",
+         run_postprocess_patterns),
+        ("casting_index", "Building casting index (pythonnet interface casting)",
+         run_postprocess_casting_index),
+        # Annotate element types (issue #121) -- needs the casting index
+        # built just above it in this list.
+        ("element_types", "Annotating element types (collection casting hints)",
+         run_postprocess_element_types),
+        # GetAll collection contracts (issue #124) -- flexicon index only.
+        ("getall_contract", "Annotating GetAll collection contracts",
+         run_postprocess_getall_contract),
+    ]
+    if not skip_postprocess:
+        print("\n" + "-" * 40)
+        print("Post-processing...")
+        print("-" * 40)
+
+    for step_key, description, step_fn in postprocess_steps:
+        begin(step_key, description)
+        if skip_postprocess:
+            record(step_key, description, "skipped",
+                   "Skipped via skip_postprocess")
+        elif step_fn():
+            record(step_key, description, "ok")
+        else:
+            success = False
+            record(step_key, description, "failed")
+
+    # Archive old versions - runs after ANY successful refresh (full or
+    # targeted/partial), so superseded versions are pruned regardless of
+    # which --*-only flag was used. Guarded so it runs exactly once and
+    # only when at least one refresh actually succeeded.
+    begin("archive", "Archiving old API versions")
+    if not any_refresh_succeeded:
+        record("archive", "Archiving old API versions", "skipped",
+               "No library refresh succeeded")
+    elif run_archive_old_versions():
+        record("archive", "Archiving old API versions", "ok")
+    else:
+        success = False
+        record("archive", "Archiving old API versions", "failed")
+
+    return {
+        "success": success,
+        "any_refresh_succeeded": any_refresh_succeeded,
+        "steps": steps,
+    }
+
+
+#: Number of steps in the run_refresh plan (3 library scans + categorization
+#: + 6 post-processors + archive). Fixed so progress totals never move.
+_REFRESH_STEP_TOTAL = 11
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Refresh FlexTools MCP API indexes"
@@ -556,96 +734,23 @@ def main():
     print(f"Started: {datetime.now().isoformat()}")
     print("=" * 60)
 
-    success = True
-    any_refresh_succeeded = False
-
-    # Every run scans ALL available APIs -- there is no per-library filter.
-    # The scans are cross-linked (post-processing annotates LibLCM entities
-    # with their FlexLibs/Flexicon wrappers and Flexicon with shared patterns),
-    # so scanning one library in isolation would leave the others stale.
-
-    # Refresh FlexLibs stable
-    if refresh_flexlibs_stable(args.flexlibs_path):
-        any_refresh_succeeded = True
-    else:
-        success = False
-
-    # Refresh Flexicon
-    if refresh_flexicon(args.flexicon_path):
-        any_refresh_succeeded = True
-    else:
-        success = False
-
-    # Refresh LibLCM (best-effort). Reflection extraction needs pythonnet +
-    # FieldWorks DLLs; on machines without them (e.g. runtime/wheel installs)
-    # we skip the scan and keep the existing index rather than failing.
-    if liblcm_scannable(args.dll_path):
-        if refresh_liblcm(args.dll_path):
-            any_refresh_succeeded = True
-            if not args.skip_categorization:
-                if not apply_categorization():
-                    success = False
-        else:
-            success = False
-    else:
-        print("\n[WARN] Skipping LibLCM scan: FieldWorks DLLs / pythonnet not "
-              "available on this machine.")
-        print("       Keeping the existing LibLCM index; enrichment still "
-              "annotates it.")
-
-    # Post-processing steps - reverse mapping, navigation graph, and pattern
-    # extraction. These cross-link the just-scanned libraries: the reverse
-    # mapping writes python_wrappers onto LibLCM entities and pattern extraction
-    # writes common_patterns onto Flexicon entities. They always run after the
-    # scans (only --skip-postprocess suppresses them) so the raw extraction
-    # output never ships without its cross-references.
-    if not args.skip_postprocess:
-        print("\n" + "-" * 40)
-        print("Post-processing...")
-        print("-" * 40)
-
-        # Build reverse mapping
-        if not run_postprocess_reverse_mapping():
-            success = False
-
-        # Build navigation graph
-        if not run_postprocess_navigation_graph():
-            success = False
-
-        # Extract patterns
-        if not run_postprocess_patterns():
-            success = False
-
-        # Build casting index
-        if not run_postprocess_casting_index():
-            success = False
-
-        # Annotate element types (issue #121) -- needs the casting index
-        # just built above.
-        if not run_postprocess_element_types():
-            success = False
-
-        # GetAll collection contracts (issue #124) -- flexicon index only.
-        if not run_postprocess_getall_contract():
-            success = False
-
-    # Archive old versions - runs after ANY successful refresh (full or
-    # targeted/partial), so superseded versions are pruned regardless of
-    # which --*-only flag was used. Guarded so it runs exactly once and
-    # only when at least one refresh actually succeeded.
-    if any_refresh_succeeded:
-        if not run_archive_old_versions():
-            success = False
+    result = run_refresh(
+        flexicon_path=args.flexicon_path,
+        flexlibs_path=args.flexlibs_path,
+        dll_path=args.dll_path,
+        skip_categorization=args.skip_categorization,
+        skip_postprocess=args.skip_postprocess,
+    )
 
     print("\n" + "=" * 60)
-    if success:
+    if result["success"]:
         print("[OK] All indexes refreshed successfully")
     else:
         print("[WARN] Some indexes failed to refresh")
     print(f"Completed: {datetime.now().isoformat()}")
     print("=" * 60)
 
-    return 0 if success else 1
+    return 0 if result["success"] else 1
 
 
 if __name__ == "__main__":

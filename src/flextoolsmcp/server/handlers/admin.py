@@ -8,7 +8,12 @@ These handlers manage session configuration and provide admin tools:
 - manage_config: Get/set/delete/list persistent configuration (Feature 2)
 - get_session_history: View operation history (Feature 3)
 - get_module_template: Return the official FlexTools module template
+- refresh_indexes: Rebuild the bundled API indexes (the refresh pipeline)
 """
+
+import asyncio
+import contextlib
+import io
 
 from mcp.types import TextContent
 
@@ -20,9 +25,14 @@ from ..response_keys import (
 )
 
 try:
-    from ...response_utils import error_response
+    from ...response_utils import build_response_with_context, error_response
 except (ImportError, ValueError):
-    from response_utils import error_response
+    from response_utils import build_response_with_context, error_response
+
+try:
+    from ..progress import get_progress_reporter, progress_heartbeat
+except (ImportError, ValueError):
+    from server.progress import get_progress_reporter, progress_heartbeat
 
 try:
     from ...file_utils import get_bundled_templates_dir
@@ -932,3 +942,135 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
     return json_response(result)
 
 
+
+
+def _load_refresh_module():
+    """Import flextoolsmcp.refresh lazily, inside the caller's stdout guard.
+
+    refresh.py loads .env at import time and prints while doing so, and
+    every pipeline step narrates to stdout. The MCP server never writes to
+    stdout while serving (it is the JSON-RPC channel), so this module must
+    not be imported at handler-module import time, and in-process callers
+    must capture stdout around the import as well as the run.
+    """
+    try:
+        from ... import refresh as refresh_module
+    except (ImportError, ValueError):
+        import refresh as refresh_module
+    return refresh_module
+
+
+async def handle_refresh_indexes(args: dict) -> list[TextContent]:
+    """Rebuild the bundled API indexes (issue #369, Phase 3 follow-up).
+
+    Runs refresh.run_refresh -- the exact pipeline behind the
+    flextools-mcp-refresh CLI -- in a worker thread: its steps spawn
+    blocking subprocesses, and its stdout narration is captured under a
+    scoped redirect so none of it can reach the MCP stdio channel (the
+    captured tail rides the response as evidence). Step milestones bridge
+    back to this loop in order and go through the ambient progress
+    reporter, so a client without a progressToken sees an ordinary tool
+    call, and the shared heartbeat covers long single steps.
+
+    Step-level failures are a normal outcome (the CLI exits 1 the same
+    way) and are reported in the payload; only a failure of the pipeline
+    machinery itself becomes an error_response.
+    """
+    reporter = get_progress_reporter()
+    loop = asyncio.get_running_loop()
+
+    def _on_step(completed: int, total: int, description: str) -> None:
+        # Fires in the worker thread. Bridge to the loop and wait for the
+        # report to land so milestones stay in plan order; the reporter
+        # itself never raises, and bridge failures drop the milestone,
+        # never the refresh.
+        if not reporter.enabled:
+            return
+        try:
+            future = asyncio.run_coroutine_threadsafe(
+                reporter.report(completed, total=total, message=description),
+                loop,
+            )
+            future.result(timeout=30)
+        except Exception:
+            pass
+
+    def _run_pipeline() -> tuple[dict, str]:
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            refresh_module = _load_refresh_module()
+            result = refresh_module.run_refresh(
+                flexicon_path=args.get("flexicon_path"),
+                flexlibs_path=args.get("flexlibs_path"),
+                dll_path=args.get("dll_path"),
+                skip_categorization=bool(args.get("skip_categorization", False)),
+                skip_postprocess=bool(args.get("skip_postprocess", False)),
+                on_step=_on_step,
+            )
+        return result, buffer.getvalue()
+
+    try:
+        async with progress_heartbeat("index refresh"):
+            result, log_text = await asyncio.to_thread(_run_pipeline)
+    except Exception as exc:
+        return error_response(
+            "refresh_failed",
+            f"Index refresh failed before completing: {exc}",
+            hint=(
+                "The same pipeline is available from the command line as "
+                "`python -m flextoolsmcp.refresh`."
+            ),
+            tool="flextools_refresh_indexes",
+        )
+
+    steps = result["steps"]
+    total_steps = len(steps)
+    await reporter.report(
+        total_steps,
+        total=total_steps,
+        message=(
+            "Index refresh complete"
+            if result["success"]
+            else "Index refresh finished with failures"
+        ),
+    )
+
+    if result["any_refresh_succeeded"]:
+        # Mirror startup's _try_refresh_once: the file-discovery cache
+        # stores negative results, so files the refresh just wrote would
+        # stay invisible to later lookups without this clear. Fail-open:
+        # the refresh itself already succeeded.
+        try:
+            try:
+                from ..versioning import clear_file_discovery_cache
+            except (ImportError, ValueError):
+                from server.versioning import clear_file_discovery_cache
+            clear_file_discovery_cache()
+        except Exception:
+            pass
+
+    refreshed = [s["step"] for s in steps if s["status"] == "ok"]
+    skipped = [s["step"] for s in steps if s["status"] == "skipped"]
+    failed = [s["step"] for s in steps if s["status"] == "failed"]
+    log_lines = [line for line in log_text.splitlines() if line.strip()]
+
+    data = {
+        KEY_STATUS: "ok" if result["success"] else "partial",
+        "summary": (
+            f"Index refresh {'complete' if result['success'] else 'finished with failures'}: "
+            f"{len(refreshed)} step(s) ok, {len(skipped)} skipped, "
+            f"{len(failed)} failed."
+        ),
+        "steps": steps,
+        "refreshed": refreshed,
+        "skipped": skipped,
+        "failed": failed,
+        "note": (
+            "The running server keeps serving the indexes it loaded at "
+            "startup; restart the server to pick up the rebuilt index "
+            "files. Semantic-search embeddings are not rebuilt by this "
+            "tool."
+        ),
+        "log_tail": log_lines[-20:],
+    }
+    return json_response(build_response_with_context(data))

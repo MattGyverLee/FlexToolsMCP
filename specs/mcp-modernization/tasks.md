@@ -73,8 +73,13 @@ phase, pushed as gates go green.
       identical); raising sink never propagates; milestone-sequence
       test for C with a capturing reporter; existing direct-call suites
       green unchanged.
-- [ ] NOT in phase: parse notifications, tasks extension, refresh /
-      embeddings progress (R3 — pending Matthew's product call).
+- [ ] NOT in phase: parse notifications, tasks extension (R3).
+- [x] Refresh progress (deferred in-phase pending Matthew's product
+      call, R3): resolved 2026-10-12 — Matthew ruled option (i), a new
+      `flextools_refresh_indexes` tool (branch feat/369-refresh-tool)
+      running `refresh.run_refresh()` with one progress notification per
+      pipeline step. Embeddings remain outside the refresh pipeline;
+      wiring them in is unchosen and out of scope.
 
 ## Phase 4 — discovery (R4)
       Note: refresh / embeddings progress is deferred pending Matthew's product decision (the R3 options were put to him 2026-10-11); parse notifications and the tasks extension remain out of scope.

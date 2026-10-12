@@ -38,6 +38,19 @@ sorted position, not the top). Changes without an issue go under Other.
   were also corrected to match real behaviour: `flextools_parse_sandbox`
   and `flextools_start` are no longer advertised as read-only.
 
+### Added
+
+- **New tool: `flextools_refresh_indexes` (#369)**: the index refresh
+  pipeline (previously reachable only at server startup or via the
+  `flextools-mcp-refresh` command) is now a tool call, with the CLI's
+  options (`flexicon_path`, `flexlibs_path`, `dll_path`,
+  `skip_categorization`, `skip_postprocess`) and one progress
+  notification per pipeline step for clients that supply a progress
+  token. The response reports each step as ok / skipped / failed (the
+  LibLCM scan is skipped where FieldWorks is unavailable); the running
+  server keeps its startup indexes until restarted. Semantic-search
+  embeddings are not rebuilt.
+
 ### Other
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*

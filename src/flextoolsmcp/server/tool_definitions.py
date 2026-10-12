@@ -25,6 +25,7 @@ from .models import (
     ManageConfigInput,
     GetSessionHistoryInput,
     GetModuleTemplateInput,
+    RefreshIndexesInput,
     SearchCapabilityInput,
     GetObjectApiInput,
     GetNavigationPathInput,
@@ -143,7 +144,7 @@ Write recipes (`requires_write: true`) need a dry run first, then `write_enabled
 Pass `user_intent` to flextools_run_module so a successful run is remembered as a local recipe."""
 
 # ============================================================
-# All Tools (31 total -- pinned by tests/test_tool_poisoning_regression.py
+# All Tools (32 total -- pinned by tests/test_tool_poisoning_regression.py
 # T1/T8; see dispatch.ALL_TOOL_NAMES for the authoritative registered set)
 # ============================================================
 
@@ -524,6 +525,30 @@ backup rungs (S-P0-1, issue #369 Phase 5).""",
 Returns: List of operations performed this session and summary counts by type.""",
         input_model=GetSessionHistoryInput,
         annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_refresh_indexes": ToolDef(
+        name="flextools_refresh_indexes",
+        description="""Rebuild the bundled API documentation indexes from the installed libraries (FlexLibs, Flexicon, and LibLCM when FieldWorks is available on this machine).
+
+Runs the same pipeline as the flextools-mcp-refresh command: one scan per library, then the cross-linking post-processors (reverse mapping, navigation graph, common patterns, casting index, element types, GetAll contracts), then archiving of superseded index versions. Use it after upgrading pyflexicon, flexlibs, or FieldWorks, or when flextools_health reports that the served index version does not match the installed library.
+
+LibLCM is best-effort: on a machine without FieldWorks DLLs or pythonnet, its scan is skipped and the existing LibLCM index is kept. The semantic-search embeddings are not rebuilt by this tool.
+
+This is a long-running operation (often a minute or more); when the client supplies a progress token, one progress notification is emitted per pipeline step. The running server keeps serving the indexes it loaded at startup -- restart the server afterwards to pick up the rebuilt files.""",
+        input_model=RefreshIndexesInput,
+        annotations=ToolAnnotations(
+            readOnlyHint=False,
+            # The pipeline rewrites the generated index files on disk and
+            # archives the superseded versions -- destructive in the
+            # annotation sense (truth table, #369 Phase 5).
+            destructiveHint=True,
+            # Re-running regenerates the same artifacts from the same
+            # installed libraries and converges to the same index state;
+            # the archive step keeps only the latest version either way.
+            idempotentHint=True,
+            openWorldHint=False,
+        ),
     ),
 
     "flextools_health": ToolDef(

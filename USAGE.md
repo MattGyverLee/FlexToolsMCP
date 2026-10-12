@@ -72,6 +72,13 @@ DEPRECATED: use `flextools_list_recipes(source="local")`. Same `limit` input and
 | `flextools_health` | Composed health/version snapshot -- call when something seems wrong |
 | `flextools_prepare_report` | Prepare a diagnostic report for the maintainer ("send this to the maintainer") |
 | `flextools_grammar_health` | Static scan of the grammar for path-multiplying properties |
+| `flextools_refresh_indexes` | Rebuild the bundled API indexes from the installed libraries (the flextools-mcp-refresh pipeline), one progress notification per step |
+
+#### `flextools_refresh_indexes`
+
+Args: `flexicon_path`, `flexlibs_path`, `dll_path` (optional source-checkout fallbacks; installed packages are preferred), `skip_categorization`, `skip_postprocess` -- the same options, with the same defaults, as the `flextools-mcp-refresh` command.
+
+Runs the full refresh pipeline (per-library scans, cross-linking post-processors, archiving of superseded versions) and returns `{"status": "ok" | "partial", "steps": [...], "refreshed": [...], "skipped": [...], "failed": [...]}`. The LibLCM scan is skipped, not failed, when FieldWorks DLLs / pythonnet are unavailable on the machine. The running server keeps serving the indexes it loaded at startup -- restart it to pick up the rebuilt files. Semantic-search embeddings are not rebuilt by this tool.
 
 ### Parser Check
 

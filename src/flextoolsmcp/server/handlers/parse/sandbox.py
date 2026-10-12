@@ -20,6 +20,13 @@ try:
 except (ImportError, ValueError):
     from response_utils import build_response_with_context, error_response
 
+# Issue #369 Phase 3: per-step progress milestones for create/seed
+# (no-op unless the request supplied a progressToken).
+try:
+    from ...progress import get_progress_reporter
+except (ImportError, ValueError):
+    from server.progress import get_progress_reporter
+
 from . import common, sandbox_checks
 from .common import (
     _grammar_scan_rung,
@@ -384,6 +391,10 @@ async def _sandbox_create(plan: _SandboxPlan) -> List[TextContent]:
 
     op_id = uuid.uuid4().hex
     work = sandbox_workdir.create(op_id, source_fwdata=fwdata)
+    reporter = get_progress_reporter()
+    await reporter.report(
+        0, total=2, message="Exporting project grammar for the sandbox..."
+    )
     try:
         entry = await sandbox_cache.ensure_entry(
             project_name,
@@ -452,6 +463,9 @@ async def _sandbox_create(plan: _SandboxPlan) -> List[TextContent]:
     finally:
         sandbox_workdir.delete(work)
 
+    await reporter.report(
+        1, total=2, message="Creating sandbox from the exported grammar..."
+    )
     try:
         created = _sandbox_store().create_sandbox(project_name, name, entry)
     except FileExistsError:
@@ -490,6 +504,7 @@ async def _sandbox_create(plan: _SandboxPlan) -> List[TextContent]:
             "load_error_count": load_error_count,
         },
     }
+    await reporter.report(2, total=2, message="Sandbox created.")
     if load_error_count:
         result["advisories"] = [{
             "code": "grammar_load_errors",
@@ -623,6 +638,10 @@ def _sandbox_seed(plan: _SandboxPlan) -> List[TextContent]:
     runner = common._runner
     record = RunRecord(run_id, record_dir=runner.record_dir if runner is not None else None)
     name = request.corpus
+    reporter = get_progress_reporter()
+    reporter.report_nowait(
+        0, total=1, message="Seeding corpus from the completed parse run..."
+    )
     try:
         seeded = store.seed_corpus(project_name, name, record)
     except MetaUnreadable as exc:
@@ -664,6 +683,7 @@ def _sandbox_seed(plan: _SandboxPlan) -> List[TextContent]:
             hint="Pick a new corpus name; an existing corpus is never overwritten.",
             next_step=[_sandbox_list_rung(project_name)],
         )
+    reporter.report_nowait(1, total=1, message="Corpus seeded.")
     result = {
         "status": "ok",
         "action": "seed_corpus",

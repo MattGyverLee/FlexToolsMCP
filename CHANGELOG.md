@@ -18,6 +18,25 @@ sorted position, not the top). Changes without an issue go under Other.
   `~/.flextoolsmcp/backups` is touched, loose files are left alone), logs
   removals, and is disclosed in the filing plan's `backup` block before
   confirmation. `flextools_health` reports the store's size under `backups`.
+- **MCP 2.x-only; structured output and progress notifications (#369)**: the
+  server now requires the `mcp` 2.x Python SDK (`mcp>=2,<3`) and no longer
+  supports 1.x; the dual-support compatibility layer is retired.
+  `flextools_run_module`, `flextools_search_by_capability`, and
+  `flextools_get_object_api` advertise an `outputSchema` and return
+  schema-validated `structuredContent` alongside their (unchanged) text
+  responses, so spec-compliant clients can consume results structurally.
+  Long-running work -- semantic-search model loading, module runs, grammar
+  scans, and sandbox creation -- now reports progress notifications to
+  clients that supply a progress token; clients that do not see no change.
+  A `server.json` manifest at the repo root prepares the server for listing
+  in the MCP Registry (publication pending).
+- **Security: config can no longer weaken run_module's safety ladder
+  (#369)**: keys persisted through `flextools_manage_config` previously
+  could switch off `flextools_run_module`'s confirmation and pre-write
+  backup steps; `run_module` now refuses to honour persisted values for
+  those keys, matching the protection filing already had. Tool annotations
+  were also corrected to match real behaviour: `flextools_parse_sandbox`
+  and `flextools_start` are no longer advertised as read-only.
 
 ### Other
 

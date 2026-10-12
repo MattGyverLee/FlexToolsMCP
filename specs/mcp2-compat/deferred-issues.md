@@ -7,6 +7,14 @@ fenced block underneath.
 
 ---
 
+> **SUPERSEDED (2026-10-11):** section 1 below (the mcp 2.0 port) has
+> landed under issue #369 -- see `specs/mcp-modernization/`. The server is
+> now `mcp` 2.x-only (`mcp>=2,<3`), the `mcp_compat` shim is deleted, and
+> the port landed via the low-level `mcp.server.Server` with
+> constructor-injected handlers -- NOT via `MCPServer`. The
+> `>=1.27.0,<2` cap stated in section 1 is historical. The draft text below
+> is kept unchanged as the pre-#369 record.
+
 ## 1. Port to mcp 2.0
 
 ```

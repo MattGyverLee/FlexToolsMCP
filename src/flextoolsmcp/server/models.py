@@ -460,9 +460,10 @@ class RunModuleInput(BaseModel):
                     "-- nothing executes. Resubmit the SAME call with "
                     "confirmed=True to actually run it. Ignored entirely on "
                     "read-only runs (no mutating calls detected): confirmed has no "
-                    "effect there. Config key 'require_write_confirmation' (default "
-                    "True) can disable this gate server-wide for power users who "
-                    "accept the risk."
+                    "effect there. This gate is unconditional: no config key "
+                    "can disable it (the persisted 'require_write_confirmation' "
+                    "key is disclosed in filing plans only, never honoured -- "
+                    "S-P0-1, issue #369 Phase 5)."
     )
     validate_only: bool = Field(
         default=False,

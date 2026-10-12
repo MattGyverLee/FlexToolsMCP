@@ -17,7 +17,7 @@ import os
 import traceback
 import warnings
 from pathlib import Path
-from typing import Any, Optional, List, Dict, TYPE_CHECKING
+from typing import Any, Awaitable, Callable, Optional, List, Dict, TYPE_CHECKING
 from dataclasses import dataclass, field
 import io
 from contextlib import redirect_stdout, redirect_stderr
@@ -67,7 +67,7 @@ if __package__ is None:
 _mcp_import_begin = _time_module.time()
 from mcp.server import Server  # noqa: F401 -- re-exported via the server package
 # lazy loader (`from flextoolsmcp.server import Server`); handler registration
-# itself moved to .mcp_compat.build_server() (issue #83).
+# is inlined at the bottom of this module (issue #369: mcp 2.x-only).
 _mcp_import_done = _time_module.time()
 
 _local_imports_begin = _time_module.time()
@@ -76,8 +76,14 @@ if __package__:
         get_operations_logger,
         session_state,
     )
+    from .server.progress import (
+        build_progress_reporter,
+        get_progress_reporter,
+        reset_progress_reporter,
+        set_progress_reporter,
+    )
     from .server.tool_definitions import TOOLS as TOOL_DEFINITIONS
-    from .server.tool_definitions import SERVER_INSTRUCTIONS
+    from .server.tool_definitions import COLD_START_SAFE_TOOLS, SERVER_INSTRUCTIONS
     from .server.dispatch import get_tool_handler
     from .server.versioning import (
         detect_installed_library_version,
@@ -88,14 +94,19 @@ if __package__:
     from .server.startup_notices import record_index_refresh_failure
     from .response_utils import error_response
     from . import curated_deprecations
-    from .mcp_compat import annotation_is_read_only, build_server
 else:
     from server.kernel import (
         get_operations_logger,
         session_state,
     )
+    from server.progress import (
+        build_progress_reporter,
+        get_progress_reporter,
+        reset_progress_reporter,
+        set_progress_reporter,
+    )
     from server.tool_definitions import TOOLS as TOOL_DEFINITIONS
-    from server.tool_definitions import SERVER_INSTRUCTIONS
+    from server.tool_definitions import COLD_START_SAFE_TOOLS, SERVER_INSTRUCTIONS
     from server.dispatch import get_tool_handler
     from server.versioning import (
         detect_installed_library_version,
@@ -106,7 +117,6 @@ else:
     from server.startup_notices import record_index_refresh_failure
     from response_utils import error_response
     import curated_deprecations
-    from mcp_compat import annotation_is_read_only, build_server
 _local_imports_done = _time_module.time()
 
 # Safe logging helper that works even before initialization
@@ -214,12 +224,21 @@ class SemanticSearch:
 
             # Load FAISS index
             _log_info("Loading semantic search index...")
+            # Issue #369 Phase 3: progress milestones mirror the _log_info
+            # narration on a 0..3 ladder (total=3). No-op outside a request
+            # that supplied a progressToken.
+            get_progress_reporter().report_nowait(
+                0, total=3, message="Loading semantic search index..."
+            )
             search.index = faiss.read_index(str(faiss_path))
 
             # Store model name for lazy loading (model loads on first search, not at startup)
             search.model_name = metadata.get("_model", "all-MiniLM-L6-v2")
             search.enabled = True
             _log_info("Semantic search ready (model loads on first search)")
+            get_progress_reporter().report_nowait(
+                1, total=3, message="Semantic search ready (model loads on first search)"
+            )
         except ImportError:
             _log_warning("faiss not installed, semantic search disabled")
         except Exception as e:
@@ -243,15 +262,25 @@ class SemanticSearch:
                 model_cache = cache_dir / 'hub' / f'models--sentence-transformers--{self.model_name.replace("/", "--")}'
 
                 if model_cache.exists():
-                    _log_info(f"Loading embedding model '{self.model_name}' from cache...")
+                    _model_msg = f"Loading embedding model '{self.model_name}' from cache..."
                 else:
-                    _log_info(f"Downloading embedding model '{self.model_name}' (~50MB, cached for future runs)...")
+                    _model_msg = f"Downloading embedding model '{self.model_name}' (~50MB, cached for future runs)..."
+                _log_info(_model_msg)
+                # Issue #369 Phase 3: the load below blocks the event
+                # loop, so these are boundary notifications -- queued via
+                # report_nowait and flushed when the loop next turns.
+                get_progress_reporter().report_nowait(
+                    2, total=3, message=_model_msg
+                )
 
                 with warnings.catch_warnings(), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                     warnings.filterwarnings('ignore')
                     self.model = SentenceTransformer(self.model_name)
 
                 _log_info("Model ready, search in progress...")
+                get_progress_reporter().report_nowait(
+                    3, total=3, message="Model ready, search in progress..."
+                )
             except Exception as e:
                 _log_error(f"Failed to load embedding model: {e}")
                 return []
@@ -725,10 +754,9 @@ class APIIndex:
         )
 
 # The MCP server itself is constructed AFTER the list_tools()/call_tool()
-# definitions below via mcp_compat.build_server() (issue #83: dual mcp 1.x/2.x
-# support). Registration takes the plain functions -- they are NOT decorated --
-# so this module imports cleanly on both majors. `server` is assigned there;
-# main() uses it at run time.
+# definitions below, via the inlined mcp 2.x adapters in this module
+# (issue #369). Registration takes the plain functions -- they are NOT
+# decorated. `server` is assigned there; main() uses it at run time.
 
 # Global index (loaded on startup)
 api_index: Optional[APIIndex] = None
@@ -850,8 +878,85 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         _log_warning(f"Could not auto-refresh {library_name}: {e}")
         return False
 
-# Registered on the MCP server via build_server() below (issue #83) -- NOT
-# decorated, so this module imports on both mcp 1.x and 2.x.
+# Phase 2 (#369, ruling R2): the batch-1 structured-output tools. ONLY
+# these tools advertise outputSchema and return structuredContent. The
+# gate is this explicit set AND output_model presence -- never
+# output_model presence alone -- so a future tool that gains a model does
+# not silently start advertising (a spec-compliant client hard-fails any
+# response whose structuredContent is missing or off-schema).
+STRUCTURED_OUTPUT_TOOLS = frozenset({
+    "flextools_run_module",
+    "flextools_search_by_capability",
+    "flextools_get_object_api",
+})
+
+
+def derive_structured_content(name: str, content: Any) -> Optional[Dict[str, Any]]:
+    """Derive the structuredContent dict for a batch-1 tool result.
+
+    Parses the FINAL text payload (the content list ``call_tool`` returns,
+    i.e. after the ``_session_note`` rewrite) -- never ``model_dump()`` of
+    an envelope (the Success models are ``extra="ignore"``, so a dump
+    would drop the real payload keys). The text content itself is never
+    modified here; it stays byte-identical.
+
+    Returns None (attach nothing) for non-batch-1 tools, non-JSON or
+    non-dict payloads, and error payloads (``status == "error"`` or an
+    ``error_code`` key): the advertised Success schemas describe success
+    payloads only, and an error payload validated against one is the
+    Phase-2 trap ruling R2 calls out.
+
+    Cycle-2 QC P0 (#369): the derived dict is validated against the tool's
+    advertised outputSchema (the output_model's ``model_json_schema``, the
+    same schema ``list_tools`` advertises) before it is attached, using
+    the same validator construction a spec-compliant client uses
+    (``ClientSession.validate_tool_result``). A payload that fails --
+    e.g. run_module's validate_only mode, whose status is ``"validated"``
+    / ``"validation_failed"`` rather than the schema's ``"ok"``/``"error"``
+    -- attaches NOTHING: off-schema structuredContent hard-fails an
+    otherwise successful call on such clients, while a text-only result
+    is the pre-Phase-2 wire shape every client already handles.
+
+    Fully exception-safe: derivation must never fail a tool call, so any
+    surprise (malformed content objects, schema/validator errors) returns
+    None instead of propagating.
+    """
+    try:
+        if name not in STRUCTURED_OUTPUT_TOOLS or not content:
+            return None
+        text = getattr(content[0], "text", None)
+        if not isinstance(text, str):
+            return None
+        try:
+            parsed = json.loads(text)
+        except (ValueError, TypeError):
+            return None
+        if not isinstance(parsed, dict):
+            return None
+        if parsed.get("status") == "error" or "error_code" in parsed:
+            return None
+        tool_def = TOOL_DEFINITIONS.get(name)
+        if tool_def is None or tool_def.output_model is None:
+            return None
+        schema = tool_def.output_model.model_json_schema(by_alias=True)
+        try:
+            from jsonschema.validators import validator_for
+            from referencing import Registry
+
+            validator_cls = validator_for(schema)
+            validator_cls.check_schema(schema)
+            validator = validator_cls(schema, registry=Registry())
+            if next(validator.iter_errors(parsed), None) is not None:
+                return None
+        except Exception:
+            return None
+        return parsed
+    except Exception:
+        return None
+
+
+# Registered on the MCP server via the inlined adapters below (issue #369)
+# -- NOT decorated.
 async def list_tools() -> list[Tool]:
     """List all MCP tools, generated from Pydantic models in tool_definitions.py.
 
@@ -868,18 +973,22 @@ async def list_tools() -> list[Tool]:
             "annotations": tool_def.annotations,
             "inputSchema": schema,
         }
-        # NOTE (issue #54 follow-up): outputSchema advertisement is intentionally
-        # DISABLED. Per MCP spec 2025-06-18, a tool that advertises outputSchema MUST
-        # return structuredContent matching it, and clients validate accordingly. This
-        # server's call_tool() currently returns text-only (json_response -> [TextContent]),
-        # so advertising the schema causes spec-compliant clients (e.g. Claude Code) to
-        # reject every response from run_module / get_object_api / search_by_capability.
-        # Re-enable ONLY together with returning structuredContent from call_tool() (the
-        # low-level mcp API supports returning (list[ContentBlock], dict)) AND after
-        # confirming the handler dicts validate against the *Success models
-        # (see flextoolsmcp.tool_output_validation and validate_integrity success_models).
-        # if tool_def.output_model is not None:
-        #     kwargs["outputSchema"] = tool_def.output_model.model_json_schema(by_alias=True)
+        # Phase 2 (#369, ruling R2): advertise outputSchema ONLY for the
+        # batch-1 set (STRUCTURED_OUTPUT_TOOLS) that also carries an
+        # output_model, and only together with returning structuredContent
+        # (see derive_structured_content + the call adapter below) --
+        # per MCP spec, a tool that advertises outputSchema MUST return
+        # matching structuredContent, and spec-compliant clients validate
+        # it (mcp 2.x's client hard-fails on mismatch). Handler dicts for
+        # these tools validate against the *Success models via real-payload
+        # fixtures (see flextoolsmcp.tool_output_validation).
+        if (
+            tool_def.name in STRUCTURED_OUTPUT_TOOLS
+            and tool_def.output_model is not None
+        ):
+            kwargs["outputSchema"] = tool_def.output_model.model_json_schema(
+                by_alias=True
+            )
         tools.append(Tool(**kwargs))
 
     return tools
@@ -898,8 +1007,8 @@ _SESSION_INDEPENDENT_TOOLS = frozenset({
 })
 
 
-# Registered on the MCP server via build_server() below (issue #83) -- NOT
-# decorated, so this module imports on both mcp 1.x and 2.x.
+# Registered on the MCP server via the inlined adapters below (issue #369)
+# -- NOT decorated.
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
     # Issue #167 (parser-check CP6): wall-clock timer for the parse-path
@@ -925,8 +1034,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # (and API discovery) ahead of it is backwards. The discovery gate that
     # matters -- api_discovery_required in run_module -- is unaffected.
     #
-    # Issue #53 (cold-start tolerance): a READ_ONLY_SAFE-annotated tool (see
-    # tool_definitions.READ_ONLY_SAFE) never touches a project, so a missing
+    # Issue #53 (cold-start tolerance): a cold-start-safe tool (see
+    # tool_definitions.COLD_START_SAFE_TOOLS) never touches a project, so a missing
     # session is pure ceremony -- auto-initialize read-only instead of
     # rejecting. flextools_run_module is a special case: it genuinely needs a
     # project, but if the caller already named one in this very call there's
@@ -941,14 +1050,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # write_enabled=True unless the caller passed it explicitly in THIS call.
     _pending_session_note: Optional[str] = None
     if name not in _SESSION_INDEPENDENT_TOOLS and not session_state.initialized:
-        tool_def = TOOL_DEFINITIONS.get(name)
-        # Read-only check must accept both MCP majors' annotation spellings
-        # (readOnlyHint on 1.x, read_only_hint on 2.x) -- see
-        # mcp_compat.annotation_is_read_only.
-        is_read_only_safe = bool(
-            tool_def is not None
-            and annotation_is_read_only(tool_def.annotations)
-        )
+        # Cycle-2 QC P1 (#369): eligibility comes from the explicit
+        # COLD_START_SAFE_TOOLS set, NOT from the tool's annotations.
+        # Annotations are client-facing UX hints, not this server's
+        # security/policy boundary -- Phase 5's honest reclassification of
+        # flextools_parse_sandbox (readOnlyHint=False) must not change its
+        # cold-start behaviour.
+        is_read_only_safe = name in COLD_START_SAFE_TOOLS
         is_run_module = (name == "flextools_run_module")
 
         if is_read_only_safe or is_run_module:
@@ -1053,6 +1161,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         # can inherit prior session state (e.g. write_enabled) on re-init.
         # Pydantic v2's `model_fields_set` is exactly this set, no re-dump needed.
         dumped["_user_provided_keys"] = validated_args.model_fields_set
+    # Issue #369 Phase 3: bracket dispatch with the progress reporter's
+    # ContextVar. The on_call_tool adapter installs the request's reporter
+    # (bound to the session when a progressToken was supplied) before
+    # delegating here; re-setting the current value and resetting in
+    # `finally` keeps the reporter scoped to this dispatch even for direct
+    # callers, so it can never leak into a later call's context.
+    _progress_token = set_progress_reporter(get_progress_reporter())
     try:
         result = await handler(dumped)
     except Exception as exc:
@@ -1068,6 +1183,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             traceback=tb,
             tool=name,
         )
+    finally:
+        reset_progress_reporter(_progress_token)
 
     # Issue #53: attach the cold-start auto-init note to the response body
     # (rather than returning it as a separate signal) so it survives whatever
@@ -1125,14 +1242,216 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
     return result
 
-# Initialize the MCP server (issue #83: dual mcp 1.x/2.x support via
-# mcp_compat.build_server -- decorators on 1.x, constructor-injected
-# on_list_tools=/on_call_tool= on 2.x). Must follow the definitions above;
-# version= is passed explicitly for serverInfo parity (2.x defaults it to "").
-# instructions= carries the unified-recipes server instructions (FR-027).
+
+# ============================================================
+# MCP 2.x server wiring (issue #369 -- inlined from the retired
+# compat shim, whose 2.x branch this is verbatim in substance)
+# ============================================================
+# list_tools() and call_tool(name, arguments) above keep their signatures;
+# the adapters below bridge them to the low-level Server's constructor-
+# injected on_list_tools=/on_call_tool= handlers. dispatch.py and
+# handlers/*.py keep returning bare list[TextContent]; the call adapter
+# wraps them in CallToolResult at this single seam.
+#
+# Deliberately preserved: input pre-validation. A raw 2.x on_call_tool
+# handler does not validate arguments against the tool's inputSchema
+# (2.3.0's get_tool_input_schema= is HTTP-transport-only; the stdio runner
+# never validates per-tool inputSchema). The adapter closes that gap with
+# jsonschema (a hard mcp 2.x dependency) because the divergence is
+# behavioral, not cosmetic: the cold-session gate in call_tool() above
+# configures session state *before* its own Pydantic re-validation, so
+# without pre-validation a rejected first call would initialize the
+# session. Pre-validation therefore runs BEFORE call_tool_fn is invoked.
+
+
+def resolve_server_version() -> str:
+    """Best-effort flextools-mcp version string for ``serverInfo.version``.
+
+    Prefers installed package metadata, falls back to a ``VERSION`` file found
+    by walking up from this module (covers source checkouts), then to the dev
+    placeholder. Mirrors the logic in ``server/kernel.py``'s session header.
+    Passed explicitly at Server construction because mcp 2.x defaults
+    ``version`` to ``""``.
+    """
+    try:
+        from importlib.metadata import version as _pkg_version
+
+        return _pkg_version("flextools-mcp")
+    except Exception:
+        pass
+    try:
+        here = Path(__file__).resolve()
+        for parent in here.parents:
+            version_file = parent / "VERSION"
+            if version_file.exists():
+                text = version_file.read_text(encoding="utf-8").strip()
+                if text:
+                    return text
+                break
+    except Exception:
+        pass
+    return "0.0.0.dev0"
+
+
+def annotation_is_read_only(annotations: Any) -> bool:
+    """True when a tool annotations object marks the tool read-only-safe.
+
+    mcp 2.x spells the field ``read_only_hint`` (construction accepts the
+    camelCase alias, but attribute reads expose only the snake_case name).
+    A dict-shaped fallback covers dict annotations.
+    """
+    if annotations is None:
+        return False
+    if isinstance(annotations, dict):
+        return bool(annotations.get("read_only_hint", False))
+    return bool(getattr(annotations, "read_only_hint", False))
+
+
+def make_list_tools_handler(
+    list_tools_fn: Callable[[], Awaitable[list]],
+) -> Callable[[Any, Any], Awaitable[Any]]:
+    """Adapt ``async () -> list[Tool]`` to mcp 2.x's ``on_list_tools`` handler.
+
+    Factored to module level so tests can drive it directly with a stub
+    ``params`` object.
+    """
+    from mcp.types import ListToolsResult
+
+    async def _on_list_tools(ctx: Any, params: Any) -> Any:
+        return ListToolsResult(tools=await list_tools_fn())
+
+    return _on_list_tools
+
+
+def _tool_input_schema(tool: Any) -> Any:
+    """A Tool's input schema (mcp 2.x field spelling: ``input_schema``)."""
+    try:
+        return getattr(tool, "input_schema", None) or None
+    except Exception:
+        return None
+
+
+def make_schema_provider(
+    list_tools_fn: Callable[[], Awaitable[list]],
+) -> Callable[[], Awaitable[dict]]:
+    """Build the ``{tool_name: inputSchema}`` provider for pre-validation.
+
+    Factored out so tests can wire the real tool list to the real adapter
+    and prove rejected calls never reach the dispatcher. Tools without a
+    readable schema are skipped (fail-open per tool).
+    """
+
+    async def _provider() -> dict:
+        schemas: dict = {}
+        for tool in await list_tools_fn():
+            schema = _tool_input_schema(tool)
+            if schema:
+                schemas[tool.name] = schema
+        return schemas
+
+    return _provider
+
+
+def make_call_tool_handler(
+    call_tool_fn: Callable[[str, dict], Awaitable[list]],
+    schema_provider: Optional[Callable[[], Awaitable[dict]]] = None,
+) -> Callable[[Any, Any], Awaitable[Any]]:
+    """Adapt ``async (name, arguments) -> list[TextContent]`` to ``on_call_tool``.
+
+    Wraps the bare content list in ``CallToolResult`` and maps a raising
+    handler to an ``isError`` result.
+
+    When ``schema_provider`` is given (``async () -> {tool_name: inputSchema}``,
+    wired below from the same tool list), arguments are pre-validated with
+    ``jsonschema`` before delegating -- without this a rejected first call
+    would initialize the cold session. A validation failure returns the
+    ``isError`` shape ``Input validation error: ...``. Unknown tools (no
+    schema), a failing provider, or a missing ``jsonschema`` all fail open
+    to plain delegation.
+    """
+    from mcp.types import CallToolResult, TextContent
+
+    try:
+        from jsonschema import ValidationError as _ValidationError
+        from jsonschema import validate as _validate_jsonschema
+    except Exception:  # jsonschema absent -- pre-validation skipped (fail-open)
+        _ValidationError = None  # type: ignore[assignment]
+        _validate_jsonschema = None  # type: ignore[assignment]
+
+    _schema_cache: Optional[dict] = None
+
+    async def _schemas() -> dict:
+        nonlocal _schema_cache
+        if _schema_cache is None and schema_provider is not None:
+            try:
+                _schema_cache = await schema_provider()
+            except Exception:
+                _schema_cache = {}
+        return _schema_cache or {}
+
+    async def _on_call_tool(ctx: Any, params: Any) -> Any:
+        name = params.name
+        arguments = params.arguments or {}
+        if _validate_jsonschema is not None and schema_provider is not None:
+            schema = (await _schemas()).get(name)
+            if schema:
+                try:
+                    _validate_jsonschema(instance=arguments, schema=schema)
+                except _ValidationError as exc:
+                    return CallToolResult(
+                        content=[
+                            TextContent(
+                                type="text",
+                                text=f"Input validation error: {exc.message}",
+                            )
+                        ],
+                        is_error=True,
+                    )
+        # Issue #369 Phase 3: install this request's ProgressReporter for
+        # the duration of the call. Built from ctx + params meta: bound to
+        # ctx.session.report_progress when a progressToken was supplied,
+        # the no-op reporter otherwise (no token => byte-identical
+        # behavior for every handler and direct-call test).
+        _reporter_token = set_progress_reporter(
+            build_progress_reporter(ctx, params)
+        )
+        try:
+            content = await call_tool_fn(name, arguments)
+        except Exception as exc:
+            return CallToolResult(
+                content=[TextContent(type="text", text=f"Error: {exc}")],
+                is_error=True,
+            )
+        finally:
+            reset_progress_reporter(_reporter_token)
+        # Phase 2 (#369, ruling R2): attach structuredContent for batch-1
+        # tools, derived by parsing the final text payload (post
+        # _session_note rewrite inside call_tool). The content list is
+        # passed through untouched -- text bytes are byte-identical to the
+        # pre-Phase-2 wire shape. Error payloads attach nothing.
+        structured = derive_structured_content(name, content)
+        if structured is not None:
+            return CallToolResult(
+                content=list(content), structuredContent=structured
+            )
+        return CallToolResult(content=list(content))
+
+    return _on_call_tool
+
+
+# Initialize the MCP server (issue #369: mcp 2.x-only, low-level Server
+# with constructor-injected on_list_tools=/on_call_tool= adapters above).
+# Must follow the definitions above; version= is passed explicitly for
+# serverInfo parity (2.x defaults it to ""). instructions= carries the
+# unified-recipes server instructions (FR-027).
 _server_init_begin = _time_module.time()
-server = build_server("flextools-mcp", list_tools, call_tool,
-                      instructions=SERVER_INSTRUCTIONS)
+server = Server(
+    "flextools-mcp",
+    version=resolve_server_version(),
+    instructions=SERVER_INSTRUCTIONS,
+    on_list_tools=make_list_tools_handler(list_tools),
+    on_call_tool=make_call_tool_handler(call_tool, make_schema_provider(list_tools)),
+)
 _server_init_done = _time_module.time()
 
 async def main():

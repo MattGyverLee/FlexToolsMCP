@@ -103,9 +103,12 @@ EXPECTED_TOOL_NAMES = [
     # parser-check CP4. Stops a run; writes nothing to the project, so it is
     # neither READ_ONLY (it changes a run's state) nor DESTRUCTIVE (M-3).
     "flextools_parse_cancel",
-    # parser-check CP5. READ_ONLY_SAFE with respect to the live database
-    # (contracts/tools.md section 1): it parses a copy with the stand-alone
-    # hc tool and writes only under ~/.flextoolsmcp/parse/ and the run record.
+    # parser-check CP5. Never writes the live database (contracts/tools.md
+    # section 1): it parses a copy with the stand-alone hc tool and writes
+    # only under ~/.flextoolsmcp/parse/ and the run record. Since #369
+    # Phase 5 (S-P1-6) it is NOT annotated read-only: copying projects,
+    # writing sandboxes/corpora and spawning external tools are real side
+    # effects a host must see.
     "flextools_parse_sandbox",
     # issue #223. Releases this server's own idle parse worker(s); writes
     # nothing to the project, so it is neither READ_ONLY (it ends a worker
@@ -116,8 +119,11 @@ EXPECTED_TOOL_NAMES = [
 EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)
 
 # Tools that should be marked readOnlyHint=True
+# (#369 Phase 5: flextools_start is no longer here -- it mutates session
+# state incl. write_enabled, S-P2-5; flextools_parse_sandbox neither --
+# it copies projects and spawns external tools, S-P1-6. The frozen full
+# table lives in tests/test_tool_poisoning_regression.py T8.)
 READ_ONLY_TOOLS = [
-    "flextools_start",
     "flextools_get_object_api",
     "flextools_search_by_capability",
     "flextools_get_navigation_path",
@@ -141,7 +147,6 @@ READ_ONLY_TOOLS = [
     "flextools_parse_status",
     "flextools_parse_log",
     "flextools_parse_diff",
-    "flextools_parse_sandbox",
 ]
 
 # Tools that should be marked destructiveHint=True
@@ -199,10 +204,9 @@ class TestToolRegistration(ToolsTestBase):
                             f"Tool '{tool.name}' has empty description")
 
     def test_all_tools_have_input_schema(self):
-        """Every tool should have an inputSchema (either major's spelling)."""
-        from flextoolsmcp.mcp_compat import tool_input_schema
+        """Every tool should have an inputSchema (mcp 2.x: input_schema)."""
         for tool in self.tools:
-            schema = tool_input_schema(tool)
+            schema = tool.input_schema
             self.assertIsNotNone(schema,
                                  f"Tool '{tool.name}' has no inputSchema")
             self.assertEqual(schema.get("type"), "object",
@@ -223,49 +227,45 @@ class TestToolAnnotations(ToolsTestBase):
                                  f"Tool '{tool.name}' missing annotations")
 
     def test_annotations_have_required_keys(self):
-        """Every annotation dict should have all 4 standard keys (either spelling)."""
-        from flextoolsmcp.mcp_compat import normalized_annotation_keys
-        required_keys = {"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"}
+        """Every annotation dict should have all 4 standard keys (2.x snake_case)."""
+        required_keys = {"read_only_hint", "destructive_hint", "idempotent_hint", "open_world_hint"}
         for tool in self.tools:
             if tool.annotations is None:
                 continue
-            ann_keys = normalized_annotation_keys(tool.annotations)
+            ann_keys = set(vars(tool.annotations))
             for key in required_keys:
                 self.assertIn(key, ann_keys,
                               f"Tool '{tool.name}' annotations missing '{key}'")
 
     def test_readonly_tools_annotated_correctly(self):
-        """Read-only tools should have readOnlyHint=True."""
-        from flextoolsmcp.mcp_compat import annotation_value
+        """Read-only tools should have read_only_hint=True."""
         for name in READ_ONLY_TOOLS:
             tool = self.tools_by_name.get(name)
             if tool is None:
                 continue
-            readonly = annotation_value(tool.annotations, "readOnlyHint")
+            readonly = tool.annotations.read_only_hint
             self.assertTrue(readonly,
                             f"Tool '{name}' should be readOnlyHint=True")
 
     def test_destructive_tools_annotated_correctly(self):
-        """Destructive tools should have destructiveHint=True and readOnlyHint=False."""
-        from flextoolsmcp.mcp_compat import annotation_value
+        """Destructive tools should have destructive_hint=True and read_only_hint=False."""
         for name in DESTRUCTIVE_TOOLS:
             tool = self.tools_by_name.get(name)
             if tool is None:
                 continue
-            destructive = annotation_value(tool.annotations, "destructiveHint")
-            readonly = annotation_value(tool.annotations, "readOnlyHint")
+            destructive = tool.annotations.destructive_hint
+            readonly = tool.annotations.read_only_hint
             self.assertTrue(destructive,
                             f"Tool '{name}' should be destructiveHint=True")
             self.assertFalse(readonly,
                              f"Tool '{name}' should be readOnlyHint=False")
 
     def test_manage_config_is_not_readonly(self):
-        """manage_config has mixed read/write, so readOnlyHint should be False."""
-        from flextoolsmcp.mcp_compat import annotation_value
+        """manage_config has mixed read/write, so read_only_hint should be False."""
         tool = self.tools_by_name.get("flextools_manage_config")
         if tool is None:
             return
-        readonly = annotation_value(tool.annotations, "readOnlyHint")
+        readonly = tool.annotations.read_only_hint
         self.assertFalse(readonly,
                          "flextools_manage_config should be readOnlyHint=False (mixed read/write)")
 
@@ -418,32 +418,23 @@ class TestWorkflowGates(TestCase):
         ))
 
     def test_wire_rejected_cold_run_module_leaves_session_cold(self):
-        """Issue #83 review: on 2.x the raw on_call_tool handler has no
-        decorator pre-validation, so the wire adapter must reject invalid
-        arguments BEFORE the dispatcher (and its cold-session gate) runs --
-        a rejected first call must not initialize the session (1.x parity,
-        where the decorator validates before our code is ever invoked).
+        """Issue #83 review / #369: on 2.x the raw on_call_tool handler has
+        no decorator pre-validation, so the wire adapter in server.py must
+        reject invalid arguments BEFORE the dispatcher (and its cold-session
+        gate) runs -- a rejected first call must not initialize the session.
 
-        Driven through the real adapter + real tool list + real dispatcher,
-        so both majors execute identical code here."""
+        Driven through the real adapter + real tool list + real dispatcher."""
         from types import SimpleNamespace
 
-        from flextoolsmcp.mcp_compat import (  # type: ignore
-            make_call_tool_handler,
-            make_schema_provider,
-        )
         srv = _get_srv()
-        handler = make_call_tool_handler(
-            srv.call_tool, make_schema_provider(srv.list_tools)
+        handler = srv.make_call_tool_handler(
+            srv.call_tool, srv.make_schema_provider(srv.list_tools)
         )
         params = SimpleNamespace(
             name="flextools_run_module", arguments={"project_name": "Demo"}
         )
         result = run_async(handler(None, params))
-        is_error = getattr(result, "is_error", None)
-        if is_error is None:  # mcp 1.x spells the attribute isError
-            is_error = result.isError
-        self.assertTrue(is_error)
+        self.assertTrue(result.is_error)
         self.assertIn("Input validation error", result.content[0].text)
         self.assertFalse(srv.session_state.initialized)
 

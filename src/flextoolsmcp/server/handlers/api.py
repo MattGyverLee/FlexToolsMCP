@@ -20,9 +20,10 @@ from typing import List, Dict, Any
 # Import kernel and config (with fallback for both package and script modes)
 try:
     from ..kernel import get_api_index, session_state
-    from ...response_utils import json_response
+    from ...response_utils import build_response_with_context, json_response
     from ..response_keys import (
         # Basic fields
+        KEY_STATUS,
         KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
         KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
         KEY_MATCHES, KEY_FLEXICON, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_FLEXICON_MATCHES,
@@ -32,7 +33,7 @@ try:
         KEY_SOURCES_SEARCHED, KEY_FALLBACK_USED, KEY_API_MODE, KEY_API_MODE_DESCRIPTION,
         KEY_SEARCH_METHOD, KEY_SEMANTIC_AVAILABLE, KEY_IMPORT_STATEMENT, KEY_IMPORT_REQUIRED,
         KEY_TOTAL_METHODS, KEY_RETURNED_METHODS, KEY_PROPERTIES, KEY_TOTAL_PROPERTIES, KEY_RETURNED_PROPERTIES, KEY_HAS_MORE, KEY_NEXT_OFFSET,
-        KEY_SOURCE_FILE, KEY_SESSION_CONTEXT, KEY_DETECTED, KEY_AUTO_RESOLVED,
+        KEY_SOURCE_FILE, KEY_DETECTED, KEY_AUTO_RESOLVED,
         KEY_SELECTED, KEY_CONFIDENCE, KEY_REASONING, KEY_ALTERNATIVES, KEY_QUESTION,
         KEY_METHOD_NAME, KEY_OPERATION_TYPE, KEY_PYTHONIC_NAME, KEY_KIND, KEY_TARGET_TYPE,
         KEY_IS_MULTISTRING, KEY_EMPTY_VALUE_WARNING, KEY_PROPERTY_NAME, KEY_CONTEXT_ENTITY,
@@ -58,9 +59,10 @@ try:
     )
 except ImportError:
     from server.kernel import get_api_index, session_state
-    from response_utils import json_response
+    from response_utils import build_response_with_context, json_response
     from server.response_keys import (
         # Basic fields
+        KEY_STATUS,
         KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
         KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
         KEY_MATCHES, KEY_FLEXICON, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_FLEXICON_MATCHES,
@@ -70,7 +72,7 @@ except ImportError:
         KEY_SOURCES_SEARCHED, KEY_FALLBACK_USED, KEY_API_MODE, KEY_API_MODE_DESCRIPTION,
         KEY_SEARCH_METHOD, KEY_SEMANTIC_AVAILABLE, KEY_IMPORT_STATEMENT, KEY_IMPORT_REQUIRED,
         KEY_TOTAL_METHODS, KEY_RETURNED_METHODS, KEY_PROPERTIES, KEY_TOTAL_PROPERTIES, KEY_RETURNED_PROPERTIES, KEY_HAS_MORE, KEY_NEXT_OFFSET,
-        KEY_SOURCE_FILE, KEY_SESSION_CONTEXT, KEY_DETECTED, KEY_AUTO_RESOLVED,
+        KEY_SOURCE_FILE, KEY_DETECTED, KEY_AUTO_RESOLVED,
         KEY_SELECTED, KEY_CONFIDENCE, KEY_REASONING, KEY_ALTERNATIVES, KEY_QUESTION,
         KEY_METHOD_NAME, KEY_OPERATION_TYPE, KEY_PYTHONIC_NAME, KEY_KIND, KEY_TARGET_TYPE,
         KEY_IS_MULTISTRING, KEY_EMPTY_VALUE_WARNING, KEY_PROPERTY_NAME, KEY_CONTEXT_ENTITY,
@@ -387,19 +389,6 @@ def rank_object_matches(partial_name: str, matches: list, api_mode: str) -> dict
         KEY_MATCHES: matches[:5],
         "needs_clarification": not auto_resolve
     }
-
-
-def build_response_with_context(data: dict, include_session: bool = True) -> dict:
-    """Add session context to tool response."""
-
-    if include_session and session_state.initialized:
-        data[KEY_SESSION_CONTEXT] = {
-            KEY_API_MODE: session_state.api_mode,
-            "write_enabled": session_state.write_enabled,
-            "project": session_state.project_name or "(not set)"
-        }
-
-    return data
 
 
 @lru_cache(maxsize=1)
@@ -1229,7 +1218,13 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
         api_index.ensure_liblcm_loaded()
         sources.append(("liblcm", "liblcm", KEY_LIBLCM))
 
-    result = {KEY_OBJECT_TYPE: object_type, KEY_FOUND: False, KEY_API_MODE: mode}
+    result = {
+        KEY_OBJECT_TYPE: object_type, KEY_FOUND: False, KEY_API_MODE: mode,
+        # TOOL-CONTRACT success envelope: status is stamped here (the
+        # canonical build_response_with_context stamps _contract) so real
+        # payloads -- found AND not-found -- carry both guaranteed keys.
+        KEY_STATUS: "ok",
+    }
     object_type_lower = object_type.lower()
 
     matches_key_for = {
@@ -1370,7 +1365,9 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                 if method_name:
                     session_state.record_discovered_api(entity_name, method_name)
 
-        result = build_response_with_context(result, include_session=True)
+    # Stamped on BOTH branches: a not-found payload is still a success
+    # envelope (status="ok", found=false) and must carry _contract too.
+    result = build_response_with_context(result, include_session=True)
 
     if result.get(KEY_FOUND):
         session_state.record_validated_api(object_type)
@@ -1393,6 +1390,18 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         api_index.ensure_liblcm_loaded()
     if api_mode in ["all", "flexlibs_stable"]:
         api_index.ensure_flexlibs_stable_loaded()
+    if use_semantic:
+        # Cycle-2 QC P2 (#369): wire the semantic-search lazy load at its
+        # one live consumption point (below). ensure_semantic_search_loaded
+        # previously had NO caller, so SemanticSearch.load -- and its
+        # Phase 3 progress rungs -- could never run in production.
+        # getattr-guarded: duck-typed index doubles in tests need not
+        # implement it.
+        _ensure_semantic = getattr(
+            api_index, "ensure_semantic_search_loaded", None
+        )
+        if callable(_ensure_semantic):
+            _ensure_semantic()
 
     query_lower = query.lower()
     expanded_query = query
@@ -1646,6 +1655,8 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
 
     result = {
         KEY_QUERY: query,
+        # TOOL-CONTRACT success envelope (see handle_get_object_api).
+        KEY_STATUS: "ok",
     }
     if _recommended is not None:
         result[KEY_RECOMMENDED_RECIPE] = _recommended

@@ -186,3 +186,114 @@ class TestAvailableProjectsPayload:
         payload_fn = self._payload_fn()
         result = payload_fn()
         assert result == {"available_projects": [], "total_count": 0}
+
+
+# ---------------------------------------------------------------------------
+# Cycle-2 QC P1 (#369 Phase 5 fallout): the #53 cold-start gate must NOT be
+# derived from the host-facing tool annotations. Phase 5 honestly
+# reclassified flextools_parse_sandbox to readOnlyHint=False (it copies
+# projects and spawns external tools), and because the gate read the
+# annotation, a cold parse_sandbox call stopped auto-initializing. The
+# gate now consults the explicit COLD_START_SAFE_TOOLS set in
+# tool_definitions.py (the pre-Phase-5 READ_ONLY_SAFE membership);
+# annotations remain UX hints for clients, not the server's policy
+# boundary. End-to-end gate coverage mirrors
+# tests/test_mcp_tools.py::TestWorkflowGates.
+# ---------------------------------------------------------------------------
+
+import asyncio
+import json
+from functools import lru_cache
+from pathlib import Path
+
+
+@lru_cache(maxsize=1)
+def _get_srv_p1():
+    """Load src/flextoolsmcp/server.py directly (pattern: test_mcp_tools)."""
+    import importlib.util
+
+    server_py = Path(__file__).parent.parent / "src" / "flextoolsmcp" / "server.py"
+    spec = importlib.util.spec_from_file_location("_srv_issue53_p1", str(server_py))
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load spec from {server_py}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# The pre-Phase-5 READ_ONLY_SAFE membership (git 722422a,
+# server/tool_definitions.py): exactly the tools that were auto-init
+# eligible before the Phase 5 annotation truth fixes. The cold-start set
+# must equal this, no more and no less.
+_PRE_PHASE5_COLD_START_SAFE = {
+    "flextools_start",
+    "flextools_get_object_api",
+    "flextools_search_by_capability",
+    "flextools_get_navigation_path",
+    "flextools_find_examples",
+    "flextools_list_categories",
+    "flextools_list_entities_in_category",
+    "flextools_list_projects",
+    "flextools_get_module_template",
+    "flextools_start_module",
+    "flextools_get_operation_logs",
+    "flextools_resolve_property",
+    "flextools_get_session_history",
+    "flextools_health",
+    "flextools_grammar_health",
+    "flextools_try_word",
+    "flextools_parse_status",
+    "flextools_parse_log",
+    "flextools_parse_diff",
+    "flextools_parse_sandbox",
+    "flextools_get_wrapper_dependencies",
+    "flextools_resolve_type",
+    "flextools_list_skeletons",
+    "flextools_list_recipes",
+    "flextools_find_wrappers_for_lcm",
+}
+
+
+class TestColdStartGateDecoupledFromAnnotations:
+    def test_cold_start_safe_set_is_the_pre_phase5_membership(self):
+        from flextoolsmcp.server.tool_definitions import COLD_START_SAFE_TOOLS
+
+        assert set(COLD_START_SAFE_TOOLS) == _PRE_PHASE5_COLD_START_SAFE
+
+    def test_parse_sandbox_annotation_stays_honest(self):
+        """The fix must NOT re-flip parse_sandbox's annotation to buy back
+        the gate: readOnlyHint stays False (Phase 5 truth fix stands)."""
+        from flextoolsmcp.server.tool_definitions import TOOLS
+
+        annotations = TOOLS["flextools_parse_sandbox"].annotations
+        assert annotations.read_only_hint is False
+
+    def test_cold_parse_sandbox_auto_initializes(self):
+        """Cold flextools_parse_sandbox (no prior flextools_start) must
+        auto-initialize a read-only session and dispatch, exactly as it
+        did before Phase 5 -- NOT return session_not_initialized."""
+        from flextoolsmcp.server import kernel
+        from flextoolsmcp.server.handlers import admin as admin_mod
+        from flextoolsmcp.server.handlers import execution as execution_mod
+
+        srv = _get_srv_p1()
+        kernel.initialize_kernel()
+        kernel.set_api_index(srv.APIIndex.load(kernel.get_index_dir()))
+        kernel.reset_session()
+        srv.session_state = kernel.session_state
+        admin_mod.session_state = kernel.session_state
+        execution_mod.session_state = kernel.session_state
+        assert not kernel.session_state.initialized
+
+        result = asyncio.run(
+            srv.call_tool(
+                "flextools_parse_sandbox",
+                {"action": "list", "project_name": "NoSuchProject"},
+            )
+        )
+        data = json.loads(result[0].text)
+        assert data.get("error_code") != "session_not_initialized", data
+        assert kernel.session_state.initialized
+        assert kernel.session_state.auto_init_count == 1
+        assert not kernel.session_state.write_enabled
+        assert "_session_note" in data

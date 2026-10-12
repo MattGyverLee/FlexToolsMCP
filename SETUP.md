@@ -102,6 +102,16 @@ uv tool install flextools-mcp      # installs the `flextools-mcp` command
 pip install flextools-mcp          # into the current environment
 ```
 
+After a persistent install, run the warmup step once so the API indexes match
+your installed FieldWorks / library versions before the first real run:
+
+```powershell
+flextools-mcp-refresh
+```
+
+Without it the first run pays a one-off lazy index refresh instead — nothing
+breaks, it is just slower to start.
+
 ## Choose a working folder first
 
 Before you connect an assistant, make a **new, empty folder** for your FLEx work
@@ -127,7 +137,9 @@ mkdir ~/flex-scripts        # any empty folder; the name doesn't matter
 ## Connecting to AI assistants
 
 **Note:** Indexes ship with the package and also refresh automatically when your
-installed FieldWorks / library versions change. You don't need to refresh by hand.
+installed FieldWorks / library versions change. You don't need to refresh by hand —
+but after a persistent (`pip` / `uv tool`) install, running `flextools-mcp-refresh`
+once moves that refresh to install time so the first run doesn't pay it.
 
 ### Short-lived clients (Hermes, OpenClaw)
 
@@ -512,7 +524,8 @@ All user-writable state is under **`~/.flextoolsmcp/`** and persists across
 upgrades (it is never written into the installed package):
 
 - `logs/` — operation logs
-- `skeletons.jsonl` — saved module skeletons
+- `recipes.jsonl` — saved recipes (the legacy `skeletons.jsonl` is migrated into it)
+- `recipe-drafts/` — recipe drafts and promote output
 - `index/` — any indexes refreshed at runtime for your installed library versions
 - `hf/` — cached embedding model
 

@@ -123,7 +123,8 @@ def __getattr__(name: str):
         'run',
 
         # MCP protocol entry points (server.py: Server construction +
-        # list_tools/call_tool definitions, registered via mcp_compat) -- must
+        # list_tools/call_tool definitions, registered via the inlined
+        # mcp 2.x adapters in server.py) -- must
         # be reachable via `from flextoolsmcp.server import list_tools` etc.
         'server',
         'list_tools',
@@ -203,9 +204,10 @@ def __getattr__(name: str):
                 _server_load_error = exc
                 # Issue #285: name the mcp version when the cause is an mcp
                 # API break, so the server doesn't fail just as unclearly
-                # outside pytest. 1.x and 2.x are covered by the #83 compat
-                # shim -- an AttributeError on Server at import time now
-                # points at an mcp outside the supported mcp>=1.27.0,<3 range.
+                # outside pytest. mcp 2.x is covered by the inlined
+                # adapters in server.py (issue #369) -- an AttributeError
+                # on Server at import time now points at an mcp outside
+                # the supported mcp>=2,<3 range.
                 _mcp_hint = ""
                 if isinstance(exc, AttributeError) and "Server" in str(exc):
                     try:
@@ -214,15 +216,15 @@ def __getattr__(name: str):
                         _installed = _mcp_version("mcp")
                         _mcp_hint = (
                             f" This looks like mcp {_installed} is installed, "
-                            f"outside the supported range mcp>=1.27.0,<3 "
-                            f"(issues #83/#285). Run with the repo .venv "
+                            f"outside the supported range mcp>=2,<3 "
+                            f"(issues #369/#285). Run with the repo .venv "
                             f"or pip install -r requirements.txt."
                         )
                     except Exception:  # noqa: BLE001 -- hint is best-effort
                         _mcp_hint = (
                             " This looks like an unsupported mcp version "
-                            "(supported range is mcp>=1.27.0,<3 -- issues "
-                            "#83/#285). Run with the repo .venv "
+                            "(supported range is mcp>=2,<3 -- issues "
+                            "#369/#285). Run with the repo .venv "
                             "or pip install -r requirements.txt."
                         )
                 raise ImportError(

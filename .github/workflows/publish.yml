@@ -22,7 +22,7 @@ on:
 jobs:
   test:
     name: Full test matrix
-    # py3.10/3.12 x mcp 1.27.0/latest.  Push/PR CI runs only the py3.12 /
+    # py3.10/3.12 x mcp 2.0.0/latest.  Push/PR CI runs only the py3.12 /
     # latest cell for speed, so this is where the other three cells gate a
     # release.
     uses: ./.github/workflows/test.yml
@@ -95,17 +95,10 @@ jobs:
           Push-Location $smokeDir
           $smokePy = "$env:GITHUB_WORKSPACE\smoke-venv\Scripts\python.exe"
           $smokeCheck = "import asyncio; from flextoolsmcp.server import APIIndex, list_tools; ts = asyncio.run(list_tools()); print(len(ts)); assert len(ts) >= 10"
-          # Resolved mcp (2.x today). PowerShell does NOT stop on a failing
-          # native process, so check $LASTEXITCODE immediately -- otherwise a
-          # failed 2.x check followed by a passing 1.x check would still
-          # publish a broken wheel.
+          # Resolved mcp (2.x). PowerShell does NOT stop on a failing
+          # native process, so check $LASTEXITCODE immediately.
           & $smokePy -c $smokeCheck
           if ($LASTEXITCODE -ne 0) { throw "Smoke test failed under resolved MCP" }
-          # ... then the oldest supported 1.x floor (issue #83 dual support).
-          & $smokePy -m pip install "mcp==1.27.0"
-          if ($LASTEXITCODE -ne 0) { throw "MCP floor downgrade failed" }
-          & $smokePy -c $smokeCheck
-          if ($LASTEXITCODE -ne 0) { throw "Smoke test failed under MCP 1.27.0 floor" }
           Pop-Location
 
   publish:

@@ -251,6 +251,14 @@ def test_semantic_search_model_load_milestone_sequence(monkeypatch):
 
     fake_st.SentenceTransformer = lambda name: _FakeModel()
     monkeypatch.setitem(sys.modules, "sentence_transformers", fake_st)
+    # Force the faiss-absent branch of SemanticSearch.search explicitly:
+    # a None sys.modules entry makes `import faiss` raise ImportError,
+    # which is exactly what the production guard catches. Without this,
+    # the test's outcome depends on the ambient environment -- with real
+    # faiss installed (CI installs the full requirements), search would
+    # proceed past the milestones and faiss.normalize_L2 would touch
+    # .shape on the fake model's list return.
+    monkeypatch.setitem(sys.modules, "faiss", None)
 
     search = srv.SemanticSearch(
         enabled=True,
@@ -261,8 +269,9 @@ def test_semantic_search_model_load_milestone_sequence(monkeypatch):
     async def _drive():
         # search() is synchronous and blocks the loop; report_nowait
         # queues the notifications, flushed by the sleeps after it returns.
-        # (faiss is absent in the test venv, so search stops right after
-        # the "model ready" milestone -- both load milestones precede it.)
+        # (faiss is forced absent above via sys.modules, so search stops
+        # right after the "model ready" milestone -- both load milestones
+        # precede it.)
         search.search("gloss")
         await asyncio.sleep(0)
         await asyncio.sleep(0)

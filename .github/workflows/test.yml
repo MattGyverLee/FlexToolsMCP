@@ -3,10 +3,10 @@ name: Test
 # Two tiers:
 #   fast  -- push / pull_request: one Windows job (py3.12, mcp latest) plus the
 #            Linux smoke job, in parallel.  Keeps branch feedback quick.
-#   full  -- the py3.10/3.12 x mcp 1.27.0/latest matrix.  Runs weekly, on
+#   full  -- the py3.10/3.12 x mcp 2.0.0/latest matrix.  Runs weekly, on
 #            manual dispatch, and as a gate inside publish.yml (workflow_call)
 #            so nothing reaches PyPI without it.  The weekly run keeps the gap
-#            between "a commit broke the 1.x path" and "we noticed" to days,
+#            between "a commit broke the 2.x floor" and "we noticed" to days,
 #            not a whole release cycle.
 
 on:
@@ -71,13 +71,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Issue #83: dual mcp 1.x/2.x support means two live registration
-        # paths -- the full tier must run under both pins or the untested
-        # branch rots. "1.27.0" is the oldest supported 1.x floor; "latest"
-        # resolves the capped range (2.x today).  The fast tier runs only the
-        # py3.12 / latest cell.
+        # Issue #369: mcp 2.x-only. The full tier runs the oldest supported
+        # 2.x floor ("2.0.0" -- catches accidental use of 2.1+ APIs) and
+        # "latest" (resolves the capped >=2,<3 range).  The fast tier runs
+        # only the py3.12 / latest cell.
         python-version: ${{ fromJSON((inputs.full_matrix || github.event_name == 'schedule') && '["3.10", "3.12"]' || '["3.12"]') }}
-        mcp: ${{ fromJSON((inputs.full_matrix || github.event_name == 'schedule') && '["1.27.0", "latest"]' || '["latest"]') }}
+        mcp: ${{ fromJSON((inputs.full_matrix || github.event_name == 'schedule') && '["2.0.0", "latest"]' || '["latest"]') }}
 
     steps:
       - uses: actions/checkout@v7

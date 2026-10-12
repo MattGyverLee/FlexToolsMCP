@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.12.0"
+    "version": "4.13.0"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -34065,6 +34065,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34128,6 +34131,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34218,6 +34224,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34294,6 +34303,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34373,6 +34385,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34449,6 +34464,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34470,6 +34488,223 @@
       "methods_called": [],
       "properties_accessed": [
         "ClassName"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "InflectionFeatureOperations.ExceptionFeatureCreate": {
+      "class": "InflectionFeatureOperations",
+      "factories_used": [
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory"
+      ],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [
+          "ICmPossibilityFactory",
+          "ICmPossibilityListFactory"
+        ],
+        "mapping_type": "composite",
+        "methods_called": [
+          ".Add()",
+          ".Create()",
+          ".set_String()"
+        ],
+        "param_usage": {
+          "name": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of ExceptionFeatureFind()",
+            "arg[0] of MakeString()"
+          ]
+        },
+        "properties_accessed": [
+          "MorphologicalDataOA (OwningAtomic)",
+          "PossibilitiesOS (OwningSequence)",
+          "ProdRestrictOA (OwningAtomic)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "abbreviation",
+            "type": "default_value"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": [
+          "TsStringUtils.MakeString"
+        ]
+      },
+      "lcm_deps": [
+        "IMoInflClass",
+        "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
+        "IFsFeatDefn",
+        "IFsComplexFeature",
+        "IFsComplexFeatureFactory",
+        "IFsClosedFeature",
+        "IFsClosedFeatureFactory",
+        "IFsSymFeatVal",
+        "IFsSymFeatValFactory",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsFeatStrucType",
+        "IFsFeatStrucTypeFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "composite",
+      "method": "ExceptionFeatureCreate",
+      "methods_called": [
+        ".Add()",
+        ".Create()",
+        ".set_String()"
+      ],
+      "properties_accessed": [
+        "MorphologicalDataOA (OwningAtomic)",
+        "PossibilitiesOS (OwningSequence)",
+        "ProdRestrictOA (OwningAtomic)"
+      ],
+      "repositories_used": [],
+      "utilities_used": [
+        "TsStringUtils.MakeString"
+      ]
+    },
+    "InflectionFeatureOperations.ExceptionFeatureFind": {
+      "class": "InflectionFeatureOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [
+          ".get_String()"
+        ],
+        "param_usage": {
+          "name": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
+          ],
+          "wsHandle": [
+            "arg[0] of __WSHandle()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          },
+          {
+            "description": "Converts to ITsString",
+            "pattern": "ITsString",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoInflClass",
+        "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
+        "IFsFeatDefn",
+        "IFsComplexFeature",
+        "IFsComplexFeatureFactory",
+        "IFsClosedFeature",
+        "IFsClosedFeatureFactory",
+        "IFsSymFeatVal",
+        "IFsSymFeatValFactory",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsFeatStrucType",
+        "IFsFeatStrucTypeFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "ExceptionFeatureFind",
+      "methods_called": [
+        ".get_String()"
+      ],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "InflectionFeatureOperations.ExceptionFeatureGetAll": {
+      "class": "InflectionFeatureOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "convenience",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [
+          "MorphologicalDataOA (OwningAtomic)",
+          "PossibilitiesOS (OwningSequence)",
+          "ProdRestrictOA (OwningAtomic)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoInflClass",
+        "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
+        "IFsFeatDefn",
+        "IFsComplexFeature",
+        "IFsComplexFeatureFactory",
+        "IFsClosedFeature",
+        "IFsClosedFeatureFactory",
+        "IFsSymFeatVal",
+        "IFsSymFeatValFactory",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsFeatStrucType",
+        "IFsFeatStrucTypeFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "convenience",
+      "method": "ExceptionFeatureGetAll",
+      "methods_called": [],
+      "properties_accessed": [
+        "MorphologicalDataOA (OwningAtomic)",
+        "PossibilitiesOS (OwningSequence)",
+        "ProdRestrictOA (OwningAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -34505,6 +34740,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34574,6 +34812,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34645,6 +34886,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34699,6 +34943,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34760,6 +35007,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34814,6 +35064,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34863,6 +35116,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34905,6 +35161,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -34979,6 +35238,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35044,6 +35306,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35091,6 +35356,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35161,6 +35429,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35210,6 +35481,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35274,6 +35548,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35348,6 +35625,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35394,20 +35674,35 @@
           "name": [
             "arg[0] of _ValidateParam()",
             "arg[0] of normalize_match_key()",
+            "arg[1] of debug()",
             "arg[0] of MakeString()"
+          ],
+          "parent": [
+            "arg[0] of __ResolveInflectionClass()",
+            "arg[2] of getattr()"
+          ],
+          "pos": [
+            "arg[0] of __ResolvePOS()",
+            "arg[2] of getattr()"
           ]
         },
         "properties_accessed": [
-          "MorphologicalDataOA (OwningAtomic)",
-          "PossibilitiesOS (OwningSequence)",
-          "ProdRestrictOA (OwningAtomic)"
+          "Hvo",
+          "InflectionClassesOC (OwningCollection)",
+          "SubclassesOC (OwningCollection)",
+          "__ResolvePOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
           {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
+            "default": "None",
+            "param": "pos",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "parent",
+            "type": "default_value"
           }
         ],
         "utilities_used": [
@@ -35417,6 +35712,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35441,9 +35739,10 @@
         ".set_String()"
       ],
       "properties_accessed": [
-        "MorphologicalDataOA (OwningAtomic)",
-        "PossibilitiesOS (OwningSequence)",
-        "ProdRestrictOA (OwningAtomic)"
+        "Hvo",
+        "InflectionClassesOC (OwningCollection)",
+        "SubclassesOC (OwningCollection)",
+        "__ResolvePOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": [
@@ -35456,7 +35755,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
           ".Remove()"
         ],
@@ -35467,9 +35766,7 @@
           ]
         },
         "properties_accessed": [
-          "MorphologicalDataOA (OwningAtomic)",
-          "PossibilitiesOS (OwningSequence)",
-          "ProdRestrictOA (OwningAtomic)"
+          "Owner"
         ],
         "repositories_used": [],
         "transformations": [],
@@ -35478,6 +35775,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35494,15 +35794,13 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "InflectionClassDelete",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "MorphologicalDataOA (OwningAtomic)",
-        "PossibilitiesOS (OwningSequence)",
-        "ProdRestrictOA (OwningAtomic)"
+        "Owner"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -35561,6 +35859,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35592,13 +35893,11 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [],
         "param_usage": {},
         "properties_accessed": [
-          "MorphologicalDataOA (OwningAtomic)",
-          "PossibilitiesOS (OwningSequence)",
-          "ProdRestrictOA (OwningAtomic)"
+          "POS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -35613,6 +35912,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35629,13 +35931,11 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "InflectionClassGetAll",
       "methods_called": [],
       "properties_accessed": [
-        "MorphologicalDataOA (OwningAtomic)",
-        "PossibilitiesOS (OwningSequence)",
-        "ProdRestrictOA (OwningAtomic)"
+        "POS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -35694,6 +35994,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35770,6 +36073,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35848,6 +36154,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35913,6 +36222,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -35983,6 +36295,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -36067,6 +36382,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -36116,6 +36434,9 @@
       "lcm_deps": [
         "IMoInflClass",
         "IMoInflClassFactory",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
         "IFsFeatDefn",
@@ -50050,17 +50371,20 @@
           "msa_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __GetMsaObject()"
+          ],
+          "side": [
+            "arg[1] of __ExceptionFeatureRC()"
           ]
         },
         "properties_accessed": [
-          "__ProdRestrictRC (ReferenceCollection)"
+          "__ExceptionFeatureRC (ReferenceCollection)"
         ],
         "repositories_used": [],
         "transformations": [
           {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
+            "default": "\"from\"",
+            "param": "side",
+            "type": "default_value"
           }
         ],
         "utilities_used": []
@@ -50089,7 +50413,7 @@
         ".Add()"
       ],
       "properties_accessed": [
-        "__ProdRestrictRC (ReferenceCollection)"
+        "__ExceptionFeatureRC (ReferenceCollection)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -50175,6 +50499,7 @@
         "factories_used": [],
         "mapping_type": "convenience",
         "methods_called": [
+          ".Add()",
           ".Remove()"
         ],
         "param_usage": {
@@ -50195,6 +50520,7 @@
           "ClassName",
           "FromInflectionClassRA (ReferenceAtomic)",
           "FromPartOfSpeechRA (ReferenceAtomic)",
+          "FromProdRestrictRC (ReferenceCollection)",
           "Hvo",
           "InflFeatsOA (OwningAtomic)",
           "MainPOS (OwningSequence)",
@@ -50241,12 +50567,14 @@
       "mapping_type": "convenience",
       "method": "ChangeAffixVariant",
       "methods_called": [
+        ".Add()",
         ".Remove()"
       ],
       "properties_accessed": [
         "ClassName",
         "FromInflectionClassRA (ReferenceAtomic)",
         "FromPartOfSpeechRA (ReferenceAtomic)",
+        "FromProdRestrictRC (ReferenceCollection)",
         "Hvo",
         "InflFeatsOA (OwningAtomic)",
         "MainPOS (OwningSequence)",
@@ -50695,16 +51023,29 @@
           "msa_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __GetMsaObject()"
+          ],
+          "side": [
+            "arg[1] of __ExceptionFeatureRC()"
           ]
         },
         "properties_accessed": [
-          "__ProdRestrictRC (ReferenceCollection)"
+          "__ExceptionFeatureRC (ReferenceCollection)"
         ],
         "repositories_used": [],
         "transformations": [
           {
+            "default": "\"from\"",
+            "param": "side",
+            "type": "default_value"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
             "type": "type_conversion"
           }
         ],
@@ -50732,7 +51073,7 @@
       "method": "GetExceptionFeatures",
       "methods_called": [],
       "properties_accessed": [
-        "__ProdRestrictRC (ReferenceCollection)"
+        "__ExceptionFeatureRC (ReferenceCollection)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -51228,13 +51569,22 @@
           "msa_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __GetMsaObject()"
+          ],
+          "side": [
+            "arg[1] of __ExceptionFeatureRC()"
           ]
         },
         "properties_accessed": [
-          "__ProdRestrictRC (ReferenceCollection)"
+          "__ExceptionFeatureRC (ReferenceCollection)"
         ],
         "repositories_used": [],
-        "transformations": [],
+        "transformations": [
+          {
+            "default": "\"from\"",
+            "param": "side",
+            "type": "default_value"
+          }
+        ],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -51261,7 +51611,7 @@
         ".Remove()"
       ],
       "properties_accessed": [
-        "__ProdRestrictRC (ReferenceCollection)"
+        "__ExceptionFeatureRC (ReferenceCollection)"
       ],
       "repositories_used": [],
       "utilities_used": []

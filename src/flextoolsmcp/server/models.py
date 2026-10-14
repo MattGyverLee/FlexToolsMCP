@@ -147,6 +147,44 @@ class GetModuleTemplateInput(BaseModel):
     )
 
 
+class RefreshIndexesInput(BaseModel):
+    """Rebuild the bundled API indexes (the flextools-mcp-refresh pipeline).
+
+    Fields mirror the refresh CLI's options one-for-one, with the CLI
+    defaults; installed packages are always preferred and the paths are
+    fallbacks for source checkouts. Not read-only: the pipeline rewrites
+    the generated index files under the package's index directory and
+    archives superseded versions.
+    """
+    flexicon_path: Optional[str] = Field(
+        default=None,
+        description="Path to a Flexicon source checkout (fallback; the "
+                    "installed pyflexicon package is always preferred)"
+    )
+    flexlibs_path: Optional[str] = Field(
+        default=None,
+        description="Path to a FlexLibs stable source checkout (fallback; "
+                    "the installed flexlibs package is always preferred)"
+    )
+    dll_path: Optional[str] = Field(
+        default=None,
+        description="Path to the FieldWorks DLL directory for the LibLCM "
+                    "scan (auto-detected when omitted)"
+    )
+    skip_categorization: bool = Field(
+        default=False,
+        description="Skip the semantic categorization pass over the "
+                    "LibLCM index (CLI: --skip-categorization)"
+    )
+    skip_postprocess: bool = Field(
+        default=False,
+        description="Skip the cross-linking post-processors: reverse "
+                    "mapping, navigation graph, common patterns, casting "
+                    "index, element types, GetAll contracts "
+                    "(CLI: --skip-postprocess)"
+    )
+
+
 # ============================================================
 # Discovery Tools
 # ============================================================

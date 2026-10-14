@@ -82,6 +82,10 @@ EXPECTED_TOOL_NAMES = [
     "flextools_resolve_type",
     "flextools_manage_config",
     "flextools_get_session_history",
+    # #369 Phase 3 follow-up (R3 option (i)): the refresh pipeline as a
+    # tool. Destructive (rewrites generated index files) -- see
+    # DESTRUCTIVE_TOOLS below.
+    "flextools_refresh_indexes",
     "flextools_get_wrapper_dependencies",
     "flextools_find_wrappers_for_lcm",
     "flextools_list_skeletons",
@@ -153,6 +157,7 @@ READ_ONLY_TOOLS = [
 DESTRUCTIVE_TOOLS = [
     "flextools_run_module",
     "flextools_parse_text",
+    "flextools_refresh_indexes",
 ]
 
 

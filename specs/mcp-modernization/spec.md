@@ -78,6 +78,12 @@ health: deferred (shape-variant/stateful).
   Matthew 2026-10-11: (i) new `flextools_refresh_indexes` tool;
   (ii) document progress N/A for refresh; (iii) wire embeddings into
   refresh first, then decide. Phases C/B/E/H proceed regardless.
+  **Resolved 2026-10-12: Matthew ruled (i)** — `flextools_refresh_indexes`
+  landed on branch `feat/369-refresh-tool`, running the shared
+  `refresh.run_refresh()` pipeline with per-step progress. Embeddings
+  wiring (option iii's first half) remains unchosen and out of scope:
+  refresh still does not build embeddings, and the tool does not claim
+  to.
 
 ### R4 — Phase 4 discovery
 - `server.json` at repo root per cycle1-registry draft (schema 2025-12-11,

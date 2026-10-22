@@ -674,6 +674,60 @@ def code_is_from_recipe(code: str, recipe: Dict[str, Any]) -> bool:
     return hits >= _FROM_RECIPE_LINE_RATIO * len(wanted)
 
 
+def _recipe_body_overlap(code: str, recipe: Dict[str, Any]) -> tuple[int, int]:
+    """Non-PARAMS line hits vs total significant lines in ``recipe``'s body."""
+    wanted = _significant_lines(recipe.get("code", "") or "")
+    if not wanted:
+        return 0, 0
+    have = set(_significant_lines(code))
+    hits = sum(1 for ln in wanted if ln in have)
+    return hits, len(wanted)
+
+
+def _iter_known_recipes() -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = list(CURATED_RECIPES.values())
+    try:
+        try:
+            from . import local_recipes as _local
+        except ImportError:
+            from server import local_recipes as _local  # type: ignore
+        rows.extend(_local.load_local_recipes() or [])
+    except Exception:
+        pass
+    return rows
+
+
+def existing_source_allows_discovery_skip(code: str) -> bool:
+    """Whether ``source='existing'`` may skip API-discovery gates (S-P1-3).
+
+    Faithful recipe reuse (>= ``_FROM_RECIPE_LINE_RATIO`` of a known recipe's
+    body) and code with no recipe overlap (human paste from disk) may skip.
+    Partial overlap below the ratio is treated as a tampered recipe body and
+    must run the discovery gates even when the caller passes ``source='existing'``.
+    """
+    any_overlap = False
+    for recipe in _iter_known_recipes():
+        hits, total = _recipe_body_overlap(code or "", recipe)
+        if total == 0 or hits == 0:
+            continue
+        any_overlap = True
+        if hits >= _FROM_RECIPE_LINE_RATIO * total:
+            return True
+    if any_overlap:
+        return False
+    return True
+
+
+def local_recipe_how_to_run(recipe_id: str, requires_write: bool) -> str:
+    """Run guidance for a local capture -- distinct from shipped trust framing."""
+    base = recipe_how_to_run(recipe_id, requires_write)
+    return (
+        f"{base[:-1] if base.endswith('.') else base} "
+        "(local capture from a prior session -- not shipped-validated; review the "
+        "full code before reuse; prefer a shipped recipe when one fits)."
+    )
+
+
 def recipe_hint_for_run(user_intent: Optional[str], code: str) -> Optional[Dict[str, Any]]:
     """Non-blocking run_module hint when ``user_intent`` strongly matches a
     library recipe that ``code`` is not from; None otherwise. Never raises."""

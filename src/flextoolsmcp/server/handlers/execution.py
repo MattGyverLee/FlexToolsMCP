@@ -3089,7 +3089,10 @@ async def _handle_validate_only(
         write_enabled=write_enabled,
         api_mode=api_mode,
         skip_api_check=bool(args.get("skip_api_check", False)),
-        provenance_existing=(args.get("source", "authored") == "existing"),
+        provenance_existing=(
+            args.get("source", "authored") == "existing"
+            and _recipes_module().existing_source_allows_discovery_skip(code)
+        ),
         skip_module_check=bool(args.get("skip_module_check", False)),
     )
 
@@ -4058,6 +4061,10 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # relax a safety gate.
     source_provenance = args.get("source", "authored")
     _provenance_existing = source_provenance == "existing"
+    _discovery_provenance_existing = (
+        _provenance_existing
+        and _recipes_module().existing_source_allows_discovery_skip(code or "")
+    )
 
     # Validate project_name is available BEFORE assigning an op_id -- without
     # both code and project the call isn't really an "operation" worth logging
@@ -4852,11 +4859,18 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # only: write-safety (checked earlier, unconditionally) and casting injection
     # are unaffected, so it can never relax a safety gate.
     if _provenance_existing:
-        get_operations_logger().info(
-            "[DISCOVERY] source='existing' -- skipping api_discovery_required and "
-            "undiscovered_entity gates (issue #80). Write-safety + casting already "
-            "ran and are unaffected by provenance."
-        )
+        if _discovery_provenance_existing:
+            get_operations_logger().info(
+                "[DISCOVERY] source='existing' -- skipping api_discovery_required and "
+                "undiscovered_entity gates (issue #80). Write-safety + casting already "
+                "ran and are unaffected by provenance."
+            )
+        else:
+            get_operations_logger().info(
+                "[DISCOVERY] source='existing' but code partially matches a known "
+                "recipe below the reuse ratio (S-P1-3) -- running api_discovery and "
+                "undiscovered_entity gates anyway."
+            )
     if is_stateless_client_mode() and not skip_api_check and not _provenance_existing:
         get_operations_logger().info(
             "[DISCOVERY] FLEXTOOLS_STATELESS=1 -- skipping api_discovery_required and "
@@ -4865,7 +4879,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         )
     _skip_discovery_gates = should_skip_discovery_gates(
         skip_api_check=skip_api_check,
-        provenance_existing=_provenance_existing,
+        provenance_existing=_discovery_provenance_existing,
     )
 
     if not _skip_discovery_gates and len(session_state.get_discovered_apis()) == 0:

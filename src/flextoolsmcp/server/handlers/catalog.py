@@ -319,6 +319,19 @@ def _list_full_row(recipe_id: str, recipe: dict) -> dict:
     row["notes"] = recipe.get("notes", "")
     row["match_terms"] = list(recipe.get("match_terms", []) or [])
     row["operations"] = list(recipe.get("operations", []) or [])
+    label = row.get("source", "shipped")
+    requires_write = bool(row.get("requires_write", False))
+    try:
+        try:
+            from ..recipes import local_recipe_how_to_run, recipe_how_to_run
+        except ImportError:
+            from server.recipes import local_recipe_how_to_run, recipe_how_to_run
+        if label == "local":
+            row["how_to_run"] = local_recipe_how_to_run(recipe_id, requires_write)
+        else:
+            row["how_to_run"] = recipe_how_to_run(recipe_id, requires_write)
+    except Exception:
+        pass
     if recipe.get("origin") is not None:
         row["origin"] = recipe.get("origin")
     if recipe.get("verified_against") is not None:

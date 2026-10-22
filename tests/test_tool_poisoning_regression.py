@@ -787,6 +787,34 @@ def test_t4_ladder_is_provenance_independent(local_recipe_store, monkeypatch, tm
 # ---------------------------------------------------------------------------
 
 
+def test_t5_altered_recipe_with_existing_source_runs_discovery_gates():
+    """Tampered recipe bodies must not inherit source='existing' discovery skip."""
+    from flextoolsmcp.server.recipes import (
+        _shipped_recipes,
+        _significant_lines,
+        existing_source_allows_discovery_skip,
+    )
+
+    shipped = _shipped_recipes()
+    _recipe_id, recipe = max(shipped.items(), key=lambda kv: len(kv[1].get("code", "")))
+    code = recipe["code"]
+    sig = _significant_lines(code)
+    assert len(sig) >= 4
+    altered_lines = []
+    replaced = 0
+    for line in code.splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and replaced < len(sig):
+            altered_lines.append("pass  # altered")
+            replaced += 1
+        else:
+            altered_lines.append(line)
+    altered = "\n".join(altered_lines)
+    assert existing_source_allows_discovery_skip(code) is True
+    assert existing_source_allows_discovery_skip(altered) is False
+    assert existing_source_allows_discovery_skip("x = 1\n") is True
+
+
 def test_t5_params_only_change_counts_as_from_recipe_heavily_altered_does_not():
     from flextoolsmcp.server.recipes import _shipped_recipes, code_is_from_recipe
 

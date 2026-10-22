@@ -1599,11 +1599,21 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     # search_by_capability calls couldn't find MSA wiring / phonology
     # patterns because no single method docstring contained the full recipe.
     try:
-        from ..worked_examples import find_worked_examples
+        from ..worked_examples import (
+            annotate_worked_examples_for_response,
+            find_worked_examples,
+            worked_examples_data_provenance,
+        )
     except ImportError:
-        from server.worked_examples import find_worked_examples
+        from server.worked_examples import (
+            annotate_worked_examples_for_response,
+            find_worked_examples,
+            worked_examples_data_provenance,
+        )
 
-    matched_patterns = find_worked_examples(query=query, max_results=3)
+    matched_patterns = annotate_worked_examples_for_response(
+        find_worked_examples(query=query, max_results=3)
+    )
 
     # Issue #52: attach a curated, runnable recipe to the TOP hit when the
     # query matches one closely (one recipe max per response -- recipes are
@@ -1680,6 +1690,8 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     })
     if _recipe_result.get("recipes_hint") is not None:
         result[KEY_RECIPES_HINT] = _recipe_result["recipes_hint"]
+    if matched_patterns:
+        result["worked_examples_data_provenance"] = worked_examples_data_provenance()
     if deprecation_redirects:
         result[KEY_DEPRECATION_REDIRECTS] = deprecation_redirects
 
@@ -1768,15 +1780,25 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
     # Augment with multi-step worked examples (Phase A of #12 -- patterns
     # that span multiple methods, not individual docstring snippets).
     try:
-        from ..worked_examples import find_worked_examples
+        from ..worked_examples import (
+            annotate_worked_examples_for_response,
+            find_worked_examples,
+            worked_examples_data_provenance,
+        )
     except ImportError:
-        from server.worked_examples import find_worked_examples
+        from server.worked_examples import (
+            annotate_worked_examples_for_response,
+            find_worked_examples,
+            worked_examples_data_provenance,
+        )
 
-    matched_patterns = find_worked_examples(
-        query="",  # find_examples doesn't take a free-text query yet
-        operation_type=operation_type or "",
-        object_type=object_type or "",
-        max_results=max_results,
+    matched_patterns = annotate_worked_examples_for_response(
+        find_worked_examples(
+            query="",  # find_examples doesn't take a free-text query yet
+            operation_type=operation_type or "",
+            object_type=object_type or "",
+            max_results=max_results,
+        )
     )
 
     # US2: surface local recipes captured from prior successful sessions.
@@ -1875,6 +1897,8 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         "recipes": matched_recipes,
         "recipes_count": len(matched_recipes),
     }
+    if matched_patterns:
+        response["worked_examples_data_provenance"] = worked_examples_data_provenance()
     if skeletons_from_sessions:
         # Legacy key stays for back-compat; points at local recipes now.
         response["skeletons_from_your_sessions"] = skeletons_from_sessions

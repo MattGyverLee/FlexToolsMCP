@@ -480,6 +480,54 @@ def test_t3c_index_provenance_confers_no_preflight_exemption(poisoned_api):
 
 
 # ---------------------------------------------------------------------------
+# T3d (S-P1-2): worked examples served through discovery tools carry
+# data/provenance labelling distinct from server guidance.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def api_index():
+    from flextoolsmcp.server import APIIndex, get_index_dir
+
+    return APIIndex.load(get_index_dir())
+
+
+@pytest.fixture()
+def discovery_session(api_index, tmp_path, monkeypatch):
+    from flextoolsmcp.server import kernel
+
+    kernel.set_api_index(api_index)
+    kernel.session_state.configure(session_id="test-sp1-2", api_mode="flexicon")
+    monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(tmp_path / "empty-recipes"))
+
+
+def test_t3d_worked_examples_in_search_are_labelled_as_data(discovery_session):
+    from flextoolsmcp.server.handlers.api import handle_search_by_capability
+
+    out = asyncio.run(handle_search_by_capability({"query": "phonological rule factory"}))
+    payload = _parse(out)
+    assert payload.get("worked_examples_count", 0) >= 1, payload
+    assert payload.get("worked_examples_data_provenance", {}).get("trust") == (
+        "data_not_server_instructions"
+    )
+    for ex in payload["worked_examples"]:
+        assert ex.get("provenance", {}).get("kind") == "worked_example_documentation", ex
+
+
+def test_t3d_worked_examples_in_find_examples_are_labelled_as_data(discovery_session):
+    from flextoolsmcp.server.handlers.api import handle_find_examples
+
+    out = asyncio.run(
+        handle_find_examples({"object_type": "phoneme", "operation_type": "create"})
+    )
+    payload = _parse(out)
+    assert payload.get("worked_examples_count", 0) >= 1, payload
+    assert payload.get("worked_examples_data_provenance", {}).get("trust") == (
+        "data_not_server_instructions"
+    )
+
+
+# ---------------------------------------------------------------------------
 # T8 (security §4): frozen annotation truth table for all 32 tools.
 # (readOnly, destructive, idempotent, openWorld)
 # ---------------------------------------------------------------------------

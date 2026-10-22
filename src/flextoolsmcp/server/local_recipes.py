@@ -311,6 +311,19 @@ def _extract_params(code: str) -> List[Dict[str, str]]:
     return []
 
 
+def _scrub_for_storage(code: str, project: Optional[str] = None) -> str:
+    """Apply shipped scrub patterns before persisting (S-P1-4, #369 Phase 5)."""
+    try:
+        try:
+            from .. import recipe_files as _rf  # type: ignore
+        except ImportError:
+            import recipe_files as _rf  # type: ignore
+        projects = [project] if project else None
+        return _rf.scrub_recipe_code(code, projects)
+    except Exception:
+        return code
+
+
 # ---------------------------------------------------------------------------
 # Remember gate (issue #309)
 # ---------------------------------------------------------------------------
@@ -827,6 +840,17 @@ def capture(
             return None
         fp = fingerprint_code(code)
         rid = f"local-{fp}"
+        proj = project if project is not None else (project_name or "")
+        # S-P1-4 (#369 Phase 5): strip GUID/user-path/forbidden-name lines
+        # before the row is stored and later re-served without the shipped
+        # validator gate.
+        code = _scrub_for_storage(code, proj or None)
+        if not code.strip():
+            return None
+        try:
+            ast.parse(code)
+        except SyntaxError:
+            return None
         entities = _entities_from_code(code)
         params = _extract_params(code)
         # Issue #309: requires_write from the run's write evidence, not a
@@ -838,7 +862,6 @@ def capture(
             performs_writes=performs_writes,
             lcm_undoable_action_count=lcm_undoable_action_count,
         )
-        proj = project if project is not None else (project_name or "")
         now = _now_iso()
         with _WRITE_LOCK:
             try:

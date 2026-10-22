@@ -43,6 +43,7 @@ __all__ = [
     "parse_params",
     "extract_code_terms",
     "find_scrub_lines",
+    "scrub_recipe_code",
     "load_recipe_library",
     "merge_recipes",
     "render_draft",
@@ -343,6 +344,27 @@ def find_scrub_lines(
         if any(n and n in line for n in names):
             hits.append((lineno, line.strip()))
     return hits
+
+
+def scrub_recipe_code(
+    code: str, projects: Optional[List[str]] = None
+) -> str:
+    """Drop lines that fail the shipped scrub patterns (S-P1-4, #369 Phase 5).
+
+    Local recipes are auto-captured from successful runs and re-served later
+    without the shipped validator gate; stripping GUID literals, Windows user
+    paths, and forbidden project-name lines before persistence matches the
+    promote/scrub standard applied to human-authored recipes.
+    """
+    flagged = {lineno for lineno, _ in find_scrub_lines(code, projects)}
+    if not flagged:
+        return code
+    lines = code.splitlines()
+    kept = [line for idx, line in enumerate(lines, start=1) if idx not in flagged]
+    out = "\n".join(kept)
+    if code.endswith("\n"):
+        out += "\n"
+    return out
 
 
 # ---------------------------------------------------------------------------

@@ -19,9 +19,11 @@ import pytest
 from flextoolsmcp import recipe_files
 from flextoolsmcp.recipe_files import (
     extract_code_terms,
+    find_scrub_lines,
     load_recipe_library,
     parse_params,
     parse_recipe_source,
+    scrub_recipe_code,
 )
 
 

@@ -819,12 +819,6 @@ def test_t5_params_only_change_counts_as_from_recipe_heavily_altered_does_not():
     assert code_is_from_recipe(altered, recipe) is False
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="S-P1-4: auto-captured local recipes are not scrubbed to the "
-    "shipped standard (find_scrub_lines) before re-serve (follow-up, "
-    "#369 Phase 5 report)",
-)
 def test_t5_local_capture_is_scrubbed_before_reserve(tmp_path, monkeypatch):
     from flextoolsmcp import recipe_files
     from flextoolsmcp.server import local_recipes

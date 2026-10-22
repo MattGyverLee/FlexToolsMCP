@@ -427,11 +427,6 @@ def _poison_payload(poisoned_api):
     return _parse(out)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="S-P1-1: index-served text carries no data/provenance labelling yet "
-    "(follow-up, #369 Phase 5 report)",
-)
 def test_t3a_poisoned_index_entry_is_labelled_as_data(poisoned_api):
     payload = _poison_payload(poisoned_api)
     assert payload["found"] is True
@@ -440,11 +435,6 @@ def test_t3a_poisoned_index_entry_is_labelled_as_data(poisoned_api):
     assert payload.get("data_provenance") or payload["flexicon"].get("provenance"), payload
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="S-P1-1: import_statement values are not validated against the "
-    "known namespace set yet (follow-up, #369 Phase 5 report)",
-)
 def test_t3b_poisoned_import_statement_is_dropped_or_flagged(poisoned_api):
     payload = _poison_payload(poisoned_api)
     method = payload["flexicon"]["methods"][0]

@@ -20,6 +20,7 @@ from typing import List, Dict, Any
 # Import kernel and config (with fallback for both package and script modes)
 try:
     from ..kernel import get_api_index, session_state
+    from ..index_payload_safety import index_data_provenance, sanitize_index_entity_block
     from ...response_utils import build_response_with_context, json_response
     from ..response_keys import (
         # Basic fields
@@ -59,6 +60,7 @@ try:
     )
 except ImportError:
     from server.kernel import get_api_index, session_state
+    from server.index_payload_safety import index_data_provenance, sanitize_index_entity_block
     from response_utils import build_response_with_context, json_response
     from server.response_keys import (
         # Basic fields
@@ -795,7 +797,7 @@ def _demote_deprecated_results(results: list) -> list:
     return live + dead
 
 
-def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon", casting_index: dict | None = None, entities_index: dict | None = None, inherited_members_cache_token: int | None = None) -> dict:
+def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon", casting_index: dict | None = None, entities_index: dict | None = None, inherited_members_cache_token: int | None = None, api_index: Any = None) -> dict:
     """Apply pagination and filtering to an entity's methods and properties.
 
     Issue #48: when a ``casting_index`` is supplied, per-property casting
@@ -1100,6 +1102,8 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
         else:
             result[KEY_INSTANCE_ATTRIBUTES] = instance_attributes
 
+    sanitize_index_entity_block(result, library, api_index)
+
     return result
 
 
@@ -1246,6 +1250,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                 inherited_members_cache_token=(
                     api_index.liblcm_entities_epoch if source_name == "liblcm" else None
                 ),
+                api_index=api_index,
             )
             result[KEY_FOUND] = True
             continue
@@ -1270,6 +1275,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     if not result[KEY_FOUND]:
         result[KEY_MESSAGE] = f"No API documentation found for '{object_type}'. Try searching with search_by_capability or list_categories to explore available APIs."
     else:
+        result["data_provenance"] = index_data_provenance()
         if KEY_FLEXICON_MATCHES in result:
             matches_with_source = [
                 {**m, KEY_SOURCE: "flexicon"} for m in result[KEY_FLEXICON_MATCHES]

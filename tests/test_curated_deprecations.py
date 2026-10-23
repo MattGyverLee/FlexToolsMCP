@@ -527,7 +527,9 @@ class TestRendering:
     def test_find_wrappers_for_lcm(self):
         from flextoolsmcp.server.handlers.equivalence import handle_find_wrappers_for_lcm
         empty_reverse = {"by_liblcm_entity": {}, "properties": {}, "methods": {}, "factories": {}, "repositories": {}}
-        with patch("flextoolsmcp.server.handlers.equivalence._get_reverse_mapping", return_value=empty_reverse):
+        with patch("flextoolsmcp.server.handlers.equivalence.get_api_index", return_value=object()), patch(
+            "flextoolsmcp.server.handlers.equivalence._get_reverse_mapping", return_value=empty_reverse
+        ):
             payload = _parse(asyncio.run(handle_find_wrappers_for_lcm({"lcm_name": "ILexEntry.DoNotUseForParsing"})))
         assert payload["deprecated"] is True
         _assert_redirects_to_forms(payload["advisory"])
@@ -535,7 +537,9 @@ class TestRendering:
     def test_get_wrapper_dependencies(self):
         from flextoolsmcp.server.handlers.equivalence import handle_get_wrapper_dependencies
         bridge = {"by_method": {"LexEntryOperations.SetDoNotUseForParsing": {"method": "SetDoNotUseForParsing"}}}
-        with patch("flextoolsmcp.server.handlers.equivalence._get_bridge", return_value=bridge):
+        with patch("flextoolsmcp.server.handlers.equivalence.get_api_index", return_value=object()), patch(
+            "flextoolsmcp.server.handlers.equivalence._get_bridge", return_value=bridge
+        ):
             payload = _parse(asyncio.run(handle_get_wrapper_dependencies({
                 "method": "LexEntryOperations.SetDoNotUseForParsing", "library": "flexicon",
             })))

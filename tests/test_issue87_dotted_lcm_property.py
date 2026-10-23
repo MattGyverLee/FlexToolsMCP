@@ -26,6 +26,9 @@ _FAKE_REVERSE = {
 class TestIssue87DottedLcmProperty(unittest.TestCase):
     def _run(self, **kwargs):
         with patch(
+            "flextoolsmcp.server.handlers.equivalence.get_api_index",
+            return_value=object(),
+        ), patch(
             "flextoolsmcp.server.handlers.equivalence._get_reverse_mapping",
             return_value=_FAKE_REVERSE,
         ):

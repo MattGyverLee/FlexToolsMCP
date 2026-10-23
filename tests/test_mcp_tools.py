@@ -596,7 +596,7 @@ class TestModuleTemplateLoading(TestCase):
         for flavor in self.ALL_FLAVORS:
             payload = self._fetch(flavor)
             self.assertNotEqual(
-                payload.get("error"), "template_not_found",
+                payload.get("error_code"), "template_not_found",
                 f"Flavor '{flavor}' failed to load its template: {payload}",
             )
             self.assertEqual(payload.get("status"), "ok", payload)
@@ -608,7 +608,8 @@ class TestModuleTemplateLoading(TestCase):
 
     def test_unknown_flavor_reports_invalid_flavor(self):
         payload = self._fetch("nope")
-        self.assertEqual(payload.get("error"), "invalid_flavor", payload)
+        self.assertEqual(payload.get("error_code"), "invalid_flavor", payload)
+        self.assertEqual(payload.get("status"), "error", payload)
 
 
 class TestToolOutcomeLogging(TestCase):

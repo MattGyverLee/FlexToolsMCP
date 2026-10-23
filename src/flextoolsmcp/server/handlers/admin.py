@@ -19,7 +19,7 @@ from mcp.types import TextContent
 
 from ._import_helper import safe_import_kernel_deps, safe_import_session_state, safe_import_logging_helpers
 from ..response_keys import (
-    KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
+    KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_SOURCE,
     KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
     KEY_TEMPLATE, KEY_WARNINGS
 )
@@ -915,12 +915,16 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
     flavor = args.get(KEY_FLAVOR, "flexicon")
 
     if flavor not in TEMPLATE_MAP:
-        return json_response({
-            KEY_ERROR: "invalid_flavor",
-            KEY_MESSAGE: f"Unknown flavor '{flavor}'",
-            "available_flavors": list(TEMPLATE_MAP.keys()),
-            "recommended": "flexicon"
-        })
+        # Issue #243 / batch-2 contract hygiene: rejections must use the
+        # canonical flat envelope (status/error_code/_contract), not a bare
+        # {error: "invalid_flavor"} dict.
+        return error_response(
+            "invalid_flavor",
+            f"Unknown flavor '{flavor}'",
+            available_flavors=list(TEMPLATE_MAP.keys()),
+            recommended="flexicon",
+            hint="Use flavor='flexicon' unless the project requires flexlibs_stable or liblcm.",
+        )
 
     # Use cached template (O(1) lookup after first request)
     template_content = _get_template(flavor)
@@ -941,15 +945,17 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
                 "(dir exists=%s)",
                 flavor, template_file, templates_dir.exists(),
             )
-        return json_response({
-            KEY_ERROR: "template_not_found",
-            KEY_MESSAGE: f"Template file not found: {template_file}",
-            "hint": (
+        return error_response(
+            "template_not_found",
+            f"Template file not found: {template_file}",
+            flavor=flavor,
+            template_path=str(template_file),
+            hint=(
                 "Templates ship as package data inside flextoolsmcp/templates. "
                 "If this is a pip/uvx install, the wheel may be missing the "
                 "bundled templates (reinstall or upgrade flextools-mcp)."
             ),
-        })
+        )
 
     # Get guidance using helper (handles aliases cleanly)
     guidance = _get_flavor_guidance(flavor)

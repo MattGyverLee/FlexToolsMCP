@@ -860,7 +860,8 @@ async def handle_get_session_history(args: dict) -> list[TextContent]:
     else:
         result[KEY_NEXT_STEPS] = ["Run operations to build history"]
 
-    return json_response(result)
+    result[KEY_STATUS] = "ok"
+    return json_response(build_response_with_context(result))
 
 
 async def handle_get_module_template(args: dict) -> list[TextContent]:

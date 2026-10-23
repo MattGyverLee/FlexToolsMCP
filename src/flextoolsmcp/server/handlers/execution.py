@@ -7526,4 +7526,5 @@ async def handle_get_operation_logs(args: dict) -> list[TextContent]:
                 "rejects_by_error_code": jsonl_stats.get("rejects_by_error_code", []),
             }
 
-    return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+    result[KEY_STATUS] = "ok"
+    return json_response(build_response_with_context(result))

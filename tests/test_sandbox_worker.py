@@ -23,6 +23,7 @@ Run with:
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -508,10 +509,14 @@ class TestIsolation:
         lines.append({"type": "shutdown"})
         stdin = "".join(json.dumps(m) + "\n" for m in lines).encode("ascii")
 
+        env = os.environ.copy()
+        src = str(REPO_ROOT / "src")
+        env["PYTHONPATH"] = src + os.pathsep + env.get("PYTHONPATH", "")
         proc = subprocess.run(
             [sys.executable, "-c", _ISOLATION_PROBE, "--sandbox", "--stub",
              "--config", config, "--id-map", id_map, "--project", "Proj"],
             input=stdin, capture_output=True, cwd=str(cwd), timeout=60,
+            env=env,
         )
         assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
         out = [json.loads(line) for line in proc.stdout.decode("ascii").splitlines() if line]

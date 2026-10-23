@@ -761,7 +761,9 @@ async def handle_start(args: dict) -> list[TextContent]:
     if warnings:
         result[KEY_WARNINGS] = warnings
 
-    return json_response(result)
+    # Issue #54 / mcp-modernization batch 2: success payloads must carry the
+    # tool-response envelope (_contract + optional session/advisory keys).
+    return json_response(build_response_with_context(result, include_session=True))
 
 
 async def handle_manage_config(args: dict) -> list[TextContent]:

@@ -8,13 +8,12 @@ These handlers provide navigation and discovery of API relationships:
 - resolve_property: Resolve pythonic property names to LibLCM equivalents
 """
 
-import json
 from collections import deque
 from mcp.types import TextContent
 
 from ._import_helper import safe_import_kernel_deps
 from ..response_keys import (
-    KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
+    KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE, KEY_STATUS,
     KEY_FROM, KEY_TO, KEY_VIA, KEY_PROPERTY, KEY_STEPS, KEY_CODE, KEY_HINT,
     KEY_COMMON_PATHS, KEY_GRAPH, KEY_ENTITIES, KEY_CHILDREN, KEY_TARGET,
     KEY_POLYMORPHIC_COLLECTIONS, KEY_BASE_TYPE, KEY_CONCRETE_TYPES,
@@ -23,8 +22,18 @@ from ..response_keys import (
 )
 from .utils import normalize_object_name
 
+try:
+    from ...response_utils import build_response_with_context, error_response
+except ImportError:
+    try:
+        from response_utils import build_response_with_context, error_response
+    except ImportError:
+        from server.response_utils import build_response_with_context, error_response
+
 # Import with fallback support
 json_response, session_state, _, get_api_index = safe_import_kernel_deps()
+
+_TOOL_GET_NAVIGATION_PATH = "flextools_get_navigation_path"
 
 # Type note: api_index is initialized by server.py before any handlers are called
 
@@ -36,6 +45,12 @@ COLLECTION_SUFFIXES = ("OS", "OC", "RC", "RS")
 
 # Constants for fallbacks
 MAX_SUGGESTED_ENTITIES = 5
+
+
+def _navigation_ok(payload: dict) -> list[TextContent]:
+    """Return a tool-response success envelope (issue #54 / mcp-modernization batch 2)."""
+    payload[KEY_STATUS] = "ok"
+    return json_response(build_response_with_context(payload, include_session=True))
 
 
 def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 8) -> list:
@@ -202,6 +217,23 @@ async def handle_get_navigation_path(args: dict) -> list[TextContent]:
     from_normalized = normalize_object_name(from_obj)
     to_normalized = normalize_object_name(to_obj)
 
+    api_index = get_api_index()
+    if not api_index:
+        return error_response(
+            "server_state_error",
+            "API index is not loaded yet. Wait for startup refresh or call flextools_health, then retry.",
+            server_state="api_index_not_loaded",
+            tool=_TOOL_GET_NAVIGATION_PATH,
+        )
+
+    if not api_index.navigation_graph:
+        return error_response(
+            "server_state_error",
+            "Navigation graph is not loaded. Run flextools-mcp-refresh (or python -m flextoolsmcp.refresh) to generate it.",
+            server_state="navigation_graph_not_loaded",
+            tool=_TOOL_GET_NAVIGATION_PATH,
+        )
+
     result = {
         "from": from_obj,
         "to": to_obj,
@@ -210,12 +242,7 @@ async def handle_get_navigation_path(args: dict) -> list[TextContent]:
         KEY_FOUND: False
     }
 
-    # Check if navigation graph is loaded
-    if not get_api_index() or not get_api_index().navigation_graph:
-        result[KEY_MESSAGE] = "Navigation graph not loaded. Run refresh.py to generate it."
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
-
-    nav_graph = get_api_index().navigation_graph
+    nav_graph = api_index.navigation_graph
     common_paths = nav_graph.get(KEY_COMMON_PATHS, {})
     graph = nav_graph.get(KEY_GRAPH, {})
 
@@ -229,7 +256,7 @@ async def handle_get_navigation_path(args: dict) -> list[TextContent]:
         result[KEY_CODE] = path_info.get("code_pattern", "")
         result[KEY_DESCRIPTION] = f"Navigate from {from_normalized} to {to_normalized}"
         _add_polymorphic_warnings(result, path_info[KEY_STEPS])
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        return _navigation_ok(result)
 
     # Fall back to BFS pathfinding
     steps = find_path_bfs(graph, from_normalized, to_normalized)
@@ -240,7 +267,7 @@ async def handle_get_navigation_path(args: dict) -> list[TextContent]:
         result[KEY_CODE] = generate_code_from_path(steps)
         result[KEY_DESCRIPTION] = f"Path found via BFS ({len(steps)} step{'s' if len(steps) != 1 else ''})"
         _add_polymorphic_warnings(result, steps)
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        return _navigation_ok(result)
 
     # No path found
     result[KEY_MESSAGE] = f"No navigation path found from {from_normalized} to {to_normalized}."
@@ -254,4 +281,4 @@ async def handle_get_navigation_path(args: dict) -> list[TextContent]:
         if children:
             result[KEY_REACHABLE_FROM_SOURCE] = children
 
-    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    return _navigation_ok(result)

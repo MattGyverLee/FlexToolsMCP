@@ -8450,30 +8450,35 @@ def _pick_cast_interface(
     proposing a single cast for a confirmed-polymorphic receiver.
     """
     cleaned: List[str] = []
+    seen_cleaned: Set[str] = set()
     for entry in available_on or ():
         head = _clean_interface_head(entry)
-        if head:
+        if head and head not in seen_cleaned:
+            seen_cleaned.add(head)
             cleaned.append(head)
     picked: Optional[str] = None
     if len(cleaned) == 1:
         picked = cleaned[0]
 
     # Consult the casting_index's defined_on for the canonical interface list.
-    defined_on: List[str] = []
+    defined_on_heads: List[str] = []
     if casting_index and picked is None:
         props = (casting_index or {}).get("properties") or {}
         info = props.get(property_name) or {}
-        defined_on = [
-            d for d in info.get("defined_on", []) if isinstance(d, str) and d.startswith("I")
-        ]
-        if len(defined_on) == 1:
-            picked = defined_on[0]
+        seen_defined: Set[str] = set()
+        for entry in info.get("defined_on", []) or ():
+            head = _clean_interface_head(entry) if isinstance(entry, str) else None
+            if head and head not in seen_defined:
+                seen_defined.add(head)
+                defined_on_heads.append(head)
+        if len(defined_on_heads) == 1:
+            picked = defined_on_heads[0]
 
     # Multiple candidates. Try the receiver-name tie-break before giving up
     # -- but NEVER when the receiver is confirmed polymorphic (issue #121
     # defect 4): a spelling-based guess must not override PROVEN dataflow.
     if picked is None:
-        candidates = defined_on if defined_on else cleaned
+        candidates = defined_on_heads if defined_on_heads else cleaned
         if receiver_name and candidates and not polymorphic_receiver:
             preferred = _RECEIVER_NAME_TO_INTERFACE.get(receiver_name)
             if preferred is None:
@@ -8492,10 +8497,12 @@ def _pick_cast_interface(
         # tie-break). The handler's fallback path emits the
         # "call flextools_resolve_property" hint.
         if picked is None:
-            if len(cleaned) > 1 or len(defined_on) > 1:
+            if len(cleaned) > 1 or len(defined_on_heads) > 1:
                 return None
             if cleaned:
                 picked = cleaned[0]
+            elif len(defined_on_heads) == 1:
+                picked = defined_on_heads[0]
 
     # Issue #316: suppress a confidently-wrong rewrite -- the picked owner
     # is unrelated to the receiver's known interface, so the cast would

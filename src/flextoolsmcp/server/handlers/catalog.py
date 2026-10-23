@@ -244,11 +244,15 @@ async def handle_list_skeletons(
                 f"handle_list_skeletons: list_all_skeletons(limit={limit}) failed: {exc}",
                 exc_info=True,
             )
-        return [TextContent(type="text", text=json.dumps({
-            "error": f"Failed to load skeletons: {exc}",
-            "skeletons": [],
-            "count": 0,
-        }, indent=2))]
+        # Issue #243 / batch-2 contract hygiene: legacy alias still must emit
+        # the canonical flat envelope, not a bare {error: "..."} dict.
+        return error_response(
+            "server_state_error",
+            f"Failed to load local recipes for the list_skeletons alias: {exc}",
+            server_state="local_recipes_unavailable",
+            component="local_recipes",
+            tool="flextools_list_skeletons",
+        )
 
     return [TextContent(type="text", text=json.dumps({
         "count": len(entries),

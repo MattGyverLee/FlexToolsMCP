@@ -782,59 +782,91 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
     key = args.get(KEY_KEY, "")
     value = args.get(KEY_VALUE, None)
 
-    result = {
-        KEY_ACTION: action,
-        KEY_SUCCESS: False,
-        KEY_MESSAGE: ""
-    }
-
     try:
         if action == "get":
             if not key:
-                result[KEY_MESSAGE] = "key parameter required for 'get' action"
-                return json_response(result)
+                return error_response(
+                    "invalid_input",
+                    "key parameter required for 'get' action",
+                    action=action,
+                    hint="Pass key='dotted.config.path' with action='get'.",
+                )
 
             value = config_get(key)
-            result[KEY_SUCCESS] = True
-            result[KEY_KEY] = key
-            result[KEY_VALUE] = value
-            result[KEY_MESSAGE] = f"Retrieved config: {key}"
+            result = {
+                KEY_STATUS: "ok",
+                KEY_ACTION: action,
+                KEY_SUCCESS: True,
+                KEY_KEY: key,
+                KEY_VALUE: value,
+                KEY_MESSAGE: f"Retrieved config: {key}",
+            }
 
         elif action == "set":
             if not key:
-                result[KEY_MESSAGE] = "key parameter required for 'set' action"
-                return json_response(result)
+                return error_response(
+                    "invalid_input",
+                    "key parameter required for 'set' action",
+                    action=action,
+                    hint="Pass key='dotted.config.path' and value=... with action='set'.",
+                )
 
             config_set(key, value)
-            result[KEY_SUCCESS] = True
-            result[KEY_KEY] = key
-            result[KEY_VALUE] = value
-            result[KEY_MESSAGE] = f"Set config: {key} = {value}"
+            result = {
+                KEY_STATUS: "ok",
+                KEY_ACTION: action,
+                KEY_SUCCESS: True,
+                KEY_KEY: key,
+                KEY_VALUE: value,
+                KEY_MESSAGE: f"Set config: {key} = {value}",
+            }
 
         elif action == "delete":
             if not key:
-                result[KEY_MESSAGE] = "key parameter required for 'delete' action"
-                return json_response(result)
+                return error_response(
+                    "invalid_input",
+                    "key parameter required for 'delete' action",
+                    action=action,
+                    hint="Pass key='dotted.config.path' with action='delete'.",
+                )
 
             deleted = config_delete(key)
-            result[KEY_SUCCESS] = deleted
-            result[KEY_KEY] = key
-            result[KEY_MESSAGE] = f"Deleted config key: {key}" if deleted else f"Config key not found: {key}"
+            result = {
+                KEY_STATUS: "ok",
+                KEY_ACTION: action,
+                KEY_SUCCESS: deleted,
+                KEY_KEY: key,
+                KEY_MESSAGE: (
+                    f"Deleted config key: {key}" if deleted else f"Config key not found: {key}"
+                ),
+            }
 
         elif action == "list":
             cfg = config_list()
-            result[KEY_SUCCESS] = True
-            result[KEY_CONFIG] = cfg
-            result[KEY_MESSAGE] = f"Config contains {len(cfg)} root keys"
+            result = {
+                KEY_STATUS: "ok",
+                KEY_ACTION: action,
+                KEY_SUCCESS: True,
+                KEY_CONFIG: cfg,
+                KEY_MESSAGE: f"Config contains {len(cfg)} root keys",
+            }
 
         else:
-            result[KEY_MESSAGE] = f"Unknown action: {action}. Use 'get', 'set', 'delete', or 'list'"
+            return error_response(
+                "invalid_input",
+                f"Unknown action: {action}. Use 'get', 'set', 'delete', or 'list'.",
+                action=action,
+                allowed_actions=["get", "set", "delete", "list"],
+            )
 
     except Exception as e:
-        result[KEY_SUCCESS] = False
-        result[KEY_MESSAGE] = f"Error: {str(e)}"
+        return error_response(
+            "server_state_error",
+            f"Config operation failed: {e}",
+            action=action,
+        )
 
-    return json_response(result)
+    return json_response(build_response_with_context(result))
 
 
 async def handle_get_session_history(args: dict) -> list[TextContent]:

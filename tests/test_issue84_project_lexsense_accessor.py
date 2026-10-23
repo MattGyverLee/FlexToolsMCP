@@ -215,7 +215,7 @@ class TestShippedArtifactsUsePhantomFreeAccessors:
             from test_mcp_tools import run_async
 
         payload = json.loads(run_async(handle_get_module_template({"flavor": "flexicon"}))[0].text)
-        assert payload.get("status") == "success", payload
+        assert payload.get("status") == "ok", payload
         template = payload["template"]
         for phantom in PROJECT_ACCESSOR_ALIASES:
             assert f"project.{phantom}" not in template

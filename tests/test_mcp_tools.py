@@ -599,7 +599,8 @@ class TestModuleTemplateLoading(TestCase):
                 payload.get("error"), "template_not_found",
                 f"Flavor '{flavor}' failed to load its template: {payload}",
             )
-            self.assertEqual(payload.get("status"), "success", payload)
+            self.assertEqual(payload.get("status"), "ok", payload)
+            self.assertEqual(payload.get("_contract"), "tool-responses/1.0", payload)
             self.assertTrue(
                 payload.get("template", "").strip(),
                 f"Flavor '{flavor}' returned an empty template.",

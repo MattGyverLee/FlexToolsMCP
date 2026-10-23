@@ -915,7 +915,7 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
     guidance = _get_flavor_guidance(flavor)
 
     result = {
-        KEY_STATUS: "success",
+        KEY_STATUS: "ok",
         KEY_FLAVOR: flavor,
         KEY_TEMPLATE: template_content,
         KEY_SOURCE: f"templates/{TEMPLATE_MAP[flavor]} (authoritative)",
@@ -936,10 +936,10 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
             "3. Pay special attention to 'if modifyAllowed:' guards",
             "4. Test in read-only mode first (modifyAllowed=False)",
             "5. Run flextools_run_module() when ready"
-        ]
+        ],
     }
 
-    return json_response(result)
+    return json_response(build_response_with_context(result))
 
 
 

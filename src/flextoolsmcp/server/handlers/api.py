@@ -21,7 +21,7 @@ from typing import List, Dict, Any
 try:
     from ..kernel import get_api_index, session_state
     from ..index_payload_safety import index_data_provenance, sanitize_index_entity_block
-    from ...response_utils import build_response_with_context, json_response
+    from ...response_utils import build_response_with_context, error_response, json_response
     from ..response_keys import (
         # Basic fields
         KEY_STATUS,
@@ -61,7 +61,7 @@ try:
 except ImportError:
     from server.kernel import get_api_index, session_state
     from server.index_payload_safety import index_data_provenance, sanitize_index_entity_block
-    from response_utils import build_response_with_context, json_response
+    from response_utils import build_response_with_context, error_response, json_response
     from server.response_keys import (
         # Basic fields
         KEY_STATUS,
@@ -2130,7 +2130,16 @@ async def handle_resolve_type(args: dict) -> list[TextContent]:
 
     api_index = get_api_index()
     if not api_index:
-        return json_response({KEY_ERROR: "API index not loaded"})
+        # Issue #54 / MCP modernization batch-2 prep: the lone pre-contract
+        # `{error: "..."}` branch in this handler. Clients and contract tests
+        # expect the canonical flat envelope (status/error_code/_contract).
+        return error_response(
+            "server_state_error",
+            "API index is not loaded yet; retry after the server finishes startup "
+            "or call flextools_refresh_indexes if indexes were never built.",
+            server_state="api_index_not_loaded",
+            component="api_index",
+        )
 
     if library_filter == "auto":
         search_order = ["liblcm", "flexicon", "flexlibs_stable"]

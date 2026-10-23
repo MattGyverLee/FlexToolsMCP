@@ -21,6 +21,16 @@ if src_path not in sys.path:
 if pkg_path not in sys.path:
     sys.path.insert(0, pkg_path)
 
+# Subprocess-spawned interpreters do not inherit the sys.path inserts above.
+# Cloud Agent and many CI jobs run `pytest` from a source checkout without an
+# editable install, so child processes need src/ on PYTHONPATH to import
+# flextoolsmcp (see tests/test_sandbox_worker.py::TestIsolation).
+_existing_pythonpath = os.environ.get("PYTHONPATH", "")
+if src_path not in [p for p in _existing_pythonpath.split(os.pathsep) if p]:
+    os.environ["PYTHONPATH"] = src_path + (
+        (os.pathsep + _existing_pythonpath) if _existing_pythonpath else ""
+    )
+
 # Issue #173: isolate logs for the whole suite before any test module imports
 # flextoolsmcp.server.kernel (several test files import kernel at collection time).
 _PYTEST_LOG_DIR: Path | None = None

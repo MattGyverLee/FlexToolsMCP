@@ -1859,6 +1859,7 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
             session_state.record_validated_api(entity)
 
     response = {
+        KEY_STATUS: "ok",
         KEY_QUERY: {
             KEY_METHOD_NAME: method_name,
             KEY_OPERATION_TYPE: operation_type,
@@ -1888,6 +1889,7 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
     deprecation_redirects = _deprecation_redirects(method_name, [])
     if deprecation_redirects:
         response[KEY_DEPRECATION_REDIRECTS] = deprecation_redirects
+    response = build_response_with_context(response, include_session=True)
     return json_response(response)
 
 

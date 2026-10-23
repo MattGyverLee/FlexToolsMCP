@@ -47,9 +47,9 @@ except ImportError:
     from server.kernel import session_state
 
 try:
-    from .api import active_sources_for_mode, ensure_active_sources_loaded
+    from .api import active_sources_for_mode, api_index_or_error, ensure_active_sources_loaded
 except ImportError:
-    from server.handlers.api import active_sources_for_mode, ensure_active_sources_loaded
+    from server.handlers.api import active_sources_for_mode, api_index_or_error, ensure_active_sources_loaded
 
 try:
     from ...response_utils import build_response_with_context, error_response, json_response
@@ -91,7 +91,9 @@ async def handle_list_categories(args: ListCategoriesInput) -> list[TextContent]
 
     Source-isolated: only counts the source(s) for the active session mode.
     """
-    api_index = get_api_index()
+    api_index, err = api_index_or_error("flextools_list_categories")
+    if err:
+        return err
     mode = session_state.get_mode()
     ensure_active_sources_loaded(api_index, mode)
 
@@ -133,7 +135,9 @@ async def handle_list_entities_in_category(args: dict) -> list[TextContent]:
 
     Source-isolated: only emits an entry per active source for the session mode.
     """
-    api_index = get_api_index()
+    api_index, err = api_index_or_error("flextools_list_entities_in_category")
+    if err:
+        return err
     mode = session_state.get_mode()
     ensure_active_sources_loaded(api_index, mode)
 

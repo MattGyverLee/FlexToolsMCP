@@ -30,7 +30,7 @@ try:
         KEY_FLEXICON_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
         KEY_METHODS_COUNT,
         KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES,
-        KEY_API_MODE,
+        KEY_API_MODE, KEY_STATUS,
     )
 except ImportError:
     from server.response_keys import (
@@ -38,7 +38,7 @@ except ImportError:
         KEY_FLEXICON_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
         KEY_METHODS_COUNT,
         KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES,
-        KEY_API_MODE,
+        KEY_API_MODE, KEY_STATUS,
     )
 
 try:
@@ -390,8 +390,10 @@ async def handle_list_recipes(args) -> list[TextContent]:
                 session_state.record_validated_api(entity)
             except Exception:
                 pass
-        return json_response(build_response_with_context(
-            {"recipe": _list_full_row(str(recipe_id), recipe)}))
+        return json_response(build_response_with_context({
+            KEY_STATUS: "ok",
+            "recipe": _list_full_row(str(recipe_id), recipe),
+        }))
 
     if query:
         try:
@@ -442,6 +444,7 @@ async def handle_list_recipes(args) -> list[TextContent]:
     except Exception:
         storage_path = ""
     return json_response(build_response_with_context({
+        KEY_STATUS: "ok",
         "recipes": compact,
         "recipes_count": len(compact),
         "total": total,

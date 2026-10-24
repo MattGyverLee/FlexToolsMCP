@@ -186,6 +186,31 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "gate, and do not ask them to close FieldWorks for ordinary edits. "
         "Tell them they can reopen FieldWorks once the run finishes."
     ),
+    "invalid_api_chain": (
+        "a project.<accessor> chain or method name does not match the indexed "
+        "Operations API -- read issues in the rejection (suggested_name / "
+        "did_you_mean when present). Use project.<Accessor> from access_path "
+        "or import Operations from flexicon; do not invent "
+        "project.<ClassName>Operations accessors."
+    ),
+    "project_not_found": (
+        "the project name is not on this machine -- pick from "
+        "available_projects in this payload (exact spelling) and call "
+        "flextools_start with it, or pass that name as project_name on "
+        "the next call. Do not guess variants of the same wrong name."
+    ),
+    "project_drive_unavailable": (
+        "FieldWorks tried a path on a drive or share that is offline -- read "
+        "attempted_path in the rejection, reconnect the network drive or VPN, "
+        "then retry the same call. This is an environment fix, not a script "
+        "rewrite."
+    ),
+    "project_path_mismatch": (
+        "the project exists but FieldWorks opened it from a stale path -- read "
+        "discovered_at vs attempted_path in the rejection and open the project "
+        "from the canonical location (or call flextools_start with the correct "
+        "project_name after the user fixes the path in FLEx)."
+    ),
 }
 
 

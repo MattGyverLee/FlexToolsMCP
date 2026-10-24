@@ -156,6 +156,40 @@ def test_hvo_literal_write_risk_hint_is_tailored():
     assert "flextools_find_examples" not in pattern["message"]
 
 
+def test_confirmation_required_hint_is_tailored():
+    """Write confirmation loops should steer toward confirmed=True, not generic discovery."""
+    state = _new_state()
+    base = datetime.now()
+    for i in range(5):
+        state.record_op_signal(
+            error_code="confirmation_required",
+            code_size_bytes=500,
+            timestamp=base + timedelta(seconds=i * 15),
+        )
+    pattern = state.detect_retry_loop_pattern()
+    assert pattern is not None
+    msg = pattern["message"]
+    assert "confirmed=True" in msg
+    assert "find_examples" not in msg
+
+
+def test_project_locked_hint_points_to_next_steps():
+    """Issue #315: project_locked loops should cite next_steps, not generic discovery."""
+    state = _new_state()
+    base = datetime.now()
+    for i in range(5):
+        state.record_op_signal(
+            error_code="project_locked",
+            code_size_bytes=480,
+            timestamp=base + timedelta(seconds=i * 12),
+        )
+    pattern = state.detect_retry_loop_pattern()
+    assert pattern is not None
+    msg = pattern["message"]
+    assert "next_steps" in msg
+    assert "find_examples" not in msg
+
+
 def test_project_not_open_hint_points_to_available_projects():
     """Issue #53: project_not_open hint now points at the inlined
     available_projects field on the rejection payload itself, rather than

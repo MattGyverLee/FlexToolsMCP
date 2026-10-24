@@ -195,6 +195,20 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "nested_unit_of_work gate) or project.Transaction() (opens no unit "
         "of work)."
     ),
+    "confirmation_required": (
+        "preflight flagged mutating writes but confirmed=False -- read "
+        "mutations_detected and the rejection message, then resubmit the "
+        "SAME call with confirmed=True to execute (backup_before_write only "
+        "applies on that confirmed run). Do not rewrite the script to dodge "
+        "the confirmation gate."
+    ),
+    "project_locked": (
+        # Issue #315: numbered next_steps are on the rejection payload.
+        "exclusive access is blocking this write -- follow the numbered "
+        "next_steps on this rejection (holder PID/process, Sharing tab, "
+        "flextools_parse_release when it applies). Do not rewrite the script; "
+        "fix FieldWorks access or wait, then retry the same call."
+    ),
     "requires_exclusive_access": (
         # specs/_archive/exclusive-access-gate FR-010: the script is correct; only
         # FieldWorks being open blocks it.

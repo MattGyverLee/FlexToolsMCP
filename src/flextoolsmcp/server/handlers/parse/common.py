@@ -415,8 +415,11 @@ def _resolve_project(project_name: Optional[str]):
     if resolved:
         try:
             from ....project_adoption import adopt_resolved_project
-        except ImportError:
-            from project_adoption import adopt_resolved_project
+        except ImportError as _dual_first_exc:
+            try:
+                from project_adoption import adopt_resolved_project
+            except ImportError as _dual_second_exc:
+                raise _dual_second_exc from _dual_first_exc
         name = adopt_resolved_project(
             session_state,
             resolved,

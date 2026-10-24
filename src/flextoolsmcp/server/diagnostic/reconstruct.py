@@ -41,8 +41,11 @@ from typing import Any, Dict, List, Optional
 
 try:
     from ..handlers.op_telemetry import group_records_by_intent
-except ImportError:
-    from server.handlers.op_telemetry import group_records_by_intent
+except ImportError as _dual_first_exc:
+    try:
+        from server.handlers.op_telemetry import group_records_by_intent
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 # ---------------------------------------------------------------------------
 # Spec section 5: safety cap on an LLM-sized slice. Excess ops are

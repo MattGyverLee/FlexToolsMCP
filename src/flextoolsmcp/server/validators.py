@@ -30,17 +30,20 @@ try:
         not_cmpossibility_type_for_receiver_name,
         not_cmpossibility_warning,
     )
-except ImportError:
-    from server.constants import (
-        KNOWN_OPERATIONS,
-        NOT_CMPOSSIBILITY_NAME_COLLISION,
-        NOT_CMPOSSIBILITY_PROVENANCE_ATTRS,
-        PROJECT_ACCESSOR_ALIASES,
-        PROJECT_RAW_HANDLE_ALIASES,
-        not_cmpossibility_type_for_provenance_attr,
-        not_cmpossibility_type_for_receiver_name,
-        not_cmpossibility_warning,
-    )
+except ImportError as _dual_first_exc:
+    try:
+        from server.constants import (
+            KNOWN_OPERATIONS,
+            NOT_CMPOSSIBILITY_NAME_COLLISION,
+            NOT_CMPOSSIBILITY_PROVENANCE_ATTRS,
+            PROJECT_ACCESSOR_ALIASES,
+            PROJECT_RAW_HANDLE_ALIASES,
+            not_cmpossibility_type_for_provenance_attr,
+            not_cmpossibility_type_for_receiver_name,
+            not_cmpossibility_warning,
+        )
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 
 # ============================================================
@@ -319,8 +322,11 @@ def validate_server_state() -> dict:
     # Check that kernel state is initialized
     try:
         from .kernel import get_api_index, get_operations_logger, get_pattern_tracker
-    except ImportError:
-        from server.kernel import get_api_index, get_operations_logger, get_pattern_tracker
+    except ImportError as _dual_first_exc:
+        try:
+            from server.kernel import get_api_index, get_operations_logger, get_pattern_tracker
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
 
     # Check API index
     api_index = get_api_index()
@@ -1717,8 +1723,11 @@ def detect_deprecated_members(
     empty = {"has_deprecated": False, "findings": [], "deprecations": {}, "suggestion": "", "example": ""}
     try:
         from ..curated_deprecations import iter_deprecated_uses, deprecation_record
-    except ImportError:
-        from curated_deprecations import iter_deprecated_uses, deprecation_record
+    except ImportError as _dual_first_exc:
+        try:
+            from curated_deprecations import iter_deprecated_uses, deprecation_record
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
 
     if tree is None:
         try:
@@ -2125,8 +2134,11 @@ def build_deprecated_member_rejection(check: dict) -> dict:
     """
     try:
         from ..curated_deprecations import fix_steps
-    except ImportError:
-        from curated_deprecations import fix_steps
+    except ImportError as _dual_first_exc:
+        try:
+            from curated_deprecations import fix_steps
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
 
     findings = check.get("findings") or []
     deprecations = list((check.get("deprecations") or {}).values())
@@ -2807,8 +2819,11 @@ def _misplaced_member_issue(
     misplaced member on a statically typed receiver, or None."""
     try:
         from ..curated_deprecations import misplaced_member
-    except ImportError:
-        from curated_deprecations import misplaced_member
+    except ImportError as _dual_first_exc:
+        try:
+            from curated_deprecations import misplaced_member
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
     for iface in interfaces:
         info = misplaced_member(iface, attr)
         if info is None:
@@ -4922,8 +4937,11 @@ def detect_unknown_flexicon_imports(
     try:
         try:
             from .flexicon_imports import check_imports
-        except ImportError:
-            from server.flexicon_imports import check_imports
+        except ImportError as _dual_first_exc:
+            try:
+                from server.flexicon_imports import check_imports
+            except ImportError as _dual_second_exc:
+                raise _dual_second_exc from _dual_first_exc
         return check_imports(code_tree, api_index, _accessor_to_ops_map(api_index))
     except Exception:  # noqa: BLE001 -- a checker bug must never block a run
         return {"has_unknown": False, "issues": [], "did_you_mean": [], "suggestion": ""}
@@ -4934,8 +4952,11 @@ def detect_unknown_import_error(error_msg: str, api_index: Optional[Any] = None)
     try:
         try:
             from .flexicon_imports import diagnose_import_error
-        except ImportError:
-            from server.flexicon_imports import diagnose_import_error
+        except ImportError as _dual_first_exc:
+            try:
+                from server.flexicon_imports import diagnose_import_error
+            except ImportError as _dual_second_exc:
+                raise _dual_second_exc from _dual_first_exc
         return diagnose_import_error(error_msg, api_index, _accessor_to_ops_map(api_index))
     except Exception:  # noqa: BLE001 -- enrichment only
         return {"is_unknown_import": False}

@@ -34,8 +34,11 @@ from typing import Any, Collection, Dict, List, NamedTuple, Optional, Set, Tuple
 
 try:
     from .project_discovery import get_project_fwdata_path
-except ImportError:
-    from project_discovery import get_project_fwdata_path
+except ImportError as _dual_first_exc:
+    try:
+        from project_discovery import get_project_fwdata_path
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 try:
     from ..config import (

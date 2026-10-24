@@ -138,6 +138,24 @@ def test_undiscovered_entity_hint_is_tailored():
     assert "get_object_api" in pattern["message"]
 
 
+def test_hvo_literal_write_risk_hint_is_tailored():
+    """Issue #103 / cycle-2 QC P2: retry-loop assistance must not fall back to
+    the generic find_examples hint for hvo_literal_write_risk."""
+    state = _new_state()
+    base = datetime.now()
+    for i in range(5):
+        state.record_op_signal(
+            error_code="hvo_literal_write_risk",
+            code_size_bytes=250,
+            timestamp=base + timedelta(seconds=i * 20),
+        )
+    pattern = state.detect_retry_loop_pattern()
+    assert pattern is not None
+    assert "project.Object" in pattern["message"]
+    assert "guid" in pattern["message"].lower()
+    assert "flextools_find_examples" not in pattern["message"]
+
+
 def test_project_not_open_hint_points_to_available_projects():
     """Issue #53: project_not_open hint now points at the inlined
     available_projects field on the rejection payload itself, rather than

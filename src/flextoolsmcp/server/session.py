@@ -52,6 +52,15 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "in FLEx UI or use project.CustomFields.CreateField; see next_steps "
         "in the rejection (issue #70 hang + ghost-field corruption)."
     ),
+    "hvo_literal_write_risk": (
+        "do not pass a bare integer literal to an *_or_hvo parameter on "
+        "write runs -- hvos are session-scoped and liblcm renumbers them on "
+        "every cache load, so a literal from a prior call or the FLEx UI can "
+        "silently target the wrong object. Replace it with the object's GUID "
+        "(from GetGuid() or report output), re-resolve this run via "
+        "project.Object(guid_str), then pass that object or its current .Hvo; "
+        "see next_steps in the rejection (issue #103)."
+    ),
     "api_discovery_required": (
         "read-only auto-discovery does not satisfy the write gate. "
         "Call flextools_get_object_api for each Operations entity before "

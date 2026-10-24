@@ -3004,21 +3004,28 @@ def detect_interface_attribute_typos(
         if ratio < _INTERFACE_TYPO_MIN_RATIO:
             continue
 
-        interface = "/".join(resolved_interfaces)
+        primary_interface = resolved_interfaces[0]
+        if len(resolved_interfaces) == 1:
+            on_clause = f"'{primary_interface}'"
+        else:
+            # Issue #97 / Swahili audit P2-2: never synthesize a slash-joined
+            # pseudo-interface (e.g. ILexEntry/ILexSense) -- no index entry
+            # uses that label.
+            on_clause = " or ".join(f"'{iface}'" for iface in resolved_interfaces)
         try:
             receiver_src = ast.unparse(node.value)
         except Exception:
-            receiver_src = interface
+            receiver_src = primary_interface
         rewrite = f"{receiver_src}.{close[0]}"
-        expr = f"{interface}.{attr}"
+        expr = f"{receiver_src}.{attr}"
         dedup_key = (expr, close[0])
         if dedup_key in seen:
             continue
         seen.add(dedup_key)
 
         suggestion = (
-            f"'{attr}' does not exist on '{interface}'. Did you mean: "
-            f"{', '.join(interface + '.' + c for c in close)}? "
+            f"'{attr}' does not exist on {on_clause}. Did you mean: "
+            f"{', '.join(f'`{receiver_src}.{c}`' for c in close)}? "
             f"Replace with `{rewrite}`."
         )
         issues.append({
@@ -3032,12 +3039,12 @@ def detect_interface_attribute_typos(
             "col_offset": node.col_offset,
             "pattern": f"{receiver_src}.{attr}",
             "found_at": f"{receiver_src}.{attr}",
-            "object_type": interface,
+            "object_type": primary_interface,
             "typo_attr": attr,
             "did_you_mean": close,
             "match_ratio": ratio,
-            "missing_on": [interface],
-            "available_on": [interface],
+            "missing_on": list(resolved_interfaces),
+            "available_on": list(resolved_interfaces),
             "fix": suggestion,
             "flexicon_helper": suggestion,
             "severity": "error",

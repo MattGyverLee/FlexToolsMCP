@@ -22,8 +22,11 @@ from ...parse.stages import RunStage
 
 try:
     from ....response_utils import error_response
-except (ImportError, ValueError):
-    from response_utils import error_response
+except (ImportError, ValueError) as _dual_first_exc:
+    try:
+        from response_utils import error_response
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 
 # json_response / session_state come from the shared kernel helper; the other
@@ -380,12 +383,18 @@ def _resolve_project(project_name: Optional[str]):
     """
     try:
         from ..execution import _available_projects_payload
-    except (ImportError, ValueError):
-        from server.handlers.execution import _available_projects_payload
+    except (ImportError, ValueError) as _dual_first_exc:
+        try:
+            from server.handlers.execution import _available_projects_payload
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
     try:
         from ...project_discovery import normalize_project_name, project_not_found_fields
-    except (ImportError, ValueError):
-        from server.project_discovery import normalize_project_name, project_not_found_fields
+    except (ImportError, ValueError) as _dual_first_exc:
+        try:
+            from server.project_discovery import normalize_project_name, project_not_found_fields
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
 
     # Issue #311: a punctuation-only name ("``") is treated as omitted and
     # falls back to the session; "`Sena 3`" is unwrapped to "Sena 3".
@@ -401,8 +410,11 @@ def _resolve_project(project_name: Optional[str]):
 
     try:
         from ...project_discovery import resolve_or_explain
-    except (ImportError, ValueError):
-        from server.project_discovery import resolve_or_explain
+    except (ImportError, ValueError) as _dual_first_exc:
+        try:
+            from server.project_discovery import resolve_or_explain
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
 
     resolved, resolve_err = resolve_or_explain(name)
     if resolve_err:
@@ -415,8 +427,11 @@ def _resolve_project(project_name: Optional[str]):
     if resolved:
         try:
             from ....project_adoption import adopt_resolved_project
-        except ImportError:
-            from project_adoption import adopt_resolved_project
+        except ImportError as _dual_first_exc:
+            try:
+                from project_adoption import adopt_resolved_project
+            except ImportError as _dual_second_exc:
+                raise _dual_second_exc from _dual_first_exc
         name = adopt_resolved_project(
             session_state,
             resolved,
@@ -460,8 +475,11 @@ def _probe_access(project_name: Optional[str]):
     try:
         try:
             from ...project_access import probe_project_access
-        except (ImportError, ValueError):
-            from server.project_access import probe_project_access
+        except (ImportError, ValueError) as _dual_first_exc:
+            try:
+                from server.project_access import probe_project_access
+            except ImportError as _dual_second_exc:
+                raise _dual_second_exc from _dual_first_exc
         return probe_project_access(project_name)
     except Exception:  # noqa: BLE001 -- an unknown access state is not a failure
         return None

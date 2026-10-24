@@ -344,6 +344,15 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "api_mode='flexicon' for execution). Call flextools_start again with "
         "a valid mode -- do not resubmit with the same invalid value or "
         "search for APIs until the session mode is fixed."    ),
+    "sandbox_unavailable": (
+        # Issue #322 / #28: hcparse.ps1 unreadable means a broken install, not
+        # bad parse scope or grammar -- retry loops must repair the package.
+        "the packaged hcparse.ps1 could not be read, so the sandbox engine is "
+        "down. Read script_path and hint in this payload, run flextools_health "
+        "(verbose=True) for component paths, then reinstall or repair "
+        "flextoolsmcp/FieldWorks -- do not keep resubmitting parse_sandbox or "
+        "parse runs; the project grammar does not need changing."
+    ),
 }
 
 

@@ -50,12 +50,15 @@ in CI), the validator ALSO checks:
 import ast
 from typing import Any, Dict, List
 
-if __package__:
+try:
     from .recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
-else:
-    from recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
+except ImportError as _recipe_files_first:
+    try:
+        from recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
+    except ImportError as _recipe_files_second:
+        raise _recipe_files_second from _recipe_files_first
 
-if __package__:
+try:
     from .server.validators import (
         detect_cud_operations,
         certify_script_readonly,
@@ -67,18 +70,21 @@ if __package__:
         detect_print_calls,
         detect_raw_lcm_access,
     )
-else:
-    from server.validators import (
-        detect_cud_operations,
-        certify_script_readonly,
-        detect_missing_operations_imports,
-        detect_wrong_library_imports,
-        detect_undefined_variables,
-        detect_invalid_project_chains,
-        detect_deprecated_members,
-        detect_print_calls,
-        detect_raw_lcm_access,
-    )
+except ImportError as _validators_first:
+    try:
+        from server.validators import (
+            detect_cud_operations,
+            certify_script_readonly,
+            detect_missing_operations_imports,
+            detect_wrong_library_imports,
+            detect_undefined_variables,
+            detect_invalid_project_chains,
+            detect_deprecated_members,
+            detect_print_calls,
+            detect_raw_lcm_access,
+        )
+    except ImportError as _validators_second:
+        raise _validators_second from _validators_first
 
 
 def _check_params_block(code: str) -> List[str]:

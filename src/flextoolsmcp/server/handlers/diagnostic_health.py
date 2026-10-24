@@ -66,16 +66,19 @@ try:
         find_latest_versioned_api_file,
         extract_version_string,
     )
-except ImportError:
-    from server.versioning import (
-        detect_installed_library_version,
-        detect_liblcm_version_from_disk,
-        get_resolved_fieldworks_dir,
-        find_versioned_api_file,
-        find_latest_versioned_api_file,
-        extract_version_string,
-    )
+except ImportError as first_exc:
+    try:
+        from server.versioning import (
+            detect_installed_library_version,
+            detect_liblcm_version_from_disk,
+            get_resolved_fieldworks_dir,
+            find_versioned_api_file,
+            find_latest_versioned_api_file,
+            extract_version_string,
+        )
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 try:
     from ..project_access import probe_project_access
 except (ImportError, ValueError):
@@ -103,10 +106,13 @@ except (ImportError, ValueError):
 
 try:
     from . import op_telemetry
-except ImportError:
-    from server.handlers import op_telemetry
+except ImportError as first_exc:
+    try:
+        from server.handlers import op_telemetry
 
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # ============================================================
 # Library detection (mirrors server.py's get_installed_*_version() helpers --
 # duplicated here rather than imported, since server.py imports the handler
@@ -736,9 +742,12 @@ async def handle_flextools_health(args: dict) -> List[TextContent]:
 
     try:
         from ..kernel import is_stateless_client_mode
-    except ImportError:
-        from server.kernel import is_stateless_client_mode
+    except ImportError as first_exc:
+        try:
+            from server.kernel import is_stateless_client_mode
 
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     result: Dict[str, Any] = {
         # TOOL-CONTRACT success envelope (issue #54): status is stamped here;
         # build_response_with_context adds _contract.

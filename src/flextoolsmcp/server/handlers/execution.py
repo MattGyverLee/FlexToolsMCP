@@ -37,16 +37,22 @@ from ._import_helper import (
 # Import async subprocess helper with fallback
 try:
     from ..subprocess_helpers import run_script_async
-except ImportError:
-    from server.subprocess_helpers import run_script_async
+except ImportError as first_exc:
+    try:
+        from server.subprocess_helpers import run_script_async
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Issue #369 Phase 3: elapsed-time progress heartbeat for long subprocess
 # waits (no-op unless the request supplied a progressToken).
 try:
     from ..progress import progress_heartbeat
-except ImportError:
-    from server.progress import progress_heartbeat
+except ImportError as first_exc:
+    try:
+        from server.progress import progress_heartbeat
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Issue #302: teardown AbandonedMutexException recovery. The same source is
 # embedded into the generated runner scripts, so it is stdlib-only.
 from .teardown_recovery import (
@@ -67,26 +73,35 @@ try:
         discovery_gate_skip_note,
         is_stateless_client_mode,
     )
-except ImportError:
-    from server.kernel import (
-        get_pattern_tracker,
-        get_project_write_lock,
-        should_skip_discovery_gates,
-        discovery_gate_skip_note,
-        is_stateless_client_mode,
-    )
+except ImportError as first_exc:
+    try:
+        from server.kernel import (
+            get_pattern_tracker,
+            get_project_write_lock,
+            should_skip_discovery_gates,
+            discovery_gate_skip_note,
+            is_stateless_client_mode,
+        )
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Local recipe store (unified-recipes US2): persist whole successful snippets.
 try:
     from .. import local_recipes
-except ImportError:
-    from server import local_recipes
+except ImportError as first_exc:
+    try:
+        from server import local_recipes
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 try:
     from ..constants import EXECUTION_API_MODE
-except ImportError:
-    from server.constants import EXECUTION_API_MODE
+except ImportError as first_exc:
+    try:
+        from server.constants import EXECUTION_API_MODE
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Import validators with fallback
 try:
     from ..validators import (
@@ -113,31 +128,34 @@ try:
         detect_reflection_bypass, build_reflection_bypass_rejection,
         detect_raw_addcustomfield_risk,
     )
-except ImportError:
-    from server.validators import (
-        detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
-        detect_class_id_constant_error, detect_non_castable_attribute_error,
-        detect_undefined_variables,
-        detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
-        detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_unknown_operations_methods, detect_unknown_flexicon_imports, detect_unknown_import_error,
-        detect_partial_module_structure, build_partial_module_rejection,
-        detect_top_level_main_invocation,
-        detect_atomic_property_iteration, detect_not_iterable_error,
-        detect_undiscovered_entities,
-        detect_candidate_entities, extract_python_did_you_mean,
-        detect_overload_resolution_error, detect_getall_unsafe_idiom,
-        detect_interface_attribute_typos,
-        _collect_all_imported_names, _accessor_to_ops_map,
-        annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload, build_write_certification_payload,
-        compute_is_mutating_script, detect_nested_unit_of_work,
-        detect_hvo_literal_args,
-        detect_deprecated_members, build_deprecated_member_rejection,
-        detect_reflection_bypass, build_reflection_bypass_rejection,
-        detect_raw_addcustomfield_risk,
-    )
+except ImportError as first_exc:
+    try:
+        from server.validators import (
+            detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
+            detect_class_id_constant_error, detect_non_castable_attribute_error,
+            detect_undefined_variables,
+            detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
+            detect_unknown_attribute_error, detect_invalid_project_chains,
+            detect_unknown_operations_methods, detect_unknown_flexicon_imports, detect_unknown_import_error,
+            detect_partial_module_structure, build_partial_module_rejection,
+            detect_top_level_main_invocation,
+            detect_atomic_property_iteration, detect_not_iterable_error,
+            detect_undiscovered_entities,
+            detect_candidate_entities, extract_python_did_you_mean,
+            detect_overload_resolution_error, detect_getall_unsafe_idiom,
+            detect_interface_attribute_typos,
+            _collect_all_imported_names, _accessor_to_ops_map,
+            annotate_properties_with_casting, build_casting_notes,
+            build_writeability_payload, build_write_certification_payload,
+            compute_is_mutating_script, detect_nested_unit_of_work,
+            detect_hvo_literal_args,
+            detect_deprecated_members, build_deprecated_member_rejection,
+            detect_reflection_bypass, build_reflection_bypass_rejection,
+            detect_raw_addcustomfield_risk,
+        )
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # The write ladder's shared rungs (parser-check CP4, R-07): the access gate,
 # the backup intent and the backup itself, extracted from handle_run_module
 # so filing walks the same code. Reached as module attributes so the leaves
@@ -145,24 +163,33 @@ except ImportError:
 try:
     from .. import write_ladder
     from ..write_ladder import PEER_BACKUP_CAVEAT as _PEER_BACKUP_CAVEAT
-except ImportError:
-    from server import write_ladder
-    from server.write_ladder import PEER_BACKUP_CAVEAT as _PEER_BACKUP_CAVEAT
+except ImportError as first_exc:
+    try:
+        from server import write_ladder
+        from server.write_ladder import PEER_BACKUP_CAVEAT as _PEER_BACKUP_CAVEAT
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Writing-system / custom-field changes refused while FieldWorks holds the
 # project (specs/_archive/exclusive-access-gate).
 try:
     from .. import exclusive_access
-except ImportError:
-    from server import exclusive_access
+except ImportError as first_exc:
+    try:
+        from server import exclusive_access
 
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Issue #55 (Rung 2): automatic pre-write backup.
 try:
     from ..backup import perform_pre_write_backup
-except ImportError:
-    from server.backup import perform_pre_write_backup
+except ImportError as first_exc:
+    try:
+        from server.backup import perform_pre_write_backup
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Import response utilities and HeadlessReport with fallback
 try:
     from ...response_utils import build_response_with_context, error_response
@@ -293,26 +320,35 @@ def _ladder_backup_before_write(args: dict) -> bool:
 # Issue #50: structured JSONL telemetry (one line per op, alongside prose .log)
 try:
     from .op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics, stash_merge
-except ImportError:
-    from server.handlers.op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics, stash_merge
+except ImportError as first_exc:
+    try:
+        from server.handlers.op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics, stash_merge
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Diagnostic-report CP2: precision casting-recurrence signature (deferred
 # cycle-2 QC P1). Pure function, no transmission -- see
 # server/diagnostic/__init__.py for the no-transmission guard this import
 # reaches into (one-way: execution.py -> diagnostic, never the reverse).
 try:
     from ..diagnostic.triggers import compute_casting_signature
-except ImportError:
-    from server.diagnostic.triggers import compute_casting_signature
+except ImportError as first_exc:
+    try:
+        from server.diagnostic.triggers import compute_casting_signature
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Diagnostic-report CP3: success-close advisory attach (spec sections 6.2,
 # 6.5, 10). One-way dependency (execution.py -> handlers.diagnostic_report),
 # fail-open by contract -- see build_advisory_for_success_close()'s docstring.
 try:
     from .diagnostic_report import build_advisory_for_success_close
-except ImportError:
-    from server.handlers.diagnostic_report import build_advisory_for_success_close
+except ImportError as first_exc:
+    try:
+        from server.handlers.diagnostic_report import build_advisory_for_success_close
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # ============================================================
 # Constants (avoid stringly-typed code)
 # ============================================================

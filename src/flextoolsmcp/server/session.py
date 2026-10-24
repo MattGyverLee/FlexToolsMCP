@@ -228,6 +228,15 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "from the canonical location (or call flextools_start with the correct "
         "project_name after the user fixes the path in FLEx)."
     ),
+    "runtime_error": (
+        # Issue #28 / #302: runtime failures already carry error, stderr, and
+        # messages -- retry loops must read those fields, not hunt new APIs.
+        "the script failed at runtime, not preflight. Read error, stderr, and "
+        "messages in this payload and fix the specific exception -- do not "
+        "resubmit the same body hoping the gate changes. If the failure stays "
+        "opaque after one targeted fix, call flextools_prepare_report or "
+        "flextools_health (verbose=True) instead of looping."
+    ),
 }
 
 

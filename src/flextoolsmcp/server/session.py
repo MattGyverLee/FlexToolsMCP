@@ -353,8 +353,17 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "flextoolsmcp/FieldWorks -- do not keep resubmitting parse_sandbox or "
         "parse runs; the project grammar does not need changing."
     ),
+    "TeardownError": (
+        # Issue #302: the script body may have succeeded; CloseProject/SaveChanges
+        # failed afterward. run_module sets error_type=TeardownError and next_steps
+        # with writes_committed -- hammering the same write can duplicate data.
+        "read writes_committed and the numbered next_steps on this rejection "
+        "before changing anything. When writes_committed is true, confirm with "
+        "a read-only run (write_enabled=false) instead of re-submitting the "
+        "write. For an abandoned writing-system mutex, close FieldWorks/SIL "
+        "apps once, then retry once -- not in a loop."
+    ),
 }
-
 
 def _assistance_message_for_error(
     error_code: Optional[str],

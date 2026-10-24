@@ -508,8 +508,11 @@ def _load_library_api_index(
                 index.liblcm_entities_epoch += 1
                 try:
                     from flextoolsmcp.server.handlers.api import clear_inherited_members_cache
-                except ImportError:
-                    from server.handlers.api import clear_inherited_members_cache
+                except ImportError as _dual_first_exc:
+                    try:
+                        from server.handlers.api import clear_inherited_members_cache
+                    except ImportError as _dual_second_exc:
+                        raise _dual_second_exc from _dual_first_exc
                 clear_inherited_members_cache()
             extracted_version = _extract_file_version(api_path)
             setattr(index, version_attr, extracted_version)

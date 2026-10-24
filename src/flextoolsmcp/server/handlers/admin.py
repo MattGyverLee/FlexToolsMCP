@@ -955,8 +955,11 @@ def _load_refresh_module():
     """
     try:
         from ... import refresh as refresh_module
-    except (ImportError, ValueError):
-        import refresh as refresh_module
+    except (ImportError, ValueError) as first_exc:
+        try:
+            import refresh as refresh_module
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     return refresh_module
 
 
@@ -1043,8 +1046,11 @@ async def handle_refresh_indexes(args: dict) -> list[TextContent]:
         try:
             try:
                 from ..versioning import clear_file_discovery_cache
-            except (ImportError, ValueError):
-                from server.versioning import clear_file_discovery_cache
+            except (ImportError, ValueError) as first_exc:
+                try:
+                    from server.versioning import clear_file_discovery_cache
+                except ImportError as second_exc:
+                    raise second_exc from first_exc
             clear_file_discovery_cache()
         except Exception:
             pass

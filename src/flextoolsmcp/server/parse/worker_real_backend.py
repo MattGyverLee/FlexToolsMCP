@@ -920,8 +920,15 @@ class _RealBackend(_ParseBackend):
 
     def eligible_entries(self) -> dict[str, Any]:
         try:
-            from ..filing.eligibility import eligible_entries
-        except ImportError:
+            try:
+                from ..filing.eligibility import eligible_entries
+            except ImportError as _dual_first_exc:
+                try:
+                    from server.filing.eligibility import eligible_entries
+                except ImportError as _dual_second_exc:
+                    raise _dual_second_exc from _dual_first_exc
+        except ImportError as exc:
+            _log(f"eligibility import failed: {exc}")
             return {"known": False, "entries": []}
         try:
             return {"known": True, "entries": eligible_entries(self._project)}

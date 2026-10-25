@@ -20,7 +20,7 @@ pass with the old 1.x floor, which is exactly the regression #369 removes.
 
 SCOPE LIMIT: this file intentionally does NOT assert that every runtime
 dependency has an upper bound. sentence-transformers, faiss-cpu, pythonnet,
-pydantic, httpx, and anyio are all deliberately uncapped today -- see the
+httpx, and anyio are still deliberately uncapped today -- see the
 deferred issue in specs/mcp2-compat/deferred-issues.md ("Add upper bounds to
 remaining uncapped runtime deps"). A general assertion would fail
 immediately and is out of scope for this fix.
@@ -42,7 +42,6 @@ KNOWN_UNCAPPED_DEPS = {
     "sentence-transformers",
     "faiss-cpu",
     "pythonnet",
-    "pydantic",
     "httpx",
     "anyio",
 }
@@ -96,3 +95,31 @@ def test_requirements_txt_mcp_requirement_has_floor_and_upper_bound():
     match = re.search(r"^mcp([^\s#]*)", requirements_text, re.MULTILINE)
     assert match, "Could not find an 'mcp' line in requirements.txt"
     _assert_mcp_requirement(match.group(1), "requirements.txt")
+
+
+def _assert_pydantic_requirement(requirement: str, where: str) -> None:
+    assert ">=2" in requirement, (
+        f"{where} pydantic requirement 'pydantic{requirement}' is missing the "
+        f">=2 floor -- the server targets pydantic v2 APIs."
+    )
+    assert "<3" in requirement, (
+        f"{where} pydantic requirement 'pydantic{requirement}' is missing a "
+        f"<3 cap -- uncapped majors can break fresh installs silently "
+        f"(see specs/mcp2-compat/deferred-issues.md section 2)."
+    )
+
+
+def test_pyproject_pydantic_requirement_has_floor_and_upper_bound():
+    """pyproject.toml pins pydantic to the supported 2.x major."""
+    pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'"pydantic(>=?[^"]*)"', pyproject_text)
+    assert match, "Could not find a 'pydantic' dependency entry in pyproject.toml"
+    _assert_pydantic_requirement(match.group(1), "pyproject.toml")
+
+
+def test_requirements_txt_pydantic_requirement_has_floor_and_upper_bound():
+    """requirements.txt pins pydantic to the supported 2.x major."""
+    requirements_text = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    match = re.search(r"^pydantic([^\s#]*)", requirements_text, re.MULTILINE)
+    assert match, "Could not find a pydantic line in requirements.txt"
+    _assert_pydantic_requirement(match.group(1), "requirements.txt")

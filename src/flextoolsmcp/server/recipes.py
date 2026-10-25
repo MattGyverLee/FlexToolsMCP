@@ -31,11 +31,11 @@ except ImportError:  # pragma: no cover - script-mode fallback
 
 try:
     from ..recipe_files import extract_code_terms as _extract_code_terms
-except ImportError:  # pragma: no cover - script-mode fallback
+except ImportError as _recipe_files_first:  # pragma: no cover - script-mode fallback
     try:
         from recipe_files import extract_code_terms as _extract_code_terms
-    except ImportError:
-        _extract_code_terms = None  # type: ignore
+    except ImportError as _recipe_files_second:
+        raise _recipe_files_second from _recipe_files_first
 
 
 def _normalize(text: str) -> str:

@@ -29,10 +29,13 @@ reviewed by a human and only added to this file once flipped to "curated"
 
 from typing import Any, Dict
 
-if __package__:
+try:
     from .curated_deprecations import CURATED_DEPRECATIONS
-else:
-    from curated_deprecations import CURATED_DEPRECATIONS
+except ImportError as _curated_dep_first:
+    try:
+        from curated_deprecations import CURATED_DEPRECATIONS
+    except ImportError as _curated_dep_second:
+        raise _curated_dep_second from _curated_dep_first
 
 FLEXICON_VERIFIED_VERSION = "4.13.0"
 
@@ -641,10 +644,13 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
 # (server/recipes.py, extract_patterns.py, tests) sees them. An id
 # collision raises at import time; a malformed file is skipped with one
 # logged error and the server still starts (research R5).
-if __package__:
+try:
     from .recipe_files import load_recipe_library, merge_recipes
-else:
-    from recipe_files import load_recipe_library, merge_recipes
+except ImportError as _recipe_files_first:
+    try:
+        from recipe_files import load_recipe_library, merge_recipes
+    except ImportError as _recipe_files_second:
+        raise _recipe_files_second from _recipe_files_first
 
 _FILE_RECIPES, _RECIPE_ERRORS = load_recipe_library()
 CURATED_RECIPES = merge_recipes(

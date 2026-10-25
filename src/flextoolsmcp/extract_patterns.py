@@ -17,14 +17,17 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Any
 
-if __package__:
+try:
     from .server.versioning import find_latest_versioned_api_file
     from .file_utils import get_project_root, get_index_dir, load_json, save_json
     from .curated_recipes import CURATED_RECIPES
-else:
-    from server.versioning import find_latest_versioned_api_file
-    from file_utils import get_project_root, get_index_dir, load_json, save_json
-    from curated_recipes import CURATED_RECIPES
+except ImportError as _extract_patterns_first:
+    try:
+        from server.versioning import find_latest_versioned_api_file
+        from file_utils import get_project_root, get_index_dir, load_json, save_json
+        from curated_recipes import CURATED_RECIPES
+    except ImportError as _extract_patterns_second:
+        raise _extract_patterns_second from _extract_patterns_first
 
 
 def classify_operation(method_name: str, example: str) -> str:
@@ -203,10 +206,13 @@ def _recipes_with_params() -> Dict[str, Any]:
     derive their params from the code (usually ``[]``) when missing.
     """
     try:
-        if __package__:
+        try:
             from .recipe_files import parse_params
-        else:
-            from recipe_files import parse_params  # type: ignore
+        except ImportError as _parse_params_first:
+            try:
+                from recipe_files import parse_params  # type: ignore
+            except ImportError as _parse_params_second:
+                raise _parse_params_second from _parse_params_first
     except Exception:
         parse_params = None  # type: ignore
     out: Dict[str, Any] = {}
@@ -310,10 +316,13 @@ def mine_operations_log(log_dir: Path) -> Dict[str, Any]:
     verifying) a ``curated_recipes.CURATED_RECIPES`` entry and flipping
     ``source`` to ``"curated"`` -- this function never writes to that file.
     """
-    if __package__:
+    try:
         from .server.handlers.op_telemetry import _load_jsonl_records
-    else:
-        from server.handlers.op_telemetry import _load_jsonl_records
+    except ImportError as _op_telemetry_first:
+        try:
+            from server.handlers.op_telemetry import _load_jsonl_records
+        except ImportError as _op_telemetry_second:
+            raise _op_telemetry_second from _op_telemetry_first
 
     records = _load_jsonl_records(log_dir)
 
@@ -412,10 +421,13 @@ def main():
     args = parser.parse_args()
 
     if args.mine_operations_log:
-        if __package__:
+        try:
             from .server.kernel import get_log_dir
-        else:
-            from server.kernel import get_log_dir
+        except ImportError as _log_dir_first:
+            try:
+                from server.kernel import get_log_dir
+            except ImportError as _log_dir_second:
+                raise _log_dir_second from _log_dir_first
 
         log_dir = get_log_dir()
         mined = mine_operations_log(log_dir)

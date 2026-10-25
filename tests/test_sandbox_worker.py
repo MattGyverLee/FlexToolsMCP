@@ -508,10 +508,13 @@ class TestIsolation:
         lines.append({"type": "shutdown"})
         stdin = "".join(json.dumps(m) + "\n" for m in lines).encode("ascii")
 
+        from server.subprocess_helpers import child_process_env
+
         proc = subprocess.run(
             [sys.executable, "-c", _ISOLATION_PROBE, "--sandbox", "--stub",
              "--config", config, "--id-map", id_map, "--project", "Proj"],
             input=stdin, capture_output=True, cwd=str(cwd), timeout=60,
+            env=child_process_env(),
         )
         assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
         out = [json.loads(line) for line in proc.stdout.decode("ascii").splitlines() if line]

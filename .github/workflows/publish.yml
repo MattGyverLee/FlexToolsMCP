@@ -69,6 +69,12 @@ jobs:
     needs: build
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/smoke_stdio_handshake.py
+          sparse-checkout-cone-mode: false
+
       - name: Download build artifacts
         uses: actions/download-artifact@v8
         with:
@@ -100,6 +106,15 @@ jobs:
           & $smokePy -c $smokeCheck
           if ($LASTEXITCODE -ne 0) { throw "Smoke test failed under resolved MCP" }
           Pop-Location
+
+      - name: Smoke test stdio MCP initialize + tools/list
+        shell: pwsh
+        run: |
+          $smokePy = "$env:GITHUB_WORKSPACE\smoke-venv\Scripts\python.exe"
+          $entry = "$env:GITHUB_WORKSPACE\smoke-venv\Scripts\flextools-mcp.exe"
+          $script = "$env:GITHUB_WORKSPACE\scripts\smoke_stdio_handshake.py"
+          & $smokePy $script $entry
+          if ($LASTEXITCODE -ne 0) { throw "Stdio MCP handshake smoke failed" }
 
   publish:
     name: Publish to PyPI

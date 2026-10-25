@@ -33,10 +33,13 @@ def load_project_env(project_root: Optional[Path] = None) -> Optional[Path]:
     via :func:`collect_obsolete_env_warnings` instead.
     """
     if project_root is None:
-        if __package__:
+        try:
             from .file_utils import get_project_root
-        else:
-            from file_utils import get_project_root
+        except ImportError as _file_utils_first:
+            try:
+                from file_utils import get_project_root
+            except ImportError as _file_utils_second:
+                raise _file_utils_second from _file_utils_first
         project_root = get_project_root()
 
     env_file = project_root / ".env"

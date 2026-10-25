@@ -13,10 +13,13 @@ import shutil
 from pathlib import Path
 from typing import Dict, Any
 
-if __package__:
+try:
     from .json_utils import sort_json_arrays
-else:
-    from json_utils import sort_json_arrays
+except ImportError as _json_utils_first:
+    try:
+        from json_utils import sort_json_arrays
+    except ImportError as _json_utils_second:
+        raise _json_utils_second from _json_utils_first
 
 
 # Root for all user-writable state (logs, local recipes, refreshed index overlay).

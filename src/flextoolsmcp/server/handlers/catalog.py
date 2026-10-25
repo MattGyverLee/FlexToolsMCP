@@ -9,7 +9,6 @@ These handlers provide listing and discovery of available APIs:
 """
 
 import difflib
-import json
 from collections import defaultdict
 from mcp.types import TextContent
 

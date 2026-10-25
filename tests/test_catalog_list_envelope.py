@@ -19,6 +19,15 @@ def _parse(out):
 @pytest.fixture(autouse=True)
 def _readonly_session():
     kernel_mod.session_state.configure(session_id="test-catalog-envelope", api_mode="flexicon")
+    # Success paths require a loaded API index (merged #384 returns the
+    # api_index_not_loaded error envelope otherwise), and full-suite test
+    # order must not decide whether the index happens to be loaded already.
+    try:
+        from flextoolsmcp.server import APIIndex, get_index_dir
+
+        kernel_mod.set_api_index(APIIndex.load(get_index_dir()))
+    except Exception:
+        pass
     yield
 
 

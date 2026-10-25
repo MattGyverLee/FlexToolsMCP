@@ -319,7 +319,23 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "the sandbox/corpus request was refused before creation -- read "
         "reason in the rejection (bad name, duplicate, missing corpus, disk "
         "space, invalid word file) and fix that specific issue before retry."    ),
-}
+    "parse_morph_unresolved": (
+        "a restricted decomposition piece did not resolve -- read resolved_to "
+        "and candidates in the rejection: fix spelling, add a homograph sense "
+        "number, or attach an analysis (MSA) to the entry. Do not resubmit the "
+        "same morph list; use level='explain' on flextools_try_word to trace "
+        "without a hypothesis."
+    ),
+    "parse_run_not_found": (
+        "the run handle is unknown to this server process -- read "
+        "available_runs in the rejection and pick one of those, or start a "
+        "fresh run with flextools_try_word or flextools_parse_text. Handles "
+        "from an earlier server restart are not valid."
+    ),
+    "parse_job_cancelled": (
+        "the run has already ended -- do not cancel or poll it again. Read "
+        "results with flextools_parse_log (or flextools_parse_status only "
+        "while the run is still live)."    ),}
 
 
 def _assistance_message_for_error(

@@ -6974,18 +6974,26 @@ MODULE_CODE = {code}
     except Exception as e:
         import traceback as _tb
         err_msg = "Subprocess execution error: {}".format(str(e))
+        exc_type = type(e).__name__
         _log_operation_failure(
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
-            error=err_msg, error_type=type(e).__name__,
+            error=err_msg, error_type=exc_type,
             traceback_text=_tb.format_exc(),
         log_dir_fn=get_log_dir,
+            assistance_error_code="subprocess_execution_error",
+            assistance_code_size_bytes=code_size_bytes,
         )
-        return json_response(_finalize_run_module_response({
-            "success": False,
-            "error": err_msg,
-            "warnings": warnings,
-            "op_id": op_id,
-        }))
+        return _attach_assistance_if_loop(
+            json_response(_finalize_run_module_response({
+                "success": False,
+                "error": err_msg,
+                "error_type": exc_type,
+                "warnings": warnings,
+                "op_id": op_id,
+            })),
+            error_code="subprocess_execution_error",
+            code_size_bytes=code_size_bytes,
+        )
 
     finally:
         # Clean up temporary file

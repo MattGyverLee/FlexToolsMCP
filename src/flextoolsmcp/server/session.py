@@ -423,6 +423,11 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "liblcm), or run the same pipeline locally with "
         "`python -m flextoolsmcp.refresh` for a full traceback. Retrying "
         "identical args without fixing the root cause will not help."    ),
+    "subprocess_execution_error": (
+        "the runner failed before or outside the script body (spawn, temp file, "
+        "or subprocess wrapper) -- read stderr and traceback in this payload and "
+        "fix the environment or script setup; resubmitting unchanged code will "
+        "fail the same way."    ),
 }
 
 def _assistance_message_for_error(

@@ -428,6 +428,15 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "or subprocess wrapper) -- read stderr and traceback in this payload and "
         "fix the environment or script setup; resubmitting unchanged code will "
         "fail the same way."    ),
+    "ReportedError": (
+        # Issue #28 / docs/SHARED-MODE.md: report.Error() fails the run even
+        # when most work succeeded -- blind retries duplicate creates/appends.
+        "the script called report.Error() -- read summary.error_count vs "
+        "summary.total_messages and messages[] to see how much actually "
+        "failed. Do not re-run the same script if it creates or appends "
+        "(Create*, Add*); only idempotent setters (SetGloss, SetLexemeForm, "
+        "and similar) are safe to retry as-is. Otherwise fix or narrow the "
+        "run to the items that failed."    ),
 }
 
 def _assistance_message_for_error(

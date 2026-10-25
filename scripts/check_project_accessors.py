@@ -43,8 +43,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 def main():
     try:
         from flexicon import FLExProject
-    except ImportError as exc:
-        print(f"[SKIP] flexicon not importable ({exc}); accessor drift check needs a live install.")
+    except Exception as exc:  # noqa: BLE001 -- flexicon raises non-ImportError without FieldWorks
+        print(
+            f"[SKIP] flexicon unavailable ({exc}); accessor drift check needs a live "
+            f"FieldWorks-backed install."
+        )
         return 0
 
     from flextoolsmcp.server.constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES

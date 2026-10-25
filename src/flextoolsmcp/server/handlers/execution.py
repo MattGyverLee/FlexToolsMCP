@@ -1218,8 +1218,11 @@ _NON_CODE_FAILURE_CODES = frozenset({
 def _recipes_module():
     try:
         from .. import recipes as _r
-    except (ImportError, ValueError):
-        from server import recipes as _r
+    except (ImportError, ValueError) as first_exc:
+        try:
+            from server import recipes as _r
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     return _r
 
 

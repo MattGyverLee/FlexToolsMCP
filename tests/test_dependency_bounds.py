@@ -20,7 +20,7 @@ pass with the old 1.x floor, which is exactly the regression #369 removes.
 
 SCOPE LIMIT: this file intentionally does NOT assert that every runtime
 dependency has an upper bound. sentence-transformers, faiss-cpu, pythonnet,
-httpx, and anyio are still deliberately uncapped today -- see the
+are still deliberately uncapped today -- see the
 deferred issue in specs/mcp2-compat/deferred-issues.md ("Add upper bounds to
 remaining uncapped runtime deps"). A general assertion would fail
 immediately and is out of scope for this fix.
@@ -42,8 +42,6 @@ KNOWN_UNCAPPED_DEPS = {
     "sentence-transformers",
     "faiss-cpu",
     "pythonnet",
-    "httpx",
-    "anyio",
 }
 
 
@@ -109,6 +107,18 @@ def _assert_pydantic_requirement(requirement: str, where: str) -> None:
     )
 
 
+def _assert_anyio_requirement(requirement: str, where: str) -> None:
+    assert ">=4" in requirement, (
+        f"{where} anyio requirement 'anyio{requirement}' is missing the "
+        f">=4 floor -- the server targets anyio 4.x (asyncio/MCP stdio)."
+    )
+    assert "<5" in requirement, (
+        f"{where} anyio requirement 'anyio{requirement}' is missing a "
+        f"<5 cap -- uncapped majors can break fresh installs silently "
+        f"(see specs/mcp2-compat/deferred-issues.md section 2)."
+    )
+
+
 def test_pyproject_pydantic_requirement_has_floor_and_upper_bound():
     """pyproject.toml pins pydantic to the supported 2.x major."""
     pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
@@ -123,3 +133,47 @@ def test_requirements_txt_pydantic_requirement_has_floor_and_upper_bound():
     match = re.search(r"^pydantic([^\s#]*)", requirements_text, re.MULTILINE)
     assert match, "Could not find a pydantic line in requirements.txt"
     _assert_pydantic_requirement(match.group(1), "requirements.txt")
+
+
+def _assert_httpx_requirement(requirement: str, where: str) -> None:
+    assert "0.27" in requirement, (
+        f"{where} httpx requirement 'httpx{requirement}' is missing the "
+        f">=0.27.1 floor."
+    )
+    assert "<1" in requirement, (
+        f"{where} httpx requirement 'httpx{requirement}' is missing a "
+        f"<1 cap -- httpx is still 0.x and a 1.x release would be an "
+        f"unverified major (deferred-issues.md section 2)."
+    )
+
+
+def test_pyproject_anyio_requirement_has_floor_and_upper_bound():
+    """pyproject.toml pins anyio to the supported 4.x major."""
+    pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'"anyio(>=?[^"]*)"', pyproject_text)
+    assert match, "Could not find an 'anyio' dependency entry in pyproject.toml"
+    _assert_anyio_requirement(match.group(1), "pyproject.toml")
+
+
+def test_requirements_txt_anyio_requirement_has_floor_and_upper_bound():
+    """requirements.txt pins anyio to the supported 4.x major."""
+    requirements_text = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    match = re.search(r"^anyio([^\s#]*)", requirements_text, re.MULTILINE)
+    assert match, "Could not find an anyio line in requirements.txt"
+    _assert_anyio_requirement(match.group(1), "requirements.txt")
+
+
+def test_pyproject_httpx_requirement_has_floor_and_upper_bound():
+    """pyproject.toml caps httpx below the next unverified major."""
+    pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'"httpx(>=?[^"]*)"', pyproject_text)
+    assert match, "Could not find an 'httpx' dependency entry in pyproject.toml"
+    _assert_httpx_requirement(match.group(1), "pyproject.toml")
+
+
+def test_requirements_txt_httpx_requirement_has_floor_and_upper_bound():
+    """requirements.txt caps httpx below the next unverified major."""
+    requirements_text = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    match = re.search(r"^httpx([^\s#]*)", requirements_text, re.MULTILINE)
+    assert match, "Could not find an httpx line in requirements.txt"
+    _assert_httpx_requirement(match.group(1), "requirements.txt")

@@ -238,50 +238,29 @@ def check_server_tools():
 
 
 def _count_tools_from_ast():
-    """Count Tool() constructor calls in server.py AND ToolDef instances in tool_definitions.py."""
-    with open("src/flextoolsmcp/server.py") as f:
-        tree = ast.parse(f.read(), filename="src/flextoolsmcp/server.py")
+    """Count registered tools from ToolDef entries in tool_definitions.py (AST only).
 
-    tool_count = 0
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == "Tool"
-        ):
-            tool_count += 1
-
-    try:
-        with open("src/flextoolsmcp/server/tool_definitions.py") as f:
-            tooldef_tree = ast.parse(f.read(), filename="src/flextoolsmcp/server/tool_definitions.py")
-
-        tooldef_count = 0
-        for node in ast.walk(tooldef_tree):
-            if (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Name)
-                and node.func.id == "ToolDef"
-            ):
-                tooldef_count += 1
-
-        tool_count += tooldef_count
-    except FileNotFoundError:
-        pass
+    Do not count ``Tool(...)`` call sites in server.py: list_tools builds MCP
+    ``Tool`` objects dynamically from those ToolDefs (``Tool(**kwargs)`` at
+    server.py:list_tools), so an AST walk of server.py would falsely add one
+    per construction site. The canonical set is ToolDef(name=...) in
+    tool_definitions.py -- same source check_tool_reference_doc() uses.
+    """
+    tool_count = len(_tool_names_from_definitions())
 
     if tool_count >= MIN_TOOL_COUNT:
         print(
-            f"  server.py + tool_definitions.py: {tool_count} tool definitions found "
+            f"  tool_definitions.py: {tool_count} tool definitions found "
             f"(AST, DEGRADED -- runtime import check failed, this does NOT prove "
             f"server.py imports/runs) [OK]"
         )
         return True
-    else:
-        print(
-            f"TOOL COUNT ERROR: server.py + tool_definitions.py has {tool_count} tool definitions, "
-            f"expected >= {MIN_TOOL_COUNT}",
-            file=sys.stderr,
-        )
-        return False
+    print(
+        f"TOOL COUNT ERROR: tool_definitions.py has {tool_count} tool definitions, "
+        f"expected >= {MIN_TOOL_COUNT}",
+        file=sys.stderr,
+    )
+    return False
 
 
 def _tool_names_from_definitions():

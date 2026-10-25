@@ -86,6 +86,14 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "(verbose=True for project-lock/pythonnet detail) for a diagnostic "
         "snapshot instead of reading server logs -- retrying won't help."
     ),
+    "internal_error": (
+        # Issue #89: unhandled handler exception -- not a script/preflight
+        # rejection the model can fix by editing code.
+        "the tool handler crashed (see error_type and traceback in this "
+        "payload). Do not resubmit the same call hoping it clears -- call "
+        "flextools_health (verbose=True) once for context, then change "
+        "approach or ask the operator to inspect server logs."
+    ),
     "session_not_initialized": (
         "call flextools_start first to initialize the session and set "
         "api_mode/write_enabled before using project-scoped tools."

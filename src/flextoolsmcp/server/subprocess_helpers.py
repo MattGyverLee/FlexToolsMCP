@@ -62,8 +62,7 @@ def child_process_env(base: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     otherwise see ``flextoolsmcp`` unless the package is installed. Parse
     workers already needed this; ``run_script_async`` and grammar-scan
     children did not get it until this helper (see
-    ``parse/worker_client._child_env``).
-    """
+    ``parse/worker_client._child_env``).    """
     env = utf8_child_env(base)
     entries = [p for p in sys.path if p and os.path.isdir(p)]
     existing = env.get("PYTHONPATH", "")
@@ -272,7 +271,9 @@ async def spawn_module_async(
         module_import_path: dotted path, e.g.
             "flextoolsmcp.server.parse.worker_main".
         args: additional argv passed after the module path.
-        env: optional environment for the child.
+        env: optional environment for the child. When omitted, uses
+            :func:`child_process_env` (UTF-8 mode + ``PYTHONPATH`` from
+            ``sys.path``).
 
     Returns:
         The running ``asyncio.subprocess.Process``, with stdin/stdout/stderr
@@ -284,6 +285,9 @@ async def spawn_module_async(
     extra_kwargs: Dict[str, Any] = {}
     if sys.platform != "win32":
         extra_kwargs["start_new_session"] = True
+
+    if env is None:
+        env = child_process_env()
 
     return await asyncio.create_subprocess_exec(
         sys.executable,

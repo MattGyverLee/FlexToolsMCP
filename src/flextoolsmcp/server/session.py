@@ -409,6 +409,20 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "the failure is inside flexicon's wrapper, not your script's "
         "receiver type -- read help and raising_frame; do not cast or rename "
         "the user variable in a loop."    ),
+    "recipe_not_found": (
+        # unified-recipes FR-024: the rejection already carries recipe_id,
+        # closest_matches, and hint -- do not guess a new id.
+        "read closest_matches in this payload (or call "
+        "flextools_list_recipes with query=...) and resubmit with a real "
+        "recipe_id from that list."
+    ),
+    "refresh_failed": (
+        # flextools_refresh_indexes machinery failure (not a per-step skip).
+        "the index refresh pipeline crashed before finishing -- read the "
+        "error message, fix the environment (paths, FieldWorks/pythonnet for "
+        "liblcm), or run the same pipeline locally with "
+        "`python -m flextoolsmcp.refresh` for a full traceback. Retrying "
+        "identical args without fixing the root cause will not help."    ),
 }
 
 def _assistance_message_for_error(

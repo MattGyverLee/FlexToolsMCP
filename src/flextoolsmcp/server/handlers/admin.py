@@ -26,22 +26,28 @@ from ..response_keys import (
 
 try:
     from ...response_utils import build_response_with_context, error_response
-except (ImportError, ValueError):
-    from response_utils import build_response_with_context, error_response
+except (ImportError, ValueError) as first_exc:  # noqa: F841
+    try:
+        from response_utils import build_response_with_context, error_response
+    except ImportError as second_exc:
+        try:
+            from server.response_utils import build_response_with_context, error_response
+        except ImportError as third_exc:
+            raise third_exc from second_exc
 
 try:
     from ..progress import get_progress_reporter, progress_heartbeat
-except (ImportError, ValueError):
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     from server.progress import get_progress_reporter, progress_heartbeat
 
 try:
     from ...file_utils import get_bundled_templates_dir
-except (ImportError, ValueError):
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     from file_utils import get_bundled_templates_dir
 
 try:
     from ...workspace_check import get_workspace_notice, warning_line as _workspace_warning_line
-except (ImportError, ValueError):
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     from workspace_check import get_workspace_notice, warning_line as _workspace_warning_line
 
 
@@ -64,7 +70,7 @@ try:
         project_not_found_fields,
         resolve_or_explain,
     )
-except (ImportError, ValueError):
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     from server.project_discovery import (
         normalize_project_name,
         project_not_found_fields,
@@ -73,12 +79,12 @@ except (ImportError, ValueError):
 
 try:
     from ..startup_notices import get_index_refresh_failures
-except (ImportError, ValueError):
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     from server.startup_notices import get_index_refresh_failures
 
 try:
     from ..diagnostic import transports as _transports
-except (ImportError, ValueError):
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     from server.diagnostic import transports as _transports
 
 try:

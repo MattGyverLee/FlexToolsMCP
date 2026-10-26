@@ -4,7 +4,12 @@
 Regression tests for the worked-examples matching layer (Phase A of #12).
 """
 
-from server.worked_examples import find_worked_examples, WORKED_EXAMPLES
+from server.worked_examples import (
+    WORKED_EXAMPLES,
+    annotate_worked_examples_for_response,
+    find_worked_examples,
+    worked_examples_data_provenance,
+)
 
 
 def test_phonrule_query_returns_phonrule_example():
@@ -109,6 +114,14 @@ def test_analysis_subtype_example_uses_wordforms_facade():
         ex for ex in WORKED_EXAMPLES if ex["id"] == "analysis-subtype-disambiguation"
     )
     assert "project.Wordforms.GetAll()" in example["code"]
+
+
+def test_annotate_worked_examples_adds_provenance_without_mutating_catalog():
+    raw = find_worked_examples(query="factory", max_results=1)
+    assert raw and "provenance" not in raw[0]
+    annotated = annotate_worked_examples_for_response(raw)
+    assert annotated[0]["provenance"] == worked_examples_data_provenance()
+    assert "provenance" not in raw[0]
 
 
 if __name__ == "__main__":

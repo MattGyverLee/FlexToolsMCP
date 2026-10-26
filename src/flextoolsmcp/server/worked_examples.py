@@ -20,7 +20,15 @@ Each entry:
 """
 
 import re
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
+
+# S-P1-2 (#369 Phase 5): worked-example code is library documentation (data),
+# not MCP server guidance -- responses must label it in-band.
+WORKED_EXAMPLE_DOCUMENTATION_PROVENANCE: Dict[str, str] = {
+    "kind": "worked_example_documentation",
+    "origin": "shipped_worked_examples",
+    "trust": "data_not_server_instructions",
+}
 
 
 # Common English stop-words we filter out of free-text queries before matching.
@@ -395,6 +403,19 @@ def _build_example_index() -> List[Tuple[Dict, frozenset, frozenset]]:
 
 
 _EXAMPLE_INDEX: List[Tuple[Dict, frozenset, frozenset]] = _build_example_index()
+
+
+def worked_examples_data_provenance() -> Dict[str, str]:
+    """Shallow copy so callers cannot mutate the module constant."""
+    return dict(WORKED_EXAMPLE_DOCUMENTATION_PROVENANCE)
+
+
+def annotate_worked_examples_for_response(examples: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Return shallow copies of matched examples with per-row provenance."""
+    if not examples:
+        return []
+    prov = worked_examples_data_provenance()
+    return [{**ex, "provenance": dict(prov)} for ex in examples]
 
 
 def find_worked_examples(

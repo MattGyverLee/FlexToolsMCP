@@ -3252,7 +3252,7 @@ async def handle_start_module(args: dict) -> list[TextContent]:
     # If we have required questions, return them along with optional ones
     if required_questions:
         questions = required_questions + optional_questions
-        return json_response({
+        payload = {
             KEY_STATUS: KEY_NEEDS_INPUT,
             "environment": env_info,
             KEY_PROVIDED: provided,
@@ -3260,7 +3260,10 @@ async def handle_start_module(args: dict) -> list[TextContent]:
             "optional_questions": optional_questions,
             KEY_QUESTIONS: questions,
             "instructions": "Please ask the user these questions and call start_module again with the answers. Optional questions can be skipped."
-        })
+        }
+        return json_response(
+            build_response_with_context(payload, include_session=True)
+        )
 
     # All questions answered - generate the template
     module_name = args["module_name"]
@@ -3435,7 +3438,7 @@ if __name__ == '__main__':
 
     api_info = api_notes.get(api_target, {})
 
-    return json_response({
+    payload = {
         KEY_STATUS: KEY_COMPLETE,
         "environment": env_info,
         "configuration": config,
@@ -3448,7 +3451,9 @@ if __name__ == '__main__':
         },
         KEY_NEXT_STEPS: next_steps,
         "testing_reminder": "Always test FlexTools modules on a backup or sample project first!" if not test_project else None
-    })
+    }
+    # Issue #54 / mcp-modernization batch 2: success payloads need the envelope.
+    return json_response(build_response_with_context(payload, include_session=True))
 
 
 # ---------------------------------------------------------------------------

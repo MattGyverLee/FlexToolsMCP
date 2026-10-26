@@ -363,6 +363,52 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "write. For an abandoned writing-system mutex, close FieldWorks/SIL "
         "apps once, then retry once -- not in a loop."
     ),
+    # Issue #28: run_module keys retry-loop assistance on error_type when the
+    # runtime diagnosis sets one (execution.py). Preflight codes above have
+    # matching entries; these are the runtime-only keys that lacked hints.
+    "UnknownImportError": (
+        # Issue #305 runtime path: did_you_mean / access_path / help on payload.
+        "flexicon does not export that import at runtime -- read did_you_mean, "
+        "help, and access_path in this result (same recovery as the "
+        "unknown_import preflight). Do not loop on import shuffles that ignore "
+        "those fields."
+    ),
+    "AtomicPropertyIterationError": (
+        # Issue #313 runtime: loop over *OA/*RA single-object property.
+        "you looped over a single-object *OA/*RA property. Read help in this "
+        "payload and stop iterating -- assign once, test `if x is not None:`, "
+        "or use the matching *OS/*OC list sibling named in help."
+    ),
+    "NotIterableError": (
+        "the receiver is not iterable at runtime -- read help and "
+        "property_name in this payload and fix the loop/comprehension shape; "
+        "do not resubmit the same iteration hoping the runner changes."
+    ),
+    "PolymorphicAttributeError": (
+        "a cast or rename fix is already on this payload -- apply rewrite and "
+        "imports_needed when present, otherwise follow help. Do not add "
+        "modifyAllowed guards or hunt unrelated API discovery instead of "
+        "using the inlined rewrite."
+    ),
+    "OverloadResolutionError": (
+        "pythonnet could not match the call's argument types -- read help and "
+        "candidate_overloads in this payload and fix the argument list; "
+        "retrying the same call shape will not succeed."
+    ),
+    "ClassIdConstantError": (
+        "kclsid/class-id constants are not exposed on LCM objects in "
+        "IronPython -- read help in this payload; renaming the attribute "
+        "will not work."
+    ),
+    "ServiceLookupAttributeError": (
+        "GetInstance-style service lookups are not attribute access -- read "
+        "help in this payload and use the documented flexicon entry point "
+        "instead of dotted lookup on the locator."
+    ),
+    "WrapperInternalError": (
+        "the failure is inside flexicon's wrapper, not your script's "
+        "receiver type -- read help and raising_frame; do not cast or rename "
+        "the user variable in a loop."    ),
 }
 
 def _assistance_message_for_error(

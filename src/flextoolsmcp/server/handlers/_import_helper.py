@@ -10,7 +10,25 @@ This eliminates ~120 LOC of boilerplate across 5 handler modules and 6
 separate try/except blocks in execution.py.
 """
 
-from typing import Any
+from typing import Any, Callable, TypeVar
+
+_T = TypeVar("_T")
+
+
+def _import_with_fallback(primary: Callable[[], _T], fallback: Callable[[], _T]) -> _T:
+    """Run ``primary`` import; on ImportError only, run ``fallback``.
+
+    If the fallback also raises ImportError, re-raise it chained from the
+    first so diagnostics show both the package-mode and script-mode failures
+    (mcp2-compat QC P2, specs/mcp2-compat/deferred-issues.md §3).
+    """
+    try:
+        return primary()
+    except ImportError as first_exc:
+        try:
+            return fallback()
+        except ImportError as second_exc:
+            raise second_exc from first_exc
 
 
 def safe_import(package_import_path: str, fallback_import_path: str) -> Any:
@@ -26,12 +44,10 @@ def safe_import(package_import_path: str, fallback_import_path: str) -> Any:
     Example:
         kernel = safe_import('..kernel', 'server.kernel')
     """
-    try:
-        # Import as package
-        return __import__(package_import_path, fromlist=[''])
-    except ImportError:
-        # Fall back to absolute import
-        return __import__(fallback_import_path, fromlist=[''])
+    return _import_with_fallback(
+        lambda: __import__(package_import_path, fromlist=[""]),
+        lambda: __import__(fallback_import_path, fromlist=[""]),
+    )
 
 
 def safe_import_kernel_deps() -> tuple[Any, Any, Any, Any]:
@@ -43,7 +59,8 @@ def safe_import_kernel_deps() -> tuple[Any, Any, Any, Any]:
     Raises:
         ImportError: If neither import path succeeds
     """
-    try:
+
+    def _package():
         from ...response_utils import json_response
         from ..kernel import (
             session_state,
@@ -51,7 +68,8 @@ def safe_import_kernel_deps() -> tuple[Any, Any, Any, Any]:
             get_api_index,
         )
         return json_response, session_state, get_log_dir, get_api_index
-    except ImportError:
+
+    def _script():
         from response_utils import json_response
         from server.kernel import (
             session_state,
@@ -60,6 +78,8 @@ def safe_import_kernel_deps() -> tuple[Any, Any, Any, Any]:
         )
         return json_response, session_state, get_log_dir, get_api_index
 
+    return _import_with_fallback(_package, _script)
+
 
 def safe_import_logging_helpers() -> tuple[Any, Any]:
     """Import logging-related functions with fallback for both modes.
@@ -67,12 +87,16 @@ def safe_import_logging_helpers() -> tuple[Any, Any]:
     Returns:
         Tuple of (rotate_logging_to_session, get_operations_logger)
     """
-    try:
+
+    def _package():
         from ..kernel import rotate_logging_to_session, get_operations_logger
         return rotate_logging_to_session, get_operations_logger
-    except ImportError:
+
+    def _script():
         from server.kernel import rotate_logging_to_session, get_operations_logger
         return rotate_logging_to_session, get_operations_logger
+
+    return _import_with_fallback(_package, _script)
 
 
 def safe_import_session_state() -> Any:
@@ -81,12 +105,16 @@ def safe_import_session_state() -> Any:
     Returns:
         SessionState class
     """
-    try:
+
+    def _package():
         from ..session import SessionState
         return SessionState
-    except ImportError:
+
+    def _script():
         from server.session import SessionState
         return SessionState
+
+    return _import_with_fallback(_package, _script)
 
 
 def safe_import_api_index() -> Any:
@@ -95,9 +123,13 @@ def safe_import_api_index() -> Any:
     Returns:
         get_api_index function
     """
-    try:
+
+    def _package():
         from ..kernel import get_api_index
         return get_api_index
-    except ImportError:
+
+    def _script():
         from server.kernel import get_api_index
         return get_api_index
+
+    return _import_with_fallback(_package, _script)

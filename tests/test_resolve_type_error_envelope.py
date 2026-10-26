@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """P2 contract bug: flextools_resolve_type must not emit a bare {error: ...} dict."""
 
-import asyncio
 import json
 
 import pytest

@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """P2 contract: equivalence tools emit the tool-response envelope (issue #54)."""
 
-import asyncio
 import json
 
 import pytest

@@ -734,6 +734,9 @@ async def handle_flextools_health(args: dict) -> List[TextContent]:
         from server.kernel import is_stateless_client_mode
 
     result: Dict[str, Any] = {
+        # TOOL-CONTRACT success envelope (issue #54): status is stamped here;
+        # build_response_with_context adds _contract.
+        "status": "ok",
         "server": {
             "version": _server_version(),
             "python": platform.python_version(),

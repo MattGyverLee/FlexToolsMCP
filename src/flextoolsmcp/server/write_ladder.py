@@ -54,12 +54,15 @@ try:
         BACKUP_BEFORE_WRITE_DEFAULT,
         config_get as _default_config_get,
     )
-except (ImportError, ValueError):
-    from config import (  # type: ignore[no-redef]
-        BACKUP_BEFORE_WRITE_KEY,
-        BACKUP_BEFORE_WRITE_DEFAULT,
-        config_get as _default_config_get,
-    )
+except (ImportError, ValueError) as _config_first_exc:
+    try:
+        from config import (  # type: ignore[no-redef]
+            BACKUP_BEFORE_WRITE_KEY,
+            BACKUP_BEFORE_WRITE_DEFAULT,
+            config_get as _default_config_get,
+        )
+    except ImportError as _config_second_exc:
+        raise _config_second_exc from _config_first_exc
 
 __all__ = [
     "PEER_BACKUP_CAVEAT",

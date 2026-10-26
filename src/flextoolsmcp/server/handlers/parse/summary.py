@@ -12,8 +12,11 @@ from ...parse.stages import RunStage
 
 try:
     from ....response_utils import error_response
-except (ImportError, ValueError):
-    from response_utils import error_response
+except (ImportError, ValueError) as _dual_first_exc:
+    try:
+        from response_utils import error_response
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 from .common import (
     _grammar_scan_rung,

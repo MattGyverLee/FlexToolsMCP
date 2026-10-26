@@ -17,15 +17,21 @@ from ...sandbox import paths as sandbox_paths
 
 try:
     from ....response_utils import build_response_with_context, error_response
-except (ImportError, ValueError):
-    from response_utils import build_response_with_context, error_response
+except (ImportError, ValueError) as _dual_first_exc:
+    try:
+        from response_utils import build_response_with_context, error_response
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 # Issue #369 Phase 3: per-step progress milestones for create/seed
 # (no-op unless the request supplied a progressToken).
 try:
     from ...progress import get_progress_reporter
-except (ImportError, ValueError):
-    from server.progress import get_progress_reporter
+except (ImportError, ValueError) as _dual_first_exc:
+    try:
+        from server.progress import get_progress_reporter
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 from . import common, sandbox_checks
 from .common import (

@@ -15,8 +15,11 @@ from ...parse.worker_client import SHARED_ROLE, WorkerError
 
 try:
     from ....response_utils import build_response_with_context, error_response
-except (ImportError, ValueError):
-    from response_utils import build_response_with_context, error_response
+except (ImportError, ValueError) as _dual_first_exc:
+    try:
+        from response_utils import build_response_with_context, error_response
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 from .common import (
     _read_run_rung,
@@ -75,12 +78,15 @@ try:
         REQUIRE_WRITE_CONFIRMATION_KEY as _REQUIRE_CONFIRMATION_KEY,
         REQUIRE_WRITE_CONFIRMATION_DEFAULT as _REQUIRE_CONFIRMATION_DEFAULT,
     )
-except (ImportError, ValueError):
-    from config import (  # type: ignore[no-redef]
-        config_get as _config_get,
-        REQUIRE_WRITE_CONFIRMATION_KEY as _REQUIRE_CONFIRMATION_KEY,
-        REQUIRE_WRITE_CONFIRMATION_DEFAULT as _REQUIRE_CONFIRMATION_DEFAULT,
-    )
+except (ImportError, ValueError) as _dual_first_exc:
+    try:
+        from config import (  # type: ignore[no-redef]
+            config_get as _config_get,
+            REQUIRE_WRITE_CONFIRMATION_KEY as _REQUIRE_CONFIRMATION_KEY,
+            REQUIRE_WRITE_CONFIRMATION_DEFAULT as _REQUIRE_CONFIRMATION_DEFAULT,
+        )
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 from ... import write_ladder  # noqa: E402 -- grouped with the CP4 section it serves
 from ...filing import claims as filing_claims  # noqa: E402

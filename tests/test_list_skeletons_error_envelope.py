@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """P2 contract: flextools_list_skeletons failure path uses the tool envelope."""
 
-import asyncio
 import json
 
 import pytest

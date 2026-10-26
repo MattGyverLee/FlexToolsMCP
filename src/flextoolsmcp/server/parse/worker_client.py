@@ -52,8 +52,6 @@ import asyncio
 import contextlib
 import json
 import logging
-import os
-import sys
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
@@ -107,36 +105,12 @@ _GRACEFUL_SHUTDOWN_SECONDS = 5.0
 
 
 def _child_env() -> dict:
-    """The child's environment, with this process's import path carried over.
-
-    The worker is launched as `python -m flextoolsmcp.server.parse.worker_main`,
-    so the child must be able to import `flextoolsmcp` by itself. When the
-    package is installed that is automatic; when it is being run from a
-    source checkout without an install -- which is how the test suite runs,
-    since `tests/conftest.py` adds `src/` to `sys.path` at runtime -- the
-    child inherits no such path and fails with an import error that says
-    nothing about the real cause.
-
-    Propagating `sys.path` through PYTHONPATH makes the child resolve the
-    package exactly the way its parent did. Existing PYTHONPATH entries are
-    kept and come first, so a deliberate override still wins.
-    """
-    env = dict(os.environ)
-    # The child's stdio must be UTF-8 regardless of the console codepage.
-    # On Windows it would otherwise default to cp1252 and silently replace
-    # any character outside it -- in a tool about minority-language
-    # orthographies that is data corruption, not a display quirk. The
-    # worker also reconfigures its own streams; this covers anything that
-    # reads the encoding before that runs.
-    env["PYTHONIOENCODING"] = "utf-8"
-    entries = [p for p in sys.path if p and os.path.isdir(p)]
-    existing = env.get("PYTHONPATH", "")
-    if existing:
-        entries = existing.split(os.pathsep) + entries
-    seen: set = set()
-    ordered = [e for e in entries if not (e in seen or seen.add(e))]
-    env["PYTHONPATH"] = os.pathsep.join(ordered)
-    return env
+    """Environment for a parse worker child (UTF-8 + parent import path)."""
+    try:
+        from ..subprocess_helpers import child_process_env
+    except ImportError:
+        from server.subprocess_helpers import child_process_env
+    return child_process_env()
 
 
 @dataclass(frozen=True)

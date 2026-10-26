@@ -51,6 +51,30 @@ def utf8_child_env(base: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     return env
 
 
+def child_process_env(base: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    """Default child environment for MCP-spawned Python subprocesses.
+
+    Combines :func:`utf8_child_env` (issue #320) with propagation of this
+    process's ``sys.path`` directories onto ``PYTHONPATH``. The server often
+    adds ``src/`` to ``sys.path`` when run from a checkout
+    (``server.py`` does this for script mode) without mirroring that into
+    ``os.environ``, so a plain ``sys.executable child.py`` spawn would not
+    otherwise see ``flextoolsmcp`` unless the package is installed. Parse
+    workers already needed this; ``run_script_async`` and grammar-scan
+    children did not get it until this helper (see
+    ``parse/worker_client._child_env``).
+    """
+    env = utf8_child_env(base)
+    entries = [p for p in sys.path if p and os.path.isdir(p)]
+    existing = env.get("PYTHONPATH", "")
+    if existing:
+        entries = existing.split(os.pathsep) + entries
+    seen: set = set()
+    ordered = [e for e in entries if not (e in seen or seen.add(e))]
+    env["PYTHONPATH"] = os.pathsep.join(ordered)
+    return env
+
+
 def _kill_process_tree(pid: int) -> None:
     """Kill a process and all of its descendants.
 
@@ -122,11 +146,9 @@ async def run_script_async(
         extra_kwargs["start_new_session"] = True
 
     if env is None:
-        # Issue #320: run_module/run_scan_module children inherit the
-        # parent env otherwise, which on Windows is cp1252 -- plain
-        # open(path, "w") writes of non-ASCII text then raise
-        # UnicodeEncodeError. Force UTF-8 mode on the child.
-        env = utf8_child_env()
+        # Issues #320 + source-checkout import path: UTF-8 mode plus the
+        # parent's effective import path (see child_process_env).
+        env = child_process_env()
 
     try:
         process = await asyncio.create_subprocess_exec(

@@ -213,9 +213,12 @@ def ws_repo_mutex_names():
         import clr
         try:
             from SIL.WritingSystems import GlobalWritingSystemRepository as _G
-        except ImportError:
-            clr.AddReference("SIL.WritingSystems")
-            from SIL.WritingSystems import GlobalWritingSystemRepository as _G
+        except ImportError as _ws_first:
+            try:
+                clr.AddReference("SIL.WritingSystems")
+                from SIL.WritingSystems import GlobalWritingSystemRepository as _G
+            except ImportError as _ws_second:
+                raise _ws_second from _ws_first
         vpath = _G.CurrentVersionPath(_G.DefaultBasePath)
         if vpath:
             names.append(str(vpath).replace("\\", "_"))

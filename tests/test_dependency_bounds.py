@@ -19,11 +19,11 @@ A floor check matters as much as the cap: asserting only `<3` would still
 pass with the old 1.x floor, which is exactly the regression #369 removes.
 
 SCOPE LIMIT: this file intentionally does NOT assert that every runtime
-dependency has an upper bound. sentence-transformers, faiss-cpu, pythonnet,
-are still deliberately uncapped today -- see the
-deferred issue in specs/mcp2-compat/deferred-issues.md ("Add upper bounds to
-remaining uncapped runtime deps"). A general assertion would fail
-immediately and is out of scope for this fix.
+dependency has an upper bound. python-dotenv, and typing-inspection are
+still deliberately uncapped today -- see the deferred issue in
+specs/mcp2-compat/deferred-issues.md ("Add upper bounds to remaining
+uncapped runtime deps"). A general assertion would fail immediately and is
+out of scope for this fix.
 
 Run with:
     python -m pytest tests/test_dependency_bounds.py -q
@@ -39,9 +39,8 @@ REPO_ROOT = Path(__file__).parent.parent
 # widen this without also updating the deferred issue; do not replace this
 # targeted mcp check with a blanket "every dep has an upper bound" assertion.
 KNOWN_UNCAPPED_DEPS = {
-    "sentence-transformers",
-    "faiss-cpu",
-    "pythonnet",
+    "python-dotenv",
+    "typing-inspection",
 }
 
 
@@ -119,6 +118,19 @@ def _assert_anyio_requirement(requirement: str, where: str) -> None:
     )
 
 
+def _assert_sentence_transformers_requirement(requirement: str, where: str) -> None:
+    assert "2.2" in requirement or ">=2" in requirement, (
+        f"{where} sentence-transformers requirement "
+        f"'sentence-transformers{requirement}' is missing the >=2.2 floor."
+    )
+    assert "<3" in requirement, (
+        f"{where} sentence-transformers requirement "
+        f"'sentence-transformers{requirement}' is missing a <3 cap -- "
+        f"uncapped majors can break fresh installs silently "
+        f"(see specs/mcp2-compat/deferred-issues.md section 2)."
+    )
+
+
 def test_pyproject_pydantic_requirement_has_floor_and_upper_bound():
     """pyproject.toml pins pydantic to the supported 2.x major."""
     pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
@@ -143,6 +155,18 @@ def _assert_httpx_requirement(requirement: str, where: str) -> None:
     assert "<1" in requirement, (
         f"{where} httpx requirement 'httpx{requirement}' is missing a "
         f"<1 cap -- httpx is still 0.x and a 1.x release would be an "
+        f"unverified major (deferred-issues.md section 2)."
+    )
+
+
+def _assert_faiss_cpu_requirement(requirement: str, where: str) -> None:
+    assert "1.7" in requirement or ">=1" in requirement, (
+        f"{where} faiss-cpu requirement 'faiss-cpu{requirement}' is missing "
+        f"the >=1.7.4 floor."
+    )
+    assert "<2" in requirement, (
+        f"{where} faiss-cpu requirement 'faiss-cpu{requirement}' is missing a "
+        f"<2 cap -- faiss-cpu is still 1.x and a 2.x release would be an "
         f"unverified major (deferred-issues.md section 2)."
     )
 
@@ -177,3 +201,61 @@ def test_requirements_txt_httpx_requirement_has_floor_and_upper_bound():
     match = re.search(r"^httpx([^\s#]*)", requirements_text, re.MULTILINE)
     assert match, "Could not find an httpx line in requirements.txt"
     _assert_httpx_requirement(match.group(1), "requirements.txt")
+
+
+def _assert_pythonnet_requirement(requirement: str, where: str) -> None:
+    assert ">=3" in requirement, (
+        f"{where} pythonnet requirement 'pythonnet{requirement}' is missing "
+        f"the >=3.0.0 floor."
+    )
+    assert "<4" in requirement, (
+        f"{where} pythonnet requirement 'pythonnet{requirement}' is missing a "
+        f"<4 cap -- uncapped majors can break fresh installs silently "
+        f"(see specs/mcp2-compat/deferred-issues.md section 2)."
+    )
+
+
+def test_pyproject_sentence_transformers_requirement_has_floor_and_upper_bound():
+    pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'"sentence-transformers(>=?[^"]*)"', pyproject_text)
+    assert match, (
+        "Could not find a 'sentence-transformers' dependency entry in pyproject.toml"
+    )
+    _assert_sentence_transformers_requirement(match.group(1), "pyproject.toml")
+
+
+def test_requirements_txt_sentence_transformers_requirement_has_floor_and_upper_bound():
+    requirements_text = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    match = re.search(
+        r"^sentence-transformers([^\s#]*)", requirements_text, re.MULTILINE
+    )
+    assert match, "Could not find a sentence-transformers line in requirements.txt"
+    _assert_sentence_transformers_requirement(match.group(1), "requirements.txt")
+
+
+def test_pyproject_faiss_cpu_requirement_has_floor_and_upper_bound():
+    pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'"faiss-cpu(>=?[^"]*)"', pyproject_text)
+    assert match, "Could not find a 'faiss-cpu' dependency entry in pyproject.toml"
+    _assert_faiss_cpu_requirement(match.group(1), "pyproject.toml")
+
+
+def test_requirements_txt_faiss_cpu_requirement_has_floor_and_upper_bound():
+    requirements_text = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    match = re.search(r"^faiss-cpu([^\s#]*)", requirements_text, re.MULTILINE)
+    assert match, "Could not find a faiss-cpu line in requirements.txt"
+    _assert_faiss_cpu_requirement(match.group(1), "requirements.txt")
+
+
+def test_pyproject_pythonnet_requirement_has_floor_and_upper_bound():
+    pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'"pythonnet(>=?[^"]*)"', pyproject_text)
+    assert match, "Could not find a 'pythonnet' dependency entry in pyproject.toml"
+    _assert_pythonnet_requirement(match.group(1), "pyproject.toml")
+
+
+def test_requirements_txt_pythonnet_requirement_has_floor_and_upper_bound():
+    requirements_text = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    match = re.search(r"^pythonnet([^\s#]*)", requirements_text, re.MULTILINE)
+    assert match, "Could not find a pythonnet line in requirements.txt"
+    _assert_pythonnet_requirement(match.group(1), "requirements.txt")

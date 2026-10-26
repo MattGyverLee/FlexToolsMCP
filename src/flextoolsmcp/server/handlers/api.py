@@ -217,6 +217,30 @@ def ensure_active_sources_loaded(api_index, mode: str) -> None:
             api_index.ensure_flexlibs_stable_loaded()
 
 
+_API_INDEX_UNLOADED_MESSAGE = (
+    "API index is not loaded yet; retry after the server finishes startup "
+    "or call flextools_refresh_indexes if indexes were never built."
+)
+
+
+def api_index_or_error(tool: str | None = None):
+    """Return (api_index, None) or (None, structured error_response)."""
+    api_index = get_api_index()
+    if not api_index:
+        extra: dict[str, Any] = {
+            "server_state": "api_index_not_loaded",
+            "component": "api_index",
+        }
+        if tool:
+            extra["tool"] = tool
+        return None, error_response(
+            "server_state_error",
+            _API_INDEX_UNLOADED_MESSAGE,
+            **extra,
+        )
+    return api_index, None
+
+
 # Domain-specific synonyms for query expansion (linguistics terminology)
 DOMAIN_SYNONYMS = {
     "noun": "part of speech POS grammatical category",
@@ -1204,7 +1228,9 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     limit = args.get(KEY_LIMIT, 50)
     offset = args.get(KEY_OFFSET, 0)
 
-    api_index = get_api_index()
+    api_index, err = api_index_or_error("flextools_get_object_api")
+    if err:
+        return err
     ensure_active_sources_loaded(api_index, mode)
 
     # Issue #48: casting metadata is keyed by LCM property name, so load the
@@ -1388,8 +1414,9 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     api_mode = args.get(KEY_API_MODE, session_state.get_mode())
     use_semantic = args.get("semantic", True)
 
-    # Cache API index to avoid redundant lookups in search loops
-    api_index = get_api_index()
+    api_index, err = api_index_or_error("flextools_search_by_capability")
+    if err:
+        return err
 
     # Lazy-load APIs if needed (they're deferred from startup for speed)
     if api_mode in ["all", "liblcm"]:
@@ -1728,7 +1755,9 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
     object_type = args.get(KEY_OBJECT_TYPE)
     max_results = args.get("max_results", 5)
 
-    api_index = get_api_index()
+    api_index, err = api_index_or_error("flextools_find_examples")
+    if err:
+        return err
     mode = session_state.get_mode()
     ensure_active_sources_loaded(api_index, mode)
 
@@ -1953,8 +1982,9 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
             "see_also_example": "analysis-subtype-disambiguation (flextools_find_examples)",
         }, include_session=True))
 
-    # Cache API index to avoid redundant lookups
-    api_index = get_api_index()
+    api_index, err = api_index_or_error("flextools_resolve_property")
+    if err:
+        return err
 
     # Lazy-load APIs if needed (they're deferred from startup for speed)
     api_index.ensure_liblcm_loaded()
@@ -2128,18 +2158,9 @@ async def handle_resolve_type(args: dict) -> list[TextContent]:
     type_name = args["type_name"]
     library_filter = args.get("library", "auto")
 
-    api_index = get_api_index()
-    if not api_index:
-        # Issue #54 / MCP modernization batch-2 prep: the lone pre-contract
-        # `{error: "..."}` branch in this handler. Clients and contract tests
-        # expect the canonical flat envelope (status/error_code/_contract).
-        return error_response(
-            "server_state_error",
-            "API index is not loaded yet; retry after the server finishes startup "
-            "or call flextools_refresh_indexes if indexes were never built.",
-            server_state="api_index_not_loaded",
-            component="api_index",
-        )
+    api_index, err = api_index_or_error("flextools_resolve_type")
+    if err:
+        return err
 
     if library_filter == "auto":
         search_order = ["liblcm", "flexicon", "flexlibs_stable"]

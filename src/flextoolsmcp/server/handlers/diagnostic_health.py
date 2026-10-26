@@ -34,7 +34,7 @@ from ._import_helper import safe_import_kernel_deps
 
 try:
     from ...response_utils import build_response_with_context
-except (ImportError, ValueError) as first_exc:
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     try:
         from response_utils import build_response_with_context
     except ImportError as second_exc:

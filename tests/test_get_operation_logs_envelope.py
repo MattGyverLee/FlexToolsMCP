@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """Issue #54 follow-up: flextools_get_operation_logs must use the tool-response envelope."""
 
-import asyncio
 import json
 
 import pytest

@@ -2173,11 +2173,16 @@ async def handle_resolve_type(args: dict) -> list[TextContent]:
         }
 
     if canonical is not None:
-        return json_response({
-            KEY_FOUND: True,
-            "found_in": found_in,
-            **canonical,
-        })
+        payload = build_response_with_context(
+            {
+                KEY_STATUS: "ok",
+                KEY_FOUND: True,
+                "found_in": found_in,
+                **canonical,
+            },
+            include_session=True,
+        )
+        return json_response(payload)
 
     # Not found - offer substring suggestions to help recover from typos.
     suggestions = []
@@ -2198,13 +2203,18 @@ async def handle_resolve_type(args: dict) -> list[TextContent]:
         if len(suggestions) >= 5:
             break
 
-    return json_response({
-        KEY_FOUND: False,
-        "type_name": type_name,
-        "suggestions": suggestions,
-        KEY_HINT: (
-            f"Type '{type_name}' not found in {search_order}. "
-            "Try a substring suggestion above, or use flextools_search_by_capability "
-            "for natural-language search."
-        ),
-    })
+    payload = build_response_with_context(
+        {
+            KEY_STATUS: "ok",
+            KEY_FOUND: False,
+            "type_name": type_name,
+            "suggestions": suggestions,
+            KEY_HINT: (
+                f"Type '{type_name}' not found in {search_order}. "
+                "Try a substring suggestion above, or use flextools_search_by_capability "
+                "for natural-language search."
+            ),
+        },
+        include_session=True,
+    )
+    return json_response(payload)

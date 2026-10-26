@@ -4060,11 +4060,11 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     if resolved:
         try:
             from ...project_adoption import adopt_resolved_project
-        except ImportError as first_exc:
+        except ImportError as _adopt_first:
             try:
                 from project_adoption import adopt_resolved_project
-            except ImportError as second_exc:
-                raise second_exc from first_exc
+            except ImportError as _adopt_second:
+                raise _adopt_second from _adopt_first
         project_name = adopt_resolved_project(
             session_state,
             resolved,

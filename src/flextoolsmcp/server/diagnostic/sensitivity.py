@@ -38,8 +38,11 @@ if TYPE_CHECKING:
 
 try:
     from .render import _extract_code_block
-except ImportError:
-    from server.diagnostic.render import _extract_code_block
+except ImportError as _dual_first_exc:
+    try:
+        from server.diagnostic.render import _extract_code_block
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 # Lexical accessor CALL names (spec section 9): `project.LexSense.GetGloss(sense)`-shaped.
 _LEXICAL_ACCESSOR_CALL_NAMES = frozenset({"GetGloss", "GetDefinition", "GetLexemeForm"})

@@ -41,8 +41,11 @@ from urllib.parse import quote
 # leaked into the prefilled GitHub-URL and mailto: bodies.
 try:
     from . import normalize
-except ImportError:  # pragma: no cover - script/relative-import fallback
-    from server.diagnostic import normalize
+except ImportError as _dual_first_exc:
+    try:
+        from server.diagnostic import normalize
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 DEFAULT_REPO = "MattGyverLee/FlexToolsMCP"
 DEFAULT_EMAIL = "matthew_lee@sil.org"

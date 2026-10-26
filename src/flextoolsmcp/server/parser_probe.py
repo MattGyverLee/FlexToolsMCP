@@ -68,8 +68,11 @@ from typing import FrozenSet, Iterable, List, Literal, Optional, Tuple, Union
 
 try:
     from .versioning import get_resolved_fieldworks_dir, locate_liblcm_dll
-except ImportError:
-    from server.versioning import get_resolved_fieldworks_dir, locate_liblcm_dll
+except ImportError as _dual_first_exc:
+    try:
+        from server.versioning import get_resolved_fieldworks_dir, locate_liblcm_dll
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 
 # ---------------------------------------------------------------------------

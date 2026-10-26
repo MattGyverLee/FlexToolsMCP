@@ -15,8 +15,11 @@ from typing import Optional, Tuple, Dict
 
 try:
     from .kernel import operations_logger
-except ImportError:
-    from server.kernel import operations_logger
+except ImportError as _dual_first_exc:
+    try:
+        from server.kernel import operations_logger
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 # A directory "state token" used to key the file-discovery cache below.
 # (dir_mtime, entry_count, max_child_mtime) -- see _dir_state_token().

@@ -484,11 +484,14 @@ def _emit_session_header(session_id: str) -> None:
             detect_installed_library_version,
             detect_liblcm_version_from_disk,
         )
-    except ImportError:
-        from server.versioning import (  # type: ignore
-            detect_installed_library_version,
-            detect_liblcm_version_from_disk,
-        )
+    except ImportError as _dual_first_exc:
+        try:
+            from server.versioning import (  # type: ignore
+                detect_installed_library_version,
+                detect_liblcm_version_from_disk,
+            )
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
 
     def _safe(label: str, fn) -> str:
         try:

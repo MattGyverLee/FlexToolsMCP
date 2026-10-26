@@ -34,9 +34,12 @@ from typing import Dict, List, Optional
 try:
     from . import normalize
     from .reconstruct import ReportSlice, SliceOp
-except ImportError:
-    from server.diagnostic import normalize
-    from server.diagnostic.reconstruct import ReportSlice, SliceOp
+except ImportError as _dual_first_exc:
+    try:
+        from server.diagnostic import normalize
+        from server.diagnostic.reconstruct import ReportSlice, SliceOp
+    except ImportError as _dual_second_exc:
+        raise _dual_second_exc from _dual_first_exc
 
 DEFAULT_SCHEMA_VERSION = "1"
 

@@ -262,8 +262,11 @@ async def handle_flextools_grammar_health(args: dict) -> List[TextContent]:
     if resolved:
         try:
             from ...project_adoption import adopt_resolved_project
-        except ImportError:
-            from project_adoption import adopt_resolved_project
+        except ImportError as _dual_first_exc:
+            try:
+                from project_adoption import adopt_resolved_project
+            except ImportError as _dual_second_exc:
+                raise _dual_second_exc from _dual_first_exc
         project_name = adopt_resolved_project(
             session_state,
             resolved,

@@ -149,8 +149,11 @@ def _name_tokens(name: str) -> List[str]:
 def _tools() -> Dict[str, Any]:
     try:
         from .tool_definitions import TOOLS
-    except ImportError:
-        from server.tool_definitions import TOOLS
+    except ImportError as _dual_first_exc:
+        try:
+            from server.tool_definitions import TOOLS
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
     return TOOLS
 
 

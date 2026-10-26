@@ -103,8 +103,11 @@ def _get_log_dir():
     """Resolve `get_log_dir` with the repo's dual package/script import mode."""
     try:
         from ..kernel import get_log_dir
-    except ImportError:
-        from server.kernel import get_log_dir
+    except ImportError as _dual_first_exc:
+        try:
+            from server.kernel import get_log_dir
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
     return get_log_dir()
 
 

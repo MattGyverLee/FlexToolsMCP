@@ -437,6 +437,25 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "(Create*, Add*); only idempotent setters (SetGloss, SetLexemeForm, "
         "and similar) are safe to retry as-is. Otherwise fix or narrow the "
         "run to the items that failed."    ),
+    "undefined_variables": (
+        "a name is used but never defined or imported -- read "
+        "undefined_vars in the rejection. Do not invent MCP-internal names "
+        "(session, api_index, etc.); use project/report/modifyAllowed and "
+        "import Operations classes from flexicon (`from flexicon import "
+        "LexEntryOperations`, etc.)."
+    ),
+    "missing_imports": (
+        "add the Operations import the rejection names at the top of the "
+        "script (`from flexicon import <Name>Operations` for flexicon mode). "
+        "Do not retry the same body without that import -- the gate will not "
+        "change its mind."
+    ),
+    "wrong_library_imports": (
+        "the script imports from the wrong library for this session's "
+        "api_mode -- read affected_symbols and re-import those names from "
+        "flexicon (not flexlibs) when api_mode is flexicon. Switching "
+        "api_mode is rarely the fix; fix the imports instead."
+    ),
 }
 
 def _assistance_message_for_error(

@@ -73,7 +73,8 @@ def _template_source():
 
     result = run_async(handle_get_module_template({"flavor": "flexicon"}))
     payload = json.loads(result[0].text)
-    assert payload.get("status") == "success", payload
+    assert payload.get("status") == "ok", payload
+    assert payload.get("_contract") == "tool-responses/1.0", payload
     return payload["template"]
 
 

@@ -262,8 +262,11 @@ def build_effect_check_payload(
 # Issue #46: auto-fix config
 try:
     from ...config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
-except (ImportError, ValueError):
-    from config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
+except (ImportError, ValueError) as first_exc:
+    try:
+        from config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 
 # Issue #55 / #369 Phase 5 (S-P0-1): the write-path safety ladder's
 # confirmation and backup rungs are NOT config-controlled for run_module.

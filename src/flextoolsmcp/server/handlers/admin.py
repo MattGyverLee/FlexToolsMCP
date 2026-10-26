@@ -26,7 +26,7 @@ from ..response_keys import (
 
 try:
     from ...response_utils import build_response_with_context, error_response
-except (ImportError, ValueError) as first_exc:
+except (ImportError, ValueError):
     try:
         from response_utils import build_response_with_context, error_response
     except ImportError as second_exc:

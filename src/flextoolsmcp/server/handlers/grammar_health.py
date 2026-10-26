@@ -51,8 +51,11 @@ from ..models import FoundObject, GrammarHealthFinding
 
 try:
     from ...response_utils import build_response_with_context, error_response
-except (ImportError, ValueError):
-    from response_utils import build_response_with_context, error_response
+except (ImportError, ValueError) as _response_utils_first:
+    try:
+        from response_utils import build_response_with_context, error_response
+    except (ImportError, ValueError) as _response_utils_second:
+        raise _response_utils_second from _response_utils_first
 
 # json_response / session_state come from the shared kernel helper; the other
 # two returned slots are unused here and intentionally discarded.
@@ -216,17 +219,23 @@ async def handle_flextools_grammar_health(args: dict) -> List[TextContent]:
             _diagnose_project_open_error,
             run_scan_module,
         )
-    except (ImportError, ValueError):
-        from server.handlers.execution import (
-            _available_projects_payload,
-            _diagnose_project_open_error,
-            run_scan_module,
-        )
+    except (ImportError, ValueError) as _execution_first:
+        try:
+            from server.handlers.execution import (
+                _available_projects_payload,
+                _diagnose_project_open_error,
+                run_scan_module,
+            )
+        except (ImportError, ValueError) as _execution_second:
+            raise _execution_second from _execution_first
 
     try:
         from ..project_discovery import normalize_project_name, project_not_found_fields
-    except (ImportError, ValueError):
-        from server.project_discovery import normalize_project_name, project_not_found_fields
+    except (ImportError, ValueError) as _discovery_first:
+        try:
+            from server.project_discovery import normalize_project_name, project_not_found_fields
+        except (ImportError, ValueError) as _discovery_second:
+            raise _discovery_second from _discovery_first
 
     # Issue #311: a punctuation-only name falls back to the session project.
     project_name = normalize_project_name(args.get("project_name")) or session_state.get_project()
@@ -249,8 +258,11 @@ async def handle_flextools_grammar_health(args: dict) -> List[TextContent]:
     # contract, per this tool's error table.
     try:
         from ..project_discovery import resolve_or_explain
-    except (ImportError, ValueError):
-        from server.project_discovery import resolve_or_explain
+    except (ImportError, ValueError) as _resolve_first:
+        try:
+            from server.project_discovery import resolve_or_explain
+        except (ImportError, ValueError) as _resolve_second:
+            raise _resolve_second from _resolve_first
     resolved, resolve_err = resolve_or_explain(project_name)
     if resolve_err:
         return error_response(
@@ -262,11 +274,11 @@ async def handle_flextools_grammar_health(args: dict) -> List[TextContent]:
     if resolved:
         try:
             from ...project_adoption import adopt_resolved_project
-        except ImportError as _dual_first_exc:
+        except ImportError as _adopt_first:
             try:
                 from project_adoption import adopt_resolved_project
-            except ImportError as _dual_second_exc:
-                raise _dual_second_exc from _dual_first_exc
+            except ImportError as _adopt_second:
+                raise _adopt_second from _adopt_first
         project_name = adopt_resolved_project(
             session_state,
             resolved,

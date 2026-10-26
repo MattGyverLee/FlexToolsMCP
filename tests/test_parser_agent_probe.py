@@ -85,9 +85,10 @@ therefore raises the **real** CLR type, obtained via
 ``clr.AddReference("mscorlib")`` -- this needs pythonnet (an existing hard
 dependency, ``requirements.txt: pythonnet>=3.0.0``) and a CLR runtime, but
 **not** FieldWorks or any ``.fwdata`` file; it is gated behind
-``pytest.importorskip("clr")`` so it skips cleanly (not errors) on a
+``conftest.require_live_clr()`` so it skips cleanly (not errors) on a
 machine without a CLR runtime, rather than being marked
-``requires_flex`` (mscorlib needs no FieldWorks install).
+``requires_flex`` (mscorlib needs no FieldWorks install). See issue #115
+(flexicon sibling).
 
 ``agent_guid`` value precedent: T008 (``tests/test_parser_health_block.py``,
 same cycle) already commits to the literal string
@@ -159,18 +160,11 @@ def _get_real_key_not_found_exception_type():
     type via pythonnet, skipping (not erroring) if no CLR runtime is
     available. See module docstring's "Fidelity choice" note for why a
     plain Python stand-in is not used instead.
-
-    ``pytest.importorskip("clr")`` is not enough: pythonnet is installed on
-    Linux CI (hard dependency), so the import succeeds at the package level
-    but then raises ``RuntimeError: Could not find libmono`` when it tries
-    to create a default .NET runtime. Catch that here and skip cleanly.
     """
+    from conftest import require_live_clr
+
+    clr = require_live_clr()
     try:
-        import clr  # type: ignore
-    except Exception as exc:  # ImportError *or* RuntimeError (no mono/coreclr)
-        pytest.skip(f"CLR runtime unavailable: {exc}")
-    try:
-        import clr  # type: ignore
         clr.AddReference("mscorlib")
         from System.Collections.Generic import KeyNotFoundException
     except Exception as exc:  # pragma: no cover - environment-dependent

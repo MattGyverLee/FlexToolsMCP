@@ -131,6 +131,21 @@ def require_live_flexicon():
     return flexicon
 
 
+def require_live_clr():
+    """Skip the calling test unless pythonnet can initialize a CLR runtime.
+
+    Unlike ``pytest.importorskip("clr")``, this also catches the
+    ``RuntimeError`` pythonnet raises when the ``clr`` package is installed
+    but no .NET runtime (mono/coreclr) is available -- the usual headless
+    Linux CI case. See issue #115 (flexicon sibling).
+    """
+    try:
+        import clr  # noqa: F401
+    except Exception as exc:  # noqa: BLE001 -- pythonnet raises non-ImportError without a runtime
+        pytest.skip(f"CLR runtime unavailable (no mono/coreclr?): {exc}")
+    return clr
+
+
 @pytest.fixture(autouse=True)
 def _reset_parse_runner_between_tests():
     """Issue #175: parse tests share a module-level runner via set_runner().

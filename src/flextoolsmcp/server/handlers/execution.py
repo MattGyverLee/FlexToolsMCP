@@ -197,7 +197,10 @@ except (ImportError, ValueError) as first_exc:
     try:
         from response_utils import build_response_with_context, error_response
     except ImportError as second_exc:
-        raise second_exc from first_exc
+        try:
+            from server.response_utils import build_response_with_context, error_response
+        except ImportError as third_exc:
+            raise third_exc from second_exc
 
 # Import response field constants
 from ..response_keys import (

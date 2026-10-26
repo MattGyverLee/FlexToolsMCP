@@ -100,6 +100,17 @@ except ImportError:
     )
 
 try:
+    from ...response_utils import build_response_with_context, json_response
+except (ImportError, ValueError) as first_exc:  # noqa: F841
+    try:
+        from response_utils import build_response_with_context, json_response
+    except ImportError as second_exc:
+        try:
+            from server.response_utils import build_response_with_context, json_response
+        except ImportError as third_exc:
+            raise third_exc from second_exc
+
+try:
     from ... import curated_deprecations
 except ImportError:
     import curated_deprecations

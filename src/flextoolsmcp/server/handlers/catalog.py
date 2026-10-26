@@ -393,8 +393,10 @@ async def handle_list_recipes(args) -> list[TextContent]:
                 session_state.record_validated_api(entity)
             except Exception:
                 pass
-        return json_response(build_response_with_context(
-            {"recipe": _list_full_row(str(recipe_id), recipe)}))
+        return json_response(build_response_with_context({
+            KEY_STATUS: "ok",
+            "recipe": _list_full_row(str(recipe_id), recipe),
+        }))
 
     if query:
         try:
@@ -445,6 +447,7 @@ async def handle_list_recipes(args) -> list[TextContent]:
     except Exception:
         storage_path = ""
     return json_response(build_response_with_context({
+        KEY_STATUS: "ok",
         "recipes": compact,
         "recipes_count": len(compact),
         "total": total,

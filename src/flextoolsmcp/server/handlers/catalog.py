@@ -30,7 +30,7 @@ try:
         KEY_FLEXICON_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
         KEY_METHODS_COUNT,
         KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES,
-        KEY_API_MODE,
+        KEY_API_MODE, KEY_STATUS,
     )
 except ImportError:
     from server.response_keys import (
@@ -38,7 +38,7 @@ except ImportError:
         KEY_FLEXICON_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
         KEY_METHODS_COUNT,
         KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES,
-        KEY_API_MODE,
+        KEY_API_MODE, KEY_STATUS,
     )
 
 try:
@@ -123,11 +123,12 @@ async def handle_list_categories(args: ListCategoriesInput) -> list[TextContent]
                 cat = entity.get(KEY_CATEGORY, "uncategorized")
                 categories[cat][count_key] += 1
 
-    return [TextContent(type="text", text=json.dumps({
+    return json_response(build_response_with_context({
+        KEY_STATUS: "ok",
         KEY_API_MODE: mode,
         KEY_CATEGORIES: dict(categories),
         KEY_TOTAL_CATEGORIES: len(categories),
-    }, indent=2))]
+    }))
 
 
 async def handle_list_entities_in_category(args: dict) -> list[TextContent]:
@@ -171,12 +172,13 @@ async def handle_list_entities_in_category(args: dict) -> list[TextContent]:
                     KEY_SUMMARY: _get_entity_summary(entity),
                 })
 
-    return [TextContent(type="text", text=json.dumps({
+    return json_response(build_response_with_context({
+        KEY_STATUS: "ok",
         KEY_API_MODE: mode,
         KEY_CATEGORY: category,
         KEY_ENTITIES: entities,
         KEY_COUNTS: {name: len(items) for name, items in entities.items()},
-    }, indent=2))]
+    }))
 
 
 async def handle_list_projects(args: dict) -> list[TextContent]:
@@ -200,7 +202,8 @@ async def handle_list_projects(args: dict) -> list[TextContent]:
         needle = name_contains.casefold()
         names = [n for n in names if needle in n.casefold()]
 
-    return [TextContent(type="text", text=json.dumps({
+    return json_response(build_response_with_context({
+        KEY_STATUS: "ok",
         "projects": names,
         "count": len(names),
         "source": source,
@@ -210,7 +213,7 @@ async def handle_list_projects(args: dict) -> list[TextContent]:
             "existence are checked. No project files are opened, so .fwdata "
             "modification times are not affected."
         ),
-    }, indent=2))]
+    }))
 
 
 async def handle_list_skeletons(

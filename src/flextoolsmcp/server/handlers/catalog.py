@@ -250,7 +250,8 @@ async def handle_list_skeletons(
             "count": 0,
         }, indent=2))]
 
-    return [TextContent(type="text", text=json.dumps({
+    payload = {
+        "status": "ok",
         "count": len(entries),
         "limit": limit,
         "storage_path": str(local_recipes.get_recipe_path()),
@@ -260,7 +261,8 @@ async def handle_list_skeletons(
             "replacement": "flextools_list_recipes(source=\"local\")",
             "removal": "tool-responses/2.0",
         },
-    }, indent=2))]
+    }
+    return json_response(build_response_with_context(payload))
 
 
 # ============================================================

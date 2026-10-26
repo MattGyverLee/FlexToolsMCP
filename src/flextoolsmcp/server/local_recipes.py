@@ -237,14 +237,20 @@ def _accessor_map() -> Dict[str, str]:
     try:
         try:
             from . import validators as _v  # type: ignore
-        except ImportError:
-            import validators as _v  # type: ignore
+        except ImportError as first_exc:
+            try:
+                import validators as _v  # type: ignore
+            except ImportError as second_exc:
+                raise second_exc from first_exc
         api_index = None
         try:
             try:
                 from . import kernel as _k  # type: ignore
-            except ImportError:
-                import kernel as _k  # type: ignore
+            except ImportError as first_exc:
+                try:
+                    import kernel as _k  # type: ignore
+                except ImportError as second_exc:
+                    raise second_exc from first_exc
             try:
                 api_index = _k.get_api_index()
             except Exception:
@@ -292,8 +298,11 @@ def _extract_params(code: str) -> List[Dict[str, str]]:
     try:
         try:
             from .. import recipe_files as _rf  # type: ignore
-        except ImportError:
-            import recipe_files as _rf  # type: ignore
+        except ImportError as first_exc:
+            try:
+                import recipe_files as _rf  # type: ignore
+            except ImportError as second_exc:
+                raise second_exc from first_exc
         params = _rf.parse_params(code)
         if isinstance(params, list):
             return params
@@ -562,8 +571,11 @@ def _code_is_write_shaped(code: str) -> bool:
     try:
         try:
             from . import validators as _v  # type: ignore
-        except ImportError:
-            import validators as _v  # type: ignore
+        except ImportError as first_exc:
+            try:
+                import validators as _v  # type: ignore
+            except ImportError as second_exc:
+                raise second_exc from first_exc
     except Exception:
         return False
     cud: Dict[str, Any] = {}
@@ -577,8 +589,11 @@ def _code_is_write_shaped(code: str) -> bool:
     try:
         try:
             from . import kernel as _k  # type: ignore
-        except ImportError:
-            import kernel as _k  # type: ignore
+        except ImportError as first_exc:
+            try:
+                import kernel as _k  # type: ignore
+            except ImportError as second_exc:
+                raise second_exc from first_exc
         idx = _k.get_api_index()
     except Exception:
         idx = None

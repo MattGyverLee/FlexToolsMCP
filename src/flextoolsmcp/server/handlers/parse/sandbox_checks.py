@@ -17,11 +17,14 @@ from ...filing import paths as filing_paths
 
 try:
     from ....response_utils import error_response
-except (ImportError, ValueError) as _dual_first_exc:
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     try:
         from response_utils import error_response
-    except ImportError as _dual_second_exc:
-        raise _dual_second_exc from _dual_first_exc
+    except ImportError as second_exc:
+        try:
+            from server.response_utils import error_response
+        except ImportError as third_exc:
+            raise third_exc from second_exc
 
 from . import common
 from .common import (

@@ -17,11 +17,14 @@ from ...sandbox import paths as sandbox_paths
 
 try:
     from ....response_utils import build_response_with_context, error_response
-except (ImportError, ValueError) as _dual_first_exc:
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     try:
         from response_utils import build_response_with_context, error_response
-    except ImportError as _dual_second_exc:
-        raise _dual_second_exc from _dual_first_exc
+    except ImportError as second_exc:
+        try:
+            from server.response_utils import build_response_with_context, error_response
+        except ImportError as third_exc:
+            raise third_exc from second_exc
 
 # Issue #369 Phase 3: per-step progress milestones for create/seed
 # (no-op unless the request supplied a progressToken).

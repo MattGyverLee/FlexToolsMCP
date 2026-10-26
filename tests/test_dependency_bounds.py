@@ -19,9 +19,9 @@ A floor check matters as much as the cap: asserting only `<3` would still
 pass with the old 1.x floor, which is exactly the regression #369 removes.
 
 SCOPE LIMIT: this file intentionally does NOT assert that every runtime
-dependency has an upper bound. python-dotenv, and typing-inspection are
-still deliberately uncapped today -- see the deferred issue in
-specs/mcp2-compat/deferred-issues.md ("Add upper bounds to remaining
+dependency has an upper bound. The deferred-issues section 2 set is now
+fully capped (python-dotenv and typing-inspection were the last two) --
+see specs/mcp2-compat/deferred-issues.md ("Add upper bounds to remaining
 uncapped runtime deps"). A general assertion would fail immediately and is
 out of scope for this fix.
 
@@ -38,10 +38,7 @@ REPO_ROOT = Path(__file__).parent.parent
 # Deliberately uncapped runtime deps today (see module docstring). Do not
 # widen this without also updating the deferred issue; do not replace this
 # targeted mcp check with a blanket "every dep has an upper bound" assertion.
-KNOWN_UNCAPPED_DEPS = {
-    "python-dotenv",
-    "typing-inspection",
-}
+KNOWN_UNCAPPED_DEPS = set()
 
 
 def test_installed_mcp_major_version_is_supported():
@@ -259,3 +256,45 @@ def test_requirements_txt_pythonnet_requirement_has_floor_and_upper_bound():
     match = re.search(r"^pythonnet([^\s#]*)", requirements_text, re.MULTILINE)
     assert match, "Could not find a pythonnet line in requirements.txt"
     _assert_pythonnet_requirement(match.group(1), "requirements.txt")
+
+
+def _assert_typing_inspection_requirement(requirement: str, where: str) -> None:
+    assert ">=0.4" in requirement, (
+        f"{where} typing-inspection requirement 'typing-inspection{requirement}' "
+        f"is missing the >=0.4 floor."
+    )
+    assert "<1" in requirement, (
+        f"{where} typing-inspection requirement 'typing-inspection{requirement}' "
+        f"is missing the <1 cap (deferred-issues section 2, P3)."
+    )
+
+
+def _assert_python_dotenv_requirement(requirement: str, where: str) -> None:
+    assert ">=1" in requirement, (
+        f"{where} python-dotenv requirement 'python-dotenv{requirement}' "
+        f"is missing the >=1 floor."
+    )
+    assert "<2" in requirement, (
+        f"{where} python-dotenv requirement 'python-dotenv{requirement}' "
+        f"is missing the <2 cap (deferred-issues section 2, P3)."
+    )
+
+
+def test_pyproject_typing_inspection_and_dotenv_have_upper_bounds():
+    pyproject_text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    ti = re.search(r'"typing-inspection(>=?[^"]*)"', pyproject_text)
+    assert ti, "Could not find typing-inspection in pyproject.toml dependencies"
+    _assert_typing_inspection_requirement(ti.group(1), "pyproject.toml")
+    dotenv = re.search(r'"python-dotenv(>=?[^"]*)"', pyproject_text)
+    assert dotenv, "Could not find python-dotenv in pyproject.toml dependencies"
+    _assert_python_dotenv_requirement(dotenv.group(1), "pyproject.toml")
+
+
+def test_requirements_txt_typing_inspection_and_dotenv_have_upper_bounds():
+    requirements_text = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    ti = re.search(r"^typing-inspection([^\s#]*)", requirements_text, re.MULTILINE)
+    assert ti, "Could not find typing-inspection in requirements.txt"
+    _assert_typing_inspection_requirement(ti.group(1), "requirements.txt")
+    dotenv = re.search(r"^python-dotenv([^\s#]*)", requirements_text, re.MULTILINE)
+    assert dotenv, "Could not find python-dotenv in requirements.txt"
+    _assert_python_dotenv_requirement(dotenv.group(1), "requirements.txt")

@@ -34,8 +34,14 @@ from ._import_helper import safe_import_kernel_deps
 
 try:
     from ...response_utils import build_response_with_context
-except (ImportError, ValueError):
-    from response_utils import build_response_with_context
+except (ImportError, ValueError) as first_exc:  # noqa: F841
+    try:
+        from response_utils import build_response_with_context
+    except ImportError as second_exc:
+        try:
+            from server.response_utils import build_response_with_context
+        except ImportError as third_exc:
+            raise third_exc from second_exc
 
 # session_state / get_log_dir / get_api_index come from the shared helper;
 # json_response is also provided but re-imported explicitly for clarity.

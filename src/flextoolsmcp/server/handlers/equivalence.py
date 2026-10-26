@@ -14,7 +14,6 @@ Tools:
 - find_wrappers_for_lcm: LCM symbol -> wrapper methods that cover it
 """
 
-import json
 from typing import Any, Optional
 from mcp.types import TextContent
 
@@ -22,21 +21,23 @@ from mcp.types import TextContent
 try:
     from ..kernel import get_api_index, session_state
     from ..response_keys import (
-        KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY,
+        KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY, KEY_STATUS,
         KEY_LIBRARY, KEY_METHOD, KEY_LCM_INTERNALS, KEY_ADVISORY,
         KEY_LCM_NAME, KEY_COVERAGE, KEY_GAPS, KEY_KIND,
         KEY_DEPRECATED, KEY_DEPRECATION,
     )
     from ... import curated_deprecations
+    from ...response_utils import build_response_with_context, error_response, json_response
 except ImportError:
     from server.kernel import get_api_index, session_state
     from server.response_keys import (
-        KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY,
+        KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY, KEY_STATUS,
         KEY_LIBRARY, KEY_METHOD, KEY_LCM_INTERNALS, KEY_ADVISORY,
         KEY_LCM_NAME, KEY_COVERAGE, KEY_GAPS, KEY_KIND,
         KEY_DEPRECATED, KEY_DEPRECATION,
     )
     import curated_deprecations
+    from response_utils import build_response_with_context, error_response, json_response
 
 
 # Library label keys used by the reverse_mapping by_liblcm_entity entries.
@@ -50,6 +51,14 @@ _REVERSE_LIB_KEYS = {
 # Heuristic prefixes/suffixes used by kind="auto"
 _FACTORY_SUFFIX = "Factory"
 _REPOSITORY_SUFFIX = "Repository"
+
+_TOOL_GET_WRAPPER_DEPENDENCIES = "flextools_get_wrapper_dependencies"
+_TOOL_FIND_WRAPPERS_FOR_LCM = "flextools_find_wrappers_for_lcm"
+
+_API_INDEX_UNLOADED_MESSAGE = (
+    "API index is not loaded yet; retry after the server finishes startup "
+    "or call flextools_refresh_indexes if indexes were never built."
+)
 
 
 def _with_deprecation(payload: dict, symbol: str) -> dict:
@@ -67,9 +76,10 @@ def _with_deprecation(payload: dict, symbol: str) -> dict:
     return payload
 
 
-def _text(payload: dict) -> list[TextContent]:
-    """Wrap a payload dict in MCP TextContent."""
-    return [TextContent(type="text", text=json.dumps(payload, indent=2))]
+def _ok(payload: dict) -> list[TextContent]:
+    """Return a tool-response success envelope (issue #54 / mcp-modernization batch 2)."""
+    payload[KEY_STATUS] = "ok"
+    return json_response(build_response_with_context(payload, include_session=True))
 
 
 def _get_bridge(library: str) -> Optional[dict]:
@@ -105,8 +115,17 @@ async def handle_get_wrapper_dependencies(args: dict) -> list[TextContent]:
     method = args.get("method", "")
     library = args.get("library", "flexicon")
 
+    if not get_api_index():
+        return error_response(
+            "server_state_error",
+            _API_INDEX_UNLOADED_MESSAGE,
+            server_state="api_index_not_loaded",
+            component="api_index",
+            tool=_TOOL_GET_WRAPPER_DEPENDENCIES,
+        )
+
     if library not in ("flexicon", "flexlibs_stable"):
-        return _text({
+        return _ok({
             KEY_FOUND: False,
             KEY_LIBRARY: library,
             KEY_METHOD: method,
@@ -115,20 +134,21 @@ async def handle_get_wrapper_dependencies(args: dict) -> list[TextContent]:
 
     bridge = _get_bridge(library)
     if not bridge:
-        return _text({
-            KEY_FOUND: False,
-            KEY_LIBRARY: library,
-            KEY_METHOD: method,
-            KEY_MESSAGE: f"No LCM bridge file is loaded for {library!r}. "
-                         f"Run `python src/refresh.py` to regenerate it.",
-        })
+        return error_response(
+            "server_state_error",
+            f"No LCM bridge file is loaded for {library!r}. "
+            f"Run flextools-mcp-refresh (or python -m flextoolsmcp.refresh) to regenerate it.",
+            server_state="lcm_bridge_not_loaded",
+            component="api_index",
+            tool=_TOOL_GET_WRAPPER_DEPENDENCIES,
+        )
 
     by_method = bridge.get("by_method", {})
     entry = by_method.get(method)
     if entry is None:
         # Suggest checking the other library as a hint.
         other = "flexlibs_stable" if library == "flexicon" else "flexicon"
-        return _text({
+        return _ok({
             KEY_FOUND: False,
             KEY_LIBRARY: library,
             KEY_METHOD: method,
@@ -147,7 +167,7 @@ async def handle_get_wrapper_dependencies(args: dict) -> list[TextContent]:
         f"{library} mode. To call LCM directly, switch to api_mode='liblcm'."
     )
 
-    return _text(_with_deprecation({
+    return _ok(_with_deprecation({
         KEY_FOUND: True,
         KEY_LIBRARY: library,
         KEY_METHOD: method,
@@ -412,15 +432,25 @@ async def handle_find_wrappers_for_lcm(args: dict) -> list[TextContent]:
     if not include:
         include = ["flexicon", "flexlibs_stable"]
 
+    if not get_api_index():
+        return error_response(
+            "server_state_error",
+            _API_INDEX_UNLOADED_MESSAGE,
+            server_state="api_index_not_loaded",
+            component="api_index",
+            tool=_TOOL_FIND_WRAPPERS_FOR_LCM,
+        )
+
     reverse = _get_reverse_mapping()
     if not reverse:
-        return _text({
-            KEY_FOUND: False,
-            KEY_LCM_NAME: lcm_name,
-            KEY_KIND: kind,
-            KEY_MESSAGE: "Reverse mapping (reverse_mapping_liblcm-*.json) not loaded. "
-                         "Run `python src/build_reverse_mapping.py` to regenerate it.",
-        })
+        return error_response(
+            "server_state_error",
+            "Reverse mapping (reverse_mapping_liblcm-*.json) is not loaded. "
+            "Run flextools-mcp-refresh (or python -m flextoolsmcp.refresh) to regenerate it.",
+            server_state="reverse_mapping_not_loaded",
+            component="api_index",
+            tool=_TOOL_FIND_WRAPPERS_FOR_LCM,
+        )
 
     if kind == "auto":
         hit = _auto_lookup(reverse, lcm_name, include)
@@ -432,7 +462,7 @@ async def handle_find_wrappers_for_lcm(args: dict) -> list[TextContent]:
     elif kind in ("factory", "repository", "method", "property"):
         hit = _lookup_flat_kind(reverse, lcm_name, kind, include)
     else:
-        return _text({
+        return _ok({
             KEY_FOUND: False,
             KEY_LCM_NAME: lcm_name,
             KEY_KIND: kind,
@@ -452,4 +482,4 @@ async def handle_find_wrappers_for_lcm(args: dict) -> list[TextContent]:
             ),
         }
 
-    return _text(_with_deprecation(hit, lcm_name))
+    return _ok(_with_deprecation(hit, lcm_name))

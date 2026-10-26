@@ -7,9 +7,10 @@ Maps tool names to handler functions and their Pydantic input models.
 Replaces the 16-way if/elif chain in call_tool() with a clean, dict-based lookup.
 """
 
-from typing import Callable, Type, Dict, Tuple
+from typing import Callable, Dict, Tuple, Type, TypeVar
 from pydantic import BaseModel
 from mcp.types import TextContent
+
 
 # Import all Pydantic input models
 from .models import (
@@ -46,6 +47,25 @@ from .models import (
     ParseSandboxInput,
     ParseReleaseInput,
 )
+
+
+_T = TypeVar("_T")
+
+
+def _dual_import_fallback(primary: Callable[[], _T], fallback: Callable[[], _T]) -> _T:
+    """Run package-mode imports; on ImportError only, run script-mode imports.
+
+    If both fail, re-raise the second chained from the first so diagnostics
+    show both attempts (mcp2-compat deferred-issues section 3).
+    """
+    try:
+        return primary()
+    except ImportError as first_exc:
+        try:
+            return fallback()
+        except ImportError as second_exc:
+            raise second_exc from first_exc
+
 
 # ============================================================
 # Tool name constants (replace stringly-typed code)
@@ -151,118 +171,41 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_PARSE_RELEASE,
 ])
 
-# Import all handler functions
-def _import_handlers():
-    """Import all handlers with fallback to non-package mode."""
-    try:
-        # Try package imports first (relative imports)
-        from .handlers.admin import (
-            handle_start,
-            handle_manage_config,
-            handle_get_session_history,
-            handle_get_module_template,
-            handle_refresh_indexes,
-        )
-        from .handlers.api import (
-            handle_get_object_api,
-            handle_search_by_capability,
-            handle_find_examples,
-            handle_resolve_property,
-            handle_resolve_type,
-        )
-        from .handlers.catalog import (
-            handle_list_categories,
-            handle_list_entities_in_category,
-            handle_list_projects,
-            handle_list_skeletons,
-            handle_list_recipes,
-        )
-        from .handlers.discovery import (
-            handle_get_navigation_path,
-        )
-        from .handlers.execution import (
-            handle_start_module,
-            handle_run_module,
-            handle_get_operation_logs,
-        )
-        from .handlers.equivalence import (
-            handle_get_wrapper_dependencies,
-            handle_find_wrappers_for_lcm,
-        )
-        from .handlers.diagnostic_report import (
-            handle_prepare_report,
-        )
-        from .handlers.diagnostic_health import (
-            handle_flextools_health,
-        )
-        from .handlers.grammar_health import (
-            handle_flextools_grammar_health,
-        )
-        from .handlers.parse import (
-            handle_flextools_try_word,
-            handle_flextools_parse_status,
-            handle_flextools_parse_text,
-            handle_flextools_parse_log,
-            handle_flextools_parse_diff,
-            handle_flextools_parse_cancel,
-            handle_flextools_parse_sandbox,
-            handle_flextools_parse_release,
-        )
-    except ImportError:
-        # Fallback to non-package mode (absolute imports)
-        from server.handlers.admin import (
-            handle_start,
-            handle_manage_config,
-            handle_get_session_history,
-            handle_get_module_template,
-            handle_refresh_indexes,
-        )
-        from server.handlers.api import (
-            handle_get_object_api,
-            handle_search_by_capability,
-            handle_find_examples,
-            handle_resolve_property,
-            handle_resolve_type,
-        )
-        from server.handlers.catalog import (
-            handle_list_categories,
-            handle_list_entities_in_category,
-            handle_list_projects,
-            handle_list_skeletons,
-            handle_list_recipes,
-        )
-        from server.handlers.discovery import (
-            handle_get_navigation_path,
-        )
-        from server.handlers.execution import (
-            handle_start_module,
-            handle_run_module,
-            handle_get_operation_logs,
-        )
-        from server.handlers.equivalence import (
-            handle_get_wrapper_dependencies,
-            handle_find_wrappers_for_lcm,
-        )
-        from server.handlers.diagnostic_report import (
-            handle_prepare_report,
-        )
-        from server.handlers.diagnostic_health import (
-            handle_flextools_health,
-        )
-        from server.handlers.grammar_health import (
-            handle_flextools_grammar_health,
-        )
-        from server.handlers.parse import (
-            handle_flextools_try_word,
-            handle_flextools_parse_status,
-            handle_flextools_parse_text,
-            handle_flextools_parse_log,
-            handle_flextools_parse_diff,
-            handle_flextools_parse_cancel,
-            handle_flextools_parse_sandbox,
-            handle_flextools_parse_release,
-        )
-
+def _handler_map(
+    *,
+    handle_start,
+    handle_manage_config,
+    handle_get_session_history,
+    handle_get_module_template,
+    handle_refresh_indexes,
+    handle_get_object_api,
+    handle_search_by_capability,
+    handle_find_examples,
+    handle_resolve_property,
+    handle_resolve_type,
+    handle_list_categories,
+    handle_list_entities_in_category,
+    handle_list_projects,
+    handle_list_skeletons,
+    handle_list_recipes,
+    handle_get_navigation_path,
+    handle_start_module,
+    handle_run_module,
+    handle_get_operation_logs,
+    handle_get_wrapper_dependencies,
+    handle_find_wrappers_for_lcm,
+    handle_prepare_report,
+    handle_flextools_health,
+    handle_flextools_grammar_health,
+    handle_flextools_try_word,
+    handle_flextools_parse_status,
+    handle_flextools_parse_text,
+    handle_flextools_parse_log,
+    handle_flextools_parse_diff,
+    handle_flextools_parse_cancel,
+    handle_flextools_parse_sandbox,
+    handle_flextools_parse_release,
+):
     return {
         "handle_start": handle_start,
         "handle_manage_config": handle_manage_config,
@@ -297,6 +240,175 @@ def _import_handlers():
         "handle_flextools_parse_sandbox": handle_flextools_parse_sandbox,
         "handle_flextools_parse_release": handle_flextools_parse_release,
     }
+
+
+def _import_package_handlers():
+    from .handlers.admin import (
+        handle_start,
+        handle_manage_config,
+        handle_get_session_history,
+        handle_get_module_template,
+        handle_refresh_indexes,
+    )
+    from .handlers.api import (
+        handle_get_object_api,
+        handle_search_by_capability,
+        handle_find_examples,
+        handle_resolve_property,
+        handle_resolve_type,
+    )
+    from .handlers.catalog import (
+        handle_list_categories,
+        handle_list_entities_in_category,
+        handle_list_projects,
+        handle_list_skeletons,
+        handle_list_recipes,
+    )
+    from .handlers.discovery import handle_get_navigation_path
+    from .handlers.execution import (
+        handle_start_module,
+        handle_run_module,
+        handle_get_operation_logs,
+    )
+    from .handlers.equivalence import (
+        handle_get_wrapper_dependencies,
+        handle_find_wrappers_for_lcm,
+    )
+    from .handlers.diagnostic_report import handle_prepare_report
+    from .handlers.diagnostic_health import handle_flextools_health
+    from .handlers.grammar_health import handle_flextools_grammar_health
+    from .handlers.parse import (
+        handle_flextools_try_word,
+        handle_flextools_parse_status,
+        handle_flextools_parse_text,
+        handle_flextools_parse_log,
+        handle_flextools_parse_diff,
+        handle_flextools_parse_cancel,
+        handle_flextools_parse_sandbox,
+        handle_flextools_parse_release,
+    )
+
+    return _handler_map(
+        handle_start=handle_start,
+        handle_manage_config=handle_manage_config,
+        handle_get_session_history=handle_get_session_history,
+        handle_get_module_template=handle_get_module_template,
+        handle_refresh_indexes=handle_refresh_indexes,
+        handle_get_object_api=handle_get_object_api,
+        handle_search_by_capability=handle_search_by_capability,
+        handle_find_examples=handle_find_examples,
+        handle_resolve_property=handle_resolve_property,
+        handle_resolve_type=handle_resolve_type,
+        handle_list_categories=handle_list_categories,
+        handle_list_entities_in_category=handle_list_entities_in_category,
+        handle_list_projects=handle_list_projects,
+        handle_list_skeletons=handle_list_skeletons,
+        handle_list_recipes=handle_list_recipes,
+        handle_get_navigation_path=handle_get_navigation_path,
+        handle_start_module=handle_start_module,
+        handle_run_module=handle_run_module,
+        handle_get_operation_logs=handle_get_operation_logs,
+        handle_get_wrapper_dependencies=handle_get_wrapper_dependencies,
+        handle_find_wrappers_for_lcm=handle_find_wrappers_for_lcm,
+        handle_prepare_report=handle_prepare_report,
+        handle_flextools_health=handle_flextools_health,
+        handle_flextools_grammar_health=handle_flextools_grammar_health,
+        handle_flextools_try_word=handle_flextools_try_word,
+        handle_flextools_parse_status=handle_flextools_parse_status,
+        handle_flextools_parse_text=handle_flextools_parse_text,
+        handle_flextools_parse_log=handle_flextools_parse_log,
+        handle_flextools_parse_diff=handle_flextools_parse_diff,
+        handle_flextools_parse_cancel=handle_flextools_parse_cancel,
+        handle_flextools_parse_sandbox=handle_flextools_parse_sandbox,
+        handle_flextools_parse_release=handle_flextools_parse_release,
+    )
+
+
+def _import_script_handlers():
+    from server.handlers.admin import (
+        handle_start,
+        handle_manage_config,
+        handle_get_session_history,
+        handle_get_module_template,
+        handle_refresh_indexes,
+    )
+    from server.handlers.api import (
+        handle_get_object_api,
+        handle_search_by_capability,
+        handle_find_examples,
+        handle_resolve_property,
+        handle_resolve_type,
+    )
+    from server.handlers.catalog import (
+        handle_list_categories,
+        handle_list_entities_in_category,
+        handle_list_projects,
+        handle_list_skeletons,
+        handle_list_recipes,
+    )
+    from server.handlers.discovery import handle_get_navigation_path
+    from server.handlers.execution import (
+        handle_start_module,
+        handle_run_module,
+        handle_get_operation_logs,
+    )
+    from server.handlers.equivalence import (
+        handle_get_wrapper_dependencies,
+        handle_find_wrappers_for_lcm,
+    )
+    from server.handlers.diagnostic_report import handle_prepare_report
+    from server.handlers.diagnostic_health import handle_flextools_health
+    from server.handlers.grammar_health import handle_flextools_grammar_health
+    from server.handlers.parse import (
+        handle_flextools_try_word,
+        handle_flextools_parse_status,
+        handle_flextools_parse_text,
+        handle_flextools_parse_log,
+        handle_flextools_parse_diff,
+        handle_flextools_parse_cancel,
+        handle_flextools_parse_sandbox,
+        handle_flextools_parse_release,
+    )
+
+    return _handler_map(
+        handle_start=handle_start,
+        handle_manage_config=handle_manage_config,
+        handle_get_session_history=handle_get_session_history,
+        handle_get_module_template=handle_get_module_template,
+        handle_refresh_indexes=handle_refresh_indexes,
+        handle_get_object_api=handle_get_object_api,
+        handle_search_by_capability=handle_search_by_capability,
+        handle_find_examples=handle_find_examples,
+        handle_resolve_property=handle_resolve_property,
+        handle_resolve_type=handle_resolve_type,
+        handle_list_categories=handle_list_categories,
+        handle_list_entities_in_category=handle_list_entities_in_category,
+        handle_list_projects=handle_list_projects,
+        handle_list_skeletons=handle_list_skeletons,
+        handle_list_recipes=handle_list_recipes,
+        handle_get_navigation_path=handle_get_navigation_path,
+        handle_start_module=handle_start_module,
+        handle_run_module=handle_run_module,
+        handle_get_operation_logs=handle_get_operation_logs,
+        handle_get_wrapper_dependencies=handle_get_wrapper_dependencies,
+        handle_find_wrappers_for_lcm=handle_find_wrappers_for_lcm,
+        handle_prepare_report=handle_prepare_report,
+        handle_flextools_health=handle_flextools_health,
+        handle_flextools_grammar_health=handle_flextools_grammar_health,
+        handle_flextools_try_word=handle_flextools_try_word,
+        handle_flextools_parse_status=handle_flextools_parse_status,
+        handle_flextools_parse_text=handle_flextools_parse_text,
+        handle_flextools_parse_log=handle_flextools_parse_log,
+        handle_flextools_parse_diff=handle_flextools_parse_diff,
+        handle_flextools_parse_cancel=handle_flextools_parse_cancel,
+        handle_flextools_parse_sandbox=handle_flextools_parse_sandbox,
+        handle_flextools_parse_release=handle_flextools_parse_release,
+    )
+
+
+def _import_handlers():
+    """Import all handlers with fallback to non-package mode."""
+    return _dual_import_fallback(_import_package_handlers, _import_script_handlers)
 
 
 _handlers = _import_handlers()

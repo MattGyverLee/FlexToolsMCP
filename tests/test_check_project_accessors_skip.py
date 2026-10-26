@@ -4,7 +4,6 @@
 
 import builtins
 import importlib.util
-import sys
 from pathlib import Path
 
 def _load_check_project_accessors_module():

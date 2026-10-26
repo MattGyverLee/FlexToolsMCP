@@ -342,8 +342,11 @@ def _available_projects_payload() -> Dict[str, Any]:
     """
     try:
         from ..project_discovery import available_projects_payload
-    except ImportError:
-        from server.project_discovery import available_projects_payload
+    except ImportError as first_exc:
+        try:
+            from server.project_discovery import available_projects_payload
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     return available_projects_payload()
 
 
@@ -1405,9 +1408,12 @@ def _own_worker_lock_diagnosis(project_name: str, access) -> Optional[Dict[str, 
     try:
         from ..parse import own_worker as _own_worker
         from .parse import peek_runner
-    except (ImportError, ValueError):
-        from server.parse import own_worker as _own_worker
-        from server.handlers.parse import peek_runner
+    except (ImportError, ValueError) as first_exc:
+        try:
+            from server.parse import own_worker as _own_worker
+            from server.handlers.parse import peek_runner
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     runner = peek_runner()
     role = _own_worker.own_holder_role(runner, project_name, access)
     if role is None:
@@ -1485,13 +1491,16 @@ def _diagnose_project_open_error(
                     build_lock_diagnosis,
                     probe_project_access,
                 )
-            except (ImportError, ValueError):
-                from server.project_access import (
-                    build_access_next_steps,
-                    build_access_remedy,
-                    build_lock_diagnosis,
-                    probe_project_access,
-                )
+            except (ImportError, ValueError) as first_exc:
+                try:
+                    from server.project_access import (
+                        build_access_next_steps,
+                        build_access_remedy,
+                        build_lock_diagnosis,
+                        probe_project_access,
+                    )
+                except ImportError as second_exc:
+                    raise second_exc from first_exc
             access = probe_project_access(project_name)
             holder = access.holder
             # Issue #315: the same holder check the write gate makes before
@@ -1569,8 +1578,11 @@ def _diagnose_project_open_error(
         # Cross-check against the safe-enumeration list.
         try:
             from ..project_discovery import list_projects, get_last_directory
-        except (ImportError, ValueError):
-            from server.project_discovery import list_projects, get_last_directory
+        except (ImportError, ValueError) as first_exc:
+            try:
+                from server.project_discovery import list_projects, get_last_directory
+            except ImportError as second_exc:
+                raise second_exc from first_exc
         try:
             discovered_names, _src = list_projects()
             discovered_dir = get_last_directory()
@@ -2915,8 +2927,11 @@ def _read_active_writing_systems(project_name: str) -> Optional[Dict[str, List[s
     try:
         try:
             from ..project_discovery import get_project_fwdata_path
-        except (ImportError, ValueError):
-            from server.project_discovery import get_project_fwdata_path
+        except (ImportError, ValueError) as first_exc:
+            try:
+                from server.project_discovery import get_project_fwdata_path
+            except ImportError as second_exc:
+                raise second_exc from first_exc
         fwdata = get_project_fwdata_path(project_name)
         active = None
         if fwdata:
@@ -3040,8 +3055,11 @@ async def _handle_validate_only(
     # for a stale/live .fwdata.lock file next to it.
     try:
         from ..project_discovery import find_lock_file
-    except (ImportError, ValueError):
-        from server.project_discovery import find_lock_file
+    except (ImportError, ValueError) as first_exc:
+        try:
+            from server.project_discovery import find_lock_file
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     try:
         _lock_path = find_lock_file(project_name) if project_name else None
     except Exception:
@@ -3063,8 +3081,11 @@ async def _handle_validate_only(
     try:
         try:
             from ..project_access import probe_project_access
-        except (ImportError, ValueError):
-            from server.project_access import probe_project_access
+        except (ImportError, ValueError) as first_exc:
+            try:
+                from server.project_access import probe_project_access
+            except ImportError as second_exc:
+                raise second_exc from first_exc
         _access = probe_project_access(project_name) if project_name else None
         if _access is not None:
             project_lock["sharing_enabled"] = _access.sharing_enabled
@@ -3856,12 +3877,18 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     """
     try:
         from ..parse import own_worker as _own_worker
-    except (ImportError, ValueError):
-        from server.parse import own_worker as _own_worker
+    except (ImportError, ValueError) as first_exc:
+        try:
+            from server.parse import own_worker as _own_worker
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     try:
         from .parse import peek_runner
-    except (ImportError, ValueError):
-        from server.handlers.parse import peek_runner
+    except (ImportError, ValueError) as first_exc:
+        try:
+            from server.handlers.parse import peek_runner
+        except ImportError as second_exc:
+            raise second_exc from first_exc
 
     runner = peek_runner()
     if runner is None:
@@ -3918,8 +3945,11 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # as omitted (session fallback), and "`Sena 3`" is unwrapped to "Sena 3".
     try:
         from ..project_discovery import normalize_project_name, project_not_found_fields
-    except (ImportError, ValueError):
-        from server.project_discovery import normalize_project_name, project_not_found_fields
+    except (ImportError, ValueError) as first_exc:
+        try:
+            from server.project_discovery import normalize_project_name, project_not_found_fields
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     _raw_project_name = args.get("project_name")
     project_name = normalize_project_name(_raw_project_name) or session_state.get_project()
     write_enabled_arg = args.get("write_enabled")
@@ -4030,8 +4060,11 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     if resolved:
         try:
             from ...project_adoption import adopt_resolved_project
-        except ImportError:
-            from project_adoption import adopt_resolved_project
+        except ImportError as first_exc:
+            try:
+                from project_adoption import adopt_resolved_project
+            except ImportError as second_exc:
+                raise second_exc from first_exc
         project_name = adopt_resolved_project(
             session_state,
             resolved,

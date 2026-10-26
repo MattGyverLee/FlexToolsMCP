@@ -46,8 +46,14 @@ except ImportError:
 
 try:
     from ...response_utils import error_response, build_response_with_context
-except (ImportError, ValueError):
-    from response_utils import error_response, build_response_with_context
+except (ImportError, ValueError) as first_exc:
+    try:
+        from response_utils import error_response, build_response_with_context
+    except ImportError as second_exc:
+        try:
+            from server.response_utils import error_response, build_response_with_context
+        except ImportError as third_exc:
+            raise third_exc from second_exc
 
 try:
     from ...config import (

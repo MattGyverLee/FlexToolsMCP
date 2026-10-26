@@ -22,6 +22,8 @@ from server.validators import (
     extract_python_did_you_mean,
     certify_script_readonly,
     _collect_all_imported_names,
+    _clean_interface_head,
+    _extract_interface_names,
 )
 import ast
 
@@ -566,6 +568,20 @@ class TestIssue38SyncablePropertiesIndexed(unittest.TestCase):
             result["has_invalid"],
             f"ApplySyncableProperties must not be rejected; got {result.get('issues')}",
         )
+
+
+class TestDefinedOnWhitespaceEntries(unittest.TestCase):
+    """Swahili audit carryover: whitespace-only defined_on rows must not crash."""
+
+    def test_clean_interface_head_ignores_blank_entries(self):
+        self.assertIsNone(_clean_interface_head(""))
+        self.assertIsNone(_clean_interface_head("   "))
+        self.assertIsNone(_clean_interface_head("\t"))
+        self.assertEqual(_clean_interface_head("ILexSense (raw LCM)"), "ILexSense")
+
+    def test_extract_interface_names_skips_blank_entries(self):
+        names = _extract_interface_names(["ILexEntry", "   ", "IMoForm (raw LCM)", "\n"])
+        self.assertEqual(names, {"ILexEntry", "IMoForm"})
 
 
 if __name__ == "__main__":

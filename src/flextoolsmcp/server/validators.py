@@ -6833,7 +6833,7 @@ def _extract_interface_names(entries: List[str]) -> set:
     """
     out: set = set()
     for entry in entries or ():
-        if not entry:
+        if not entry or not str(entry).strip():
             continue
         head = entry.split()[0].split("(")[0].strip()
         if head:
@@ -8315,7 +8315,7 @@ def _clean_interface_head(entry: str) -> Optional[str]:
     used to hand-roll identical head-split logic independently, which a
     stale comment claimed was "reuse" -- it wasn't. Both call this now so
     there is exactly one normalizer to keep correct."""
-    if not entry:
+    if not entry or not entry.strip():
         return None
     head = entry.split()[0].split("(")[0].strip()
     return head if head.startswith("I") else None

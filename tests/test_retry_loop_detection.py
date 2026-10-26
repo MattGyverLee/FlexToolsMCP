@@ -190,6 +190,24 @@ def test_project_locked_hint_points_to_next_steps():
     assert "find_examples" not in msg
 
 
+def test_invalid_api_mode_hint_is_tailored():
+    """Issue #164 / #28: invalid_api_mode loops must steer to allowed_modes,
+    not the generic find_examples fallback."""
+    state = _new_state()
+    base = datetime.now()
+    for i in range(5):
+        state.record_op_signal(
+            error_code="invalid_api_mode",
+            code_size_bytes=120,
+            timestamp=base + timedelta(seconds=i * 10),
+        )
+    pattern = state.detect_retry_loop_pattern()
+    assert pattern is not None
+    assert "allowed_modes" in pattern["message"]
+    assert "flextools_start" in pattern["message"]
+    assert "flextools_find_examples" not in pattern["message"]
+
+
 def test_project_not_open_hint_points_to_available_projects():
     """Issue #53: project_not_open hint now points at the inlined
     available_projects field on the rejection payload itself, rather than

@@ -335,7 +335,16 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
     "parse_job_cancelled": (
         "the run has already ended -- do not cancel or poll it again. Read "
         "results with flextools_parse_log (or flextools_parse_status only "
-        "while the run is still live)."    ),}
+        "while the run is still live)."    ),
+    "invalid_api_mode": (
+        # Issue #164: bad api_mode on flextools_start -- the rejection already
+        # lists allowed_modes and a hint; retry loops must not send the model
+        # to find_examples.
+        "pick api_mode from allowed_modes in this payload (use "
+        "api_mode='flexicon' for execution). Call flextools_start again with "
+        "a valid mode -- do not resubmit with the same invalid value or "
+        "search for APIs until the session mode is fixed."    ),
+}
 
 
 def _assistance_message_for_error(

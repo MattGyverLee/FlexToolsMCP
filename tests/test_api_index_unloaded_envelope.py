@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """P2: API discovery tools must not crash or lie when the API index is unloaded."""
 
-import asyncio
 import json
 
 import pytest

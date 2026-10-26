@@ -251,6 +251,74 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "opaque after one targeted fix, call flextools_prepare_report or "
         "flextools_health (verbose=True) instead of looping."
     ),
+    "parser_engine_mismatch": (
+        "this project's active parser is not HermitCrab -- switch in FLEx "
+        "(Words > Parser > Choose Parser) to HermitCrab, then retry the same "
+        "tool call. Do not keep resubmitting parse code; the engine must "
+        "change in the project settings first."
+    ),
+    "parser_core_missing": (
+        "the HermitCrab core is missing or failed to load on this machine. "
+        "Run flextools_health for install_path/signal detail, repair or "
+        "reinstall FieldWorks 9, then retry -- resubmitting parse requests "
+        "without fixing the install will not help."
+    ),
+    "parser_agent_missing": (
+        "filing needs HermitCrab to have run in FLEx at least once on this "
+        "project. Open the project in FLEx, run Parse Words in Text or Try A "
+        "Word once, then retry filing -- read-only try/parse tools are "
+        "unaffected and are not a substitute."
+    ),
+    "parser_tool_missing": (
+        "the sandbox is missing a FieldWorks-bundled engine or grammar-export "
+        "component. Repair or reinstall FieldWorks 9 (flextools_health names "
+        "which piece), then retry -- do not loop on sandbox creation alone."
+    ),
+    "parse_scope_empty": (
+        "the text, genre, or word list in scope matched nothing -- read "
+        "matched_texts in the rejection for near-misses, fix the scope name, "
+        "then retry flextools_parse_text with the corrected scope."
+    ),
+    "parse_scope_ambiguous": (
+        "the scope name matches more than one text/genre -- read candidates "
+        "in the rejection, pick the intended one, and resubmit with a more "
+        "specific name (full text title, not an abbreviation)."
+    ),
+    "parse_scope_mismatch": (
+        "flextools_parse_diff needs two runs with the same scope fingerprint "
+        "-- read differing_fields, re-parse with matching scope, or force "
+        "compare knowing only shared words will align."
+    ),
+    "parser_filing_in_progress": (
+        "another filing run is already active on this project -- wait for "
+        "it to finish and check flextools_parse_status with the run_id in "
+        "the rejection; do not start a second filing run in parallel."
+    ),
+    "grammar_load_unclean": (
+        "filing refused because the grammar load was unclean (see signal and "
+        "counts in the rejection). Fix the grammar issue, run a read-only "
+        "flextools_parse_text on the same scope to re-baseline, then retry "
+        "apply=true -- there is no skip/override for this gate."
+    ),
+    "parser_timeout": (
+        "the sandbox run hit its time limit -- partial results before the "
+        "timeout are still valid. Narrow the word list or raise the timeout "
+        "on the next run instead of resubmitting the same large scope."
+    ),
+    "parser_job_failed": (
+        "the sandbox worker failed (OOM, crash, bad grammar export, etc.) -- "
+        "read reason and log_path in the rejection; for export/load failures "
+        "recreate the sandbox, do not retry the identical job unchanged."
+    ),
+    "parser_config_failed": (
+        "grammar export into the sandbox failed -- read log_tail/log_path in "
+        "the rejection for the exporter error, fix the underlying grammar "
+        "issue in FLEx, then retry sandbox creation."
+    ),
+    "parse_sandbox_refused": (
+        "the sandbox/corpus request was refused before creation -- read "
+        "reason in the rejection (bad name, duplicate, missing corpus, disk "
+        "space, invalid word file) and fix that specific issue before retry."    ),
 }
 
 

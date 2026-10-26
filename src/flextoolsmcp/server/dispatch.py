@@ -11,22 +11,6 @@ from typing import Callable, Dict, Tuple, Type, TypeVar
 from pydantic import BaseModel
 from mcp.types import TextContent
 
-_T = TypeVar("_T")
-
-
-def _dual_import_fallback(primary: Callable[[], _T], fallback: Callable[[], _T]) -> _T:
-    """Run package-mode imports; on ImportError only, run script-mode imports.
-
-    If both fail, re-raise the second chained from the first so diagnostics
-    show both attempts (mcp2-compat deferred-issues section 3).
-    """
-    try:
-        return primary()
-    except ImportError as first_exc:
-        try:
-            return fallback()
-        except ImportError as second_exc:
-            raise second_exc from first_exc
 
 # Import all Pydantic input models
 from .models import (
@@ -63,6 +47,25 @@ from .models import (
     ParseSandboxInput,
     ParseReleaseInput,
 )
+
+
+_T = TypeVar("_T")
+
+
+def _dual_import_fallback(primary: Callable[[], _T], fallback: Callable[[], _T]) -> _T:
+    """Run package-mode imports; on ImportError only, run script-mode imports.
+
+    If both fail, re-raise the second chained from the first so diagnostics
+    show both attempts (mcp2-compat deferred-issues section 3).
+    """
+    try:
+        return primary()
+    except ImportError as first_exc:
+        try:
+            return fallback()
+        except ImportError as second_exc:
+            raise second_exc from first_exc
+
 
 # ============================================================
 # Tool name constants (replace stringly-typed code)

@@ -1637,8 +1637,11 @@ def _diagnose_project_open_error(
         # suggestions instead of a bare "directory not found" string.
         try:
             from ..project_discovery import resolve_or_explain
-        except (ImportError, ValueError):
-            from server.project_discovery import resolve_or_explain
+        except (ImportError, ValueError) as first_exc:
+            try:
+                from server.project_discovery import resolve_or_explain
+            except ImportError as second_exc:
+                raise second_exc from first_exc
         _resolved, payload = resolve_or_explain(project_name)
         if payload is not None:
             payload = dict(payload)  # don't mutate the shared dict
@@ -4007,8 +4010,11 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # block so unresolvable names don't pollute the operation log.
     try:
         from ..project_discovery import resolve_or_explain
-    except (ImportError, ValueError):
-        from server.project_discovery import resolve_or_explain
+    except (ImportError, ValueError) as first_exc:
+        try:
+            from server.project_discovery import resolve_or_explain
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     resolved, _resolve_err = resolve_or_explain(project_name)
     if _resolve_err:
         get_operations_logger().warning(

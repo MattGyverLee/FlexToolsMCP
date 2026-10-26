@@ -6460,13 +6460,20 @@ MODULE_CODE = {code}
                 op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
                 error=err_msg, error_type="Timeout", stderr=stderr,
             log_dir_fn=get_log_dir,
+                assistance_error_code="Timeout",
+                assistance_code_size_bytes=_code_size_bytes,
             )
-            return json_response(_finalize_run_module_response({
-                "success": False,
-                "error": err_msg,
-                "warnings": warnings,
-                "op_id": op_id,
-            }))
+            return _attach_assistance_if_loop(
+                json_response(_finalize_run_module_response({
+                    "success": False,
+                    "error": err_msg,
+                    "error_type": "Timeout",
+                    "warnings": warnings,
+                    "op_id": op_id,
+                })),
+                error_code="Timeout",
+                code_size_bytes=_code_size_bytes,
+            )
 
         # Issue #35: extract user result payload (report.Result) before the main envelope.
         _user_result_sentinel = "===FLEXTOOLS_USER_RESULT==="
@@ -6966,13 +6973,20 @@ MODULE_CODE = {code}
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type="TimeoutExpired",
         log_dir_fn=get_log_dir,
+            assistance_error_code="TimeoutExpired",
+            assistance_code_size_bytes=_code_size_bytes,
         )
-        return json_response(_finalize_run_module_response({
-            "success": False,
-            "error": err_msg,
-            "warnings": warnings,
-            "op_id": op_id,
-        }))
+        return _attach_assistance_if_loop(
+            json_response(_finalize_run_module_response({
+                "success": False,
+                "error": err_msg,
+                "error_type": "TimeoutExpired",
+                "warnings": warnings,
+                "op_id": op_id,
+            })),
+            error_code="TimeoutExpired",
+            code_size_bytes=_code_size_bytes,
+        )
 
     except Exception as e:
         import traceback as _tb

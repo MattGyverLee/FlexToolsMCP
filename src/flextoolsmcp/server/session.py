@@ -456,6 +456,40 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "flexicon (not flexlibs) when api_mode is flexicon. Switching "
         "api_mode is rarely the fix; fix the imports instead."
     ),
+    # run_module runner / subprocess infrastructure (error_type keys, #28).
+    "Timeout": (
+        "the subprocess hit its time limit -- narrow the work (smaller batches, "
+        "fewer full-corpus GetAll loops) or raise timeout_seconds on the next "
+        "call; resubmitting the same heavy script will time out again."
+    ),
+    "TimeoutExpired": (
+        "the subprocess hit its time limit -- narrow the work or raise "
+        "timeout_seconds; identical resubmits will keep timing out."
+    ),
+    "JSONDecodeError": (
+        "the runner could not parse the script's result JSON -- read raw_output "
+        "and stderr in this payload and fix the script so it emits a valid "
+        "===FLEXTOOLS_RESULT_JSON=== block via report/Result, not stray prints."
+    ),
+    "NoResultMarker": (
+        "the script finished without the ===FLEXTOOLS_RESULT_JSON=== marker -- "
+        "read raw_output and stderr; use report.Info/Result and do not exit "
+        "before the runner captures output."
+    ),
+    "ProjectOpenError": (
+        "FieldWorks could not open the project -- read the error text, verify "
+        "project_name, and check for a lock from another process; "
+        "flextools_list_projects or flextools_start can confirm the name."
+    ),
+    "ScanModuleImportError": (
+        "the scan harness could not import the requested module path -- fix "
+        "MODULE_IMPORT_PATH or the module's syntax; this is separate from "
+        "flexicon Operations imports."
+    ),
+    "ScanFunctionNotFound": (
+        "the scan module loaded but has no such function -- pass the correct "
+        "FUNCTION_NAME or define it on the module before retrying."
+    ),
 }
 
 def _assistance_message_for_error(

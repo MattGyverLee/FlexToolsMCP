@@ -173,6 +173,27 @@ def test_confirmation_required_hint_is_tailored():
     assert "find_examples" not in msg
 
 
+def test_teardown_error_hint_is_tailored():
+    """Issue #302 / #28: TeardownError uses error_type as the assistance key;
+    the hint must steer toward writes_committed and next_steps, not generic
+    find_examples."""
+    state = _new_state()
+    base = datetime.now()
+    for i in range(5):
+        state.record_op_signal(
+            error_code="TeardownError",
+            code_size_bytes=180,
+            timestamp=base + timedelta(seconds=i * 15),
+        )
+    pattern = state.detect_retry_loop_pattern()
+    assert pattern is not None
+    assert pattern["error_code"] == "TeardownError"
+    msg = pattern["message"]
+    assert "writes_committed" in msg
+    assert "next_steps" in msg
+    assert "find_examples" not in msg
+
+
 def test_project_locked_hint_points_to_next_steps():
     """Issue #315: project_locked loops should cite next_steps, not generic discovery."""
     state = _new_state()

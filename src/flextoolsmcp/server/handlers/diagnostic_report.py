@@ -41,9 +41,12 @@ json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_de
 
 try:
     from ..kernel import get_operations_logger, get_current_session_log_path
-except ImportError:
-    from server.kernel import get_operations_logger, get_current_session_log_path
+except ImportError as first_exc:
+    try:
+        from server.kernel import get_operations_logger, get_current_session_log_path
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 try:
     from ...response_utils import error_response, build_response_with_context
 except (ImportError, ValueError) as first_exc:  # noqa: F841
@@ -72,11 +75,14 @@ except (ImportError, ValueError):
 
 try:
     from .op_telemetry import _load_jsonl_records, group_records_by_intent, is_run_module_record
-except ImportError:
-    from server.handlers.op_telemetry import (
-        _load_jsonl_records, group_records_by_intent, is_run_module_record,
-    )
+except ImportError as first_exc:
+    try:
+        from server.handlers.op_telemetry import (
+            _load_jsonl_records, group_records_by_intent, is_run_module_record,
+        )
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # One-way dependency: handlers/diagnostic_report.py -> diagnostic/* (never
 # the reverse), matching the existing execution.py -> diagnostic.triggers
 # precedent (see execution.py's CP2 import comment).
@@ -84,12 +90,15 @@ try:
     from ..diagnostic import reconstruct, render, sensitivity, transports as transports_mod
     from ..diagnostic import signature as signature_mod
     from ..diagnostic import triggers, offered_store
-except ImportError:
-    from server.diagnostic import reconstruct, render, sensitivity, transports as transports_mod
-    from server.diagnostic import signature as signature_mod
-    from server.diagnostic import triggers, offered_store
+except ImportError as first_exc:
+    try:
+        from server.diagnostic import reconstruct, render, sensitivity, transports as transports_mod
+        from server.diagnostic import signature as signature_mod
+        from server.diagnostic import triggers, offered_store
 
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Best-effort v1 heuristic (documented limitation, same spirit as CP1's
 # casting_recurrence_signature fallback): pull a "failing symbol" out of the
 # anchor op's raw log lines so runtime_fail signatures are more specific

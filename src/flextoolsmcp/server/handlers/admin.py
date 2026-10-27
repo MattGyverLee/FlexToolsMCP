@@ -60,8 +60,11 @@ def _ops_logger():
     """
     try:
         from ..kernel import get_operations_logger
-    except ImportError:
-        from server.kernel import get_operations_logger
+    except ImportError as first_exc:
+        try:
+            from server.kernel import get_operations_logger
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     return get_operations_logger()
 
 try:
@@ -89,9 +92,12 @@ except (ImportError, ValueError) as first_exc:  # noqa: F841
 
 try:
     from ..constants import API_MODES, API_MODES_DEFAULT, EXECUTION_API_MODE, normalize_api_mode
-except ImportError:
-    from server.constants import API_MODES, API_MODES_DEFAULT, EXECUTION_API_MODE, normalize_api_mode
+except ImportError as first_exc:
+    try:
+        from server.constants import API_MODES, API_MODES_DEFAULT, EXECUTION_API_MODE, normalize_api_mode
 
+    except ImportError as second_exc:
+        raise second_exc from first_exc
 # Import kernel dependencies with fallback support
 json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_deps()
 rotate_logging_to_session, _ = safe_import_logging_helpers()
@@ -599,8 +605,11 @@ async def handle_start(args: dict) -> list[TextContent]:
         if resolved and resolved != project_name:
             try:
                 from ..kernel import get_operations_logger
-            except ImportError:
-                from server.kernel import get_operations_logger
+            except ImportError as first_exc:
+                try:
+                    from server.kernel import get_operations_logger
+                except ImportError as second_exc:
+                    raise second_exc from first_exc
             _autocorrect_logger = get_operations_logger()
             if _autocorrect_logger:
                 _autocorrect_logger.info(
@@ -625,8 +634,11 @@ async def handle_start(args: dict) -> list[TextContent]:
     # which is the index file label and misreports under fallback_latest.
     try:
         from .diagnostic_health import build_session_api_versions
-    except ImportError:
-        from server.handlers.diagnostic_health import build_session_api_versions
+    except ImportError as first_exc:
+        try:
+            from server.handlers.diagnostic_health import build_session_api_versions
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     api_versions = build_session_api_versions()
 
     # Let configure() own session identity.  Passing project_name lets it
@@ -652,8 +664,11 @@ async def handle_start(args: dict) -> list[TextContent]:
     # the next "Session not initialized" log line can be compared against this.
     try:
         from ..kernel import get_operations_logger, is_stateless_client_mode
-    except ImportError:
-        from server.kernel import get_operations_logger, is_stateless_client_mode
+    except ImportError as first_exc:
+        try:
+            from server.kernel import get_operations_logger, is_stateless_client_mode
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     _op_logger = get_operations_logger()
     if _op_logger:
         _op_logger.info(
@@ -783,9 +798,12 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
     """
     try:
         from ..config import config_get, config_set, config_delete, config_list
-    except ImportError:
-        from config import config_get, config_set, config_delete, config_list
+    except ImportError as first_exc:
+        try:
+            from config import config_get, config_set, config_delete, config_list
 
+        except ImportError as second_exc:
+            raise second_exc from first_exc
     action = args.get(KEY_ACTION, "list")
     key = args.get(KEY_KEY, "")
     value = args.get(KEY_VALUE, None)

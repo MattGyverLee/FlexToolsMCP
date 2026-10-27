@@ -26,8 +26,11 @@ from typing import Any, Callable, Dict, List, Optional
 
 try:
     from ..curated_recipes import CURATED_RECIPES
-except ImportError:  # pragma: no cover - script-mode fallback
-    from curated_recipes import CURATED_RECIPES
+except ImportError as _curated_first:  # pragma: no cover - script-mode fallback
+    try:
+        from curated_recipes import CURATED_RECIPES
+    except ImportError as _curated_second:
+        raise _curated_second from _curated_first
 
 try:
     from ..recipe_files import extract_code_terms as _extract_code_terms
@@ -81,13 +84,23 @@ def set_local_recipe_provider(fn: Optional[Callable[[], List[Dict[str, Any]]]]) 
     _LOCAL_PROVIDER = fn
 
 
+def _import_local_recipes_module():
+    """Dual-mode import for the local recipe store (package vs script mode)."""
+    try:
+        from . import local_recipes as _lr  # type: ignore
+        return _lr
+    except ImportError as first_exc:
+        try:
+            from server import local_recipes as _lr  # type: ignore
+            return _lr
+        except ImportError as second_exc:
+            raise second_exc from first_exc
+
+
 def _default_local_records() -> List[Dict[str, Any]]:
     """US2 seam: load local recipes from the store (best-effort)."""
     try:
-        try:
-            from . import local_recipes as _lr  # type: ignore
-        except ImportError:
-            from server import local_recipes as _lr  # type: ignore
+        _lr = _import_local_recipes_module()
         try:
             rows = _lr.load_local_recipes()
         except Exception:

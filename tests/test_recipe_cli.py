@@ -50,6 +50,55 @@ def _make_local_record(tmp_store: Path, code: str, intent="List entries test",
     return rec
 
 
+def _make_local_record_direct(tmp_store: Path, code: str, intent="List entries test",
+                              project="Sena 3"):
+    """Write a local-recipe row directly, bypassing capture() scrubbing.
+
+    Promote-scrub tests need a stored record that still carries the lines
+    promote is supposed to flag. Since S-P1-4, capture() scrubs those lines
+    before persisting, so fixtures built through capture() can no longer
+    exercise promote's scrub reporting. Records written by other paths
+    (legacy rows, imports) can still carry such lines, and promote must
+    flag them — that is what this helper preserves.
+    """
+    import importlib
+    import json
+
+    lr = importlib.import_module("flextoolsmcp.server.local_recipes")
+    import os
+
+    old = os.environ.get("FLEXTOOLSMCP_RECIPE_DIR")
+    os.environ["FLEXTOOLSMCP_RECIPE_DIR"] = str(tmp_store)
+    try:
+        rec = {
+            "id": f"local-{lr.fingerprint_code(code)}",
+            "intent": intent,
+            "code": code,
+            "entities": lr._entities_from_code(code),
+            "requires_write": False,
+            "operations": ["read"],
+            "params": [],
+            "projects": [project] if project else [],
+            "first_used": lr._now_iso(),
+            "last_used": lr._now_iso(),
+            "use_count": 1,
+            "op_ids": ["op-promote-test-001"],
+            "source": "local",
+            "migrated": False,
+            "verified": False,
+            "schema": lr._SCHEMA,
+        }
+        path = lr.get_recipe_path()
+        with open(path, "a", encoding="utf-8") as fp:
+            fp.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    finally:
+        if old is None:
+            os.environ.pop("FLEXTOOLSMCP_RECIPE_DIR", None)
+        else:
+            os.environ["FLEXTOOLSMCP_RECIPE_DIR"] = old
+    return rec
+
+
 PROMOTE_CODE = (
     "from flexicon import LexEntryOperations\n"
     "entries = project.LexEntry.GetAll()\n"
@@ -156,7 +205,7 @@ def test_promote_scrub_lines(tmp_path, monkeypatch, capsys):
         "for entry in entries:\n"
         "    report.Info(project.LexEntry.GetHeadword(entry))\n"
     )
-    rec = _make_local_record(store, code, project="Sena 3")
+    rec = _make_local_record_direct(store, code, project="Sena 3")
     rc = cli.main(["promote", rec["id"], "--id", "promote-scrub",
                    "--out", str(outdir)])
     assert rc == 0
@@ -181,12 +230,40 @@ def test_promote_scrub_project_name(tmp_path, monkeypatch, capsys):
         "for entry in entries:\n"
         "    report.Info(project.LexEntry.GetHeadword(entry))\n"
     )
-    rec = _make_local_record(store, code, project="MyTestProject")
+    rec = _make_local_record_direct(store, code, project="MyTestProject")
     rc = cli.main(["promote", rec["id"], "--id", "promote-scrub-proj",
                    "--out", str(outdir)])
     assert rc == 0
     out, _ = capsys.readouterr()
     assert "MyTestProject" in out
+
+
+def test_promote_capture_path_stores_scrubbed_code(tmp_path, monkeypatch, capsys):
+    # S-P1-4 capture path: the same dirty code, captured normally, must
+    # reach storage already scrubbed, so promote has nothing left to flag.
+    import importlib
+
+    cli = _import_cli()
+    rf = importlib.import_module("flextoolsmcp.recipe_files")
+    store = tmp_path / "store"
+    store.mkdir()
+    outdir = tmp_path / "drafts3"
+    monkeypatch.setenv("FLEXTOOLSMCP_RECIPE_DIR", str(store))
+    code = (
+        "from flexicon import LexEntryOperations\n"
+        "GUID = \"12345678-1234-1234-1234-123456789abc\"\n"
+        "p = \"C:\\\\Users\\\\someone\\\\data\\\\lexicon\"\n"
+        "entries = project.LexEntry.GetAll()\n"
+        "for entry in entries:\n"
+        "    report.Info(project.LexEntry.GetHeadword(entry))\n"
+    )
+    rec = _make_local_record(store, code, project="Sena 3")
+    assert rf.find_scrub_lines(rec["code"], ["Sena 3"]) == []
+    rc = cli.main(["promote", rec["id"], "--id", "promote-capture-clean",
+                   "--out", str(outdir)])
+    assert rc == 0
+    out, _ = capsys.readouterr()
+    assert "scrub before shipping" not in out.lower()
 
 
 def test_promote_draft_parses_but_fails_validation(tmp_path, monkeypatch):

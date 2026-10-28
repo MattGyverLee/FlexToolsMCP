@@ -22,7 +22,11 @@ def test_grammar_health_module_still_imports():
 def test_grammar_health_dual_imports_chain_in_source():
     path = Path(gh_mod.__file__)
     text = path.read_text(encoding="utf-8")
-    assert "raise _response_utils_second from _response_utils_first" in text
+    # Response_utils block chains and reaches the server tier (3-tier form,
+    # superseding the old 2-tier pin): assert the chain, not the exact
+    # 2-tier raise string.
+    assert "from server.response_utils import build_response_with_context, error_response" in text
+    assert "raise _response_utils_third from _response_utils_second" in text
     assert "raise _execution_second from _execution_first" in text
     assert "raise _discovery_second from _discovery_first" in text
     assert "raise _resolve_second from _resolve_first" in text

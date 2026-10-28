@@ -25,10 +25,10 @@ def test_response_utils_block_has_server_fallback_and_chaining():
     text = path.read_text(encoding="utf-8")
     marker = "from ...response_utils import build_response_with_context, error_response"
     start = text.index(marker)
-    block = text[start - 20 : start + 650]
+    block = text[start - 20 : start + 900]
     assert "from server.response_utils import build_response_with_context, error_response" in block
-    assert "except (ImportError, ValueError) as first_exc:" in block
-    assert "raise third_exc from second_exc" in block
+    assert "except (ImportError, ValueError) as _response_utils_first:" in block
+    assert "raise _response_utils_third from _response_utils_second" in block
 
 
 def test_triple_import_fallback_chains_when_all_fail():

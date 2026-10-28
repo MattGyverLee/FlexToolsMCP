@@ -130,15 +130,19 @@ def _attach_ephemeral_session_notices(data: Dict[str, Any]) -> None:
     if "project_adopted_notice" in data:
         return
     try:
-        try:
-            from .project_adoption import consume_project_adopted_notice
-            from .server.kernel import session_state
-        except ImportError as _notice_first:
+        if __package__:
             try:
-                from project_adoption import consume_project_adopted_notice
-                from server.kernel import session_state
-            except ImportError as _notice_second:
-                raise _notice_second from _notice_first
+                from .project_adoption import consume_project_adopted_notice
+                from .server.kernel import session_state
+            except ImportError as _notice_first:
+                try:
+                    from project_adoption import consume_project_adopted_notice
+                    from server.kernel import session_state
+                except ImportError as _notice_second:
+                    raise _notice_second from _notice_first
+        else:
+            from project_adoption import consume_project_adopted_notice
+            from server.kernel import session_state
         notice = consume_project_adopted_notice(session_state)
         if notice:
             data["project_adopted_notice"] = notice
@@ -168,13 +172,16 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     # path and never raises, so it can't break a tool response.
     if "update_notice" not in data:
         try:
-            try:
-                from .update_check import get_update_notice
-            except ImportError as _update_first:
+            if __package__:
                 try:
-                    from update_check import get_update_notice
-                except ImportError as _update_second:
-                    raise _update_second from _update_first
+                    from .update_check import get_update_notice
+                except ImportError as _update_first:
+                    try:
+                        from update_check import get_update_notice
+                    except ImportError as _update_second:
+                        raise _update_second from _update_first
+            else:
+                from update_check import get_update_notice
             notice = get_update_notice()
             if notice:
                 data["update_notice"] = notice
@@ -187,13 +194,16 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     # of calling these tools. Same fail-open contract as the update notice.
     if "workspace_notice" not in data:
         try:
-            try:
-                from .workspace_check import get_workspace_notice
-            except ImportError as _workspace_first:
+            if __package__:
                 try:
-                    from workspace_check import get_workspace_notice
-                except ImportError as _workspace_second:
-                    raise _workspace_second from _workspace_first
+                    from .workspace_check import get_workspace_notice
+                except ImportError as _workspace_first:
+                    try:
+                        from workspace_check import get_workspace_notice
+                    except ImportError as _workspace_second:
+                        raise _workspace_second from _workspace_first
+            else:
+                from workspace_check import get_workspace_notice
             notice = get_workspace_notice(once=True)
             if notice:
                 data["workspace_notice"] = notice
@@ -202,13 +212,16 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
 
     # Import here to avoid circular imports. Package-relative when installed,
     # absolute for script runs (dual-mode guard, per repo convention).
-    try:
-        from .server.kernel import session_state
-    except ImportError as _kernel_first:
+    if __package__:
         try:
-            from server.kernel import session_state
-        except ImportError as _kernel_second:
-            raise _kernel_second from _kernel_first
+            from .server.kernel import session_state
+        except ImportError as _kernel_first:
+            try:
+                from server.kernel import session_state
+            except ImportError as _kernel_second:
+                raise _kernel_second from _kernel_first
+    else:
+        from server.kernel import session_state
 
     if include_session and hasattr(session_state, 'initialized') and session_state.initialized:
         data["session_context"] = {

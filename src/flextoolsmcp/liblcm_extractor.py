@@ -26,45 +26,13 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
-try:
-    from .json_utils import sort_json_arrays
-    from .curated_deprecations import apply_to_api_index as apply_curated_deprecations
-    from .flexicon_analyzer import infer_unified_output_behavior
-    from .liblcm_index_sanity import apply_index_sanity_audit, ANCHOR_MIN_MEMBER_COUNTS
-    from .constants import (
-        PROPERTY_KIND_OWNING_SEQUENCE,
-        PROPERTY_KIND_OWNING_COLLECTION,
-        PROPERTY_KIND_REFERENCE_SEQUENCE,
-        PROPERTY_KIND_REFERENCE_COLLECTION,
-        PROPERTY_KIND_OWNING_ATOMIC,
-        PROPERTY_KIND_REFERENCE_ATOMIC,
-        PROPERTY_KIND_TO_RELATIONSHIP,
-        PROPERTY_KIND_DESCRIPTIONS,
-        METHOD_CATEGORY_RETRIEVAL,
-        METHOD_CATEGORY_MODIFICATION,
-        METHOD_CATEGORY_CREATION,
-        METHOD_CATEGORY_DELETION,
-        METHOD_CATEGORY_PREDICATE,
-        METHOD_CATEGORY_MANIPULATION,
-        METHOD_CATEGORY_VALIDATION,
-        METHOD_CATEGORY_OPERATION,
-        METHOD_CATEGORY_DESCRIPTIONS,
-        ENTITY_CATEGORY_SCRIPTURE,
-        ENTITY_CATEGORY_TEXT,
-        ENTITY_CATEGORY_GENERAL,
-        ENTITY_CATEGORY_REPOSITORY,
-        ENTITY_CATEGORY_FACTORY,
-        ENTITY_CATEGORY_SERVICE,
-        ENTITY_CATEGORY_INFRASTRUCTURE,
-        ENTITY_PREFIX_TO_CATEGORY,
-    )
-except ImportError as _liblcm_extractor_first:
+if __package__:
     try:
-        from json_utils import sort_json_arrays
-        from curated_deprecations import apply_to_api_index as apply_curated_deprecations
-        from flexicon_analyzer import infer_unified_output_behavior
-        from liblcm_index_sanity import apply_index_sanity_audit, ANCHOR_MIN_MEMBER_COUNTS
-        from constants import (
+        from .json_utils import sort_json_arrays
+        from .curated_deprecations import apply_to_api_index as apply_curated_deprecations
+        from .flexicon_analyzer import infer_unified_output_behavior
+        from .liblcm_index_sanity import apply_index_sanity_audit, ANCHOR_MIN_MEMBER_COUNTS
+        from .constants import (
             PROPERTY_KIND_OWNING_SEQUENCE,
             PROPERTY_KIND_OWNING_COLLECTION,
             PROPERTY_KIND_REFERENCE_SEQUENCE,
@@ -91,8 +59,73 @@ except ImportError as _liblcm_extractor_first:
             ENTITY_CATEGORY_INFRASTRUCTURE,
             ENTITY_PREFIX_TO_CATEGORY,
         )
-    except ImportError as _liblcm_extractor_second:
-        raise _liblcm_extractor_second from _liblcm_extractor_first
+    except ImportError as _liblcm_extractor_first:
+        try:
+            from json_utils import sort_json_arrays
+            from curated_deprecations import apply_to_api_index as apply_curated_deprecations
+            from flexicon_analyzer import infer_unified_output_behavior
+            from liblcm_index_sanity import apply_index_sanity_audit, ANCHOR_MIN_MEMBER_COUNTS
+            from constants import (
+                PROPERTY_KIND_OWNING_SEQUENCE,
+                PROPERTY_KIND_OWNING_COLLECTION,
+                PROPERTY_KIND_REFERENCE_SEQUENCE,
+                PROPERTY_KIND_REFERENCE_COLLECTION,
+                PROPERTY_KIND_OWNING_ATOMIC,
+                PROPERTY_KIND_REFERENCE_ATOMIC,
+                PROPERTY_KIND_TO_RELATIONSHIP,
+                PROPERTY_KIND_DESCRIPTIONS,
+                METHOD_CATEGORY_RETRIEVAL,
+                METHOD_CATEGORY_MODIFICATION,
+                METHOD_CATEGORY_CREATION,
+                METHOD_CATEGORY_DELETION,
+                METHOD_CATEGORY_PREDICATE,
+                METHOD_CATEGORY_MANIPULATION,
+                METHOD_CATEGORY_VALIDATION,
+                METHOD_CATEGORY_OPERATION,
+                METHOD_CATEGORY_DESCRIPTIONS,
+                ENTITY_CATEGORY_SCRIPTURE,
+                ENTITY_CATEGORY_TEXT,
+                ENTITY_CATEGORY_GENERAL,
+                ENTITY_CATEGORY_REPOSITORY,
+                ENTITY_CATEGORY_FACTORY,
+                ENTITY_CATEGORY_SERVICE,
+                ENTITY_CATEGORY_INFRASTRUCTURE,
+                ENTITY_PREFIX_TO_CATEGORY,
+            )
+        except ImportError as _liblcm_extractor_second:
+            raise _liblcm_extractor_second from _liblcm_extractor_first
+else:
+    from json_utils import sort_json_arrays
+    from curated_deprecations import apply_to_api_index as apply_curated_deprecations
+    from flexicon_analyzer import infer_unified_output_behavior
+    from liblcm_index_sanity import apply_index_sanity_audit, ANCHOR_MIN_MEMBER_COUNTS
+    from constants import (
+        PROPERTY_KIND_OWNING_SEQUENCE,
+        PROPERTY_KIND_OWNING_COLLECTION,
+        PROPERTY_KIND_REFERENCE_SEQUENCE,
+        PROPERTY_KIND_REFERENCE_COLLECTION,
+        PROPERTY_KIND_OWNING_ATOMIC,
+        PROPERTY_KIND_REFERENCE_ATOMIC,
+        PROPERTY_KIND_TO_RELATIONSHIP,
+        PROPERTY_KIND_DESCRIPTIONS,
+        METHOD_CATEGORY_RETRIEVAL,
+        METHOD_CATEGORY_MODIFICATION,
+        METHOD_CATEGORY_CREATION,
+        METHOD_CATEGORY_DELETION,
+        METHOD_CATEGORY_PREDICATE,
+        METHOD_CATEGORY_MANIPULATION,
+        METHOD_CATEGORY_VALIDATION,
+        METHOD_CATEGORY_OPERATION,
+        METHOD_CATEGORY_DESCRIPTIONS,
+        ENTITY_CATEGORY_SCRIPTURE,
+        ENTITY_CATEGORY_TEXT,
+        ENTITY_CATEGORY_GENERAL,
+        ENTITY_CATEGORY_REPOSITORY,
+        ENTITY_CATEGORY_FACTORY,
+        ENTITY_CATEGORY_SERVICE,
+        ENTITY_CATEGORY_INFRASTRUCTURE,
+        ENTITY_PREFIX_TO_CATEGORY,
+    )
 
 # ---- Logging -----------------------------------------------------------------
 logging.basicConfig(

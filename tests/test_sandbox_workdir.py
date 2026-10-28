@@ -339,7 +339,7 @@ def _flaky_rmtree(monkeypatch, workdir, failures):
             raise err
         return real(path)
 
-    monkeypatch.setattr(workdir, "_rmtree", fake)
+    monkeypatch.setattr(_workdir(), "_rmtree", fake)
     return calls
 
 
@@ -357,7 +357,7 @@ def test_delete_retries_a_sharing_violation_then_succeeds(workdir, fake_project,
 def test_delete_waits_between_attempts(workdir, fake_project, monkeypatch):
     made = workdir.create(record.new_run_id(), source_fwdata=fake_project.fwdata)
     slept = []
-    monkeypatch.setattr(workdir, "DELETE_RETRY_SECONDS", 0.2)
+    monkeypatch.setattr(_workdir(), "DELETE_RETRY_SECONDS", 0.2)
     monkeypatch.setattr(workdir.time, "sleep", lambda s: slept.append(s))
     _flaky_rmtree(monkeypatch, workdir, failures=99)
     workdir.delete(made)
@@ -379,9 +379,11 @@ def test_persistent_failure_is_recorded_with_its_path(workdir, fake_project, mon
 
 @pytest.mark.windows_only
 def test_delete_survives_a_real_short_lived_handle(workdir, fake_project, monkeypatch):
-    monkeypatch.setattr(workdir, "DELETE_RETRY_SECONDS", 0.2)
     made = workdir.create(record.new_run_id(), source_fwdata=fake_project.fwdata)
     _populate(made)
+    # Patch after first proxy use: the fixture's on_load sets
+    # DELETE_RETRY_SECONDS=0 on load and would otherwise clobber this patch.
+    monkeypatch.setattr(_workdir(), "DELETE_RETRY_SECONDS", 0.2)
     held = open(made / "Proj" / "Proj.fwdata", "rb")  # blocks delete on Windows
     timer = threading.Timer(0.1, held.close)
     timer.start()
@@ -423,7 +425,7 @@ def _outside_targets(tmp_path, fake_project):
 def test_delete_refuses_a_target_outside_work(workdir, tmp_path, fake_project, monkeypatch, label):
     target = _outside_targets(tmp_path, fake_project)[label]()
     calls = []
-    monkeypatch.setattr(workdir, "_rmtree", lambda p: calls.append(p))
+    monkeypatch.setattr(_workdir(), "_rmtree", lambda p: calls.append(p))
     with pytest.raises(sp.SandboxPathError):
         workdir.delete(target)
     assert calls == []
@@ -436,7 +438,7 @@ def test_delete_refuses_a_traversal_out_of_work(workdir, fake_project, monkeypat
     victim.mkdir(parents=True)
     (sp.get_sandbox_root() / "work").mkdir(parents=True, exist_ok=True)
     sneaky = sp.get_sandbox_root() / "work" / ".." / "sandboxes" / "FakeProj" / "mine"
-    monkeypatch.setattr(workdir, "_rmtree", lambda p: pytest.fail("must not delete"))
+    monkeypatch.setattr(_workdir(), "_rmtree", lambda p: pytest.fail("must not delete"))
     with pytest.raises(sp.SandboxPathError):
         workdir.delete(sneaky)
     assert victim.is_dir()
@@ -520,7 +522,7 @@ def test_free_space_unmeasurable_fails_open(workdir, fake_project, monkeypatch):
 
 def test_free_space_reuses_a_measure(workdir, fake_project, monkeypatch):
     measure = workdir.measure_allowlist(fake_project.fwdata)
-    monkeypatch.setattr(workdir, "measure_allowlist", lambda f: pytest.fail("re-measured"))
+    monkeypatch.setattr(_workdir(), "measure_allowlist", lambda f: pytest.fail("re-measured"))
     _patch_disk_usage(monkeypatch, free=0)
     shortfall = workdir.check_free_space(fake_project.fwdata, measure=measure)
     assert shortfall.needed_bytes == 2 * measure.total_bytes

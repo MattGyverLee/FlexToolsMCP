@@ -29,7 +29,13 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 if __package__:
-    from .recipe_files import find_scrub_lines, render_draft
+    try:
+        from .recipe_files import find_scrub_lines, render_draft
+    except ImportError as _recipe_files_first:
+        try:
+            from recipe_files import find_scrub_lines, render_draft  # type: ignore
+        except ImportError as _recipe_files_second:
+            raise _recipe_files_second from _recipe_files_first
 else:
     from recipe_files import find_scrub_lines, render_draft  # type: ignore
 

@@ -26,23 +26,31 @@ from typing import Any, Dict, Iterable, List, Tuple, Type
 
 from pydantic import BaseModel
 
-try:
-    from .server.response_models import (
-        GetObjectApiSuccess,
-        RunModuleSuccess,
-        SearchByCapabilitySuccess,
-    )
-    from .server.tool_definitions import TOOLS
-except ImportError as _dual_first_exc:
+if __package__:
     try:
-        from server.response_models import (
+        from .server.response_models import (
             GetObjectApiSuccess,
             RunModuleSuccess,
             SearchByCapabilitySuccess,
         )
-        from server.tool_definitions import TOOLS
-    except ImportError as _dual_second_exc:
-        raise _dual_second_exc from _dual_first_exc
+        from .server.tool_definitions import TOOLS
+    except ImportError as _dual_first_exc:
+        try:
+            from server.response_models import (
+                GetObjectApiSuccess,
+                RunModuleSuccess,
+                SearchByCapabilitySuccess,
+            )
+            from server.tool_definitions import TOOLS
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
+else:
+    from server.response_models import (
+        GetObjectApiSuccess,
+        RunModuleSuccess,
+        SearchByCapabilitySuccess,
+    )
+    from server.tool_definitions import TOOLS
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = REPO_ROOT / "tests" / "golden" / "responses"
@@ -116,21 +124,28 @@ class _FakeAPIIndex:
 
 
 async def _capture_payloads_async() -> Dict[str, Dict[str, Any]]:
-    try:
-        from .server import kernel
-        from .server.handlers.api import (
-            handle_get_object_api,
-            handle_search_by_capability,
-        )
-    except ImportError as _dual_first_exc:
+    if __package__:
         try:
-            from server import kernel
-            from server.handlers.api import (
+            from .server import kernel
+            from .server.handlers.api import (
                 handle_get_object_api,
                 handle_search_by_capability,
             )
-        except ImportError as _dual_second_exc:
-            raise _dual_second_exc from _dual_first_exc
+        except ImportError as _dual_first_exc:
+            try:
+                from server import kernel
+                from server.handlers.api import (
+                    handle_get_object_api,
+                    handle_search_by_capability,
+                )
+            except ImportError as _dual_second_exc:
+                raise _dual_second_exc from _dual_first_exc
+    else:
+        from server import kernel
+        from server.handlers.api import (
+            handle_get_object_api,
+            handle_search_by_capability,
+        )
 
     prev_index = kernel.get_api_index()
     prev_session = copy.deepcopy(kernel.session_state.__dict__)

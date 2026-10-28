@@ -2614,6 +2614,7 @@ def _build_validate_only_checks(
     skip_api_check: bool,
     provenance_existing: bool,
     skip_module_check: bool,
+    provenance_assessment: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """Run every run_module preflight gate, in production order, WITHOUT
     short-circuiting, except that a syntax failure blocks every AST-dependent
@@ -2854,11 +2855,22 @@ def _build_validate_only_checks(
             discovery_copy = _api_discovery_required_copy(
                 session_state_obj, has_inline_discovery=False
             )
-            checks.append({
+            _revocation_entry: Dict[str, Any] = {
                 "gate": "api_discovery_required",
                 "passed": False,
                 "issues": [discovery_copy["log_summary"]],
-            })
+            }
+            if provenance_assessment is not None:
+                # S-P1-3 revocation diagnostic: name the match and its delta
+                # so a blocked caller can see why without re-running the
+                # matcher by hand.
+                _revocation_entry["existing_source_revocation"] = provenance_assessment
+                _revocation_entry["issues"].append(
+                    _recipes_module().existing_source_revocation_summary(
+                        provenance_assessment
+                    )
+                )
+            checks.append(_revocation_entry)
         else:
             checks.append({"gate": "api_discovery_required", "passed": True})
 
@@ -3080,6 +3092,12 @@ async def _handle_validate_only(
         syntax_error = e
 
     api_idx = get_api_index()
+    _source_existing = args.get("source", "authored") == "existing"
+    _provenance_assessment = (
+        _recipes_module().existing_source_discovery_assessment(code)
+        if _source_existing
+        else None
+    )
     checks, writeability = _build_validate_only_checks(
         code=code,
         code_tree=code_tree,
@@ -3089,11 +3107,9 @@ async def _handle_validate_only(
         write_enabled=write_enabled,
         api_mode=api_mode,
         skip_api_check=bool(args.get("skip_api_check", False)),
-        provenance_existing=(
-            args.get("source", "authored") == "existing"
-            and _recipes_module().existing_source_allows_discovery_skip(code)
-        ),
+        provenance_existing=_source_existing and _provenance_assessment is None,
         skip_module_check=bool(args.get("skip_module_check", False)),
+        provenance_assessment=_provenance_assessment,
     )
 
     # READ-ONLY project-lock probe -- never opens the project, just checks
@@ -4061,9 +4077,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # relax a safety gate.
     source_provenance = args.get("source", "authored")
     _provenance_existing = source_provenance == "existing"
+    _discovery_assessment = (
+        _recipes_module().existing_source_discovery_assessment(code or "")
+        if _provenance_existing
+        else None
+    )
     _discovery_provenance_existing = (
-        _provenance_existing
-        and _recipes_module().existing_source_allows_discovery_skip(code or "")
+        _provenance_existing and _discovery_assessment is None
     )
 
     # Validate project_name is available BEFORE assigning an op_id -- without
@@ -4867,9 +4887,12 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             )
         else:
             get_operations_logger().info(
-                "[DISCOVERY] source='existing' but code partially matches a known "
-                "recipe below the reuse ratio (S-P1-3) -- running api_discovery and "
-                "undiscovered_entity gates anyway."
+                "[DISCOVERY] source='existing' but discovery skip revoked "
+                "(S-P1-3) -- running api_discovery and "
+                "undiscovered_entity gates anyway. "
+                + _recipes_module().existing_source_revocation_summary(
+                    _discovery_assessment
+                )
             )
     if is_stateless_client_mode() and not skip_api_check and not _provenance_existing:
         get_operations_logger().info(
@@ -4917,6 +4940,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             }
             if inline:
                 extras["_inline_discovery"] = inline
+            if _discovery_assessment is not None:
+                extras["existing_source_revocation"] = _discovery_assessment
             # Issue #28: wrap the rejection with the retry-loop detector so
             # repeated api_discovery_required failures surface _assistance hints.
             return _attach_assistance_if_loop(

@@ -1,7 +1,13 @@
 """Allow running the server via ``python -m flextoolsmcp``."""
 
 if __package__:
-    from .server import run
+    try:
+        from .server import run
+    except ImportError as _first_exc:
+        try:
+            from server import run
+        except ImportError as _second_exc:
+            raise _second_exc from _first_exc
 else:
     from server import run
 

@@ -22,14 +22,17 @@ def test_import_helper_module_still_imports():
 
 
 def test_kernel_deps_response_utils_has_server_fallback_and_chaining():
+    # Helper form (not the old inline form): the third tier is a nested
+    # _import_with_fallback call, so safe_import_kernel_deps keeps the
+    # helper refactor while gaining the server.response_utils tier.
     path = Path(ih_mod.__file__)
     text = path.read_text(encoding="utf-8")
     marker = "def safe_import_kernel_deps"
     start = text.index(marker)
-    block = text[start : start + 1400]
+    block = text[start : start + 2000]
     assert "from server.response_utils import json_response" in block
-    assert "except ImportError as first_exc:" in block
-    assert "raise third_exc from second_exc" in block
+    assert "def _script_server():" in block
+    assert "_import_with_fallback(_script, _script_server)" in block
 
 
 def test_triple_import_fallback_chains_when_all_fail():

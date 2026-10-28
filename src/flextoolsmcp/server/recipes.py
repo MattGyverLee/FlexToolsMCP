@@ -674,6 +674,218 @@ def code_is_from_recipe(code: str, recipe: Dict[str, Any]) -> bool:
     return hits >= _FROM_RECIPE_LINE_RATIO * len(wanted)
 
 
+def _recipe_body_overlap(code: str, recipe: Dict[str, Any]) -> tuple[int, int]:
+    """Non-PARAMS line hits vs total significant lines in ``recipe``'s body."""
+    wanted = _significant_lines(recipe.get("code", "") or "")
+    if not wanted:
+        return 0, 0
+    have = set(_significant_lines(code))
+    hits = sum(1 for ln in wanted if ln in have)
+    return hits, len(wanted)
+
+
+def _iter_known_recipes() -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = list(CURATED_RECIPES.values())
+    try:
+        try:
+            from . import local_recipes as _local
+        except ImportError:
+            from server import local_recipes as _local  # type: ignore
+        rows.extend(_local.load_local_recipes() or [])
+    except Exception:
+        pass
+    return rows
+
+
+# Lines present in more than this share of known recipes are boilerplate
+# (e.g. ``if modifyAllowed:``, in ~41% of shipped recipes) and carry no
+# identity signal. Distinctive lines are the identity signal; lines in no
+# known recipe are the unknown (delta) signal.
+_SPECIFICITY_MAX_SHARE = 0.25
+# Distinct distinctive lines shared with one recipe that establish the code
+# *is* that recipe (as opposed to coincidentally sharing boilerplate).
+_MIN_DISTINCTIVE_SHARED = 3
+
+
+def _known_recipes_with_origin() -> List[tuple]:
+    """Known recipes as ``(recipe_id, origin, recipe)`` rows.
+
+    ``origin`` is ``"shipped"`` for curated recipes and ``"local"`` for
+    session captures, so a revocation diagnostic can say which matched.
+    """
+    rows: List[tuple] = [
+        (rid, "shipped" if _is_shipped(r) else "local", r)
+        for rid, r in CURATED_RECIPES.items()
+    ]
+    try:
+        try:
+            from . import local_recipes as _local
+        except ImportError:
+            from server import local_recipes as _local  # type: ignore
+        for row in _local.load_local_recipes() or []:
+            rows.append((str(row.get("id") or "local"), "local", row))
+    except Exception:
+        pass
+    return rows
+
+
+def _generic_lines(known: List[tuple]) -> set:
+    """Significant lines present in >25% of known recipes (boilerplate)."""
+    counts: Dict[str, int] = {}
+    for _rid, _origin, recipe in known:
+        for line in set(_significant_lines(recipe.get("code", "") or "")):
+            counts[line] = counts.get(line, 0) + 1
+    if not known:
+        return set()
+    return {ln for ln, n in counts.items() if n > _SPECIFICITY_MAX_SHARE * len(known)}
+
+
+def _recipe_match_stats(code: str, recipe: Dict[str, Any],
+                        generic: set) -> Dict[str, Any]:
+    """Per-recipe overlap stats, distinct-counted, for submitted ``code``."""
+    wanted = _significant_lines(recipe.get("code", "") or "")
+    wanted_distinct = set(wanted)
+    have = set(_significant_lines(code or ""))
+    # Occurrence hits keep the 0.6 pass-branch ratio exactly as before.
+    hits = sum(1 for ln in wanted if ln in have)
+    distinctive = (have & wanted_distinct) - generic
+    return {
+        "total": len(wanted),
+        "distinct_total": len(wanted_distinct),
+        "hits": hits,
+        "ratio": (hits / len(wanted)) if wanted else 0.0,
+        "distinctive_hits": len(distinctive),
+        "matched_lines": sorted(distinctive),
+        # Delta vs THIS recipe: submitted lines it does not contain, minus
+        # generic lines (which are ignored as signal by design).
+        "unknown_lines": sorted((have - wanted_distinct) - generic),
+    }
+
+
+def existing_source_discovery_assessment(code: str) -> Optional[Dict[str, Any]]:
+    """Revocation diagnostic for ``source='existing'`` (S-P1-3), or None.
+
+    Returns None when the skip is allowed. Otherwise returns the best
+    match: ``recipe_id``, ``origin`` (shipped/local), ``hits``/``total``
+    (distinctive matched lines vs the recipe's distinct significant lines),
+    ``ratio`` (the unchanged 0.6-branch ratio), ``matched_lines``,
+    ``unknown_lines`` (the delta), and ``reasons``.
+
+    Framing is per-recipe, against the best-matching single recipe, so the
+    delta only gates code that already *is* a known recipe: a recipe is an
+    identity match when it shares >= ``_MIN_DISTINCTIVE_SHARED`` distinct
+    distinctive lines or reaches the 0.6 ratio. Code with no identity match
+    is not an altered recipe -- unknown lines alone never gate it. When an
+    identity match exists, the skip is revoked if the match is a partial
+    match below the ratio, or if the delta is non-empty (any unknown
+    distinctive line closes the additive-tamper hole: >=60% of a short
+    recipe plus extra lines no longer auto-passes).
+
+    Stated limit, honestly: deletion-only tamper (lines removed, none
+    added) still passes -- ratio stays >=0.6 with an empty delta -- as does
+    a substitution whose replacement line is generic or already in the
+    recipe. Line overlap cannot catch those; only a body hash could.
+    """
+    known = _known_recipes_with_origin()
+    if not known:
+        return None
+    generic = _generic_lines(known)
+    stats = []
+    for rid, origin, recipe in known:
+        st = _recipe_match_stats(code, recipe, generic)
+        if st["total"] == 0:
+            continue
+        st["recipe_id"] = rid
+        st["origin"] = origin
+        stats.append(st)
+    # Faithful reuse with no delta: the 0.6 pass branch, unchanged.
+    for st in stats:
+        if st["ratio"] >= _FROM_RECIPE_LINE_RATIO and not st["unknown_lines"]:
+            return None
+    # Best single recipe: most distinctive shared lines, then highest ratio.
+    best = max(stats, key=lambda s: (s["distinctive_hits"], s["ratio"]),
+               default=None)
+    if best is None:
+        return None
+    is_identity = (
+        best["distinctive_hits"] >= _MIN_DISTINCTIVE_SHARED
+        or best["ratio"] >= _FROM_RECIPE_LINE_RATIO
+    )
+    if not is_identity:
+        return None
+    reasons = []
+    if best["ratio"] < _FROM_RECIPE_LINE_RATIO:
+        reasons.append("partial_match_below_ratio")
+    if best["unknown_lines"]:
+        reasons.append("unknown_delta")
+    if not reasons:
+        # Identity via >=3 distinctive lines at/above the ratio is the
+        # faithful case, already returned above; unreachable in practice.
+        return None
+    return {
+        "recipe_id": best["recipe_id"],
+        "origin": best["origin"],
+        "hits": best["distinctive_hits"],
+        "total": best["distinct_total"],
+        "ratio": round(best["ratio"], 3),
+        "matched_lines": best["matched_lines"],
+        "unknown_lines": best["unknown_lines"],
+        "reasons": reasons,
+    }
+
+
+def existing_source_revocation_summary(assessment: Dict[str, Any]) -> str:
+    """One-line human-readable form of an assessment, for logs/errors.
+
+    The assessment dict itself carries the full matched/unknown lists; the
+    summary truncates them so a log line stays readable.
+    """
+    unknown = assessment.get("unknown_lines") or []
+    matched = assessment.get("matched_lines") or []
+    shown_matched = matched[:5]
+    if len(matched) > 5:
+        shown_matched = shown_matched + [f"+{len(matched) - 5} more"]
+    text = (
+        f"best match recipe '{assessment.get('recipe_id')}' "
+        f"({assessment.get('origin')}): {assessment.get('hits')}/"
+        f"{assessment.get('total')} distinct lines, ratio "
+        f"{assessment.get('ratio')}; reasons: "
+        f"{','.join(assessment.get('reasons') or [])}; "
+        f"matched: {shown_matched}"
+    )
+    if unknown:
+        shown_unknown = unknown[:10]
+        if len(unknown) > 10:
+            shown_unknown = shown_unknown + [f"+{len(unknown) - 10} more"]
+        text += f"; unknown lines (delta): {shown_unknown}"
+    return text
+
+
+def existing_source_allows_discovery_skip(code: str) -> bool:
+    """Whether ``source='existing'`` may skip API-discovery gates (S-P1-3).
+
+    Faithful recipe reuse (>= ``_FROM_RECIPE_LINE_RATIO`` of a known recipe's
+    body, with no unknown delta) and code with no identity match (human
+    paste from disk, or a snippet sharing only boilerplate / 1-2 lines)
+    may skip. A partial match (>=3 distinct distinctive lines below the
+    ratio) or an identity match with an unknown delta must run the
+    discovery gates even when the caller passes ``source='existing'``.
+    See ``existing_source_discovery_assessment`` for the full framing and
+    its stated limits.
+    """
+    return existing_source_discovery_assessment(code or "") is None
+
+
+def local_recipe_how_to_run(recipe_id: str, requires_write: bool) -> str:
+    """Run guidance for a local capture -- distinct from shipped trust framing."""
+    base = recipe_how_to_run(recipe_id, requires_write)
+    return (
+        f"{base[:-1] if base.endswith('.') else base} "
+        "(local capture from a prior session -- not shipped-validated; review the "
+        "full code before reuse; prefer a shipped recipe when one fits)."
+    )
+
+
 def recipe_hint_for_run(user_intent: Optional[str], code: str) -> Optional[Dict[str, Any]]:
     """Non-blocking run_module hint when ``user_intent`` strongly matches a
     library recipe that ``code`` is not from; None otherwise. Never raises."""

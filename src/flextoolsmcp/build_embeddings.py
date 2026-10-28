@@ -13,15 +13,19 @@ from pathlib import Path
 from typing import Dict, List, Any, Tuple
 import numpy as np
 
-try:
-    from .json_utils import sort_json_arrays
-    from .server.versioning import find_latest_versioned_api_file
-except ImportError as _build_embeddings_first:
+if __package__:
     try:
-        from json_utils import sort_json_arrays
-        from server.versioning import find_latest_versioned_api_file
-    except ImportError as _build_embeddings_second:
-        raise _build_embeddings_second from _build_embeddings_first
+        from .json_utils import sort_json_arrays
+        from .server.versioning import find_latest_versioned_api_file
+    except ImportError as _build_embeddings_first:
+        try:
+            from json_utils import sort_json_arrays
+            from server.versioning import find_latest_versioned_api_file
+        except ImportError as _build_embeddings_second:
+            raise _build_embeddings_second from _build_embeddings_first
+else:
+    from json_utils import sort_json_arrays
+    from server.versioning import find_latest_versioned_api_file
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -47,13 +51,16 @@ TYPE_ENTITY = "entity"
 
 def get_index_dir() -> Path:
     """Get the working index directory (delegates to file_utils overlay logic)."""
-    try:
-        from .file_utils import get_index_dir as _impl
-    except ImportError as _file_utils_first:
+    if __package__:
         try:
-            from file_utils import get_index_dir as _impl
-        except ImportError as _file_utils_second:
-            raise _file_utils_second from _file_utils_first
+            from .file_utils import get_index_dir as _impl
+        except ImportError as _file_utils_first:
+            try:
+                from file_utils import get_index_dir as _impl
+            except ImportError as _file_utils_second:
+                raise _file_utils_second from _file_utils_first
+    else:
+        from file_utils import get_index_dir as _impl
     return _impl()
 
 

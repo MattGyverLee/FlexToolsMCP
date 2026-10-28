@@ -14,7 +14,13 @@ from pathlib import Path
 from typing import Dict, Any
 
 if __package__:
-    from .json_utils import sort_json_arrays
+    try:
+        from .json_utils import sort_json_arrays
+    except ImportError as _json_utils_first:
+        try:
+            from json_utils import sort_json_arrays
+        except ImportError as _json_utils_second:
+            raise _json_utils_second from _json_utils_first
 else:
     from json_utils import sort_json_arrays
 

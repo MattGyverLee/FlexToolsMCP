@@ -55,7 +55,10 @@ except (ImportError, ValueError) as _response_utils_first:
     try:
         from response_utils import build_response_with_context, error_response
     except (ImportError, ValueError) as _response_utils_second:
-        raise _response_utils_second from _response_utils_first
+        try:
+            from server.response_utils import build_response_with_context, error_response
+        except (ImportError, ValueError) as _response_utils_third:
+            raise _response_utils_third from _response_utils_second
 
 # json_response / session_state come from the shared kernel helper; the other
 # two returned slots are unused here and intentionally discarded.

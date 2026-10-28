@@ -27,12 +27,23 @@ from typing import Any, Dict, Iterable, List, Tuple, Type
 from pydantic import BaseModel
 
 if __package__:
-    from .server.response_models import (
-        GetObjectApiSuccess,
-        RunModuleSuccess,
-        SearchByCapabilitySuccess,
-    )
-    from .server.tool_definitions import TOOLS
+    try:
+        from .server.response_models import (
+            GetObjectApiSuccess,
+            RunModuleSuccess,
+            SearchByCapabilitySuccess,
+        )
+        from .server.tool_definitions import TOOLS
+    except ImportError as _dual_first_exc:
+        try:
+            from server.response_models import (
+                GetObjectApiSuccess,
+                RunModuleSuccess,
+                SearchByCapabilitySuccess,
+            )
+            from server.tool_definitions import TOOLS
+        except ImportError as _dual_second_exc:
+            raise _dual_second_exc from _dual_first_exc
 else:
     from server.response_models import (
         GetObjectApiSuccess,
@@ -114,11 +125,21 @@ class _FakeAPIIndex:
 
 async def _capture_payloads_async() -> Dict[str, Dict[str, Any]]:
     if __package__:
-        from .server import kernel
-        from .server.handlers.api import (
-            handle_get_object_api,
-            handle_search_by_capability,
-        )
+        try:
+            from .server import kernel
+            from .server.handlers.api import (
+                handle_get_object_api,
+                handle_search_by_capability,
+            )
+        except ImportError as _dual_first_exc:
+            try:
+                from server import kernel
+                from server.handlers.api import (
+                    handle_get_object_api,
+                    handle_search_by_capability,
+                )
+            except ImportError as _dual_second_exc:
+                raise _dual_second_exc from _dual_first_exc
     else:
         from server import kernel
         from server.handlers.api import (

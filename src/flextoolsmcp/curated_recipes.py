@@ -30,7 +30,13 @@ reviewed by a human and only added to this file once flipped to "curated"
 from typing import Any, Dict
 
 if __package__:
-    from .curated_deprecations import CURATED_DEPRECATIONS
+    try:
+        from .curated_deprecations import CURATED_DEPRECATIONS
+    except ImportError as _curated_dep_first:
+        try:
+            from curated_deprecations import CURATED_DEPRECATIONS
+        except ImportError as _curated_dep_second:
+            raise _curated_dep_second from _curated_dep_first
 else:
     from curated_deprecations import CURATED_DEPRECATIONS
 
@@ -642,7 +648,13 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
 # collision raises at import time; a malformed file is skipped with one
 # logged error and the server still starts (research R5).
 if __package__:
-    from .recipe_files import load_recipe_library, merge_recipes
+    try:
+        from .recipe_files import load_recipe_library, merge_recipes
+    except ImportError as _recipe_files_first:
+        try:
+            from recipe_files import load_recipe_library, merge_recipes
+        except ImportError as _recipe_files_second:
+            raise _recipe_files_second from _recipe_files_first
 else:
     from recipe_files import load_recipe_library, merge_recipes
 

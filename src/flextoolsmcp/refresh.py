@@ -39,8 +39,15 @@ from pathlib import Path
 from datetime import datetime
 
 if __package__:
-    from .json_utils import sort_json_arrays
-    from .file_utils import get_project_root, get_index_dir
+    try:
+        from .json_utils import sort_json_arrays
+        from .file_utils import get_project_root, get_index_dir
+    except ImportError as _refresh_utils_first:
+        try:
+            from json_utils import sort_json_arrays
+            from file_utils import get_project_root, get_index_dir
+        except ImportError as _refresh_utils_second:
+            raise _refresh_utils_second from _refresh_utils_first
 else:
     from json_utils import sort_json_arrays
     from file_utils import get_project_root, get_index_dir
@@ -54,7 +61,13 @@ def load_env():
     - Uncomment paths in .env → use repository clones instead
     """
     if __package__:
-        from .env_config import emit_obsolete_env_warnings, load_project_env
+        try:
+            from .env_config import emit_obsolete_env_warnings, load_project_env
+        except ImportError as _env_config_first:
+            try:
+                from env_config import emit_obsolete_env_warnings, load_project_env
+            except ImportError as _env_config_second:
+                raise _env_config_second from _env_config_first
     else:
         from env_config import emit_obsolete_env_warnings, load_project_env
 

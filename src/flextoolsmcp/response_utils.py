@@ -131,8 +131,15 @@ def _attach_ephemeral_session_notices(data: Dict[str, Any]) -> None:
         return
     try:
         if __package__:
-            from .project_adoption import consume_project_adopted_notice
-            from .server.kernel import session_state
+            try:
+                from .project_adoption import consume_project_adopted_notice
+                from .server.kernel import session_state
+            except ImportError as _notice_first:
+                try:
+                    from project_adoption import consume_project_adopted_notice
+                    from server.kernel import session_state
+                except ImportError as _notice_second:
+                    raise _notice_second from _notice_first
         else:
             from project_adoption import consume_project_adopted_notice
             from server.kernel import session_state
@@ -166,7 +173,13 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     if "update_notice" not in data:
         try:
             if __package__:
-                from .update_check import get_update_notice
+                try:
+                    from .update_check import get_update_notice
+                except ImportError as _update_first:
+                    try:
+                        from update_check import get_update_notice
+                    except ImportError as _update_second:
+                        raise _update_second from _update_first
             else:
                 from update_check import get_update_notice
             notice = get_update_notice()
@@ -182,7 +195,13 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     if "workspace_notice" not in data:
         try:
             if __package__:
-                from .workspace_check import get_workspace_notice
+                try:
+                    from .workspace_check import get_workspace_notice
+                except ImportError as _workspace_first:
+                    try:
+                        from workspace_check import get_workspace_notice
+                    except ImportError as _workspace_second:
+                        raise _workspace_second from _workspace_first
             else:
                 from workspace_check import get_workspace_notice
             notice = get_workspace_notice(once=True)
@@ -194,7 +213,13 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     # Import here to avoid circular imports. Package-relative when installed,
     # absolute for script runs (dual-mode guard, per repo convention).
     if __package__:
-        from .server.kernel import session_state
+        try:
+            from .server.kernel import session_state
+        except ImportError as _kernel_first:
+            try:
+                from server.kernel import session_state
+            except ImportError as _kernel_second:
+                raise _kernel_second from _kernel_first
     else:
         from server.kernel import session_state
 

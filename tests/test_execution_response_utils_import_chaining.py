@@ -23,9 +23,12 @@ def test_response_utils_import_chains_in_source():
     text = path.read_text(encoding="utf-8")
     marker = "# Import response utilities and HeadlessReport with fallback"
     start = text.index(marker)
-    block = text[start : start + 450]
+    block = text[start : start + 700]
+    # Pin asserts the block chains and reaches the server tier, not the
+    # exact 2-tier raise string (the third tier replaced it).
     assert "except (ImportError, ValueError) as first_exc:" in block
-    assert "raise second_exc from first_exc" in block
+    assert "from server.response_utils import" in block
+    assert "raise third_exc from second_exc" in block
 
 
 def test_dual_import_fallback_chains_when_both_fail():

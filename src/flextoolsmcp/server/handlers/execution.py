@@ -193,7 +193,7 @@ except ImportError as first_exc:
 # Import response utilities and HeadlessReport with fallback
 try:
     from ...response_utils import build_response_with_context, error_response
-except (ImportError, ValueError) as first_exc:
+except (ImportError, ValueError) as first_exc:  # noqa: F841
     try:
         from response_utils import build_response_with_context, error_response
     except ImportError as second_exc:

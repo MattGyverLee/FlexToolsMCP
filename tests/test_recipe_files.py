@@ -19,9 +19,11 @@ import pytest
 from flextoolsmcp import recipe_files
 from flextoolsmcp.recipe_files import (
     extract_code_terms,
+    find_scrub_lines,
     load_recipe_library,
     parse_params,
     parse_recipe_source,
+    scrub_recipe_code,
 )
 
 
@@ -282,3 +284,22 @@ class TestCodeTerms:
     def test_underscore_split(self):
         terms = extract_code_terms("project.LexEntry.GetAll()\n")
         assert "lex" in terms or "entry" in terms
+
+
+class TestScrubRecipeCode:
+    def test_drops_flagged_lines_and_keeps_clean_lines(self):
+        code = (
+            "from flexicon import LexEntryOperations\n"
+            "GUID = \"12345678-1234-1234-1234-123456789abc\"\n"
+            "p = \"C:\\\\Users\\\\someone\\\\data\\\\lexicon\"\n"
+            "# touched in MyTestProject run\n"
+            "entries = project.LexEntry.GetAll()\n"
+        )
+        hits = find_scrub_lines(code, ["MyTestProject"])
+        assert [lineno for lineno, _ in hits] == [2, 3, 4]
+        scrubbed = scrub_recipe_code(code, ["MyTestProject"])
+        assert find_scrub_lines(scrubbed, ["MyTestProject"]) == []
+        assert "12345678-1234" not in scrubbed
+        assert "MyTestProject" not in scrubbed
+        assert "LexEntry.GetAll()" in scrubbed
+        assert scrubbed.endswith("\n")

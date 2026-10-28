@@ -68,7 +68,6 @@ def safe_import_kernel_deps() -> tuple[Any, Any, Any, Any]:
             get_api_index,
         )
         return json_response, session_state, get_log_dir, get_api_index
-
     def _script():
         from response_utils import json_response
         from server.kernel import (
@@ -78,7 +77,20 @@ def safe_import_kernel_deps() -> tuple[Any, Any, Any, Any]:
         )
         return json_response, session_state, get_log_dir, get_api_index
 
-    return _import_with_fallback(_package, _script)
+    def _script_server():
+        # Third tier (P2, server.*-only script launches): same kernel deps,
+        # but response_utils only exposed under server.*.
+        from server.response_utils import json_response
+        from server.kernel import (
+            session_state,
+            get_log_dir,
+            get_api_index,
+        )
+        return json_response, session_state, get_log_dir, get_api_index
+
+    return _import_with_fallback(
+        _package, lambda: _import_with_fallback(_script, _script_server)
+    )
 
 
 def safe_import_logging_helpers() -> tuple[Any, Any]:

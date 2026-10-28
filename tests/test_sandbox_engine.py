@@ -118,7 +118,7 @@ def _counting_open(monkeypatch, engine, *, fail_first=0, exc=None):
             raise exc or PermissionError(13, "The process cannot access the file")
         return real(path)
 
-    monkeypatch.setattr(engine, "_open_fwdata", fake)
+    monkeypatch.setattr(_engine(), "_open_fwdata", fake)
     return calls
 
 
@@ -304,8 +304,10 @@ def test_persistent_read_error_stops_after_one_retry(engine, fake_project, monke
 
 def test_retry_waits_retry_delay(engine, fake_project, monkeypatch):
     slept = []
-    monkeypatch.setattr(engine, "RETRY_DELAY_SECONDS", 0.01)
+    # engine.time loads the proxy (running on_load, which sets
+    # RETRY_DELAY_SECONDS=0) before the direct patch below, so the patch wins.
     monkeypatch.setattr(engine.time, "sleep", lambda s: slept.append(s))
+    monkeypatch.setattr(_engine(), "RETRY_DELAY_SECONDS", 0.01)
     _counting_open(monkeypatch, engine, fail_first=1)
     engine.read_engine(fake_project.fwdata)
     assert slept == [0.01]
@@ -360,7 +362,7 @@ def test_stops_at_first_morph_data_rt(engine, tmp_path, monkeypatch):
         def __getattr__(self, name):
             return getattr(self._raw, name)
 
-    monkeypatch.setattr(engine, "_open_fwdata", lambda p: Tracked(real(p)))
+    monkeypatch.setattr(_engine(), "_open_fwdata", lambda p: Tracked(real(p)))
     reading = engine.read_engine(fwdata)
     assert reading.configured_engine == "HC"
     assert reading.readable is True
@@ -406,7 +408,7 @@ def test_remember_primes_the_memo_from_key_json(engine, fake_project, monkeypatc
     def boom(path):
         raise AssertionError("a warm job must not re-scan the .fwdata")
 
-    monkeypatch.setattr(engine, "_open_fwdata", boom)
+    monkeypatch.setattr(_engine(), "_open_fwdata", boom)
     engine.remember(key, "HC")
     reading = engine.check_engine(fake_project.fwdata)
     assert reading.configured_engine == "HC"
@@ -469,7 +471,7 @@ def test_unreadable_reading_has_no_hc_parameters(engine, tmp_path):
 
 def test_remember_carries_hc_parameters(engine, fake_project, monkeypatch):
     key = engine.file_key(fake_project.fwdata)
-    monkeypatch.setattr(engine, "_open_fwdata",
+    monkeypatch.setattr(_engine(), "_open_fwdata",
                         lambda path: (_ for _ in ()).throw(AssertionError("re-scan")))
     params = dict(_DEFAULTS, max_roots=5)
     engine.remember(key, "HC", params)

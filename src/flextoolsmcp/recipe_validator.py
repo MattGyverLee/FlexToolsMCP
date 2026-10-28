@@ -50,29 +50,20 @@ in CI), the validator ALSO checks:
 import ast
 from typing import Any, Dict, List
 
-try:
-    from .recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
-except ImportError as _recipe_files_first:
+if __package__:
     try:
-        from recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
-    except ImportError as _recipe_files_second:
-        raise _recipe_files_second from _recipe_files_first
+        from .recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
+    except ImportError as _recipe_files_first:
+        try:
+            from recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
+        except ImportError as _recipe_files_second:
+            raise _recipe_files_second from _recipe_files_first
+else:
+    from recipe_files import PARAMS_END, PARAMS_START, find_scrub_lines, parse_params
 
-try:
-    from .server.validators import (
-        detect_cud_operations,
-        certify_script_readonly,
-        detect_missing_operations_imports,
-        detect_wrong_library_imports,
-        detect_undefined_variables,
-        detect_invalid_project_chains,
-        detect_deprecated_members,
-        detect_print_calls,
-        detect_raw_lcm_access,
-    )
-except ImportError as _validators_first:
+if __package__:
     try:
-        from server.validators import (
+        from .server.validators import (
             detect_cud_operations,
             certify_script_readonly,
             detect_missing_operations_imports,
@@ -83,8 +74,33 @@ except ImportError as _validators_first:
             detect_print_calls,
             detect_raw_lcm_access,
         )
-    except ImportError as _validators_second:
-        raise _validators_second from _validators_first
+    except ImportError as _validators_first:
+        try:
+            from server.validators import (
+                detect_cud_operations,
+                certify_script_readonly,
+                detect_missing_operations_imports,
+                detect_wrong_library_imports,
+                detect_undefined_variables,
+                detect_invalid_project_chains,
+                detect_deprecated_members,
+                detect_print_calls,
+                detect_raw_lcm_access,
+            )
+        except ImportError as _validators_second:
+            raise _validators_second from _validators_first
+else:
+    from server.validators import (
+        detect_cud_operations,
+        certify_script_readonly,
+        detect_missing_operations_imports,
+        detect_wrong_library_imports,
+        detect_undefined_variables,
+        detect_invalid_project_chains,
+        detect_deprecated_members,
+        detect_print_calls,
+        detect_raw_lcm_access,
+    )
 
 
 def _check_params_block(code: str) -> List[str]:
